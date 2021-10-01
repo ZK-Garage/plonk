@@ -22,6 +22,7 @@ edition = "2018"
 
 [dependencies]
 ark-ec = "0.3"
+ark-ff = "0.3"
 merlin = {version = "3.0", default-features = false}
 rand_core = {version="0.6", default-features=false}
 itertools = {version = "0.9", default-features = false}
