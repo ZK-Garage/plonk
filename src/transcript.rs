@@ -6,8 +6,8 @@
 
 //! This is an extension over the [Merlin Transcript](Transcript)
 //! which adds a few extra functionalities.
-use ark_ec::{PairingEngine, CanonicalSerialize};
-use crate::commitment_scheme::kzg10::Commitment;
+use ark_ec::{PairingEngine};
+use ark_poly::Commitment;
 use merlin::Transcript;
 
 /// Transcript adds an abstraction over the Merlin transcript
@@ -16,7 +16,7 @@ pub(crate) trait TranscriptProtocol<E: PairingEngine> {
     /// Append a `commitment` with the given `label`.
     fn append_commitment(&mut self, label: &'static [u8], comm: &Commitment);
 
-    /// Append a `BlsScalar` with the given `label`.
+    /// Append a scalar with the given `label`.
     fn append_scalar(&mut self, label: &'static [u8], s: &E::Fr);
 
     /// Compute a `label`ed challenge variable.
@@ -39,7 +39,7 @@ impl<E: PairingEngine> TranscriptProtocol<E> for Transcript {
         let mut buf = [0u8; 64];
         self.challenge_bytes(label, &mut buf);
 
-        BlsScalar::from_bytes_wide(&buf)
+        E::Fr::from_le_bytes_mod_order(&buf)
     }
 
     fn circuit_domain_sep(&mut self, n: u64) {
