@@ -33,25 +33,14 @@
 #![allow(clippy::too_many_arguments)]
 #![deny(rustdoc::broken_intra_doc_links)]
 #![deny(missing_docs)]
-#![no_std]
 
-#[cfg(feature = "std")]
-extern crate std;
+mod bit_iterator;
+pub mod circuit;
+pub mod constraint_system;
+mod permutation;
+mod util;
 
-cfg_if::cfg_if!(
-if #[cfg(feature = "alloc")] {
-    #[macro_use]
-    extern crate alloc;
-    pub mod constraint_system;
-    mod bit_iterator;
-    pub mod circuit;
-    mod util;
-    mod permutation;
-});
-
-pub mod commitment_scheme;
 pub mod error;
-mod fft;
 pub mod prelude;
 pub mod proof_system;
 mod transcript;
