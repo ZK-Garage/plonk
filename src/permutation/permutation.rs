@@ -8,7 +8,7 @@ use super::constants::{K1, K2, K3};
 use crate::constraint_system::{Variable, WireData};
 use crate::fft::{EvaluationDomain, Polynomial};
 use alloc::vec::Vec;
-use dusk_bls12_381::BlsScalar;
+use ark_ec::PrimeField;
 use hashbrown::HashMap;
 use itertools::izip;
 
@@ -16,21 +16,23 @@ use itertools::izip;
 /// to create the permutation polynomial. In the literature, Z(X) is the
 /// "accumulator", this is what this codebase calls the permutation polynomial.
 #[derive(Debug)]
-pub(crate) struct Permutation {
+pub(crate) struct Permutation<F: PrimeField> {
     // Maps a variable to the wires that it is associated to.
     pub(crate) variable_map: HashMap<Variable, Vec<WireData>>,
+    _field_type: PhantomData<F>,
 }
 
-impl Permutation {
+impl<F: PrimeField> Permutation<F> {
     /// Creates a Permutation struct with an expected capacity of zero.
-    pub(crate) fn new() -> Permutation {
+    pub(crate) fn new() -> Permutation<F> {
         Permutation::with_capacity(0)
     }
 
     /// Creates a Permutation struct with an expected capacity of `n`.
-    pub(crate) fn with_capacity(expected_size: usize) -> Permutation {
-        Permutation {
+    pub(crate) fn with_capacity(expected_size: usize) -> Permutation<F> {
+        Permutation::<F> {
             variable_map: HashMap::with_capacity(expected_size),
+            _field_type: PhantomData,
         }
     }
 
@@ -141,7 +143,7 @@ impl Permutation {
         &self,
         sigma_mapping: &[WireData],
         domain: &EvaluationDomain,
-    ) -> Vec<BlsScalar> {
+    ) -> Vec<F> {
         let roots: Vec<_> = domain.elements().collect();
 
         let lagrange_poly: Vec<BlsScalar> = sigma_mapping
@@ -153,15 +155,15 @@ impl Permutation {
                 }
                 WireData::Right(index) => {
                     let root = &roots[*index];
-                    K1 * root
+                    K1::<F>() * root
                 }
                 WireData::Output(index) => {
                     let root = &roots[*index];
-                    K2 * root
+                    K2::<F>() * root
                 }
                 WireData::Fourth(index) => {
                     let root = &roots[*index];
-                    K3 * root
+                    K3::<F>() * root
                 }
             })
             .collect();

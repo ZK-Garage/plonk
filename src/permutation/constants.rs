@@ -4,10 +4,15 @@
 //
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
-use dusk_bls12_381::BlsScalar;
+use ark_ec::PrimeField;
 
-/// Constants used in the permutation argument to ensure that the wire subsets
-/// are disjoint.
-pub(crate) const K1: BlsScalar = BlsScalar::from_raw([7, 0, 0, 0]);
-pub(crate) const K2: BlsScalar = BlsScalar::from_raw([13, 0, 0, 0]);
-pub(crate) const K3: BlsScalar = BlsScalar::from_raw([17, 0, 0, 0]);
+/// Constants used in the permutation argument to ensure that the wire subsets are disjoint.
+pub(crate) fn K1<F: PrimeField>() -> F {
+    F::from(7 as u64)
+}
+pub(crate) fn K2<F: PrimeField>() -> F {
+    F::from(13 as u64)
+}
+pub(crate) fn K3<F: PrimeField>() -> F {
+    F::from(17 as u64)
+}
