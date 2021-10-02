@@ -6,7 +6,8 @@
 
 use alloc::vec::Vec;
 use rand_core::{CryptoRng, RngCore};
-use ark_ec::{PrimeField, Field, Zero, One, PairingEngine, ProjectiveCurve, UniformRand};
+use ark_ec::{PairingEngine};
+use ark_ff::PrimeField;
 
 /// Returns a vector of BlsScalars of increasing powers of x from x^0 to x^d.
 pub(crate) fn powers_of<F: PrimeField>(
