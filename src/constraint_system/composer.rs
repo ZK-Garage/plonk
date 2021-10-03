@@ -22,7 +22,7 @@ use crate::constraint_system::Variable;
 use crate::permutation::Permutation;
 use alloc::collections::BTreeMap;
 use alloc::vec::Vec;
-use dusk_bls12_381::BlsScalar;
+use ark_ec::PairingEngine;
 use hashbrown::HashMap;
 
 /// The StandardComposer is the circuit-builder tool that the `dusk-plonk`
@@ -51,37 +51,37 @@ use hashbrown::HashMap;
 /// de circuit description, and so, that's why we can understand
 /// the StandardComposer as a builder.
 #[derive(Debug)]
-pub struct StandardComposer {
+pub struct StandardComposer<E: PairingEngine> {
     /// Number of arithmetic gates in the circuit
     pub(crate) n: usize,
 
     // Selector vectors
     /// Multiplier selector
-    pub(crate) q_m: Vec<BlsScalar>,
+    pub(crate) q_m: Vec<E::Fr>,
     /// Left wire selector
-    pub(crate) q_l: Vec<BlsScalar>,
+    pub(crate) q_l: Vec<E::Fr>,
     /// Right wire selector
-    pub(crate) q_r: Vec<BlsScalar>,
+    pub(crate) q_r: Vec<E::Fr>,
     /// Output wire selector
-    pub(crate) q_o: Vec<BlsScalar>,
+    pub(crate) q_o: Vec<E::Fr>,
     /// Fourth wire selector
-    pub(crate) q_4: Vec<BlsScalar>,
+    pub(crate) q_4: Vec<E::Fr>,
     /// Constant wire selector
-    pub(crate) q_c: Vec<BlsScalar>,
+    pub(crate) q_c: Vec<E::Fr>,
     /// Arithmetic wire selector
-    pub(crate) q_arith: Vec<BlsScalar>,
+    pub(crate) q_arith: Vec<E::Fr>,
     /// Range selector
-    pub(crate) q_range: Vec<BlsScalar>,
+    pub(crate) q_range: Vec<E::Fr>,
     /// Logic selector
-    pub(crate) q_logic: Vec<BlsScalar>,
+    pub(crate) q_logic: Vec<E::Fr>,
     /// Fixed base group addition selector
-    pub(crate) q_fixed_group_add: Vec<BlsScalar>,
+    pub(crate) q_fixed_group_add: Vec<E::Fr>,
     /// Variable base group addition selector
-    pub(crate) q_variable_group_add: Vec<BlsScalar>,
+    pub(crate) q_variable_group_add: Vec<E::Fr>,
 
     /// Sparse representation of the Public Inputs linking the positions of the
     /// non-zero ones to it's actual values.
-    pub(crate) public_inputs_sparse_store: BTreeMap<usize, BlsScalar>,
+    pub(crate) public_inputs_sparse_store: BTreeMap<usize, E::Fr>,
 
     // Witness vectors
     /// Left wire witness vector.
@@ -100,10 +100,10 @@ pub struct StandardComposer {
     pub(crate) zero_var: Variable,
 
     /// These are the actual variable values.
-    pub(crate) variables: HashMap<Variable, BlsScalar>,
+    pub(crate) variables: HashMap<Variable, E::Fr>,
 
     /// Permutation argument.
-    pub(crate) perm: Permutation,
+    pub(crate) perm: Permutation<E::Fr>,
 }
 
 impl StandardComposer {
@@ -114,8 +114,8 @@ impl StandardComposer {
 
     /// Constructs a dense vector of the Public Inputs from the positions and
     /// the sparse vector that contains the values.
-    pub fn construct_dense_pi_vec(&self) -> Vec<BlsScalar> {
-        let mut pi = vec![BlsScalar::zero(); self.n];
+    pub fn construct_dense_pi_vec(&self) -> Vec<E::Fr> {
+        let mut pi = vec![E::Fr::zero(); self.n];
         self.public_inputs_sparse_store
             .iter()
             .for_each(|(pos, value)| {
@@ -136,7 +136,7 @@ impl StandardComposer {
     }
 }
 
-impl Default for StandardComposer {
+impl<E: PairingEngine> Default for StandardComposer<E> {
     fn default() -> Self {
         Self::new()
     }
@@ -159,7 +159,7 @@ impl StandardComposer {
     /// description.
     pub fn add_witness_to_circuit_description(
         &mut self,
-        value: BlsScalar,
+        value: E::Fr,
     ) -> Variable {
         let var = self.add_input(value);
         self.constrain_to_constant(var, value, None);
@@ -201,7 +201,7 @@ impl StandardComposer {
 
         // Reserve the first variable to be zero
         composer.zero_var =
-            composer.add_witness_to_circuit_description(BlsScalar::zero());
+            composer.add_witness_to_circuit_description(E::Fr::zero());
 
         // Add dummy constraints
         composer.add_dummy_constraints();
@@ -217,12 +217,12 @@ impl StandardComposer {
     /// Add Input first calls the Permutation
     /// to generate and allocate a new [`Variable`] `var`.
     ///
-    /// The Composer then links the variable to the [`BlsScalar`]
+    /// The Composer then links the variable to the [`E::Fr`]
     /// and returns it for its use in the system.
-    pub fn add_input(&mut self, s: BlsScalar) -> Variable {
+    pub fn add_input(&mut self, s: E::Fr) -> Variable {
         // Get a new Variable from the permutation
         let var = self.perm.new_variable();
-        // The composer now links the BlsScalar to the Variable returned from
+        // The composer now links the E::Fr to the Variable returned from
         // the Permutation
         self.variables.insert(var, s);
 
@@ -243,12 +243,12 @@ impl StandardComposer {
         a: Variable,
         b: Variable,
         c: Variable,
-        q_m: BlsScalar,
-        q_l: BlsScalar,
-        q_r: BlsScalar,
-        q_o: BlsScalar,
-        q_c: BlsScalar,
-        pi: Option<BlsScalar>,
+        q_m: E::Fr,
+        q_l: E::Fr,
+        q_r: E::Fr,
+        q_o: E::Fr,
+        q_c: E::Fr,
+        pi: Option<E::Fr>,
     ) -> (Variable, Variable, Variable) {
         self.w_l.push(a);
         self.w_r.push(b);
@@ -261,13 +261,13 @@ impl StandardComposer {
         self.q_m.push(q_m);
         self.q_o.push(q_o);
         self.q_c.push(q_c);
-        self.q_4.push(BlsScalar::zero());
-        self.q_arith.push(BlsScalar::one());
+        self.q_4.push(E::Fr::zero());
+        self.q_arith.push(E::Fr::one());
 
-        self.q_range.push(BlsScalar::zero());
-        self.q_logic.push(BlsScalar::zero());
-        self.q_fixed_group_add.push(BlsScalar::zero());
-        self.q_variable_group_add.push(BlsScalar::zero());
+        self.q_range.push(E::Fr::zero());
+        self.q_logic.push(E::Fr::zero());
+        self.q_fixed_group_add.push(E::Fr::zero());
+        self.q_variable_group_add.push(E::Fr::zero());
 
         if let Some(pi) = pi {
             assert!(self
@@ -290,17 +290,17 @@ impl StandardComposer {
     pub fn constrain_to_constant(
         &mut self,
         a: Variable,
-        constant: BlsScalar,
-        pi: Option<BlsScalar>,
+        constant: E::Fr,
+        pi: Option<E::Fr>,
     ) {
         self.poly_gate(
             a,
             a,
             a,
-            BlsScalar::zero(),
-            BlsScalar::one(),
-            BlsScalar::zero(),
-            BlsScalar::zero(),
+            E::Fr::zero(),
+            E::Fr::one(),
+            E::Fr::zero(),
+            E::Fr::zero(),
             -constant,
             pi,
         );
@@ -313,11 +313,11 @@ impl StandardComposer {
             a,
             b,
             self.zero_var,
-            BlsScalar::zero(),
-            BlsScalar::one(),
-            -BlsScalar::one(),
-            BlsScalar::zero(),
-            BlsScalar::zero(),
+            E::Fr::zero(),
+            E::Fr::one(),
+            -E::Fr::one(),
+            E::Fr::zero(),
+            E::Fr::zero(),
             None,
         );
     }
@@ -340,30 +340,25 @@ impl StandardComposer {
     ) -> Variable {
         // bit * choice_a
         let bit_times_a =
-            self.mul(BlsScalar::one(), bit, choice_a, BlsScalar::zero(), None);
+            self.mul(E::Fr::one(), bit, choice_a, E::Fr::zero(), None);
 
         // 1 - bit
         let one_min_bit = self.add(
-            (-BlsScalar::one(), bit),
-            (BlsScalar::zero(), self.zero_var),
-            BlsScalar::one(),
+            (-E::Fr::one(), bit),
+            (E::Fr::zero(), self.zero_var),
+            E::Fr::one(),
             None,
         );
 
         // (1 - bit) * b
-        let one_min_bit_choice_b = self.mul(
-            BlsScalar::one(),
-            one_min_bit,
-            choice_b,
-            BlsScalar::zero(),
-            None,
-        );
+        let one_min_bit_choice_b =
+            self.mul(E::Fr::one(), one_min_bit, choice_b, E::Fr::zero(), None);
 
         // [ (1 - bit) * b ] + [ bit * a ]
         self.add(
-            (BlsScalar::one(), one_min_bit_choice_b),
-            (BlsScalar::one(), bit_times_a),
-            BlsScalar::zero(),
+            (E::Fr::one(), one_min_bit_choice_b),
+            (E::Fr::one(), bit_times_a),
+            E::Fr::zero(),
             None,
         )
     }
@@ -383,7 +378,7 @@ impl StandardComposer {
         value: Variable,
     ) -> Variable {
         // returns bit * value
-        self.mul(BlsScalar::one(), bit, value, BlsScalar::zero(), None)
+        self.mul(E::Fr::one(), bit, value, E::Fr::zero(), None)
     }
 
     /// Adds the polynomial f(x) = 1 - x + xa to the circuit description where
@@ -404,18 +399,18 @@ impl StandardComposer {
         let bit_scalar = self.variables.get(&bit).unwrap();
 
         let f_x_scalar =
-            BlsScalar::one() - bit_scalar + (bit_scalar * value_scalar);
+            E::Fr::one() - bit_scalar + (bit_scalar * value_scalar);
         let f_x = self.add_input(f_x_scalar);
 
         self.poly_gate(
             bit,
             value,
             f_x,
-            BlsScalar::one(),
-            -BlsScalar::one(),
-            BlsScalar::zero(),
-            -BlsScalar::one(),
-            BlsScalar::one(),
+            E::Fr::one(),
+            -E::Fr::one(),
+            E::Fr::zero(),
+            -E::Fr::one(),
+            E::Fr::one(),
             None,
         );
 
@@ -427,21 +422,21 @@ impl StandardComposer {
     /// description which are guaranteed to always satisfy the gate equation.
     pub fn add_dummy_constraints(&mut self) {
         // Add a dummy constraint so that we do not have zero polynomials
-        self.q_m.push(BlsScalar::from(1));
-        self.q_l.push(BlsScalar::from(2));
-        self.q_r.push(BlsScalar::from(3));
-        self.q_o.push(BlsScalar::from(4));
-        self.q_c.push(BlsScalar::from(4));
-        self.q_4.push(BlsScalar::one());
-        self.q_arith.push(BlsScalar::one());
-        self.q_range.push(BlsScalar::zero());
-        self.q_logic.push(BlsScalar::zero());
-        self.q_fixed_group_add.push(BlsScalar::zero());
-        self.q_variable_group_add.push(BlsScalar::zero());
-        let var_six = self.add_input(BlsScalar::from(6));
-        let var_one = self.add_input(BlsScalar::from(1));
-        let var_seven = self.add_input(BlsScalar::from(7));
-        let var_min_twenty = self.add_input(-BlsScalar::from(20));
+        self.q_m.push(E::Fr::from(1));
+        self.q_l.push(E::Fr::from(2));
+        self.q_r.push(E::Fr::from(3));
+        self.q_o.push(E::Fr::from(4));
+        self.q_c.push(E::Fr::from(4));
+        self.q_4.push(E::Fr::one());
+        self.q_arith.push(E::Fr::one());
+        self.q_range.push(E::Fr::zero());
+        self.q_logic.push(E::Fr::zero());
+        self.q_fixed_group_add.push(E::Fr::zero());
+        self.q_variable_group_add.push(E::Fr::zero());
+        let var_six = self.add_input(E::Fr::from(6));
+        let var_one = self.add_input(E::Fr::from(1));
+        let var_seven = self.add_input(E::Fr::from(7));
+        let var_min_twenty = self.add_input(-E::Fr::from(20));
         self.w_l.push(var_six);
         self.w_r.push(var_seven);
         self.w_o.push(var_min_twenty);
@@ -456,17 +451,17 @@ impl StandardComposer {
         self.n += 1;
         //Add another dummy constraint so that we do not get the identity
         // permutation
-        self.q_m.push(BlsScalar::from(1));
-        self.q_l.push(BlsScalar::from(1));
-        self.q_r.push(BlsScalar::from(1));
-        self.q_o.push(BlsScalar::from(1));
-        self.q_c.push(BlsScalar::from(127));
-        self.q_4.push(BlsScalar::zero());
-        self.q_arith.push(BlsScalar::one());
-        self.q_range.push(BlsScalar::zero());
-        self.q_logic.push(BlsScalar::zero());
-        self.q_fixed_group_add.push(BlsScalar::zero());
-        self.q_variable_group_add.push(BlsScalar::zero());
+        self.q_m.push(E::Fr::from(1));
+        self.q_l.push(E::Fr::from(1));
+        self.q_r.push(E::Fr::from(1));
+        self.q_o.push(E::Fr::from(1));
+        self.q_c.push(E::Fr::from(127));
+        self.q_4.push(E::Fr::zero());
+        self.q_arith.push(E::Fr::one());
+        self.q_range.push(E::Fr::zero());
+        self.q_logic.push(E::Fr::zero());
+        self.q_fixed_group_add.push(E::Fr::zero());
+        self.q_variable_group_add.push(E::Fr::zero());
         self.w_l.push(var_min_twenty);
         self.w_r.push(var_six);
         self.w_o.push(var_seven);
@@ -494,35 +489,35 @@ impl StandardComposer {
     /// the cause is an unsatisfied gate equation, the function will panic.
     #[cfg(feature = "trace")]
     pub fn check_circuit_satisfied(&self) {
-        let w_l: Vec<&BlsScalar> = self
+        let w_l: Vec<&E::Fr> = self
             .w_l
             .iter()
             .map(|w_l_i| self.variables.get(&w_l_i).unwrap())
             .collect();
-        let w_r: Vec<&BlsScalar> = self
+        let w_r: Vec<&E::Fr> = self
             .w_r
             .iter()
             .map(|w_r_i| self.variables.get(&w_r_i).unwrap())
             .collect();
-        let w_o: Vec<&BlsScalar> = self
+        let w_o: Vec<&E::Fr> = self
             .w_o
             .iter()
             .map(|w_o_i| self.variables.get(&w_o_i).unwrap())
             .collect();
-        let w_4: Vec<&BlsScalar> = self
+        let w_4: Vec<&E::Fr> = self
             .w_4
             .iter()
             .map(|w_4_i| self.variables.get(&w_4_i).unwrap())
             .collect();
         // Computes f(f-1)(f-2)(f-3)
-        let delta = |f: BlsScalar| -> BlsScalar {
-            let f_1 = f - BlsScalar::one();
-            let f_2 = f - BlsScalar::from(2);
-            let f_3 = f - BlsScalar::from(3);
+        let delta = |f: E::Fr| -> E::Fr {
+            let f_1 = f - E::Fr::one();
+            let f_2 = f - E::Fr::from(2);
+            let f_3 = f - E::Fr::from(3);
             f * f_1 * f_2 * f_3
         };
         let pi_vec = self.construct_dense_pi_vec();
-        let four = BlsScalar::from(4);
+        let four = E::Fr::from(4);
         for i in 0..self.n {
             let qm = self.q_m[i];
             let ql = self.q_l[i];
@@ -599,12 +594,12 @@ impl StandardComposer {
                         + delta(b_next - four * b)
                         + delta(d_next - four * d)
                         + match (
-                            qlogic == BlsScalar::one(),
-                            qlogic == -BlsScalar::one(),
+                            qlogic == E::Fr::one(),
+                            qlogic == -E::Fr::one(),
                         ) {
                             (true, false) => (a & b) - d,
                             (false, true) => (a ^ b) - d,
-                            (false, false) => BlsScalar::zero(),
+                            (false, false) => E::Fr::zero(),
                             _ => unreachable!(),
                         })
                 + qrange
@@ -613,7 +608,7 @@ impl StandardComposer {
                         + delta(a - four * b)
                         + delta(d_next - four * a));
 
-            assert_eq!(k, BlsScalar::zero(), "Check failed at gate {}", i,);
+            assert_eq!(k, E::Fr::zero(), "Check failed at gate {}", i,);
         }
     }
 }
@@ -622,9 +617,9 @@ impl StandardComposer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::commitment_scheme::kzg10::PublicParameters;
     use crate::constraint_system::helper::*;
     use crate::proof_system::{Prover, Verifier};
+    use ark_poly_commit::PublicParameters;
     use rand_core::OsRng;
 
     #[test]
@@ -659,11 +654,11 @@ mod tests {
     fn test_conditional_select() {
         let res = gadget_tester(
             |composer| {
-                let bit_1 = composer.add_input(BlsScalar::one());
+                let bit_1 = composer.add_input(E::Fr::one());
                 let bit_0 = composer.zero_var();
 
-                let choice_a = composer.add_input(BlsScalar::from(10u64));
-                let choice_b = composer.add_input(BlsScalar::from(20u64));
+                let choice_a = composer.add_input(E::Fr::from(10u64));
+                let choice_b = composer.add_input(E::Fr::from(20u64));
 
                 let choice =
                     composer.conditional_select(bit_1, choice_a, choice_b);

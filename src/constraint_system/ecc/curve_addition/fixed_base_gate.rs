@@ -6,7 +6,7 @@
 
 use crate::constraint_system::StandardComposer;
 use crate::constraint_system::Variable;
-use dusk_bls12_381::BlsScalar;
+use dusk_bls12_381::E::Fr;
 
 #[derive(Debug, Clone, Copy)]
 /// Contains all of the components needed to verify that a bit scalar
@@ -29,12 +29,12 @@ pub(crate) struct WnafRound {
     pub xy_alpha: Variable,
     /// This is the possible x co-ordinate of the wnaf point we are going to
     /// add Actual x-co-ordinate = b_i * x_\beta
-    pub x_beta: BlsScalar,
+    pub x_beta: E::Fr,
     /// This is the possible y co-ordinate of the wnaf point we are going to
     /// add Actual y coordinate = (b_i)^2 [y_\beta -1] + 1
-    pub y_beta: BlsScalar,
+    pub y_beta: E::Fr,
     /// This is the multiplication of x_\beta * y_\beta
-    pub xy_beta: BlsScalar,
+    pub xy_beta: E::Fr,
 }
 
 impl StandardComposer {
@@ -49,15 +49,15 @@ impl StandardComposer {
         self.q_r.push(wnaf_round.y_beta);
 
         self.q_c.push(wnaf_round.xy_beta);
-        self.q_o.push(BlsScalar::zero());
-        self.q_fixed_group_add.push(BlsScalar::one());
-        self.q_variable_group_add.push(BlsScalar::zero());
+        self.q_o.push(E::Fr::zero());
+        self.q_fixed_group_add.push(E::Fr::one());
+        self.q_variable_group_add.push(E::Fr::zero());
 
-        self.q_m.push(BlsScalar::zero());
-        self.q_4.push(BlsScalar::zero());
-        self.q_arith.push(BlsScalar::zero());
-        self.q_range.push(BlsScalar::zero());
-        self.q_logic.push(BlsScalar::zero());
+        self.q_m.push(E::Fr::zero());
+        self.q_4.push(E::Fr::zero());
+        self.q_arith.push(E::Fr::zero());
+        self.q_range.push(E::Fr::zero());
+        self.q_logic.push(E::Fr::zero());
 
         self.perm.add_variables_to_map(
             wnaf_round.acc_x,

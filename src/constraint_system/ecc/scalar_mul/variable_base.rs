@@ -7,7 +7,7 @@
 use crate::constraint_system::ecc::Point;
 use crate::constraint_system::{variable::Variable, StandardComposer};
 use alloc::vec::Vec;
-use dusk_bls12_381::BlsScalar;
+use dusk_bls12_381::E::Fr;
 use dusk_bytes::Serializable;
 
 impl StandardComposer {
@@ -50,7 +50,7 @@ impl StandardComposer {
     fn scalar_decomposition(
         &mut self,
         witness_var: Variable,
-        witness_scalar: BlsScalar,
+        witness_scalar: E::Fr,
     ) -> Vec<Variable> {
         // Decompose the bits
         let scalar_bits = scalar_to_bits(&witness_scalar);
@@ -58,7 +58,7 @@ impl StandardComposer {
         // Add all the bits into the composer
         let scalar_bits_var: Vec<Variable> = scalar_bits
             .iter()
-            .map(|bit| self.add_input(BlsScalar::from(*bit as u64)))
+            .map(|bit| self.add_input(E::Fr::from(*bit as u64)))
             .collect();
 
         // Take the first 252 bits
@@ -66,21 +66,21 @@ impl StandardComposer {
 
         // Now ensure that the bits correctly accumulate to the witness given
         let mut accumulator_var = self.zero_var;
-        let mut accumulator_scalar = BlsScalar::zero();
+        let mut accumulator_scalar = E::Fr::zero();
 
         for (power, bit) in scalar_bits_var.iter().enumerate() {
             self.boolean_gate(*bit);
 
-            let two_pow = BlsScalar::pow_of_2(power as u64);
+            let two_pow = E::Fr::pow_of_2(power as u64);
 
             let q_l_a = (two_pow, *bit);
-            let q_r_b = (BlsScalar::one(), accumulator_var);
-            let q_c = BlsScalar::zero();
+            let q_r_b = (E::Fr::one(), accumulator_var);
+            let q_c = E::Fr::zero();
 
             accumulator_var = self.add(q_l_a, q_r_b, q_c, None);
 
             accumulator_scalar +=
-                two_pow * BlsScalar::from(scalar_bits[power] as u64);
+                two_pow * E::Fr::from(scalar_bits[power] as u64);
         }
         self.assert_equal(accumulator_var, witness_var);
 
@@ -88,7 +88,7 @@ impl StandardComposer {
     }
 }
 
-fn scalar_to_bits(scalar: &BlsScalar) -> [u8; 256] {
+fn scalar_to_bits(scalar: &E::Fr) -> [u8; 256] {
     let mut res = [0u8; 256];
     let bytes = scalar.to_bytes();
     for (byte, bits) in bytes.iter().zip(res.chunks_mut(8)) {
@@ -104,7 +104,7 @@ fn scalar_to_bits(scalar: &BlsScalar) -> [u8; 256] {
 mod tests {
     use super::*;
     use crate::constraint_system::helper::*;
-    use dusk_bls12_381::BlsScalar;
+    use dusk_bls12_381::E::Fr;
     use dusk_jubjub::GENERATOR;
     use dusk_jubjub::{JubJubAffine, JubJubExtended, JubJubScalar};
     #[test]
@@ -119,7 +119,7 @@ mod tests {
                     0, 0,
                 ]);
                 let bls_scalar =
-                    BlsScalar::from_bytes(&scalar.to_bytes()).unwrap();
+                    E::Fr::from_bytes(&scalar.to_bytes()).unwrap();
                 let secret_scalar = composer.add_input(bls_scalar);
 
                 let expected_point: JubJubAffine =

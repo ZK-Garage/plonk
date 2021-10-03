@@ -6,9 +6,9 @@
 
 use crate::constraint_system::StandardComposer;
 use crate::constraint_system::Variable;
-use dusk_bls12_381::BlsScalar;
+use ark_ec::PairingEngine;
 
-impl StandardComposer {
+impl<E: PairingEngine> StandardComposer<E> {
     /// Adds a width-3 add gate to the circuit, linking the addition of the
     /// provided inputs, scaled by the selector coefficients with the output
     /// provided.
@@ -17,11 +17,11 @@ impl StandardComposer {
         a: Variable,
         b: Variable,
         c: Variable,
-        q_l: BlsScalar,
-        q_r: BlsScalar,
-        q_o: BlsScalar,
-        q_c: BlsScalar,
-        pi: Option<BlsScalar>,
+        q_l: E::Fr,
+        q_r: E::Fr,
+        q_o: E::Fr,
+        q_c: E::Fr,
+        pi: Option<E::Fr>,
     ) -> Variable {
         self.big_add_gate(
             a,
@@ -31,7 +31,7 @@ impl StandardComposer {
             q_l,
             q_r,
             q_o,
-            BlsScalar::zero(),
+            E::Fr::zero(),
             q_c,
             pi,
         )
@@ -50,12 +50,12 @@ impl StandardComposer {
         b: Variable,
         c: Variable,
         d: Option<Variable>,
-        q_l: BlsScalar,
-        q_r: BlsScalar,
-        q_o: BlsScalar,
-        q_4: BlsScalar,
-        q_c: BlsScalar,
-        pi: Option<BlsScalar>,
+        q_l: E::Fr,
+        q_r: E::Fr,
+        q_o: E::Fr,
+        q_4: E::Fr,
+        q_c: E::Fr,
+        pi: Option<E::Fr>,
     ) -> Variable {
         // Check if advice wire has a value
         let d = match d {
@@ -69,7 +69,7 @@ impl StandardComposer {
         self.w_4.push(d);
 
         // For an add gate, q_m is zero
-        self.q_m.push(BlsScalar::zero());
+        self.q_m.push(E::Fr::zero());
 
         // Add selector vectors
         self.q_l.push(q_l);
@@ -77,11 +77,11 @@ impl StandardComposer {
         self.q_o.push(q_o);
         self.q_c.push(q_c);
         self.q_4.push(q_4);
-        self.q_arith.push(BlsScalar::one());
-        self.q_range.push(BlsScalar::zero());
-        self.q_logic.push(BlsScalar::zero());
-        self.q_fixed_group_add.push(BlsScalar::zero());
-        self.q_variable_group_add.push(BlsScalar::zero());
+        self.q_arith.push(E::Fr::one());
+        self.q_range.push(E::Fr::zero());
+        self.q_logic.push(E::Fr::zero());
+        self.q_fixed_group_add.push(E::Fr::zero());
+        self.q_variable_group_add.push(E::Fr::zero());
 
         if let Some(pi) = pi {
             assert!(self.public_inputs_sparse_store.insert(self.n, pi).is_none(),"The invariant of already having a PI inserted for this position should never exist");
@@ -104,12 +104,12 @@ impl StandardComposer {
         a: Variable,
         b: Variable,
         c: Variable,
-        q_m: BlsScalar,
-        q_o: BlsScalar,
-        q_c: BlsScalar,
-        pi: Option<BlsScalar>,
+        q_m: E::Fr,
+        q_o: E::Fr,
+        q_c: E::Fr,
+        pi: Option<E::Fr>,
     ) -> Variable {
-        self.big_mul_gate(a, b, c, None, q_m, q_o, q_c, BlsScalar::zero(), pi)
+        self.big_mul_gate(a, b, c, None, q_m, q_o, q_c, E::Fr::zero(), pi)
     }
 
     /// Adds a width-4 `big_mul_gate` with the left, right and fourth inputs
@@ -131,11 +131,11 @@ impl StandardComposer {
         b: Variable,
         c: Variable,
         d: Option<Variable>,
-        q_m: BlsScalar,
-        q_o: BlsScalar,
-        q_c: BlsScalar,
-        q_4: BlsScalar,
-        pi: Option<BlsScalar>,
+        q_m: E::Fr,
+        q_o: E::Fr,
+        q_c: E::Fr,
+        q_4: E::Fr,
+        pi: Option<E::Fr>,
     ) -> Variable {
         // Check if advice wire has a value
         let d = match d {
@@ -149,20 +149,20 @@ impl StandardComposer {
         self.w_4.push(d);
 
         // For a mul gate q_L and q_R is zero
-        self.q_l.push(BlsScalar::zero());
-        self.q_r.push(BlsScalar::zero());
+        self.q_l.push(E::Fr::zero());
+        self.q_r.push(E::Fr::zero());
 
         // Add selector vectors
         self.q_m.push(q_m);
         self.q_o.push(q_o);
         self.q_c.push(q_c);
         self.q_4.push(q_4);
-        self.q_arith.push(BlsScalar::one());
+        self.q_arith.push(E::Fr::one());
 
-        self.q_range.push(BlsScalar::zero());
-        self.q_logic.push(BlsScalar::zero());
-        self.q_fixed_group_add.push(BlsScalar::zero());
-        self.q_variable_group_add.push(BlsScalar::zero());
+        self.q_range.push(E::Fr::zero());
+        self.q_logic.push(E::Fr::zero());
+        self.q_fixed_group_add.push(E::Fr::zero());
+        self.q_variable_group_add.push(E::Fr::zero());
 
         if let Some(pi) = pi {
             assert!(
@@ -190,10 +190,10 @@ impl StandardComposer {
     /// Forces `q_l * w_l + q_r * w_r + q_c + PI = w_o(computed by the gate)`.
     pub fn add(
         &mut self,
-        q_l_a: (BlsScalar, Variable),
-        q_r_b: (BlsScalar, Variable),
-        q_c: BlsScalar,
-        pi: Option<BlsScalar>,
+        q_l_a: (E::Fr, Variable),
+        q_r_b: (E::Fr, Variable),
+        q_c: E::Fr,
+        pi: Option<E::Fr>,
     ) -> Variable {
         self.big_add(q_l_a, q_r_b, None, q_c, pi)
     }
@@ -212,22 +212,22 @@ impl StandardComposer {
     /// the gate)`.
     pub fn big_add(
         &mut self,
-        q_l_a: (BlsScalar, Variable),
-        q_r_b: (BlsScalar, Variable),
-        q_4_d: Option<(BlsScalar, Variable)>,
-        q_c: BlsScalar,
-        pi: Option<BlsScalar>,
+        q_l_a: (E::Fr, Variable),
+        q_r_b: (E::Fr, Variable),
+        q_4_d: Option<(E::Fr, Variable)>,
+        q_c: E::Fr,
+        pi: Option<E::Fr>,
     ) -> Variable {
         // Check if advice wire is available
         let (q_4, d) = match q_4_d {
             Some((q_4, var)) => (q_4, var),
-            None => (BlsScalar::zero(), self.zero_var),
+            None => (E::Fr::zero(), self.zero_var),
         };
 
         let (q_l, a) = q_l_a;
         let (q_r, b) = q_r_b;
 
-        let q_o = -BlsScalar::one();
+        let q_o = -E::Fr::one();
 
         // Compute the output wire
         let a_eval = self.variables[&a];
@@ -259,11 +259,11 @@ impl StandardComposer {
     /// `{w_l, w_r, w_4} = {a, b, d}`
     pub fn mul(
         &mut self,
-        q_m: BlsScalar,
+        q_m: E::Fr,
         a: Variable,
         b: Variable,
-        q_c: BlsScalar,
-        pi: Option<BlsScalar>,
+        q_c: E::Fr,
+        pi: Option<E::Fr>,
     ) -> Variable {
         self.big_mul(q_m, a, b, None, q_c, pi)
     }
@@ -284,19 +284,19 @@ impl StandardComposer {
     /// `{w_l, w_r, w_4} = {a, b, d}`
     pub fn big_mul(
         &mut self,
-        q_m: BlsScalar,
+        q_m: E::Fr,
         a: Variable,
         b: Variable,
-        q_4_d: Option<(BlsScalar, Variable)>,
-        q_c: BlsScalar,
-        pi: Option<BlsScalar>,
+        q_4_d: Option<(E::Fr, Variable)>,
+        q_c: E::Fr,
+        pi: Option<E::Fr>,
     ) -> Variable {
-        let q_o = -BlsScalar::one();
+        let q_o = -E::Fr::one();
 
         // Check if advice wire is available
         let (q_4, d) = match q_4_d {
             Some((q_4, var)) => (q_4, var),
-            None => (BlsScalar::zero(), self.zero_var),
+            None => (E::Fr::zero(), self.zero_var),
         };
 
         // Compute output wire
@@ -317,36 +317,36 @@ impl StandardComposer {
 #[cfg(test)]
 mod tests {
     use crate::constraint_system::helper::*;
-    use dusk_bls12_381::BlsScalar;
+    use ark_ec::bls12::Bls12;
 
     #[test]
     fn test_public_inputs() {
         let res = gadget_tester(
             |composer| {
-                let var_one = composer.add_input(BlsScalar::one());
+                let var_one = composer.add_input(Bls12::Fr::one());
 
                 let should_be_three = composer.big_add(
-                    (BlsScalar::one(), var_one),
-                    (BlsScalar::one(), var_one),
+                    (Bls12::Fr::one(), var_one),
+                    (Bls12::Fr::one(), var_one),
                     None,
-                    BlsScalar::zero(),
-                    Some(BlsScalar::one()),
+                    Bls12::Fr::zero(),
+                    Some(Bls12::Fr::one()),
                 );
                 composer.constrain_to_constant(
                     should_be_three,
-                    BlsScalar::from(3),
+                    Bls12::Fr::from(3),
                     None,
                 );
                 let should_be_four = composer.big_add(
-                    (BlsScalar::one(), var_one),
-                    (BlsScalar::one(), var_one),
+                    (Bls12::Fr::one(), var_one),
+                    (Bls12::Fr::one(), var_one),
                     None,
-                    BlsScalar::zero(),
-                    Some(BlsScalar::from(2)),
+                    Bls12::Fr::zero(),
+                    Some(Bls12::Fr::from(2)),
                 );
                 composer.constrain_to_constant(
                     should_be_four,
-                    BlsScalar::from(4),
+                    Bls12::Fr::from(4),
                     None,
                 );
             },
@@ -360,24 +360,24 @@ mod tests {
         let res = gadget_tester(
             |composer| {
                 // Verify that (4+5+5) * (6+7+7) = 280
-                let four = composer.add_input(BlsScalar::from(4));
-                let five = composer.add_input(BlsScalar::from(5));
-                let six = composer.add_input(BlsScalar::from(6));
-                let seven = composer.add_input(BlsScalar::from(7));
+                let four = composer.add_input(Bls12::Fr::from(4));
+                let five = composer.add_input(Bls12::Fr::from(5));
+                let six = composer.add_input(Bls12::Fr::from(6));
+                let seven = composer.add_input(Bls12::Fr::from(7));
 
                 let fourteen = composer.big_add(
-                    (BlsScalar::one(), four),
-                    (BlsScalar::one(), five),
-                    Some((BlsScalar::one(), five)),
-                    BlsScalar::zero(),
+                    (Bls12::Fr::one(), four),
+                    (Bls12::Fr::one(), five),
+                    Some((Bls12::Fr::one(), five)),
+                    Bls12::Fr::zero(),
                     None,
                 );
 
                 let twenty = composer.big_add(
-                    (BlsScalar::one(), six),
-                    (BlsScalar::one(), seven),
-                    Some((BlsScalar::one(), seven)),
-                    BlsScalar::zero(),
+                    (Bls12::Fr::one(), six),
+                    (Bls12::Fr::one(), seven),
+                    Some((Bls12::Fr::one(), seven)),
+                    Bls12::Fr::zero(),
                     None,
                 );
 
@@ -389,15 +389,15 @@ mod tests {
                 // is public, we can also constrain the output wire of the mul
                 // gate to it. This is what this test does
                 let output = composer.mul(
-                    BlsScalar::one(),
+                    Bls12::Fr::one(),
                     fourteen,
                     twenty,
-                    BlsScalar::zero(),
+                    Bls12::Fr::zero(),
                     None,
                 );
                 composer.constrain_to_constant(
                     output,
-                    BlsScalar::from(280),
+                    Bls12::Fr::from(280),
                     None,
                 );
             },
@@ -411,15 +411,15 @@ mod tests {
         let res = gadget_tester(
             |composer| {
                 let zero = composer.zero_var();
-                let one = composer.add_input(BlsScalar::one());
+                let one = composer.add_input(Bls12::Fr::one());
 
                 let c = composer.add(
-                    (BlsScalar::one(), one),
-                    (BlsScalar::zero(), zero),
-                    BlsScalar::from(2u64),
+                    (Bls12::Fr::one(), one),
+                    (Bls12::Fr::zero(), zero),
+                    Bls12::Fr::from(2u64),
                     None,
                 );
-                composer.constrain_to_constant(c, BlsScalar::from(3), None);
+                composer.constrain_to_constant(c, Bls12::Fr::from(3), None);
             },
             32,
         );
@@ -431,39 +431,39 @@ mod tests {
         let res = gadget_tester(
             |composer| {
                 // Verify that (4+5+5) * (6+7+7) + (8*9) = 352
-                let four = composer.add_input(BlsScalar::from(4));
-                let five = composer.add_input(BlsScalar::from(5));
-                let six = composer.add_input(BlsScalar::from(6));
-                let seven = composer.add_input(BlsScalar::from(7));
-                let nine = composer.add_input(BlsScalar::from(9));
+                let four = composer.add_input(Bls12::Fr::from(4));
+                let five = composer.add_input(Bls12::Fr::from(5));
+                let six = composer.add_input(Bls12::Fr::from(6));
+                let seven = composer.add_input(Bls12::Fr::from(7));
+                let nine = composer.add_input(Bls12::Fr::from(9));
 
                 let fourteen = composer.big_add(
-                    (BlsScalar::one(), four),
-                    (BlsScalar::one(), five),
-                    Some((BlsScalar::one(), five)),
-                    BlsScalar::zero(),
+                    (Bls12::Fr::one(), four),
+                    (Bls12::Fr::one(), five),
+                    Some((Bls12::Fr::one(), five)),
+                    Bls12::Fr::zero(),
                     None,
                 );
 
                 let twenty = composer.big_add(
-                    (BlsScalar::one(), six),
-                    (BlsScalar::one(), seven),
-                    Some((BlsScalar::one(), seven)),
-                    BlsScalar::zero(),
+                    (Bls12::Fr::one(), six),
+                    (Bls12::Fr::one(), seven),
+                    Some((Bls12::Fr::one(), seven)),
+                    Bls12::Fr::zero(),
                     None,
                 );
 
                 let output = composer.big_mul(
-                    BlsScalar::one(),
+                    Bls12::Fr::one(),
                     fourteen,
                     twenty,
-                    Some((BlsScalar::from(8), nine)),
-                    BlsScalar::zero(),
+                    Some((Bls12::Fr::from(8), nine)),
+                    Bls12::Fr::zero(),
                     None,
                 );
                 composer.constrain_to_constant(
                     output,
-                    BlsScalar::from(352),
+                    Bls12::Fr::from(352),
                     None,
                 );
             },
@@ -477,36 +477,36 @@ mod tests {
         let res = gadget_tester(
             |composer| {
                 // Verify that (5+5) * (6+7) != 117
-                let five = composer.add_input(BlsScalar::from(5));
-                let six = composer.add_input(BlsScalar::from(6));
-                let seven = composer.add_input(BlsScalar::from(7));
+                let five = composer.add_input(Bls12::Fr::from(5));
+                let six = composer.add_input(Bls12::Fr::from(6));
+                let seven = composer.add_input(Bls12::Fr::from(7));
 
                 let five_plus_five = composer.big_add(
-                    (BlsScalar::one(), five),
-                    (BlsScalar::one(), five),
+                    (Bls12::Fr::one(), five),
+                    (Bls12::Fr::one(), five),
                     None,
-                    BlsScalar::zero(),
+                    Bls12::Fr::zero(),
                     None,
                 );
 
                 let six_plus_seven = composer.big_add(
-                    (BlsScalar::one(), six),
-                    (BlsScalar::one(), seven),
+                    (Bls12::Fr::one(), six),
+                    (Bls12::Fr::one(), seven),
                     None,
-                    BlsScalar::zero(),
+                    Bls12::Fr::zero(),
                     None,
                 );
 
                 let output = composer.mul(
-                    BlsScalar::one(),
+                    Bls12::Fr::one(),
                     five_plus_five,
                     six_plus_seven,
-                    BlsScalar::zero(),
+                    Bls12::Fr::zero(),
                     None,
                 );
                 composer.constrain_to_constant(
                     output,
-                    BlsScalar::from(117),
+                    Bls12::Fr::from(117),
                     None,
                 );
             },

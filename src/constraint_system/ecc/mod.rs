@@ -10,7 +10,7 @@ pub mod curve_addition;
 pub mod scalar_mul;
 
 use crate::constraint_system::{variable::Variable, StandardComposer};
-use dusk_bls12_381::BlsScalar;
+use dusk_bls12_381::E::Fr;
 
 /// Represents a JubJub point in the circuit
 #[derive(Debug, Clone, Copy)]
@@ -22,7 +22,7 @@ pub struct Point {
 impl Point {
     /// Returns an identity point
     pub fn identity(composer: &mut StandardComposer) -> Point {
-        let one = composer.add_witness_to_circuit_description(BlsScalar::one());
+        let one = composer.add_witness_to_circuit_description(E::Fr::one());
         Point {
             x: composer.zero_var,
             y: one,
@@ -57,12 +57,12 @@ impl StandardComposer {
         let point = self.add_affine(affine);
         self.constrain_to_constant(
             point.x,
-            BlsScalar::zero(),
+            E::Fr::zero(),
             Some(-affine.get_x()),
         );
         self.constrain_to_constant(
             point.y,
-            BlsScalar::zero(),
+            E::Fr::zero(),
             Some(-affine.get_y()),
         );
 
@@ -91,12 +91,12 @@ impl StandardComposer {
     ) {
         self.constrain_to_constant(
             point.x,
-            BlsScalar::zero(),
+            E::Fr::zero(),
             Some(-public_point.get_x()),
         );
         self.constrain_to_constant(
             point.y,
-            BlsScalar::zero(),
+            E::Fr::zero(),
             Some(-public_point.get_y()),
         );
     }
@@ -159,13 +159,13 @@ mod tests {
     fn test_conditional_select_point() {
         let res = gadget_tester(
             |composer| {
-                let bit_1 = composer.add_input(BlsScalar::one());
+                let bit_1 = composer.add_input(E::Fr::one());
                 let bit_0 = composer.zero_var();
 
                 let point_a = Point::identity(composer);
                 let point_b = Point {
-                    x: composer.add_input(BlsScalar::from(10u64)),
-                    y: composer.add_input(BlsScalar::from(20u64)),
+                    x: composer.add_input(E::Fr::from(10u64)),
+                    y: composer.add_input(E::Fr::from(20u64)),
                 };
 
                 let choice =

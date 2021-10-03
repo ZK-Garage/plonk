@@ -5,24 +5,24 @@
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
 use super::StandardComposer;
-use crate::commitment_scheme::kzg10::PublicParameters;
+use ark_poly_commit::PublicParameters;
 use crate::error::Error;
 use crate::proof_system::{Prover, Verifier};
-use dusk_bls12_381::BlsScalar;
+use ark_ec::PairingEngine;
 use rand_core::OsRng;
 
 /// Adds dummy constraints using arithmetic gates
-pub(crate) fn dummy_gadget(n: usize, composer: &mut StandardComposer) {
-    let one = BlsScalar::one();
+pub(crate) fn dummy_gadget<E: PairingEngine>(n: usize, composer: &mut StandardComposer<E>) {
+    let one = E::Fr::one();
 
     let var_one = composer.add_input(one);
 
     for _ in 0..n {
         composer.big_add(
-            (BlsScalar::one(), var_one),
-            (BlsScalar::one(), var_one),
+            (E::Fr::one(), var_one),
+            (E::Fr::one(), var_one),
             None,
-            BlsScalar::zero(),
+            E::Fr::zero(),
             None,
         );
     }
@@ -30,8 +30,8 @@ pub(crate) fn dummy_gadget(n: usize, composer: &mut StandardComposer) {
 
 /// Takes a generic gadget function with no auxillary input and
 /// tests whether it passes an end-to-end test
-pub(crate) fn gadget_tester(
-    gadget: fn(composer: &mut StandardComposer),
+pub(crate) fn gadget_tester<E: PairingEngine>(
+    gadget: fn(composer: &mut StandardComposer<E>),
     n: usize,
 ) -> Result<(), Error> {
     // Common View

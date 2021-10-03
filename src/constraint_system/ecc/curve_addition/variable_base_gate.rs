@@ -6,7 +6,7 @@
 
 use crate::constraint_system::ecc::Point;
 use crate::constraint_system::StandardComposer;
-use dusk_bls12_381::BlsScalar;
+use dusk_bls12_381::E::Fr;
 use dusk_jubjub::{JubJubAffine, JubJubExtended};
 
 impl StandardComposer {
@@ -53,7 +53,7 @@ impl StandardComposer {
         self.w_r.extend(&[y_1, y_3]);
         self.w_o.extend(&[x_2, self.zero_var]);
         self.w_4.extend(&[y_2, x_1_y_2]);
-        let zeros = [BlsScalar::zero(), BlsScalar::zero()];
+        let zeros = [E::Fr::zero(), E::Fr::zero()];
 
         self.q_l.extend(&zeros);
         self.q_r.extend(&zeros);
@@ -66,8 +66,8 @@ impl StandardComposer {
         self.q_logic.extend(&zeros);
         self.q_fixed_group_add.extend(&zeros);
 
-        self.q_variable_group_add.push(BlsScalar::one());
-        self.q_variable_group_add.push(BlsScalar::zero());
+        self.q_variable_group_add.push(E::Fr::one());
+        self.q_variable_group_add.push(E::Fr::zero());
 
         self.perm.add_variables_to_map(x_1, y_1, x_2, y_2, self.n);
         self.n += 1;
@@ -109,41 +109,41 @@ mod test {
 
         // x1 * y2
         let x1_y2 =
-            composer.mul(BlsScalar::one(), x1, y2, BlsScalar::zero(), None);
+            composer.mul(E::Fr::one(), x1, y2, E::Fr::zero(), None);
         // y1 * x2
         let y1_x2 =
-            composer.mul(BlsScalar::one(), y1, x2, BlsScalar::zero(), None);
+            composer.mul(E::Fr::one(), y1, x2, E::Fr::zero(), None);
         // y1 * y2
         let y1_y2 =
-            composer.mul(BlsScalar::one(), y1, y2, BlsScalar::zero(), None);
+            composer.mul(E::Fr::one(), y1, y2, E::Fr::zero(), None);
         // x1 * x2
         let x1_x2 =
-            composer.mul(BlsScalar::one(), x1, x2, BlsScalar::zero(), None);
+            composer.mul(E::Fr::one(), x1, x2, E::Fr::zero(), None);
         // d x1x2 * y1y2
         let d_x1_x2_y1_y2 =
-            composer.mul(EDWARDS_D, x1_x2, y1_y2, BlsScalar::zero(), None);
+            composer.mul(EDWARDS_D, x1_x2, y1_y2, E::Fr::zero(), None);
 
         // x1y2 + y1x2
         let x_numerator = composer.add(
-            (BlsScalar::one(), x1_y2),
-            (BlsScalar::one(), y1_x2),
-            BlsScalar::zero(),
+            (E::Fr::one(), x1_y2),
+            (E::Fr::one(), y1_x2),
+            E::Fr::zero(),
             None,
         );
 
         // y1y2 - a * x1x2 (a=-1) => y1y2 + x1x2
         let y_numerator = composer.add(
-            (BlsScalar::one(), y1_y2),
-            (BlsScalar::one(), x1_x2),
-            BlsScalar::zero(),
+            (E::Fr::one(), y1_y2),
+            (E::Fr::one(), x1_x2),
+            E::Fr::zero(),
             None,
         );
 
         // 1 + dx1x2y1y2
         let x_denominator = composer.add(
-            (BlsScalar::one(), d_x1_x2_y1_y2),
-            (BlsScalar::zero(), composer.zero_var),
-            BlsScalar::one(),
+            (E::Fr::one(), d_x1_x2_y1_y2),
+            (E::Fr::zero(), composer.zero_var),
+            E::Fr::one(),
             None,
         );
 
@@ -162,17 +162,17 @@ mod test {
             x_denominator,
             inv_x_denom,
             composer.zero_var,
-            BlsScalar::one(),
-            BlsScalar::zero(),
-            -BlsScalar::one(),
+            E::Fr::one(),
+            E::Fr::zero(),
+            -E::Fr::one(),
             None,
         );
 
         // 1 - dx1x2y1y2
         let y_denominator = composer.add(
-            (-BlsScalar::one(), d_x1_x2_y1_y2),
-            (BlsScalar::zero(), composer.zero_var),
-            BlsScalar::one(),
+            (-E::Fr::one(), d_x1_x2_y1_y2),
+            (E::Fr::zero(), composer.zero_var),
+            E::Fr::one(),
             None,
         );
         let inv_y_denom = composer
@@ -188,26 +188,26 @@ mod test {
             y_denominator,
             inv_y_denom,
             composer.zero_var,
-            BlsScalar::one(),
-            BlsScalar::zero(),
-            -BlsScalar::one(),
+            E::Fr::one(),
+            E::Fr::zero(),
+            -E::Fr::one(),
             None,
         );
 
         // We can now use the inverses
 
         let x_3 = composer.mul(
-            BlsScalar::one(),
+            E::Fr::one(),
             inv_x_denom,
             x_numerator,
-            BlsScalar::zero(),
+            E::Fr::zero(),
             None,
         );
         let y_3 = composer.mul(
-            BlsScalar::one(),
+            E::Fr::one(),
             inv_y_denom,
             y_numerator,
-            BlsScalar::zero(),
+            E::Fr::zero(),
             None,
         );
 

@@ -8,7 +8,7 @@ use crate::constraint_system::ecc::curve_addition::fixed_base_gate::WnafRound;
 use crate::constraint_system::ecc::Point;
 use crate::constraint_system::{variable::Variable, StandardComposer};
 use alloc::vec::Vec;
-use dusk_bls12_381::BlsScalar;
+use dusk_bls12_381::E::Fr;
 use dusk_bytes::Serializable;
 use dusk_jubjub::{JubJubAffine, JubJubExtended, JubJubScalar};
 
@@ -63,7 +63,7 @@ impl StandardComposer {
         assert_eq!(wnaf_entries.len(), num_bits);
 
         // Initialise the accumulators
-        let mut scalar_acc = vec![BlsScalar::zero()];
+        let mut scalar_acc = vec![E::Fr::zero()];
         let mut point_acc = vec![JubJubAffine::identity()];
 
         // Auxillary point to help with checks on the backend
@@ -73,13 +73,13 @@ impl StandardComposer {
         for (i, entry) in wnaf_entries.iter().rev().enumerate() {
             // Based on the WNAF, we decide what scalar and point to add
             let (scalar_to_add, point_to_add) = match entry {
-            0 => { (BlsScalar::zero(), JubJubAffine::identity())},
-            -1 => {(BlsScalar::one().neg(), -point_multiples[i])},
-            1 => {(BlsScalar::one(), point_multiples[i])},
+            0 => { (E::Fr::zero(), JubJubAffine::identity())},
+            -1 => {(E::Fr::one().neg(), -point_multiples[i])},
+            1 => {(E::Fr::one(), point_multiples[i])},
             _ => unreachable!("Currently WNAF_2(k) is supported. The possible values are 1, -1 and 0. Current entry is {}", entry),
         };
 
-            let prev_accumulator = BlsScalar::from(2u64) * scalar_acc[i];
+            let prev_accumulator = E::Fr::from(2u64) * scalar_acc[i];
             scalar_acc.push(prev_accumulator + scalar_to_add);
             point_acc.push(
                 (JubJubExtended::from(point_acc[i])
@@ -102,11 +102,11 @@ impl StandardComposer {
             // We constrain the point accumulator to start from the Identity
             // point and the Scalar accumulator to start from zero
             if i == 0 {
-                self.constrain_to_constant(acc_x, BlsScalar::zero(), None);
-                self.constrain_to_constant(acc_y, BlsScalar::one(), None);
+                self.constrain_to_constant(acc_x, E::Fr::zero(), None);
+                self.constrain_to_constant(acc_y, E::Fr::one(), None);
                 self.constrain_to_constant(
                     accumulated_bit,
-                    BlsScalar::zero(),
+                    E::Fr::zero(),
                     None,
                 );
             }
@@ -143,11 +143,11 @@ impl StandardComposer {
             acc_y,
             xy_alpha,
             Some(last_accumulated_bit),
-            BlsScalar::zero(),
-            BlsScalar::zero(),
-            BlsScalar::zero(),
-            BlsScalar::zero(),
-            BlsScalar::zero(),
+            E::Fr::zero(),
+            E::Fr::zero(),
+            E::Fr::zero(),
+            E::Fr::zero(),
+            E::Fr::zero(),
             None,
         );
 
@@ -178,7 +178,7 @@ mod tests {
                     0, 0,
                 ]);
                 let bls_scalar =
-                    BlsScalar::from_bytes(&scalar.to_bytes()).unwrap();
+                    E::Fr::from_bytes(&scalar.to_bytes()).unwrap();
                 let secret_scalar = composer.add_input(bls_scalar);
 
                 let expected_point: JubJubAffine =
@@ -201,7 +201,7 @@ mod tests {
             |composer| {
                 let scalar = JubJubScalar::zero();
                 let bls_scalar =
-                    BlsScalar::from_bytes(&scalar.to_bytes()).unwrap();
+                    E::Fr::from_bytes(&scalar.to_bytes()).unwrap();
                 let secret_scalar = composer.add_input(bls_scalar);
 
                 let expected_point: JubJubAffine =
@@ -223,7 +223,7 @@ mod tests {
             |composer| {
                 let scalar = JubJubScalar::from(100u64);
                 let bls_scalar =
-                    BlsScalar::from_bytes(&scalar.to_bytes()).unwrap();
+                    E::Fr::from_bytes(&scalar.to_bytes()).unwrap();
                 let secret_scalar = composer.add_input(bls_scalar);
                 // Fails because we are not multiplying by the GENERATOR, it is
                 // double
@@ -287,7 +287,7 @@ mod tests {
                 // First component
                 let scalar_a = JubJubScalar::from(112233u64);
                 let bls_scalar =
-                    BlsScalar::from_bytes(&scalar_a.to_bytes()).unwrap();
+                    E::Fr::from_bytes(&scalar_a.to_bytes()).unwrap();
                 let secret_scalar_a = composer.add_input(bls_scalar);
                 let point_a = GENERATOR_EXTENDED;
                 let c_a: JubJubAffine = (point_a * scalar_a).into();
@@ -295,7 +295,7 @@ mod tests {
                 // Second component
                 let scalar_b = JubJubScalar::from(445566u64);
                 let bls_scalar =
-                    BlsScalar::from_bytes(&scalar_b.to_bytes()).unwrap();
+                    E::Fr::from_bytes(&scalar_b.to_bytes()).unwrap();
                 let secret_scalar_b = composer.add_input(bls_scalar);
                 let point_b = point_a.double() + point_a;
                 let c_b: JubJubAffine = (point_b * scalar_b).into();
@@ -339,22 +339,22 @@ mod tests {
                 // First component
                 let scalar_a = JubJubScalar::from(25u64);
                 let bls_scalar_a =
-                    BlsScalar::from_bytes(&scalar_a.to_bytes()).unwrap();
+                    E::Fr::from_bytes(&scalar_a.to_bytes()).unwrap();
                 let secret_scalar_a = composer.add_input(bls_scalar_a);
                 // Second component
                 let scalar_b = JubJubScalar::from(30u64);
                 let bls_scalar_b =
-                    BlsScalar::from_bytes(&scalar_b.to_bytes()).unwrap();
+                    E::Fr::from_bytes(&scalar_b.to_bytes()).unwrap();
                 let secret_scalar_b = composer.add_input(bls_scalar_b);
                 // Third component
                 let scalar_c = JubJubScalar::from(10u64);
                 let bls_scalar_c =
-                    BlsScalar::from_bytes(&scalar_c.to_bytes()).unwrap();
+                    E::Fr::from_bytes(&scalar_c.to_bytes()).unwrap();
                 let secret_scalar_c = composer.add_input(bls_scalar_c);
                 // Fourth component
                 let scalar_d = JubJubScalar::from(45u64);
                 let bls_scalar_d =
-                    BlsScalar::from_bytes(&scalar_d.to_bytes()).unwrap();
+                    E::Fr::from_bytes(&scalar_d.to_bytes()).unwrap();
                 let secret_scalar_d = composer.add_input(bls_scalar_d);
 
                 let gen = GENERATOR_EXTENDED;
