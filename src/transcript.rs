@@ -6,15 +6,18 @@
 
 //! This is an extension over the [Merlin Transcript](Transcript)
 //! which adds a few extra functionalities.
-use ark_ec::{PairingEngine};
-use ark_poly::Commitment;
+use ark_ec::PairingEngine;
+use ark_ff::{Field, PrimeField};
+use ark_poly_commit::sonic_pc::Commitment;
+use ark_serialize::CanonicalSerialize;
 use merlin::Transcript;
+use std::vec::Vec;
 
 /// Transcript adds an abstraction over the Merlin transcript
 /// For convenience
 pub(crate) trait TranscriptProtocol<E: PairingEngine> {
     /// Append a `commitment` with the given `label`.
-    fn append_commitment(&mut self, label: &'static [u8], comm: &Commitment);
+    fn append_commitment(&mut self, label: &'static [u8], comm: &Commitment<E>);
 
     /// Append a scalar with the given `label`.
     fn append_scalar(&mut self, label: &'static [u8], s: &E::Fr);
@@ -27,19 +30,27 @@ pub(crate) trait TranscriptProtocol<E: PairingEngine> {
 }
 
 impl<E: PairingEngine> TranscriptProtocol<E> for Transcript {
-    fn append_commitment(&mut self, label: &'static [u8], comm: &Commitment) {
-        self.append_message(label, &comm.0.to_bytes());
+    fn append_commitment(
+        &mut self,
+        label: &'static [u8],
+        comm: &Commitment<E>,
+    ) {
+        let mut bytes = Vec::new();
+        comm.0.serialize(&mut bytes).unwrap();
+        self.append_message(label, &bytes);
     }
 
     fn append_scalar(&mut self, label: &'static [u8], s: &E::Fr) {
-        self.append_message(label, &s.to_bytes())
+        let mut bytes = Vec::new();
+        s.serialize(&mut bytes).unwrap();
+        self.append_message(label, &bytes)
     }
 
     fn challenge_scalar(&mut self, label: &'static [u8]) -> E::Fr {
-        let mut buf = [0u8; 64];
+        let mut buf = Vec::with_size(E::Fr::size_in_bits() / 8 - 1);
         self.challenge_bytes(label, &mut buf);
 
-        E::Fr::from_le_bytes_mod_order(&buf)
+        E::Fr::from_random_bytes(&buf).unwrap()
     }
 
     fn circuit_domain_sep(&mut self, n: u64) {

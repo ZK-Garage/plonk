@@ -6,44 +6,33 @@
 
 //! Tools & traits for PLONK circuits
 
-use crate::commitment_scheme::kzg10::PublicParameters;
+use ark_poly_commit::PublicParameters;
 use crate::constraint_system::StandardComposer;
 use crate::error::Error;
 use crate::proof_system::{Proof, Prover, ProverKey, Verifier, VerifierKey};
 use alloc::vec::Vec;
-#[cfg(feature = "canon")]
-use canonical_derive::Canon;
-use dusk_bls12_381::BlsScalar;
-use dusk_bytes::{DeserializableSlice, Serializable, Write};
-use dusk_jubjub::{JubJubAffine, JubJubExtended, JubJubScalar};
+use ark_ec::PairingEngine;
 
 #[derive(Default, Debug, Clone)]
-#[cfg_attr(feature = "canon", derive(Canon))]
-/// Structure that represents a PLONK Circuit Public Input converted into it's
-/// &\[[`BlsScalar`]\] repr.
-pub struct PublicInputValue(pub(crate) Vec<BlsScalar>);
+/// Structure that represents a PLONK Circuit Public Input converted into its
+/// scalar representation.
+pub struct PublicInputValue<E: PairingEngine>(pub(crate) Vec<E::Fr>);
 
-impl From<BlsScalar> for PublicInputValue {
-    fn from(scalar: BlsScalar) -> Self {
+impl<E: PairingEngine> From<E::Fr> for PublicInputValue<E> {
+    fn from(scalar: E::Fr) -> Self {
         Self(vec![scalar])
     }
 }
 
-impl From<JubJubScalar> for PublicInputValue {
-    fn from(scalar: JubJubScalar) -> Self {
+impl<E: PairingEngine> From<E::Fq> for PublicInputValue<E> {
+    fn from(scalar: E::Fq) -> Self {
         Self(vec![scalar.into()])
     }
 }
 
-impl From<JubJubAffine> for PublicInputValue {
-    fn from(point: JubJubAffine) -> Self {
+impl<E: PairingEngine> From<E::G2Affine> for PublicInputValue<E> {
+    fn from(point: E::G2Affine) -> Self {
         Self(vec![point.get_x(), point.get_y()])
-    }
-}
-
-impl From<JubJubExtended> for PublicInputValue {
-    fn from(point: JubJubExtended) -> Self {
-        JubJubAffine::from(point).into()
     }
 }
 
