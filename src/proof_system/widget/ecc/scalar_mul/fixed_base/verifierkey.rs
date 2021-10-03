@@ -4,7 +4,7 @@
 //
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
-use crate::commitment_scheme::kzg10::Commitment;
+use ark_poly_commit::Commitment;
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub(crate) struct VerifierKey {
