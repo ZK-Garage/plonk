@@ -8,7 +8,8 @@
 use ark_poly::{
     EvaluationDomain, Polynomial,
 };
-    ark_poly_commit::ProverKey,
+
+ark_poly_commit::ProverKey,
 
 use ark_ec::PairingEngine;
 use ark_ff::PrimeField;

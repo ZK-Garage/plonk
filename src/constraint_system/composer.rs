@@ -20,8 +20,8 @@
 
 use crate::constraint_system::Variable;
 use crate::permutation::Permutation;
-use alloc::collections::BTreeMap;
-use alloc::vec::Vec;
+// use alloc::collections::BTreeMap;
+// use alloc::vec::Vec;
 use ark_ec::PairingEngine;
 use hashbrown::HashMap;
 
@@ -106,7 +106,7 @@ pub struct StandardComposer<E: PairingEngine> {
     pub(crate) perm: Permutation<E::Fr>,
 }
 
-impl StandardComposer {
+impl <E: PairingEngine> StandardComposer<E> {
     /// Returns the number of gates in the circuit
     pub fn circuit_size(&self) -> usize {
         self.n
@@ -142,7 +142,7 @@ impl<E: PairingEngine> Default for StandardComposer<E> {
     }
 }
 
-impl StandardComposer {
+impl <E: PairingEngine> StandardComposer<E> {
     /// Generates a new empty `StandardComposer` with all of it's fields
     /// set to hold an initial capacity of 0.
     ///

@@ -7,6 +7,7 @@
 use crate::constraint_system::StandardComposer;
 use crate::constraint_system::Variable;
 use dusk_bls12_381::E::Fr;
+use ark_ec::PairingEngine;
 
 #[derive(Debug, Clone, Copy)]
 /// Contains all of the components needed to verify that a bit scalar
@@ -37,7 +38,7 @@ pub(crate) struct WnafRound {
     pub xy_beta: E::Fr,
 }
 
-impl StandardComposer {
+impl <E: PairingEngine> StandardComposer<E> {
     /// Fixed group addition of a jubjub point
     pub(crate) fn fixed_group_add(&mut self, wnaf_round: WnafRound) {
         self.w_l.push(wnaf_round.acc_x);

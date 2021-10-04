@@ -8,10 +8,10 @@ use crate::bit_iterator::*;
 use crate::constraint_system::StandardComposer;
 use crate::constraint_system::{Variable, WireData};
 use alloc::vec::Vec;
-use dusk_bls12_381::E::Fr;
+use ark_ec::PairingEngine;
 use dusk_bytes::Serializable;
 
-impl StandardComposer {
+impl<E: PairingEngine> StandardComposer<E> {
     /// Adds a range-constraint gate that checks and constrains a
     /// [`Variable`] to be inside of the range \[0,num_bits\].
     ///

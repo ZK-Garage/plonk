@@ -10,7 +10,7 @@ pub mod curve_addition;
 pub mod scalar_mul;
 
 use crate::constraint_system::{variable::Variable, StandardComposer};
-use dusk_bls12_381::E::Fr;
+use ark_ec::PairingEngine;
 
 /// Represents a JubJub point in the circuit
 #[derive(Debug, Clone, Copy)]
@@ -21,7 +21,7 @@ pub struct Point {
 
 impl Point {
     /// Returns an identity point
-    pub fn identity(composer: &mut StandardComposer) -> Point {
+    pub fn identity(composer: &mut StandardComposer<E>) -> Point {
         let one = composer.add_witness_to_circuit_description(E::Fr::one());
         Point {
             x: composer.zero_var,
