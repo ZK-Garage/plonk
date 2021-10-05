@@ -9,7 +9,6 @@
 //! Use this as the only import that you need to interact
 //! with the principal data structures of the plonk library.
 
-#[cfg(feature = "alloc")]
 pub use crate::{
     circuit::{self, Circuit, PublicInputValue, VerifierData},
     commitment_scheme::kzg10::{
@@ -21,13 +20,6 @@ pub use crate::{
 };
 
 pub use crate::proof_system::{Proof, VerifierKey};
-
-/// Re-exported [`dusk-bls12_381::BlsScalar`].
-pub use dusk_bls12_381::BlsScalar;
-
-/// Re-exported [`dusk-jubjub::JubJubScalar`] &
-/// [`dusk-jubjub::JubJubAffine`].
-pub use dusk_jubjub::{JubJubAffine, JubJubScalar};
 
 /// Collection of errors that the library exposes/uses.
 pub use crate::error::Error;

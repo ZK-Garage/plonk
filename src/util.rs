@@ -5,18 +5,18 @@
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
 use alloc::vec::Vec;
-use dusk_bls12_381::{
-    BlsScalar, G1Affine, G1Projective, G2Affine, G2Projective,
-};
 use rand_core::{CryptoRng, RngCore};
+use ark_ec::PairingEngine;
+use ark_ff::PrimeField;
+
 
 /// Returns a vector of BlsScalars of increasing powers of x from x^0 to x^d.
-pub(crate) fn powers_of(
-    scalar: &BlsScalar,
+pub(crate) fn powers_of<F: PrimeField>(
+    scalar: &F,
     max_degree: usize,
-) -> Vec<BlsScalar> {
+) -> Vec<E::Fr> {
     let mut powers = Vec::with_capacity(max_degree + 1);
-    powers.push(BlsScalar::one());
+    powers.push(F::one());
     for i in 1..=max_degree {
         powers.push(powers[i - 1] * scalar);
     }
@@ -24,45 +24,45 @@ pub(crate) fn powers_of(
 }
 
 /// Generates a random BlsScalar using a RNG seed.
-pub(crate) fn random_scalar<R: RngCore + CryptoRng>(rng: &mut R) -> BlsScalar {
-    BlsScalar::random(rng)
+pub(crate) fn random_scalar<F: PrimeField, R: RngCore>(rng: &mut R) -> F {
+    F::rand(rng)
 }
 
 /// Generates a random G1 Point using an RNG seed.
-pub(crate) fn random_g1_point<R: RngCore + CryptoRng>(
+pub(crate) fn random_g1_point<E: PairingEngine, R: RngCore>(
     rng: &mut R,
-) -> G1Projective {
-    G1Affine::generator() * random_scalar(rng)
+) -> E::G1Projective {
+    E::G1Projective::rand(rng)
 }
 /// Generates a random G2 point using an RNG seed.
-pub(crate) fn random_g2_point<R: RngCore + CryptoRng>(
+pub(crate) fn random_g2_point<E: PairingEngine, R: RngCore>(
     rng: &mut R,
-) -> G2Projective {
-    G2Affine::generator() * random_scalar(rng)
+) -> E::G2Projective {
+    E::G2Projective::rand(rng)
 }
 
 /// This function is only used to generate the SRS.
 /// The intention is just to compute the resulting points
 /// of the operation `a*P, b*P, c*P ... (n-1)*P` into a `Vec`.
-pub(crate) fn slow_multiscalar_mul_single_base(
-    scalars: &[BlsScalar],
-    base: G1Projective,
-) -> Vec<G1Projective> {
-    scalars.iter().map(|s| base * *s).collect()
+pub(crate) fn slow_multiscalar_mul_single_base<E: PairingEngine>(
+    scalars: &[E::Fr],
+    base: E::G1Projective,
+) -> Vec<E::G1Projective> {
+    scalars.iter().map(|s| base.mul(s.into_repr())).collect()
 }
 
 // while we do not have batch inversion for scalars
 use core::ops::MulAssign;
 
-pub fn batch_inversion(v: &mut [BlsScalar]) {
+pub fn batch_inversion<F: PrimeField>(v: &mut [F]) {
     // Montgomery’s Trick and Fast Implementation of Masked AES
     // Genelle, Prouff and Quisquater
     // Section 3.2
 
     // First pass: compute [a, ab, abc, ...]
     let mut prod = Vec::with_capacity(v.len());
-    let mut tmp = BlsScalar::one();
-    for f in v.iter().filter(|f| f != &&BlsScalar::zero()) {
+    let mut tmp = F::one();
+    for f in v.iter().filter(|f| f != &&F::zero()) {
         tmp.mul_assign(f);
         prod.push(tmp);
     }
@@ -76,9 +76,9 @@ pub fn batch_inversion(v: &mut [BlsScalar]) {
         // Backwards
         .rev()
         // Ignore normalized elements
-        .filter(|f| f != &&BlsScalar::zero())
+        .filter(|f| f != &&F::zero())
         // Backwards, skip last element, fill in one for last term.
-        .zip(prod.into_iter().rev().skip(1).chain(Some(BlsScalar::one())))
+        .zip(prod.into_iter().rev().skip(1).chain(Some(F::one())))
     {
         // tmp := tmp * f; f := tmp * s = 1/f
         let new_tmp = tmp * *f;
@@ -86,16 +86,18 @@ pub fn batch_inversion(v: &mut [BlsScalar]) {
         tmp = new_tmp;
     }
 }
+
 #[cfg(test)]
 mod test {
     use super::*;
+    use ark_ec::bls12::Bls12;
     #[test]
     fn test_batch_inversion() {
-        let one = BlsScalar::from(1);
-        let two = BlsScalar::from(2);
-        let three = BlsScalar::from(3);
-        let four = BlsScalar::from(4);
-        let five = BlsScalar::from(5);
+        let one = Bls12::Fr::from(1);
+        let two = Bls12::Fr::from(2);
+        let three = Bls12::Fr::from(3);
+        let four = Bls12::Fr::from(4);
+        let five = Bls12::Fr::from(5);
 
         let original_scalars = vec![one, two, three, four, five];
         let mut inverted_scalars = vec![one, two, three, four, five];

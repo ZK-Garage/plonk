@@ -9,8 +9,7 @@ pub mod ecc;
 pub mod logic;
 pub mod permutation;
 pub mod range;
-use crate::commitment_scheme::kzg10::Commitment;
-use dusk_bytes::{DeserializableSlice, Serializable};
+use ark_poly_commit::Commitment;
 
 /// PLONK circuit Verification Key.
 ///
@@ -32,59 +31,6 @@ pub struct VerifierKey {
     pub(crate) variable_base: ecc::curve_addition::VerifierKey,
     /// VerifierKey for permutation checks
     pub(crate) permutation: permutation::VerifierKey,
-}
-
-impl Serializable<{ 15 * Commitment::SIZE + u64::SIZE }> for VerifierKey {
-    type Error = dusk_bytes::Error;
-
-    #[allow(unused_must_use)]
-    fn to_bytes(&self) -> [u8; Self::SIZE] {
-        use dusk_bytes::Write;
-        let mut buff = [0u8; Self::SIZE];
-        let mut writer = &mut buff[..];
-
-        writer.write(&(self.n as u64).to_bytes());
-        writer.write(&self.arithmetic.q_m.to_bytes());
-        writer.write(&self.arithmetic.q_l.to_bytes());
-        writer.write(&self.arithmetic.q_r.to_bytes());
-        writer.write(&self.arithmetic.q_o.to_bytes());
-        writer.write(&self.arithmetic.q_4.to_bytes());
-        writer.write(&self.arithmetic.q_c.to_bytes());
-        writer.write(&self.arithmetic.q_arith.to_bytes());
-        writer.write(&self.logic.q_logic.to_bytes());
-        writer.write(&self.range.q_range.to_bytes());
-        writer.write(&self.fixed_base.q_fixed_group_add.to_bytes());
-        writer.write(&self.variable_base.q_variable_group_add.to_bytes());
-        writer.write(&self.permutation.left_sigma.to_bytes());
-        writer.write(&self.permutation.right_sigma.to_bytes());
-        writer.write(&self.permutation.out_sigma.to_bytes());
-        writer.write(&self.permutation.fourth_sigma.to_bytes());
-
-        buff
-    }
-
-    fn from_bytes(buf: &[u8; Self::SIZE]) -> Result<VerifierKey, Self::Error> {
-        let mut buffer = &buf[..];
-
-        Ok(Self::from_polynomial_commitments(
-            u64::from_reader(&mut buffer)? as usize,
-            Commitment::from_reader(&mut buffer)?,
-            Commitment::from_reader(&mut buffer)?,
-            Commitment::from_reader(&mut buffer)?,
-            Commitment::from_reader(&mut buffer)?,
-            Commitment::from_reader(&mut buffer)?,
-            Commitment::from_reader(&mut buffer)?,
-            Commitment::from_reader(&mut buffer)?,
-            Commitment::from_reader(&mut buffer)?,
-            Commitment::from_reader(&mut buffer)?,
-            Commitment::from_reader(&mut buffer)?,
-            Commitment::from_reader(&mut buffer)?,
-            Commitment::from_reader(&mut buffer)?,
-            Commitment::from_reader(&mut buffer)?,
-            Commitment::from_reader(&mut buffer)?,
-            Commitment::from_reader(&mut buffer)?,
-        ))
-    }
 }
 
 impl VerifierKey {
@@ -622,7 +568,7 @@ mod test {
 
     #[test]
     fn test_serialise_deserialise_verifier_key() {
-        use crate::commitment_scheme::kzg10::Commitment;
+        use ark_poly_commit::Commitment;
         use dusk_bls12_381::G1Affine;
 
         let n = 2usize.pow(5);

@@ -6,43 +6,44 @@
 
 //! Methods to preprocess the constraint system for use in a proof
 
-use crate::commitment_scheme::kzg10::CommitKey;
+use ark_poly_commit::CommitKey;
 use crate::constraint_system::StandardComposer;
 
 use crate::error::Error;
-use crate::fft::{EvaluationDomain, Evaluations, Polynomial};
+use ark_poly::{EvaluationDomain, Evaluations, Polynomial};
+use ark_ff::PrimeField;
+use arc_ec::PairingEngine;
 use crate::proof_system::{widget, ProverKey};
-use dusk_bls12_381::BlsScalar;
 use merlin::Transcript;
 
 /// Struct that contains all of the selector and permutation [`Polynomial`]s in
 /// PLONK.
-pub(crate) struct SelectorPolynomials {
-    q_m: Polynomial,
-    q_l: Polynomial,
-    q_r: Polynomial,
-    q_o: Polynomial,
-    q_c: Polynomial,
-    q_4: Polynomial,
-    q_arith: Polynomial,
-    q_range: Polynomial,
-    q_logic: Polynomial,
-    q_fixed_group_add: Polynomial,
-    q_variable_group_add: Polynomial,
-    left_sigma: Polynomial,
-    right_sigma: Polynomial,
-    out_sigma: Polynomial,
-    fourth_sigma: Polynomial,
+pub(crate) struct SelectorPolynomials<F: PrimeField> {
+    q_m: Polynomial<F>,
+    q_l: Polynomial<F>,
+    q_r: Polynomial<F>,
+    q_o: Polynomial<F>,
+    q_c: Polynomial<F>,
+    q_4: Polynomial<F>,
+    q_arith: Polynomial<F>,
+    q_range: Polynomial<F>,
+    q_logic: Polynomial<F>,
+    q_fixed_group_add: Polynomial<F>,
+    q_variable_group_add: Polynomial<F>,
+    left_sigma: Polynomial<F>,
+    right_sigma: Polynomial<F>,
+    out_sigma: Polynomial<F>,
+    fourth_sigma: Polynomial<F>,
 }
 
-impl StandardComposer {
+impl<E: PairingEngine> StandardComposer<E> {
     /// Pads the circuit to the next power of two.
     ///
     /// # Note
     /// `diff` is the difference between circuit size and next power of two.
     fn pad(&mut self, diff: usize) {
         // Add a zero variable to circuit
-        let zero_scalar = BlsScalar::zero();
+        let zero_scalar = E::Fr::zero();
         let zero_var = self.zero_var();
 
         let zeroes_scalar = vec![zero_scalar; diff];
@@ -100,9 +101,9 @@ impl StandardComposer {
     /// prover and verifier to have the same view
     pub fn preprocess_prover(
         &mut self,
-        commit_key: &CommitKey,
+        commit_key: &CommitKey<E>,
         transcript: &mut Transcript,
-    ) -> Result<ProverKey, Error> {
+    ) -> Result<ProverKey<E::Fr>, Error> {
         let (_, selectors, domain) =
             self.preprocess_shared(commit_key, transcript)?;
 
@@ -246,9 +247,9 @@ impl StandardComposer {
     /// verifier by skipping the FFTs needed to compute the 4n evaluations.
     pub fn preprocess_verifier(
         &mut self,
-        commit_key: &CommitKey,
+        commit_key: &CommitKey<E>,
         transcript: &mut Transcript,
-    ) -> Result<widget::VerifierKey, Error> {
+    ) -> Result<widget::VerifierKey<E>, Error> {
         let (verifier_key, _, _) =
             self.preprocess_shared(commit_key, transcript)?;
         Ok(verifier_key)
@@ -260,10 +261,10 @@ impl StandardComposer {
     /// view.
     fn preprocess_shared(
         &mut self,
-        commit_key: &CommitKey,
+        commit_key: &CommitKey<E>,
         transcript: &mut Transcript,
     ) -> Result<
-        (widget::VerifierKey, SelectorPolynomials, EvaluationDomain),
+        (widget::VerifierKey<E>, SelectorPolynomials<E::Fr>, EvaluationDomain<E::Fr>),
         Error,
     > {
         let domain = EvaluationDomain::new(self.circuit_size())?;

@@ -6,44 +6,33 @@
 
 //! Tools & traits for PLONK circuits
 
-use crate::commitment_scheme::kzg10::PublicParameters;
+use ark_poly_commit::PublicParameters;
 use crate::constraint_system::StandardComposer;
 use crate::error::Error;
 use crate::proof_system::{Proof, Prover, ProverKey, Verifier, VerifierKey};
 use alloc::vec::Vec;
-#[cfg(feature = "canon")]
-use canonical_derive::Canon;
-use dusk_bls12_381::BlsScalar;
-use dusk_bytes::{DeserializableSlice, Serializable, Write};
-use dusk_jubjub::{JubJubAffine, JubJubExtended, JubJubScalar};
+use ark_ec::PairingEngine;
 
 #[derive(Default, Debug, Clone)]
-#[cfg_attr(feature = "canon", derive(Canon))]
-/// Structure that represents a PLONK Circuit Public Input converted into it's
-/// &\[[`BlsScalar`]\] repr.
-pub struct PublicInputValue(pub(crate) Vec<BlsScalar>);
+/// Structure that represents a PLONK Circuit Public Input converted into its
+/// scalar representation.
+pub struct PublicInputValue<E: PairingEngine>(pub(crate) Vec<E::Fr>);
 
-impl From<BlsScalar> for PublicInputValue {
-    fn from(scalar: BlsScalar) -> Self {
+impl<E: PairingEngine> From<E::Fr> for PublicInputValue<E> {
+    fn from(scalar: E::Fr) -> Self {
         Self(vec![scalar])
     }
 }
 
-impl From<JubJubScalar> for PublicInputValue {
-    fn from(scalar: JubJubScalar) -> Self {
+impl<E: PairingEngine> From<E::Fq> for PublicInputValue<E> {
+    fn from(scalar: E::Fq) -> Self {
         Self(vec![scalar.into()])
     }
 }
 
-impl From<JubJubAffine> for PublicInputValue {
-    fn from(point: JubJubAffine) -> Self {
+impl<E: PairingEngine> From<E::G2Affine> for PublicInputValue<E> {
+    fn from(point: E::G2Affine) -> Self {
         Self(vec![point.get_x(), point.get_y()])
-    }
-}
-
-impl From<JubJubExtended> for PublicInputValue {
-    fn from(point: JubJubExtended) -> Self {
-        JubJubAffine::from(point).into()
     }
 }
 
@@ -128,10 +117,10 @@ impl VerifierData {
 /// // 5) JubJub::GENERATOR * e(JubJubScalar) = f where F is a PI
 /// #[derive(Debug, Default)]
 /// pub struct TestCircuit {
-///     a: BlsScalar,
-///     b: BlsScalar,
-///     c: BlsScalar,
-///     d: BlsScalar,
+///     a: E::Fr,
+///     b: E::Fr,
+///     c: E::Fr,
+///     d: E::Fr,
 ///     e: JubJubScalar,
 ///     f: JubJubAffine,
 /// }
@@ -143,7 +132,7 @@ impl VerifierData {
 ///         composer: &mut StandardComposer,
 ///     ) -> Result<(), Error> {
 ///         // Add fixed witness zero
-///         let zero = composer.add_witness_to_circuit_description(BlsScalar::zero());
+///         let zero = composer.add_witness_to_circuit_description(E::Fr::zero());
 ///         let a = composer.add_input(self.a);
 ///         let b = composer.add_input(self.b);
 ///         // Make first constraint a + b = c
@@ -151,11 +140,11 @@ impl VerifierData {
 ///             a,
 ///             b,
 ///             zero,
-///             BlsScalar::zero(),
-///             BlsScalar::one(),
-///             BlsScalar::one(),
-///             BlsScalar::zero(),
-///             BlsScalar::zero(),
+///             E::Fr::zero(),
+///             E::Fr::one(),
+///             E::Fr::one(),
+///             E::Fr::zero(),
+///             E::Fr::zero(),
 ///             Some(-self.c),
 ///         );
 ///         // Check that a and b are in range
@@ -166,11 +155,11 @@ impl VerifierData {
 ///             a,
 ///             b,
 ///             zero,
-///             BlsScalar::one(),
-///             BlsScalar::zero(),
-///             BlsScalar::zero(),
-///             BlsScalar::one(),
-///             BlsScalar::zero(),
+///             E::Fr::one(),
+///             E::Fr::zero(),
+///             E::Fr::zero(),
+///             E::Fr::one(),
+///             E::Fr::zero(),
 ///             Some(-self.d),
 ///         );
 ///
@@ -198,10 +187,10 @@ impl VerifierData {
 /// // Prover POV
 /// let proof = {
 ///     let mut circuit = TestCircuit {
-///         a: BlsScalar::from(20u64),
-///         b: BlsScalar::from(5u64),
-///         c: BlsScalar::from(25u64),
-///         d: BlsScalar::from(100u64),
+///         a: E::Fr::from(20u64),
+///         b: E::Fr::from(5u64),
+///         c: E::Fr::from(25u64),
+///         d: E::Fr::from(100u64),
 ///         e: JubJubScalar::from(2u64),
 ///         f: JubJubAffine::from(
 ///             dusk_jubjub::GENERATOR_EXTENDED * JubJubScalar::from(2u64),
@@ -213,8 +202,8 @@ impl VerifierData {
 ///
 /// // Verifier POV
 /// let public_inputs: Vec<PublicInputValue> = vec![
-///     BlsScalar::from(25u64).into(),
-///     BlsScalar::from(100u64).into(),
+///     E::Fr::from(25u64).into(),
+///     E::Fr::from(100u64).into(),
 ///     JubJubAffine::from(
 ///         dusk_jubjub::GENERATOR_EXTENDED * JubJubScalar::from(2u64),
 ///     )
@@ -237,7 +226,7 @@ where
     /// Circuit identifier associated constant.
     const CIRCUIT_ID: [u8; 32];
     /// Gadget implementation used to fill the composer.
-    fn gadget(&mut self, composer: &mut StandardComposer) -> Result<(), Error>;
+    fn gadget(&mut self, composer: &mut StandardComposer<E>) -> Result<(), Error>;
     /// Compiles the circuit by using a function that returns a `Result`
     /// with the `ProverKey`, `VerifierKey` and the circuit size.
     fn compile(
@@ -296,7 +285,7 @@ where
 pub fn verify_proof(
     pub_params: &PublicParameters,
     verifier_key: &VerifierKey,
-    proof: &Proof,
+    proof: &Proof<E>,
     pub_inputs_values: &[PublicInputValue],
     pub_inputs_positions: &[usize],
     transcript_init: &'static [u8],
@@ -320,8 +309,8 @@ fn build_pi(
     pub_input_values: &[PublicInputValue],
     pub_input_pos: &[usize],
     trim_size: usize,
-) -> Vec<BlsScalar> {
-    let mut pi = vec![BlsScalar::zero(); trim_size];
+) -> Vec<E::Fr> {
+    let mut pi = vec![E::Fr::zero(); trim_size];
     pub_input_values
         .iter()
         .map(|pub_input| pub_input.0.clone())
@@ -348,10 +337,10 @@ mod tests {
     // 5) JubJub::GENERATOR * e(JubJubScalar) = f where F is a PI
     #[derive(Debug, Default)]
     pub struct TestCircuit {
-        a: BlsScalar,
-        b: BlsScalar,
-        c: BlsScalar,
-        d: BlsScalar,
+        a: E::Fr,
+        b: E::Fr,
+        c: E::Fr,
+        d: E::Fr,
         e: JubJubScalar,
         f: JubJubAffine,
     }
@@ -369,11 +358,11 @@ mod tests {
                 a,
                 b,
                 composer.zero_var,
-                BlsScalar::zero(),
-                BlsScalar::one(),
-                BlsScalar::one(),
-                BlsScalar::zero(),
-                BlsScalar::zero(),
+                E::Fr::zero(),
+                E::Fr::one(),
+                E::Fr::one(),
+                E::Fr::zero(),
+                E::Fr::zero(),
                 Some(-self.c),
             );
             // Check that a and b are in range
@@ -384,11 +373,11 @@ mod tests {
                 a,
                 b,
                 composer.zero_var,
-                BlsScalar::one(),
-                BlsScalar::zero(),
-                BlsScalar::zero(),
-                BlsScalar::one(),
-                BlsScalar::zero(),
+                E::Fr::one(),
+                E::Fr::zero(),
+                E::Fr::zero(),
+                E::Fr::one(),
+                E::Fr::zero(),
                 Some(-self.d),
             );
 
@@ -461,10 +450,10 @@ mod tests {
         // Prover POV
         let proof = {
             let mut circuit = TestCircuit {
-                a: BlsScalar::from(20u64),
-                b: BlsScalar::from(5u64),
-                c: BlsScalar::from(25u64),
-                d: BlsScalar::from(100u64),
+                a: E::Fr::from(20u64),
+                b: E::Fr::from(5u64),
+                c: E::Fr::from(25u64),
+                d: E::Fr::from(100u64),
                 e: JubJubScalar::from(2u64),
                 f: JubJubAffine::from(
                     dusk_jubjub::GENERATOR_EXTENDED * JubJubScalar::from(2u64),
@@ -476,8 +465,8 @@ mod tests {
 
         // Verifier POV
         let public_inputs: Vec<PublicInputValue> = vec![
-            BlsScalar::from(25u64).into(),
-            BlsScalar::from(100u64).into(),
+            E::Fr::from(25u64).into(),
+            E::Fr::from(100u64).into(),
             JubJubAffine::from(
                 dusk_jubjub::GENERATOR_EXTENDED * JubJubScalar::from(2u64),
             )

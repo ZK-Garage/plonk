@@ -18,6 +18,7 @@ cfg_if::cfg_if!(
         pub use prover::Prover;
         pub use verifier::Verifier;
         pub use widget::alloc::*;
+pub mod srs;
     }
 );
 

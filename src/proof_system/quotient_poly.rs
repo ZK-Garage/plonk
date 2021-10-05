@@ -4,29 +4,30 @@
 //
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
+    use ark_poly::{EvaluationDomain, Polynomial},
 use crate::{
     error::Error,
-    fft::{EvaluationDomain, Polynomial},
     proof_system::ProverKey,
 };
 use alloc::vec::Vec;
-use dusk_bls12_381::BlsScalar;
+use ark_ec::PairingEngine;
+use ark_ff::PrimeField;
 #[cfg(feature = "std")]
 use rayon::prelude::*;
 
 /// Computes the Quotient [`Polynomial`] given the [`EvaluationDomain`], a
 /// [`ProverKey`] and some other info.
-pub(crate) fn compute(
-    domain: &EvaluationDomain,
-    prover_key: &ProverKey,
-    z_poly: &Polynomial,
+pub(crate) fn compute<F: PrimeField>(
+    domain: &EvaluationDomain<F>,
+    prover_key: &ProverKey<F>,
+    z_poly: &Polynomial<F>,
     (w_l_poly, w_r_poly, w_o_poly, w_4_poly): (
-        &Polynomial,
-        &Polynomial,
-        &Polynomial,
-        &Polynomial,
+        &Polynomial<F>,
+        &Polynomial<F>,
+        &Polynomial<F>,
+        &Polynomial<F>,
     ),
-    public_inputs_poly: &Polynomial,
+    public_inputs_poly: &Polynomial<F>,
     (
         alpha,
         beta,
@@ -36,15 +37,15 @@ pub(crate) fn compute(
         fixed_base_challenge,
         var_base_challenge,
     ): &(
-        BlsScalar,
-        BlsScalar,
-        BlsScalar,
-        BlsScalar,
-        BlsScalar,
-        BlsScalar,
-        BlsScalar,
+        F,
+        F,
+        F,
+        F,
+        F,
+        F,
+        F,
     ),
-) -> Result<Polynomial, Error> {
+) -> Result<Polynomial<F>, Error> {
     // Compute 4n eval of z(X)
     let domain_4n = EvaluationDomain::new(4 * domain.size())?;
     let mut z_eval_4n = domain_4n.coset_fft(&z_poly);
@@ -113,23 +114,23 @@ pub(crate) fn compute(
 }
 
 // Ensures that the circuit is satisfied
-fn compute_circuit_satisfiability_equation(
-    domain: &EvaluationDomain,
+fn compute_circuit_satisfiability_equation<F: PrimeField>(
+    domain: &EvaluationDomain<F>,
     (
         range_challenge,
         logic_challenge,
         fixed_base_challenge,
         var_base_challenge,
-    ): (&BlsScalar, &BlsScalar, &BlsScalar, &BlsScalar),
-    prover_key: &ProverKey,
+    ): (&F, &F, &F, &F),
+    prover_key: &ProverKey<F>,
     (wl_eval_4n, wr_eval_4n, wo_eval_4n, w4_eval_4n): (
-        &[BlsScalar],
-        &[BlsScalar],
-        &[BlsScalar],
-        &[BlsScalar],
+        &[F],
+        &[F],
+        &[F],
+        &[F],
     ),
-    pi_poly: &Polynomial,
-) -> Vec<BlsScalar> {
+    pi_poly: &Polynomial<F>,
+) -> Vec<F> {
     let domain_4n = EvaluationDomain::new(4 * domain.size()).unwrap();
     let pi_eval_4n = domain_4n.coset_fft(pi_poly);
 
@@ -204,18 +205,18 @@ fn compute_circuit_satisfiability_equation(
     t
 }
 
-fn compute_permutation_checks(
-    domain: &EvaluationDomain,
-    prover_key: &ProverKey,
+fn compute_permutation_checks<F: PrimeField>(
+    domain: &EvaluationDomain<F>,
+    prover_key: &ProverKey<F>,
     (wl_eval_4n, wr_eval_4n, wo_eval_4n, w4_eval_4n): (
-        &[BlsScalar],
-        &[BlsScalar],
-        &[BlsScalar],
-        &[BlsScalar],
+        &[F],
+        &[F],
+        &[F],
+        &[F],
     ),
-    z_eval_4n: &[BlsScalar],
-    (alpha, beta, gamma): (&BlsScalar, &BlsScalar, &BlsScalar),
-) -> Vec<BlsScalar> {
+    z_eval_4n: &[F],
+    (alpha, beta, gamma): (&F, &F, &F),
+) -> Vec<F> {
     let domain_4n = EvaluationDomain::new(4 * domain.size()).unwrap();
     let l1_poly_alpha =
         compute_first_lagrange_poly_scaled(domain, alpha.square());
@@ -246,10 +247,10 @@ fn compute_permutation_checks(
         .collect();
     t
 }
-fn compute_first_lagrange_poly_scaled(
-    domain: &EvaluationDomain,
-    scale: BlsScalar,
-) -> Polynomial {
+fn compute_first_lagrange_poly_scaled<F: PrimeField>(
+    domain: &EvaluationDomain<F>,
+    scale: F,
+) -> Polynomial<F> {
     let mut x_evals = vec![BlsScalar::zero(); domain.size()];
     x_evals[0] = scale;
     domain.ifft_in_place(&mut x_evals);

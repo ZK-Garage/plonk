@@ -5,24 +5,6 @@
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
 #![doc = include_str!("../README.md")]
-#![doc(
-    html_logo_url = "https://lh3.googleusercontent.com/SmwswGxtgIANTbDrCOn5EKcRBnVdHjmYsHYxLq2HZNXWCQ9-fZyaea-bNgdX9eR0XGSqiMFi=w128-h128-e365"
-)]
-#![doc(html_favicon_url = "https://dusk.network/lib/img/favicon-16x16.png")]
-//!<a href="https://codecov.io/gh/dusk-network/plonk">
-//!  <img src="https://codecov.io/gh/dusk-network/plonk/branch/master/graph/badge.svg" />
-//!</a>
-//! <a href="https://travis-ci.com/dusk-network/plonk">
-//! <img src="https://travis-ci.com/dusk-network/plonk.svg?branch=master" />
-//! </a>
-//! <a href="https://github.com/dusk-network/plonk">
-//! <img alt="GitHub issues" src="https://img.shields.io/github/issues-raw/dusk-network/plonk?style=plastic">
-//! </a>
-//! <a href="https://github.com/dusk-network/plonk/blob/master/LICENSE">
-//! <img alt="GitHub" src="https://img.shields.io/github/license/dusk-network/plonk?color=%230E55EF">
-//! </a>
-//!
-//!
 //! Permutations over Lagrange-bases for Oecumenical Noninteractive
 //! arguments of Knowledge (PLONK) is a zero knowledge proof system.
 //!
@@ -31,9 +13,8 @@
 //! - Zachary J. Williamson (Aztec Protocol)
 //! - Oana Ciobotaru
 //!
-//! This crate contains a pure-rust implementation done by the [DuskNetwork
-//! team](dusk.network) of this algorithm using as a reference implementation
-//! this one done by the creators of the protocol:
+//! This crate contains a pure-rust implementation of this algorithm using
+//! code done by the creators of the protocol as a reference implementation:
 //!
 //! <https://github.com/AztecProtocol/barretenberg/blob/master/barretenberg/src/aztec/plonk/>
 //!
@@ -52,25 +33,14 @@
 #![allow(clippy::too_many_arguments)]
 #![deny(rustdoc::broken_intra_doc_links)]
 #![deny(missing_docs)]
-#![no_std]
 
-#[cfg(feature = "std")]
-extern crate std;
+mod bit_iterator;
+pub mod circuit;
+pub mod constraint_system;
+mod permutation;
+mod util;
 
-cfg_if::cfg_if!(
-if #[cfg(feature = "alloc")] {
-    #[macro_use]
-    extern crate alloc;
-    pub mod constraint_system;
-    mod bit_iterator;
-    pub mod circuit;
-    mod util;
-    mod permutation;
-});
-
-pub mod commitment_scheme;
 pub mod error;
-mod fft;
 pub mod prelude;
 pub mod proof_system;
 mod transcript;
@@ -86,9 +56,3 @@ pub mod notes {
     #[doc = include_str!("../docs/notes-KZG10.md")]
     pub mod kzg10_docs {}
 }
-
-/// Re-exported dusk-bls12_381 fork.
-pub use dusk_bls12_381 as bls12_381;
-
-/// Re-exported dusk-jubjub fork.
-pub use dusk_jubjub as jubjub;

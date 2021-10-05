@@ -6,8 +6,6 @@
 
 //! A collection of all possible errors encountered in PLONK.
 
-use dusk_bytes::Error as DuskBytesError;
-
 /// Defines all possible errors that can be encountered in PLONK.
 #[derive(core::fmt::Debug)]
 pub enum Error {
@@ -61,17 +59,14 @@ pub enum Error {
     /// Identity point.
     PairingCheckFailure,
 
-    // Serialization errors
-    /// Dusk-bytes serialization error
-    BytesError(DuskBytesError),
     /// This error occurs when there are not enough bytes to read out of a
     /// slice during deserialization.
     NotEnoughBytes,
     /// This error occurs when a malformed point is decoded from a byte array.
     PointMalformed,
-    /// This error occurs when a malformed BLS scalar is decoded from a byte
+    /// This error occurs when a malformed scalar is decoded from a byte
     /// array.
-    BlsScalarMalformed,
+    ScalarMalformed,
 }
 
 #[cfg(feature = "std")]
@@ -124,16 +119,9 @@ impl std::fmt::Display for Error {
             }
             Self::PairingCheckFailure => write!(f, "pairing check failed"),
             Self::NotEnoughBytes => write!(f, "not enough bytes left to read"),
-            Self::PointMalformed => write!(f, "BLS point bytes malformed"),
-            Self::BlsScalarMalformed => write!(f, "BLS scalar bytes malformed"),
-            Self::BytesError(err) => write!(f, "{:?}", err),
+            Self::PointMalformed => write!(f, "point bytes malformed"),
+            Self::ScalarMalformed => write!(f, "scalar bytes malformed"),
         }
-    }
-}
-
-impl From<DuskBytesError> for Error {
-    fn from(bytes_err: DuskBytesError) -> Self {
-        Self::BytesError(bytes_err)
     }
 }
 

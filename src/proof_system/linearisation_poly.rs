@@ -5,140 +5,71 @@
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
 #[cfg(feature = "alloc")]
-use crate::{
-    fft::{EvaluationDomain, Polynomial},
-    proof_system::ProverKey,
+use ark_poly::{
+    EvaluationDomain, Polynomial,
 };
 
-use dusk_bls12_381::BlsScalar;
-use dusk_bytes::{DeserializableSlice, Serializable};
+ark_poly_commit::ProverKey,
+
+use ark_ec::PairingEngine;
+use ark_ff::PrimeField;
+
 #[allow(dead_code)]
 /// Evaluations at points `z` or and `z * root of unity`
-pub(crate) struct Evaluations {
+pub(crate) struct Evaluations<F: PrimeField> {
     pub(crate) proof: ProofEvaluations,
     // Evaluation of the linearisation sigma polynomial at `z`
-    pub(crate) quot_eval: BlsScalar,
+    pub(crate) quot_eval: F,
 }
 
 /// Subset of all of the evaluations. These evaluations
 /// are added to the [`Proof`](super::Proof).
 #[derive(Debug, Eq, PartialEq, Clone, Default)]
-pub(crate) struct ProofEvaluations {
+pub(crate) struct ProofEvaluations<F: PrimeField> {
     // Evaluation of the witness polynomial for the left wire at `z`
-    pub(crate) a_eval: BlsScalar,
+    pub(crate) a_eval: F,
     // Evaluation of the witness polynomial for the right wire at `z`
-    pub(crate) b_eval: BlsScalar,
+    pub(crate) b_eval: F,
     // Evaluation of the witness polynomial for the output wire at `z`
-    pub(crate) c_eval: BlsScalar,
+    pub(crate) c_eval: F,
     // Evaluation of the witness polynomial for the fourth wire at `z`
-    pub(crate) d_eval: BlsScalar,
+    pub(crate) d_eval: F,
     //
-    pub(crate) a_next_eval: BlsScalar,
+    pub(crate) a_next_eval: F,
     //
-    pub(crate) b_next_eval: BlsScalar,
+    pub(crate) b_next_eval: F,
     // Evaluation of the witness polynomial for the fourth wire at `z * root of
     // unity`
-    pub(crate) d_next_eval: BlsScalar,
+    pub(crate) d_next_eval: F,
     // Evaluation of the arithmetic selector polynomial at `z`
-    pub(crate) q_arith_eval: BlsScalar,
+    pub(crate) q_arith_eval: F,
     //
-    pub(crate) q_c_eval: BlsScalar,
+    pub(crate) q_c_eval: F,
     //
-    pub(crate) q_l_eval: BlsScalar,
+    pub(crate) q_l_eval: F,
     //
-    pub(crate) q_r_eval: BlsScalar,
+    pub(crate) q_r_eval: F,
     // Evaluation of the left sigma polynomial at `z`
-    pub(crate) left_sigma_eval: BlsScalar,
+    pub(crate) left_sigma_eval: F,
     // Evaluation of the right sigma polynomial at `z`
-    pub(crate) right_sigma_eval: BlsScalar,
+    pub(crate) right_sigma_eval: F,
     // Evaluation of the out sigma polynomial at `z`
-    pub(crate) out_sigma_eval: BlsScalar,
+    pub(crate) out_sigma_eval: F,
 
     // Evaluation of the linearisation sigma polynomial at `z`
-    pub(crate) lin_poly_eval: BlsScalar,
+    pub(crate) lin_poly_eval: F,
 
     // (Shifted) Evaluation of the permutation polynomial at `z * root of
     // unity`
-    pub(crate) perm_eval: BlsScalar,
-}
-
-impl Serializable<{ 16 * BlsScalar::SIZE }> for ProofEvaluations {
-    type Error = dusk_bytes::Error;
-
-    #[allow(unused_must_use)]
-    fn to_bytes(&self) -> [u8; Self::SIZE] {
-        use dusk_bytes::Write;
-
-        let mut buf = [0u8; Self::SIZE];
-        let mut writer = &mut buf[..];
-        writer.write(&self.a_eval.to_bytes());
-        writer.write(&self.b_eval.to_bytes());
-        writer.write(&self.c_eval.to_bytes());
-        writer.write(&self.d_eval.to_bytes());
-        writer.write(&self.a_next_eval.to_bytes());
-        writer.write(&self.b_next_eval.to_bytes());
-        writer.write(&self.d_next_eval.to_bytes());
-        writer.write(&self.q_arith_eval.to_bytes());
-        writer.write(&self.q_c_eval.to_bytes());
-        writer.write(&self.q_l_eval.to_bytes());
-        writer.write(&self.q_r_eval.to_bytes());
-        writer.write(&self.left_sigma_eval.to_bytes());
-        writer.write(&self.right_sigma_eval.to_bytes());
-        writer.write(&self.out_sigma_eval.to_bytes());
-        writer.write(&self.lin_poly_eval.to_bytes());
-        writer.write(&self.perm_eval.to_bytes());
-
-        buf
-    }
-
-    fn from_bytes(
-        buf: &[u8; Self::SIZE],
-    ) -> Result<ProofEvaluations, Self::Error> {
-        let mut buffer = &buf[..];
-        let a_eval = BlsScalar::from_reader(&mut buffer)?;
-        let b_eval = BlsScalar::from_reader(&mut buffer)?;
-        let c_eval = BlsScalar::from_reader(&mut buffer)?;
-        let d_eval = BlsScalar::from_reader(&mut buffer)?;
-        let a_next_eval = BlsScalar::from_reader(&mut buffer)?;
-        let b_next_eval = BlsScalar::from_reader(&mut buffer)?;
-        let d_next_eval = BlsScalar::from_reader(&mut buffer)?;
-        let q_arith_eval = BlsScalar::from_reader(&mut buffer)?;
-        let q_c_eval = BlsScalar::from_reader(&mut buffer)?;
-        let q_l_eval = BlsScalar::from_reader(&mut buffer)?;
-        let q_r_eval = BlsScalar::from_reader(&mut buffer)?;
-        let left_sigma_eval = BlsScalar::from_reader(&mut buffer)?;
-        let right_sigma_eval = BlsScalar::from_reader(&mut buffer)?;
-        let out_sigma_eval = BlsScalar::from_reader(&mut buffer)?;
-        let lin_poly_eval = BlsScalar::from_reader(&mut buffer)?;
-        let perm_eval = BlsScalar::from_reader(&mut buffer)?;
-
-        Ok(ProofEvaluations {
-            a_eval,
-            b_eval,
-            c_eval,
-            d_eval,
-            a_next_eval,
-            b_next_eval,
-            d_next_eval,
-            q_arith_eval,
-            q_c_eval,
-            q_l_eval,
-            q_r_eval,
-            left_sigma_eval,
-            right_sigma_eval,
-            out_sigma_eval,
-            lin_poly_eval,
-            perm_eval,
-        })
-    }
+    pub(crate) perm_eval: F,
 }
 
 #[cfg(feature = "alloc")]
 
 /// Compute the linearisation polynomial.
-pub(crate) fn compute(
-    domain: &EvaluationDomain,
-    prover_key: &ProverKey,
+pub(crate) fn compute<E: PairingEngine>(
+    domain: &EvaluationDomain<E::Fr>,
+    prover_key: &ProverKey<E::Fr>,
     (
         alpha,
         beta,
@@ -149,22 +80,22 @@ pub(crate) fn compute(
         var_base_separation_challenge,
         z_challenge,
     ): &(
-        BlsScalar,
-        BlsScalar,
-        BlsScalar,
-        BlsScalar,
-        BlsScalar,
-        BlsScalar,
-        BlsScalar,
-        BlsScalar,
+        E::Fr,
+        E::Fr,
+        E::Fr,
+        E::Fr,
+        E::Fr,
+        E::Fr,
+        E::Fr,
+        E::Fr,
     ),
-    w_l_poly: &Polynomial,
-    w_r_poly: &Polynomial,
-    w_o_poly: &Polynomial,
-    w_4_poly: &Polynomial,
-    t_x_poly: &Polynomial,
-    z_poly: &Polynomial,
-) -> (Polynomial, Evaluations) {
+    w_l_poly: &Polynomial<E::Fr>,
+    w_r_poly: &Polynomial<E::Fr>,
+    w_o_poly: &Polynomial<E::Fr>,
+    w_4_poly: &Polynomial<E::Fr>,
+    t_x_poly: &Polynomial<E::Fr>,
+    z_poly: &Polynomial<E::Fr>,
+) -> (Polynomial<E::Fr>, Evaluations<E::Fr>) {
     // Compute evaluations
     let quot_eval = t_x_poly.evaluate(z_challenge);
     let a_eval = w_l_poly.evaluate(z_challenge);
@@ -187,7 +118,7 @@ pub(crate) fn compute(
     let d_next_eval = w_4_poly.evaluate(&(z_challenge * domain.group_gen));
     let perm_eval = z_poly.evaluate(&(z_challenge * domain.group_gen));
 
-    let f_1 = compute_circuit_satisfiability(
+    let f_1 = compute_circuit_satisfiability::<E>(
         (
             range_separation_challenge,
             logic_separation_challenge,
@@ -249,26 +180,26 @@ pub(crate) fn compute(
 }
 
 #[cfg(feature = "alloc")]
-fn compute_circuit_satisfiability(
+fn compute_circuit_satisfiability<E: PairingEngine>(
     (
         range_separation_challenge,
         logic_separation_challenge,
         fixed_base_separation_challenge,
         var_base_separation_challenge,
-    ): (&BlsScalar, &BlsScalar, &BlsScalar, &BlsScalar),
-    a_eval: &BlsScalar,
-    b_eval: &BlsScalar,
-    c_eval: &BlsScalar,
-    d_eval: &BlsScalar,
-    a_next_eval: &BlsScalar,
-    b_next_eval: &BlsScalar,
-    d_next_eval: &BlsScalar,
-    q_arith_eval: &BlsScalar,
-    q_c_eval: &BlsScalar,
-    q_l_eval: &BlsScalar,
-    q_r_eval: &BlsScalar,
-    prover_key: &ProverKey,
-) -> Polynomial {
+    ): (&E::Fr, &E::Fr, &E::Fr, &E::Fr),
+    a_eval: &E::Fr,
+    b_eval: &E::Fr,
+    c_eval: &E::Fr,
+    d_eval: &E::Fr,
+    a_next_eval: &E::Fr,
+    b_next_eval: &E::Fr,
+    d_next_eval: &E::Fr,
+    q_arith_eval: &E::Fr,
+    q_c_eval: &E::Fr,
+    q_l_eval: &E::Fr,
+    q_r_eval: &E::Fr,
+    prover_key: &ProverKey<E::Fr>,
+) -> Polynomial<E::Fr> {
     let a = prover_key.arithmetic.compute_linearisation(
         a_eval,
         b_eval,
