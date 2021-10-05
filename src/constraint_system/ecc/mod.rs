@@ -11,6 +11,7 @@ pub mod scalar_mul;
 
 use crate::constraint_system::{variable::Variable, StandardComposer};
 use ark_ec::PairingEngine;
+use num_traits::{One, Zero};
 
 /// Represents a JubJub point in the circuit
 #[derive(Debug, Clone, Copy)]
@@ -39,7 +40,7 @@ impl Point {
     }
 }
 
-impl StandardComposer {
+impl<E: PairingEngine> StandardComposer<E> {
     /// Converts an JubJubAffine into a constraint system Point
     /// without constraining the values
     pub fn add_affine(&mut self, affine: dusk_jubjub::JubJubAffine) -> Point {

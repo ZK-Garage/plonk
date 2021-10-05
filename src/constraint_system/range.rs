@@ -10,6 +10,7 @@ use crate::constraint_system::{Variable, WireData};
 use alloc::vec::Vec;
 use ark_ec::PairingEngine;
 use dusk_bytes::Serializable;
+use num_traits::{One, Zero};
 
 impl<E: PairingEngine> StandardComposer<E> {
     /// Adds a range-constraint gate that checks and constrains a

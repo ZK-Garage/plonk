@@ -1290,11 +1290,6 @@ mod test {
 // We wil use this helper function to compensate
 use rand_core::RngCore;
 #[allow(dead_code)]
-pub(crate) fn random_scalar<R: RngCore>(rng: &mut R) -> F {
-    F::from_raw([
-        rng.next_u64(),
-        rng.next_u64(),
-        rng.next_u64(),
-        rng.next_u64(),
-    ])
+pub(crate) fn random_scalar<F: PrimeField, R: RngCore>(rng: &mut R) -> F {
+    F::rand(rng)
 }

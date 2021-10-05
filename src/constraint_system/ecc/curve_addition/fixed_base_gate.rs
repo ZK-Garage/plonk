@@ -6,13 +6,13 @@
 
 use crate::constraint_system::StandardComposer;
 use crate::constraint_system::Variable;
-use dusk_bls12_381::E::Fr;
 use ark_ec::PairingEngine;
+use num_traits::{One, Zero};
 
 #[derive(Debug, Clone, Copy)]
 /// Contains all of the components needed to verify that a bit scalar
 /// multiplication was computed correctly
-pub(crate) struct WnafRound {
+pub(crate) struct WnafRound<E: PairingEngine> {
     /// This is the accumulated x coordinate point that we wish to add (so
     /// far.. depends on where you are in the scalar mul) it is linked to
     /// the wnaf entry, so must not be revealed
@@ -38,9 +38,9 @@ pub(crate) struct WnafRound {
     pub xy_beta: E::Fr,
 }
 
-impl <E: PairingEngine> StandardComposer<E> {
+impl<E: PairingEngine> StandardComposer<E> {
     /// Fixed group addition of a jubjub point
-    pub(crate) fn fixed_group_add(&mut self, wnaf_round: WnafRound) {
+    pub(crate) fn fixed_group_add(&mut self, wnaf_round: WnafRound<E>) {
         self.w_l.push(wnaf_round.acc_x);
         self.w_r.push(wnaf_round.acc_y);
         self.w_o.push(wnaf_round.xy_alpha);

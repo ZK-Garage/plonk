@@ -7,6 +7,7 @@
 use crate::constraint_system::StandardComposer;
 use crate::constraint_system::Variable;
 use ark_ec::PairingEngine;
+use num_traits::{One, Zero};
 
 impl<E: PairingEngine> StandardComposer<E> {
     /// Adds a width-3 add gate to the circuit, linking the addition of the

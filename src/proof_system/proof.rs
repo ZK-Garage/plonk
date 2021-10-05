@@ -25,6 +25,7 @@ use ark_poly_commit::sonic_pc::Commitment;
 use merlin::Transcript;
 use rayon::prelude::*;
 use ark_ec::msm::VariableBaseMSM;
+use num_traits::{One, Zero};
 
 /// A Proof is a composition of `Commitment`s to the Witness, Permutation,
 /// Quotient, Shifted and Opening polynomials as well as the
