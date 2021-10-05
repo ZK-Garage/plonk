@@ -4,7 +4,7 @@
 //
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
-use ark_ec::PrimeField;
+use ark_ff::PrimeField;
 
 /// Constants used in the permutation argument to ensure that the wire subsets are disjoint.
 pub(crate) fn K1<F: PrimeField>() -> F {

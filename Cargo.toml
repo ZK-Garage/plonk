@@ -28,10 +28,11 @@ ark-poly-commit = "0.3"
 ark-serialize = "0.3"
 merlin = {version = "3.0", default-features = false}
 rand_core = {version="0.6", default-features=false}
-itertools = {version = "0.9", default-features = false}
-hashbrown = {version = "0.9", default-features=false, features = ["ahash"]}
+itertools = {version = "0.10.1", default-features = false}
+hashbrown = {version = "0.11.2", default-features=false, features = ["ahash"]}
 rayon = {version = "1.3", optional = true}
 cfg-if = "1.0"
+num-traits = "0.2.14"
 
 [dev-dependencies]
 tempdir = "0.3"

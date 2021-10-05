@@ -8,9 +8,9 @@ use crate::constraint_system::ecc::curve_addition::fixed_base_gate::WnafRound;
 use crate::constraint_system::ecc::Point;
 use crate::constraint_system::{variable::Variable, StandardComposer};
 use alloc::vec::Vec;
-use dusk_bls12_381::E::Fr;
-use dusk_bytes::Serializable;
+use ark_ec::PairingEngine;
 use dusk_jubjub::{JubJubAffine, JubJubExtended, JubJubScalar};
+use num_traits::{One, Zero};
 
 fn compute_wnaf_point_multiples(
     generator: JubJubExtended,
@@ -27,7 +27,7 @@ fn compute_wnaf_point_multiples(
     dusk_jubjub::batch_normalize(&mut multiples).collect()
 }
 
-impl StandardComposer {
+impl<E: PairingEngine> <StandardComposer> {
     /// Adds an elliptic curve Scalar multiplication gate to the circuit
     /// description.
     ///

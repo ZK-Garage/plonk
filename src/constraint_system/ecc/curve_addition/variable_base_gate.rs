@@ -6,10 +6,10 @@
 
 use crate::constraint_system::ecc::Point;
 use crate::constraint_system::StandardComposer;
-use dusk_bls12_381::E::Fr;
 use dusk_jubjub::{JubJubAffine, JubJubExtended};
+use ark_ec::PairingEngine;
 
-impl StandardComposer {
+impl <E: PairingEngine> StandardComposer<E> {
     /// Adds two curve points together using a curve addition gate
     /// Note that since the points are not fixed the generator is not a part of
     /// the circuit description, however it is less efficient for a program

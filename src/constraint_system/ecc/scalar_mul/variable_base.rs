@@ -7,10 +7,10 @@
 use crate::constraint_system::ecc::Point;
 use crate::constraint_system::{variable::Variable, StandardComposer};
 use alloc::vec::Vec;
-use dusk_bls12_381::E::Fr;
-use dusk_bytes::Serializable;
+use ark_ec::PairingEngine;
+use num_traits::{One, Zero};
 
-impl StandardComposer {
+impl<E: PairingEngine> StandardComposer<E> {
     /// Adds a variable-base scalar multiplication to the circuit description.
     ///
     /// # Note
@@ -71,7 +71,7 @@ impl StandardComposer {
         for (power, bit) in scalar_bits_var.iter().enumerate() {
             self.boolean_gate(*bit);
 
-            let two_pow = E::Fr::pow_of_2(power as u64);
+            let two_pow = E::Fr::pow(power as u64);
 
             let q_l_a = (two_pow, *bit);
             let q_r_b = (E::Fr::one(), accumulator_var);
@@ -104,7 +104,6 @@ fn scalar_to_bits(scalar: &E::Fr) -> [u8; 256] {
 mod tests {
     use super::*;
     use crate::constraint_system::helper::*;
-    use dusk_bls12_381::E::Fr;
     use dusk_jubjub::GENERATOR;
     use dusk_jubjub::{JubJubAffine, JubJubExtended, JubJubScalar};
     #[test]

@@ -49,6 +49,7 @@ impl<E: PairingEngine> StandardComposer<E> {
 mod tests {
     use super::super::helper::*;
     use ark_ec::PairingEngine;
+    use ark_ec::bls12::Bls12;
     #[test]
     fn test_correct_bool_gate() {
         let res = gadget_tester(

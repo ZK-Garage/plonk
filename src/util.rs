@@ -6,14 +6,15 @@
 
 use alloc::vec::Vec;
 use rand_core::{CryptoRng, RngCore};
-use ark_ec::{PairingEngine};
+use ark_ec::PairingEngine;
 use ark_ff::PrimeField;
+
 
 /// Returns a vector of BlsScalars of increasing powers of x from x^0 to x^d.
 pub(crate) fn powers_of<F: PrimeField>(
     scalar: &F,
     max_degree: usize,
-) -> Vec<BlsScalar> {
+) -> Vec<E::Fr> {
     let mut powers = Vec::with_capacity(max_degree + 1);
     powers.push(F::one());
     for i in 1..=max_degree {
