@@ -4,31 +4,32 @@
 //
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
-use crate::fft::{Evaluations, Polynomial};
-use dusk_bls12_381::BlsScalar;
+use ark_ff::PrimeField;
+use ark_poly::polynomial::univariate::DensePolynomial as Polynomial;
+use ark_poly::Evaluations;
 use dusk_jubjub::EDWARDS_D;
 
 #[derive(Debug, Eq, PartialEq, Clone)]
-pub(crate) struct ProverKey {
-    pub(crate) q_l: (Polynomial, Evaluations),
-    pub(crate) q_r: (Polynomial, Evaluations),
-    pub(crate) q_c: (Polynomial, Evaluations),
-    pub(crate) q_fixed_group_add: (Polynomial, Evaluations),
+pub(crate) struct ProverKey<F: PrimeField> {
+    pub(crate) q_l: (Polynomial<F>, Evaluations<F>),
+    pub(crate) q_r: (Polynomial<F>, Evaluations<F>),
+    pub(crate) q_c: (Polynomial<F>, Evaluations<F>),
+    pub(crate) q_fixed_group_add: (Polynomial<F>, Evaluations<F>),
 }
 
-impl ProverKey {
+impl<F: PrimeField> ProverKey<F> {
     pub(crate) fn compute_quotient_i(
         &self,
         index: usize,
-        ecc_separation_challenge: &BlsScalar,
-        w_l_i: &BlsScalar,      // acc_x or curr_x
-        w_l_i_next: &BlsScalar, //  // next_x
-        w_r_i: &BlsScalar,      // acc_y or curr_y
-        w_r_i_next: &BlsScalar, // next_y
-        w_o_i: &BlsScalar,      // xy_alpha
-        w_4_i: &BlsScalar,      // accumulated_bit
-        w_4_i_next: &BlsScalar, // accumulated_bit_next
-    ) -> BlsScalar {
+        ecc_separation_challenge: &F,
+        w_l_i: &F,      // acc_x or curr_x
+        w_l_i_next: &F, //  // next_x
+        w_r_i: &F,      // acc_y or curr_y
+        w_r_i_next: &F, // next_y
+        w_o_i: &F,      // xy_alpha
+        w_4_i: &F,      // accumulated_bit
+        w_4_i_next: &F, // accumulated_bit_next
+    ) -> F {
         let q_fixed_group_add_i = &self.q_fixed_group_add.1[index];
         let q_c_i = &self.q_c.1[index];
 
@@ -56,8 +57,7 @@ impl ProverKey {
         let bit_consistency = check_bit_consistency(bit);
 
         // Derive y_alpha and x_alpha from bit
-        let y_alpha =
-            bit.square() * (y_beta - BlsScalar::one()) + BlsScalar::one();
+        let y_alpha = bit.square() * (y_beta - F::one()) + F::one();
         let x_alpha = bit * x_beta;
 
         // xy_alpha consistency check
@@ -85,18 +85,18 @@ impl ProverKey {
 
     pub(crate) fn compute_linearisation(
         &self,
-        ecc_separation_challenge: &BlsScalar,
-        a_eval: &BlsScalar,
-        a_next_eval: &BlsScalar,
-        b_eval: &BlsScalar,
-        b_next_eval: &BlsScalar,
-        c_eval: &BlsScalar,
-        d_eval: &BlsScalar,
-        d_next_eval: &BlsScalar,
-        q_l_eval: &BlsScalar,
-        q_r_eval: &BlsScalar,
-        q_c_eval: &BlsScalar,
-    ) -> Polynomial {
+        ecc_separation_challenge: &F,
+        a_eval: &F,
+        a_next_eval: &F,
+        b_eval: &F,
+        b_next_eval: &F,
+        c_eval: &F,
+        d_eval: &F,
+        d_next_eval: &F,
+        q_l_eval: &F,
+        q_r_eval: &F,
+        q_c_eval: &F,
+    ) -> Polynomial<F> {
         let q_fixed_group_add_poly = &self.q_fixed_group_add.0;
 
         let kappa = ecc_separation_challenge.square();
@@ -120,8 +120,7 @@ impl ProverKey {
         // Check bit consistency
         let bit_consistency = check_bit_consistency(bit);
 
-        let y_alpha =
-            bit.square() * (y_beta_eval - BlsScalar::one()) + BlsScalar::one();
+        let y_alpha = bit.square() * (y_beta_eval - F::one()) + F::one();
 
         let x_alpha = x_beta_eval * bit;
 
@@ -149,16 +148,13 @@ impl ProverKey {
     }
 }
 
-pub(crate) fn extract_bit(
-    curr_acc: &BlsScalar,
-    next_acc: &BlsScalar,
-) -> BlsScalar {
+pub(crate) fn extract_bit<F: PrimeField>(curr_acc: &F, next_acc: &F) -> F {
     // Next - 2 * current
     next_acc - curr_acc - curr_acc
 }
 
 // Ensures that the bit is either +1, -1 or 0
-pub(crate) fn check_bit_consistency(bit: BlsScalar) -> BlsScalar {
-    let one = BlsScalar::one();
+pub(crate) fn check_bit_consistency<F: PrimeField>(bit: F) -> F {
+    let one = F::one();
     bit * (bit - one) * (bit + one)
 }

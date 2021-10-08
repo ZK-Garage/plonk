@@ -4,7 +4,6 @@
 //
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
-#[cfg(feature = "alloc")]
 use ark_poly::{
     EvaluationDomain, Polynomial,
 };
@@ -64,7 +63,6 @@ pub(crate) struct ProofEvaluations<F: PrimeField> {
     pub(crate) perm_eval: F,
 }
 
-#[cfg(feature = "alloc")]
 
 /// Compute the linearisation polynomial.
 pub(crate) fn compute<E: PairingEngine>(
@@ -179,7 +177,6 @@ pub(crate) fn compute<E: PairingEngine>(
     )
 }
 
-#[cfg(feature = "alloc")]
 fn compute_circuit_satisfiability<E: PairingEngine>(
     (
         range_separation_challenge,
