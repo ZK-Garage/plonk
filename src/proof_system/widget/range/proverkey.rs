@@ -4,26 +4,27 @@
 //
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
-use crate::fft::{Evaluations, Polynomial};
-use dusk_bls12_381::BlsScalar;
+use ark_ff::PrimeField;
+use ark_poly::polynomial::univariate::DensePolynomial as Polynomial;
+use ark_poly::Evaluations;
 
 #[derive(Debug, Eq, PartialEq, Clone)]
-pub(crate) struct ProverKey {
-    pub(crate) q_range: (Polynomial, Evaluations),
+pub(crate) struct ProverKey<F: PrimeField> {
+    pub(crate) q_range: (Polynomial<F>, Evaluations<F>),
 }
 
-impl ProverKey {
+impl<F: PrimeField> ProverKey<F> {
     pub(crate) fn compute_quotient_i(
         &self,
         index: usize,
-        range_separation_challenge: &BlsScalar,
-        w_l_i: &BlsScalar,
-        w_r_i: &BlsScalar,
-        w_o_i: &BlsScalar,
-        w_4_i: &BlsScalar,
-        w_4_i_next: &BlsScalar,
-    ) -> BlsScalar {
-        let four = BlsScalar::from(4);
+        range_separation_challenge: &F,
+        w_l_i: &F,
+        w_r_i: &F,
+        w_o_i: &F,
+        w_4_i: &F,
+        w_4_i_next: &F,
+    ) -> F {
+        let four = F::from(4);
         let q_range_i = &self.q_range.1[index];
 
         let kappa = range_separation_challenge.square();
@@ -42,14 +43,14 @@ impl ProverKey {
 
     pub(crate) fn compute_linearisation(
         &self,
-        range_separation_challenge: &BlsScalar,
-        a_eval: &BlsScalar,
-        b_eval: &BlsScalar,
-        c_eval: &BlsScalar,
-        d_eval: &BlsScalar,
-        d_next_eval: &BlsScalar,
+        range_separation_challenge: &F,
+        a_eval: &F,
+        b_eval: &F,
+        c_eval: &F,
+        d_eval: &F,
+        d_next_eval: &F,
     ) -> Polynomial {
-        let four = BlsScalar::from(4);
+        let four = F::from(4);
         let q_range_poly = &self.q_range.0;
 
         let kappa = range_separation_challenge.square();
@@ -71,9 +72,9 @@ impl ProverKey {
 }
 
 // Computes f(f-1)(f-2)(f-3)
-pub(crate) fn delta(f: BlsScalar) -> BlsScalar {
-    let f_1 = f - BlsScalar::one();
-    let f_2 = f - BlsScalar::from(2);
-    let f_3 = f - BlsScalar::from(3);
+pub(crate) fn delta<F: PrimeField>(f: F) -> F {
+    let f_1 = f - F::one();
+    let f_2 = f - F::from(2 as u64);
+    let f_3 = f - F::from(3 as u64);
     f * f_1 * f_2 * f_3
 }
