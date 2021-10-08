@@ -27,7 +27,7 @@ fn compute_wnaf_point_multiples(
     dusk_jubjub::batch_normalize(&mut multiples).collect()
 }
 
-impl<E: PairingEngine> <StandardComposer> {
+impl<E: PairingEngine> StandardComposer<E> {
     /// Adds an elliptic curve Scalar multiplication gate to the circuit
     /// description.
     ///
