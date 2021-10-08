@@ -4,10 +4,10 @@
 //
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
-use ark_poly_commit::sonic_pc::Commitment;
 use crate::permutation::constants::{K1, K2, K3};
 use crate::proof_system::linearisation_poly::ProofEvaluations;
 use ark_ec::PairingEngine;
+use ark_poly_commit::sonic_pc::Commitment;
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub(crate) struct VerifierKey<E: PairingEngine> {
@@ -16,8 +16,6 @@ pub(crate) struct VerifierKey<E: PairingEngine> {
     pub(crate) out_sigma: Commitment<E>,
     pub(crate) fourth_sigma: Commitment<E>,
 }
-
-
 
 impl<E: PairingEngine> VerifierKey<E> {
     pub(crate) fn compute_linearisation_commitment(

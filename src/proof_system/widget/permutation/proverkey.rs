@@ -7,8 +7,7 @@
 use crate::permutation::constants::{K1, K2, K3};
 use ark_ff::PrimeField;
 use ark_poly::polynomial::univariate::DensePolynomial as Polynomial;
-use ark_poly::{Radix2EvaluationDomain as EvaluationDomain, Evaluations};
-
+use ark_poly::{Evaluations, Radix2EvaluationDomain as EvaluationDomain};
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub(crate) struct ProverKey<F: PrimeField> {
@@ -102,11 +101,7 @@ impl<F: PrimeField> ProverKey<F> {
         -product
     }
     // L_1(X)[Z(X) - 1]
-    fn compute_quotient_term_check_one_i(
-        &self,
-        z_i: &F,
-        l1_alpha_sq: &F,
-    ) -> F {
+    fn compute_quotient_term_check_one_i(&self, z_i: &F, l1_alpha_sq: &F) -> F {
         (z_i - F::one()) * l1_alpha_sq
     }
 
@@ -114,17 +109,8 @@ impl<F: PrimeField> ProverKey<F> {
         &self,
         z_challenge: &F,
         (alpha, beta, gamma): (&F, &F, &F),
-        (a_eval, b_eval, c_eval, d_eval): (
-            &F,
-            &F,
-            &F,
-            &F,
-        ),
-        (sigma_1_eval, sigma_2_eval, sigma_3_eval): (
-            &F,
-            &F,
-            &F,
-        ),
+        (a_eval, b_eval, c_eval, d_eval): (&F, &F, &F, &F),
+        (sigma_1_eval, sigma_2_eval, sigma_3_eval): (&F, &F, &F),
         z_eval: &F,
         z_poly: &Polynomial<F>,
     ) -> Polynomial<F> {
@@ -157,12 +143,7 @@ impl<F: PrimeField> ProverKey<F> {
     // gamma)(c_eval + beta * K2 * z_challenge + gamma) * alpha z(X)
     fn compute_lineariser_identity_range_check(
         &self,
-        (a_eval, b_eval, c_eval, d_eval): (
-            &F,
-            &F,
-            &F,
-            &F,
-        ),
+        (a_eval, b_eval, c_eval, d_eval): (&F, &F, &F, &F),
         z_challenge: &F,
         (alpha, beta, gamma): (&F, &F, &F),
         z_poly: &Polynomial<F>,

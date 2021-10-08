@@ -9,13 +9,12 @@ pub mod ecc;
 pub mod logic;
 pub mod permutation;
 pub mod range;
-use crate::{
-    error::Error,
-    fft::{EvaluationDomain, Evaluations, Polynomial},
-    transcript::TranscriptProtocol,
-};
+use crate::{error::Error, transcript::TranscriptProtocol};
 use ark_ec::PairingEngine;
 use ark_ff::PrimeField;
+use ark_poly::{
+    Evaluations, Polynomial, Radix2EvaluationDomain as EvaluationDomain,
+};
 use ark_poly_commit::sonic_pc::Commitment;
 use merlin::Transcript;
 
@@ -67,7 +66,7 @@ impl<E: PairingEngine> VerifierKey<E> {
         right_sigma: Commitment<E>,
         out_sigma: Commitment<E>,
         fourth_sigma: Commitment<E>,
-    ) -> VerifierKey {
+    ) -> VerifierKey<E> {
         let arithmetic = arithmetic::VerifierKey {
             q_m,
             q_l,
@@ -181,7 +180,7 @@ impl<F: PrimeField> ProverKey<F> {
         17
     }
 
-    pub(crate) fn v_h_coset_4n(&self) -> &Evaluations {
+    pub(crate) fn v_h_coset_4n(&self) -> &Evaluations<F> {
         &self.v_h_coset_4n
     }
 }

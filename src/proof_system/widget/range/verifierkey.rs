@@ -4,18 +4,15 @@
 //
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
-use ark_poly_commit::sonic_pc::Commitment;
 use crate::proof_system::linearisation_poly::ProofEvaluations;
 use crate::proof_system::widget::range::proverkey::delta;
 use ark_ec::PairingEngine;
-
-
+use ark_poly_commit::sonic_pc::Commitment;
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub(crate) struct VerifierKey<E: PairingEngine> {
     pub(crate) q_range: Commitment<E>,
 }
-
 
 impl<E: PairingEngine> VerifierKey<E> {
     pub(crate) fn compute_linearisation_commitment(
@@ -32,13 +29,11 @@ impl<E: PairingEngine> VerifierKey<E> {
         let kappa_cu = kappa_sq * kappa;
 
         let b_1 = delta(evaluations.c_eval - (four * evaluations.d_eval));
-        let b_2 =
-            delta(evaluations.b_eval - four * evaluations.c_eval) * kappa;
-        let b_3 = delta(evaluations.a_eval - four * evaluations.b_eval)
-            * kappa_sq;
-        let b_4 =
-            delta(evaluations.d_next_eval - (four * evaluations.a_eval))
-                * kappa_cu;
+        let b_2 = delta(evaluations.b_eval - four * evaluations.c_eval) * kappa;
+        let b_3 =
+            delta(evaluations.a_eval - four * evaluations.b_eval) * kappa_sq;
+        let b_4 = delta(evaluations.d_next_eval - (four * evaluations.a_eval))
+            * kappa_cu;
 
         scalars.push((b_1 + b_2 + b_3 + b_4) * range_separation_challenge);
         points.push(self.q_range.0);
