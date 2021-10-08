@@ -8,7 +8,7 @@ use ark_poly_commit::sonic_pc::Commitment;
 use crate::proof_system::linearisation_poly::ProofEvaluations;
 use crate::proof_system::widget::range::proverkey::delta;
 use ark_ec::PairingEngine;
-use ark_poly_commit::sonic_pc::Commitment;
+
 
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]

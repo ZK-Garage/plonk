@@ -49,7 +49,7 @@ impl<F: PrimeField> ProverKey<F> {
         c_eval: &F,
         d_eval: &F,
         d_next_eval: &F,
-    ) -> Polynomial {
+    ) -> Polynomial<F> {
         let four = F::from(4);
         let q_range_poly = &self.q_range.0;
 
