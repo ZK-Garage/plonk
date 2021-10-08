@@ -6,7 +6,7 @@
 
 use ark_ec::PairingEngine;
 use ark_ff::PrimeField;
-use ark_poly_commit::Commitment;
+use ark_poly_commit::sonic_pc::Commitment;
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub(crate) struct VerifierKey<E: PairingEngine> {

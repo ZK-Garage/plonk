@@ -9,7 +9,7 @@ use crate::proof_system::widget::ecc::scalar_mul::fixed_base::proverkey::{
     check_bit_consistency, extract_bit,
 };
 use ark_ec::PairingEngine;
-use ark_poly_commit::Commitment;
+use ark_poly_commit::sonic_pc::Commitment;
 use dusk_jubjub::EDWARDS_D;
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
