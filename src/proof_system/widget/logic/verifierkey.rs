@@ -4,55 +4,48 @@
 //
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
-use ark_poly_commit::Commitment;
+use crate::proof_system::linearisation_poly::ProofEvaluations;
+use crate::proof_system::widget::logic::proverkey::{delta, delta_xor_and};
+use ark_ec::PairingEngine;
+use ark_poly_commit::sonic_pc::Commitment;
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
-pub(crate) struct VerifierKey {
-    pub(crate) q_c: Commitment,
-    pub(crate) q_logic: Commitment,
+pub(crate) struct VerifierKey<E: PairingEngine> {
+    pub(crate) q_c: Commitment<E>,
+    pub(crate) q_logic: Commitment<E>,
 }
 
-#[cfg(feature = "alloc")]
-mod alloc {
-    use super::*;
-    use crate::proof_system::linearisation_poly::ProofEvaluations;
-    use crate::proof_system::widget::logic::proverkey::{delta, delta_xor_and};
-    use ::alloc::vec::Vec;
-    use dusk_bls12_381::{BlsScalar, G1Affine};
+impl<E: PairingEngine> VerifierKey<E> {
+    pub(crate) fn compute_linearisation_commitment(
+        &self,
+        logic_separation_challenge: &E::Fr,
+        scalars: &mut Vec<E::Fr>,
+        points: &mut Vec<E::G1Affine>,
+        evaluations: &ProofEvaluations<E::Fr>,
+    ) {
+        let four = E::Fr::from(4);
 
-    impl VerifierKey {
-        pub(crate) fn compute_linearisation_commitment(
-            &self,
-            logic_separation_challenge: &BlsScalar,
-            scalars: &mut Vec<BlsScalar>,
-            points: &mut Vec<G1Affine>,
-            evaluations: &ProofEvaluations,
-        ) {
-            let four = BlsScalar::from(4);
+        let kappa = logic_separation_challenge.square();
+        let kappa_sq = kappa.square();
+        let kappa_cu = kappa_sq * kappa;
+        let kappa_qu = kappa_cu * kappa;
 
-            let kappa = logic_separation_challenge.square();
-            let kappa_sq = kappa.square();
-            let kappa_cu = kappa_sq * kappa;
-            let kappa_qu = kappa_cu * kappa;
+        let a = evaluations.a_next_eval - four * evaluations.a_eval;
+        let c_0 = delta(a);
 
-            let a = evaluations.a_next_eval - four * evaluations.a_eval;
-            let c_0 = delta(a);
+        let b = evaluations.b_next_eval - four * evaluations.b_eval;
+        let c_1 = delta(b) * kappa;
 
-            let b = evaluations.b_next_eval - four * evaluations.b_eval;
-            let c_1 = delta(b) * kappa;
+        let d = evaluations.d_next_eval - four * evaluations.d_eval;
+        let c_2 = delta(d) * kappa_sq;
 
-            let d = evaluations.d_next_eval - four * evaluations.d_eval;
-            let c_2 = delta(d) * kappa_sq;
+        let w = evaluations.c_eval;
+        let c_3 = (w - a * b) * kappa_cu;
 
-            let w = evaluations.c_eval;
-            let c_3 = (w - a * b) * kappa_cu;
-
-            let c_4 =
-                delta_xor_and(&a, &b, &w, &d, &evaluations.q_c_eval) * kappa_qu;
-            scalars.push(
-                (c_0 + c_1 + c_2 + c_3 + c_4) * logic_separation_challenge,
-            );
-            points.push(self.q_logic.0);
-        }
+        let c_4 =
+            delta_xor_and(&a, &b, &w, &d, &evaluations.q_c_eval) * kappa_qu;
+        scalars
+            .push((c_0 + c_1 + c_2 + c_3 + c_4) * logic_separation_challenge);
+        points.push(self.q_logic.0);
     }
 }

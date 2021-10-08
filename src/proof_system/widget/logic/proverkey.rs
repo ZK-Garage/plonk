@@ -4,30 +4,30 @@
 //
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
-use crate::fft::{Evaluations, Polynomial};
-
-use dusk_bls12_381::BlsScalar;
+use ark_ff::PrimeField;
+use ark_poly::polynomial::univariate::DensePolynomial as Polynomial;
+use ark_poly::Evaluations;
 
 #[derive(Debug, Eq, PartialEq, Clone)]
-pub(crate) struct ProverKey {
-    pub(crate) q_c: (Polynomial, Evaluations),
-    pub(crate) q_logic: (Polynomial, Evaluations),
+pub(crate) struct ProverKey<F: PrimeField> {
+    pub(crate) q_c: (Polynomial<F>, Evaluations<F>),
+    pub(crate) q_logic: (Polynomial<F>, Evaluations<F>),
 }
 
-impl ProverKey {
+impl<F: PrimeField> ProverKey<F> {
     pub(crate) fn compute_quotient_i(
         &self,
         index: usize,
-        logic_separation_challenge: &BlsScalar,
-        w_l_i: &BlsScalar,
-        w_l_i_next: &BlsScalar,
-        w_r_i: &BlsScalar,
-        w_r_i_next: &BlsScalar,
-        w_o_i: &BlsScalar,
-        w_4_i: &BlsScalar,
-        w_4_i_next: &BlsScalar,
-    ) -> BlsScalar {
-        let four = BlsScalar::from(4);
+        logic_separation_challenge: &F,
+        w_l_i: &F,
+        w_l_i_next: &F,
+        w_r_i: &F,
+        w_r_i_next: &F,
+        w_o_i: &F,
+        w_4_i: &F,
+        w_4_i_next: &F,
+    ) -> F {
+        let four = F::from(4 as u64);
 
         let q_logic_i = &self.q_logic.1[index];
         let q_c_i = &self.q_c.1[index];
@@ -56,17 +56,17 @@ impl ProverKey {
 
     pub(crate) fn compute_linearisation(
         &self,
-        logic_separation_challenge: &BlsScalar,
-        a_eval: &BlsScalar,
-        a_next_eval: &BlsScalar,
-        b_eval: &BlsScalar,
-        b_next_eval: &BlsScalar,
-        c_eval: &BlsScalar,
-        d_eval: &BlsScalar,
-        d_next_eval: &BlsScalar,
-        q_c_eval: &BlsScalar,
-    ) -> Polynomial {
-        let four = BlsScalar::from(4);
+        logic_separation_challenge: &F,
+        a_eval: &F,
+        a_next_eval: &F,
+        b_eval: &F,
+        b_next_eval: &F,
+        c_eval: &F,
+        d_eval: &F,
+        d_next_eval: &F,
+        q_c_eval: &F,
+    ) -> Polynomial<F> {
+        let four = F::from(4 as u64);
         let q_logic_poly = &self.q_logic.0;
 
         let kappa = logic_separation_challenge.square();
@@ -95,10 +95,10 @@ impl ProverKey {
 }
 
 // Computes f(f-1)(f-2)(f-3)
-pub(crate) fn delta(f: BlsScalar) -> BlsScalar {
-    let f_1 = f - BlsScalar::one();
-    let f_2 = f - BlsScalar::from(2);
-    let f_3 = f - BlsScalar::from(3);
+pub(crate) fn delta<F: PrimeField>(f: F) -> F {
+    let f_1 = f - F::one();
+    let f_2 = f - F::from(2 as u64);
+    let f_3 = f - F::from(3 as u64);
     f * f_1 * f_2 * f_3
 }
 
@@ -108,20 +108,20 @@ pub(crate) fn delta(f: BlsScalar) -> BlsScalar {
 // E = 3(a+b+c) - 2F
 // F = w[w(4w - 18(a+b) + 81) + 18(a^2 + b^2) - 81(a+b) + 83]
 #[allow(non_snake_case)]
-pub(crate) fn delta_xor_and(
-    a: &BlsScalar,
-    b: &BlsScalar,
-    w: &BlsScalar,
-    c: &BlsScalar,
-    q_c: &BlsScalar,
-) -> BlsScalar {
-    let nine = BlsScalar::from(9);
-    let two = BlsScalar::from(2);
-    let three = BlsScalar::from(3);
-    let four = BlsScalar::from(4);
-    let eighteen = BlsScalar::from(18);
-    let eighty_one = BlsScalar::from(81);
-    let eighty_three = BlsScalar::from(83);
+pub(crate) fn delta_xor_and<F: PrimeField>(
+    a: &F,
+    b: &F,
+    w: &F,
+    c: &F,
+    q_c: &F,
+) -> F {
+    let nine = F::from(9 as u64);
+    let two = F::from(2 as u64);
+    let three = F::from(3 as u64);
+    let four = F::from(4 as u64);
+    let eighteen = F::from(18 as u64);
+    let eighty_one = F::from(81 as u64);
+    let eighty_three = F::from(83 as u64);
 
     let F = w
         * (w * (four * w - eighteen * (a + b) + eighty_one)
