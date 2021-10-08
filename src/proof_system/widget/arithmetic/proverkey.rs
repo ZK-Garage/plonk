@@ -4,29 +4,30 @@
 //
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
-use crate::fft::{Evaluations, Polynomial};
-use dusk_bls12_381::BlsScalar;
+use ark_ff::PrimeField;
+use ark_poly::polynomial::univariate::DensePolynomial as Polynomial;
+use ark_poly::Evaluations;
 
 #[derive(Debug, Eq, PartialEq, Clone)]
-pub(crate) struct ProverKey {
-    pub q_m: (Polynomial, Evaluations),
-    pub q_l: (Polynomial, Evaluations),
-    pub q_r: (Polynomial, Evaluations),
-    pub q_o: (Polynomial, Evaluations),
-    pub q_c: (Polynomial, Evaluations),
-    pub q_4: (Polynomial, Evaluations),
-    pub q_arith: (Polynomial, Evaluations),
+pub(crate) struct ProverKey<F: PrimeField> {
+    pub q_m: (Polynomial<F>, Evaluations<F>),
+    pub q_l: (Polynomial<F>, Evaluations<F>),
+    pub q_r: (Polynomial<F>, Evaluations<F>),
+    pub q_o: (Polynomial<F>, Evaluations<F>),
+    pub q_c: (Polynomial<F>, Evaluations<F>),
+    pub q_4: (Polynomial<F>, Evaluations<F>),
+    pub q_arith: (Polynomial<F>, Evaluations<F>),
 }
 
-impl ProverKey {
+impl<F: PrimeField> ProverKey<F> {
     pub(crate) fn compute_quotient_i(
         &self,
         index: usize,
-        w_l_i: &BlsScalar,
-        w_r_i: &BlsScalar,
-        w_o_i: &BlsScalar,
-        w_4_i: &BlsScalar,
-    ) -> BlsScalar {
+        w_l_i: &F,
+        w_r_i: &F,
+        w_o_i: &F,
+        w_4_i: &F,
+    ) -> F {
         let q_m_i = &self.q_m.1[index];
         let q_l_i = &self.q_l.1[index];
         let q_r_i = &self.q_r.1[index];
@@ -49,12 +50,12 @@ impl ProverKey {
 
     pub(crate) fn compute_linearisation(
         &self,
-        a_eval: &BlsScalar,
-        b_eval: &BlsScalar,
-        c_eval: &BlsScalar,
-        d_eval: &BlsScalar,
-        q_arith_eval: &BlsScalar,
-    ) -> Polynomial {
+        a_eval: &F,
+        b_eval: &F,
+        c_eval: &F,
+        d_eval: &F,
+        q_arith_eval: &F,
+    ) -> Polynomial<F> {
         let q_m_poly = &self.q_m.0;
         let q_l_poly = &self.q_l.0;
         let q_r_poly = &self.q_r.0;
