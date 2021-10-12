@@ -4,17 +4,15 @@
 //
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
-use alloc::vec::Vec;
-use rand_core::{CryptoRng, RngCore};
 use ark_ec::PairingEngine;
 use ark_ff::PrimeField;
-
+use rand_core::RngCore;
 
 /// Returns a vector of BlsScalars of increasing powers of x from x^0 to x^d.
 pub(crate) fn powers_of<F: PrimeField>(
     scalar: &F,
     max_degree: usize,
-) -> Vec<E::Fr> {
+) -> Vec<F> {
     let mut powers = Vec::with_capacity(max_degree + 1);
     powers.push(F::one());
     for i in 1..=max_degree {
@@ -49,6 +47,14 @@ pub(crate) fn slow_multiscalar_mul_single_base<E: PairingEngine>(
     base: E::G1Projective,
 ) -> Vec<E::G1Projective> {
     scalars.iter().map(|s| base.mul(s.into_repr())).collect()
+}
+
+/// This function is only used to generate the SRS.
+pub(crate) fn slow_multibase_mul_single_scalar<E: PairingEngine>(
+    scalar: E::Fr,
+    bases: &[E::G1Projective],
+) -> Vec<E::G1Projective> {
+    bases.iter().map(|b| b.mul(scalar)).collect()
 }
 
 // while we do not have batch inversion for scalars
@@ -90,14 +96,14 @@ pub fn batch_inversion<F: PrimeField>(v: &mut [F]) {
 #[cfg(test)]
 mod test {
     use super::*;
-    use ark_ec::bls12::Bls12;
+    use ark_bls12_381::Fr as BlsScalar;
     #[test]
     fn test_batch_inversion() {
-        let one = Bls12::Fr::from(1);
-        let two = Bls12::Fr::from(2);
-        let three = Bls12::Fr::from(3);
-        let four = Bls12::Fr::from(4);
-        let five = Bls12::Fr::from(5);
+        let one = BlsScalar::from(1);
+        let two = BlsScalar::from(2);
+        let three = BlsScalar::from(3);
+        let four = BlsScalar::from(4);
+        let five = BlsScalar::from(5);
 
         let original_scalars = vec![one, two, three, four, five];
         let mut inverted_scalars = vec![one, two, three, four, five];

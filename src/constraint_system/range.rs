@@ -7,12 +7,12 @@
 use crate::bit_iterator::*;
 use crate::constraint_system::StandardComposer;
 use crate::constraint_system::{Variable, WireData};
-use alloc::vec::Vec;
-use ark_ec::PairingEngine;
-use dusk_bytes::Serializable;
+use ark_ec::{PairingEngine, ProjectiveCurve, TEModelParameters};
 use num_traits::{One, Zero};
 
-impl<E: PairingEngine> StandardComposer<E> {
+impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
+    StandardComposer<E, T, P>
+{
     /// Adds a range-constraint gate that checks and constrains a
     /// [`Variable`] to be inside of the range \[0,num_bits\].
     ///
@@ -194,11 +194,10 @@ impl<E: PairingEngine> StandardComposer<E> {
     }
 }
 
-#[cfg(feature = "std")]
 #[cfg(test)]
-mod tests {
+mod range_gate_tests {
     use super::super::helper::*;
-    use dusk_bls12_381::E::Fr;
+    use ark_bls12_381::Fr as BlsScalar;
 
     #[test]
     fn test_range_constraint() {
@@ -206,7 +205,7 @@ mod tests {
         let res = gadget_tester(
             |composer| {
                 let witness = composer
-                    .add_input(E::Fr::from((u32::max_value() as u64) + 1));
+                    .add_input(BlsScalar::from((u32::max_value() as u64) + 1));
                 composer.range_gate(witness, 32);
             },
             200,
@@ -217,7 +216,7 @@ mod tests {
         let res = gadget_tester(
             |composer| {
                 let witness =
-                    composer.add_input(E::Fr::from(u64::max_value()));
+                    composer.add_input(BlsScalar::from(u64::max_value()));
                 composer.range_gate(witness, 32);
             },
             200,
@@ -228,7 +227,7 @@ mod tests {
         let res = gadget_tester(
             |composer| {
                 let witness =
-                    composer.add_input(E::Fr::from(2u64.pow(34) - 1));
+                    composer.add_input(BlsScalar::from(2u64.pow(34) - 1));
                 composer.range_gate(witness, 34);
             },
             200,
@@ -243,7 +242,7 @@ mod tests {
         let _ok = gadget_tester(
             |composer| {
                 let witness = composer
-                    .add_input(E::Fr::from(u32::max_value() as u64));
+                    .add_input(BlsScalar::from(u32::max_value() as u64));
                 composer.range_gate(witness, 33);
             },
             200,

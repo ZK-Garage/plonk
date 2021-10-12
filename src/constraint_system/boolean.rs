@@ -6,9 +6,11 @@
 
 use crate::constraint_system::StandardComposer;
 use crate::constraint_system::Variable;
-use ark_ec::PairingEngine;
+use ark_ec::{PairingEngine, ProjectiveCurve, TEModelParameters};
 
-impl<E: PairingEngine> StandardComposer<E> {
+impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
+    StandardComposer<E, T, P>
+{
     /// Adds a boolean constraint (also known as binary constraint) where
     /// the gate eq. will enforce that the [`Variable`] received is either `0`
     /// or `1` by adding a constraint in the circuit.
@@ -44,18 +46,16 @@ impl<E: PairingEngine> StandardComposer<E> {
     }
 }
 
-#[cfg(feature = "std")]
 #[cfg(test)]
-mod tests {
+mod boolean_gates_tests {
     use super::super::helper::*;
-    use ark_ec::PairingEngine;
-    use ark_ec::bls12::Bls12;
+    use ark_bls12_381::Fr as BlsScalar;
     #[test]
     fn test_correct_bool_gate() {
         let res = gadget_tester(
             |composer| {
                 let zero = composer.zero_var();
-                let one = composer.add_input(Bls12::Fr::one());
+                let one = composer.add_input(BlsScalar::one());
 
                 composer.boolean_gate(zero);
                 composer.boolean_gate(one);
@@ -69,8 +69,8 @@ mod tests {
     fn test_incorrect_bool_gate() {
         let res = gadget_tester(
             |composer| {
-                let zero = composer.add_input(Bls12::Fr::from(5));
-                let one = composer.add_input(Bls12::Fr::one());
+                let zero = composer.add_input(BlsScalar::from(5));
+                let one = composer.add_input(BlsScalar::one());
 
                 composer.boolean_gate(zero);
                 composer.boolean_gate(one);

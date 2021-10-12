@@ -7,27 +7,30 @@
 use crate::constraint_system::ecc::curve_addition::fixed_base_gate::WnafRound;
 use crate::constraint_system::ecc::Point;
 use crate::constraint_system::{variable::Variable, StandardComposer};
-use alloc::vec::Vec;
-use ark_ec::PairingEngine;
-use dusk_jubjub::{JubJubAffine, JubJubExtended, JubJubScalar};
+use ark_ec::models::twisted_edwards_extended::{GroupAffine, GroupProjective};
+use ark_ec::models::TEModelParameters;
+use ark_ec::{PairingEngine, ProjectiveCurve};
+use ark_ff::{BigInteger, PrimeField};
 use num_traits::{One, Zero};
 
-fn compute_wnaf_point_multiples(
-    generator: JubJubExtended,
-    num_bits: usize,
-) -> Vec<JubJubAffine> {
-    assert!(generator.is_prime_order().unwrap_u8() == 1);
-
-    let mut multiples = vec![JubJubExtended::default(); num_bits];
-    multiples[0] = generator;
-    for i in 1..num_bits {
+fn compute_wnaf_point_multiples<P: TEModelParameters>() -> Vec<GroupAffine<P>> {
+    let mut multiples = vec![
+        GroupProjective::<P>::default();
+        <P::BaseField as PrimeField>::Params::MODULUS_BITS
+            as usize
+    ];
+    let (x, y) = P::AFFINE_GENERATOR_COEFFS;
+    multiples[0] = GroupAffine::new(x, y).into();
+    for i in 1..<P::BaseField as PrimeField>::Params::MODULUS_BITS as usize {
         multiples[i] = multiples[i - 1].double();
     }
 
-    dusk_jubjub::batch_normalize(&mut multiples).collect()
+    ProjectiveCurve::batch_normalization_into_affine(&mut multiples)
 }
 
-impl<E: PairingEngine> StandardComposer<E> {
+impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
+    StandardComposer<E, T, P>
+{
     /// Adds an elliptic curve Scalar multiplication gate to the circuit
     /// description.
     ///
@@ -36,27 +39,22 @@ impl<E: PairingEngine> StandardComposer<E> {
     /// the **ONLY** `generator` inputs that should be passed to this
     /// function as inputs are [`dusk_jubjub::GENERATOR`] or
     /// [`dusk_jubjub::GENERATOR_NUMS`].
-    pub fn fixed_base_scalar_mul(
-        &mut self,
-        jubjub_scalar: Variable,
-        generator: JubJubExtended,
-    ) -> Point {
-        // XXX: we can slice off 3 bits from the top of wnaf, since F_r prime
-        // has 252 bits. XXX :We can also move to base4 and have half
-        // the number of gates since wnaf adjacent entries product is
-        // zero, we will not go over the specified amount
-        let num_bits = 256;
-
+    pub fn fixed_base_scalar_mul(&mut self, jubjub_scalar: Variable) -> Point {
+        let num_bits =
+            <P::BaseField as PrimeField>::Params::MODULUS_BITS as usize;
         // compute 2^iG
-        let mut point_multiples =
-            compute_wnaf_point_multiples(generator, num_bits);
+        let mut point_multiples = compute_wnaf_point_multiples();
         point_multiples.reverse();
 
         // Fetch the raw scalar value as bls scalar, then convert to a jubjub
-        // scalar XXX: Not very Tidy, impl From function in JubJub
+        // scalar
+        // XXX: Not very Tidy, impl From function in JubJub
         let raw_bls_scalar = self.variables.get(&jubjub_scalar).unwrap();
         let raw_jubjub_scalar =
-            JubJubScalar::from_bytes(&raw_bls_scalar.to_bytes()).unwrap();
+            <P::BaseField as PrimeField>::from_le_bytes_mod_order(
+                &raw_bls_scalar.to_bytes_le(),
+            )
+            .unwrap();
 
         // Convert scalar to wnaf_2(k)
         let wnaf_entries = raw_jubjub_scalar.compute_windowed_naf(2);
@@ -64,7 +62,7 @@ impl<E: PairingEngine> StandardComposer<E> {
 
         // Initialise the accumulators
         let mut scalar_acc = vec![E::Fr::zero()];
-        let mut point_acc = vec![JubJubAffine::identity()];
+        let mut point_acc = vec![GroupAffine::<P>::identity()];
 
         // Auxillary point to help with checks on the backend
         let mut xy_alphas = Vec::new();
@@ -73,7 +71,7 @@ impl<E: PairingEngine> StandardComposer<E> {
         for (i, entry) in wnaf_entries.iter().rev().enumerate() {
             // Based on the WNAF, we decide what scalar and point to add
             let (scalar_to_add, point_to_add) = match entry {
-            0 => { (E::Fr::zero(), JubJubAffine::identity())},
+            0 => { (E::Fr::zero(), GroupAffine::<P>::identity())},
             -1 => {(E::Fr::one().neg(), -point_multiples[i])},
             1 => {(E::Fr::one(), point_multiples[i])},
             _ => unreachable!("Currently WNAF_2(k) is supported. The possible values are 1, -1 and 0. Current entry is {}", entry),
@@ -82,8 +80,8 @@ impl<E: PairingEngine> StandardComposer<E> {
             let prev_accumulator = E::Fr::from(2u64) * scalar_acc[i];
             scalar_acc.push(prev_accumulator + scalar_to_add);
             point_acc.push(
-                (JubJubExtended::from(point_acc[i])
-                    + JubJubExtended::from(point_to_add))
+                (GroupProjective::<P>::from(point_acc[i])
+                    + GroupProjective::<P>::from(point_to_add))
                 .into(),
             );
 
@@ -164,13 +162,14 @@ impl<E: PairingEngine> StandardComposer<E> {
 mod tests {
     use super::*;
     use crate::constraint_system::helper::*;
-    use dusk_jubjub::GENERATOR_EXTENDED;
+    use ark_bls12_381::Fr as BlsScalar;
+    use ark_ed_on_bls12_381::{EdwardsAffine, EdwardsParameters, Fr};
 
     #[test]
     fn test_ecc_constraint() {
         let res = gadget_tester(
             |composer| {
-                let scalar = JubJubScalar::from_bytes_wide(&[
+                let scalar = Fr::from_le_bytes_mod_order(&[
                     182, 44, 247, 214, 94, 14, 151, 208, 130, 16, 200, 204,
                     147, 32, 104, 166, 0, 59, 52, 1, 1, 59, 103, 6, 169, 175,
                     51, 101, 234, 180, 125, 14, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -178,14 +177,15 @@ mod tests {
                     0, 0,
                 ]);
                 let bls_scalar =
-                    E::Fr::from_bytes(&scalar.to_bytes()).unwrap();
+                    BlsScalar::from_bytes(&scalar.to_bytes()).unwrap();
                 let secret_scalar = composer.add_input(bls_scalar);
 
-                let expected_point: JubJubAffine =
-                    (GENERATOR_EXTENDED * scalar).into();
+                let (x, y) = EdwardsParameters::AFFINE_GENERATOR_COEFFS;
+                let generator = ark_ed_on_bls12_381::EdwardsAffine::new(x, y);
+                let expected_point: EdwardsAffine = (generator * scalar).into();
 
-                let point_scalar = composer
-                    .fixed_base_scalar_mul(secret_scalar, GENERATOR_EXTENDED);
+                let point_scalar =
+                    composer.fixed_base_scalar_mul(secret_scalar);
 
                 composer
                     .assert_equal_public_point(point_scalar, expected_point);
@@ -199,16 +199,18 @@ mod tests {
     fn test_ecc_constraint_zero() {
         let res = gadget_tester(
             |composer| {
-                let scalar = JubJubScalar::zero();
+                let scalar = Fr::zero();
                 let bls_scalar =
-                    E::Fr::from_bytes(&scalar.to_bytes()).unwrap();
+                    BlsScalar::from_le_bytes_mod_order(&scalar.to_bytes())
+                        .unwrap();
                 let secret_scalar = composer.add_input(bls_scalar);
 
-                let expected_point: JubJubAffine =
-                    (GENERATOR_EXTENDED * scalar).into();
+                let (x, y) = EdwardsParameters::AFFINE_GENERATOR_COEFFS;
+                let generator = ark_ed_on_bls12_381::EdwardsAffine::new(x, y);
+                let expected_point: EdwardsAffine = (generator * scalar).into();
 
-                let point_scalar = composer
-                    .fixed_base_scalar_mul(secret_scalar, GENERATOR_EXTENDED);
+                let point_scalar =
+                    composer.fixed_base_scalar_mul(secret_scalar);
 
                 composer
                     .assert_equal_public_point(point_scalar, expected_point);
@@ -221,19 +223,22 @@ mod tests {
     fn test_ecc_constraint_should_fail() {
         let res = gadget_tester(
             |composer| {
-                let scalar = JubJubScalar::from(100u64);
+                let scalar = Fr::from(100u64);
                 let bls_scalar =
-                    E::Fr::from_bytes(&scalar.to_bytes()).unwrap();
+                    BlsScalar::from_le_bytes_mod_order(&scalar.to_bytes())
+                        .unwrap();
                 let secret_scalar = composer.add_input(bls_scalar);
                 // Fails because we are not multiplying by the GENERATOR, it is
                 // double
+                let (x, y) = EdwardsParameters::AFFINE_GENERATOR_COEFFS;
+                let generator = ark_ed_on_bls12_381::EdwardsAffine::new(x, y);
+                let double_gen = generator.double();
 
-                let double_gen = GENERATOR_EXTENDED.double();
+                let expected_point: GroupAffine<EdwardsParameters> =
+                    (double_gen * scalar).into();
 
-                let expected_point: JubJubAffine = (double_gen * scalar).into();
-
-                let point_scalar = composer
-                    .fixed_base_scalar_mul(secret_scalar, GENERATOR_EXTENDED);
+                let point_scalar =
+                    composer.fixed_base_scalar_mul(secret_scalar);
 
                 composer
                     .assert_equal_public_point(point_scalar, expected_point);
@@ -247,13 +252,19 @@ mod tests {
     fn test_point_addition() {
         let res = gadget_tester(
             |composer| {
-                let point_a = GENERATOR_EXTENDED;
+                let (x, y) = EdwardsParameters::AFFINE_GENERATOR_COEFFS;
+                let generator = ark_ed_on_bls12_381::EdwardsAffine::new(x, y);
+
+                let point_a = generator;
                 let point_b = point_a.double();
                 let expected_point = point_a + point_b;
 
-                let affine_point_a: JubJubAffine = point_a.into();
-                let affine_point_b: JubJubAffine = point_b.into();
-                let affine_expected_point: JubJubAffine = expected_point.into();
+                let affine_point_a: GroupAffine<EdwardsParameters> =
+                    point_a.into();
+                let affine_point_b: GroupAffine<EdwardsParameters> =
+                    point_b.into();
+                let affine_expected_point: GroupAffine<EdwardsParameters> =
+                    expected_point.into();
 
                 let var_point_a_x = composer.add_input(affine_point_a.get_x());
                 let var_point_a_y = composer.add_input(affine_point_a.get_y());
@@ -284,24 +295,30 @@ mod tests {
     fn test_pedersen_hash() {
         let res = gadget_tester(
             |composer| {
+                let (x, y) = EdwardsParameters::AFFINE_GENERATOR_COEFFS;
+                let generator = ark_ed_on_bls12_381::EdwardsAffine::new(x, y);
                 // First component
-                let scalar_a = JubJubScalar::from(112233u64);
+                let scalar_a = Fr::from(112233u64);
                 let bls_scalar =
-                    E::Fr::from_bytes(&scalar_a.to_bytes()).unwrap();
+                    BlsScalar::from_le_bytes_mod_order(&scalar_a.to_bytes())
+                        .unwrap();
                 let secret_scalar_a = composer.add_input(bls_scalar);
-                let point_a = GENERATOR_EXTENDED;
-                let c_a: JubJubAffine = (point_a * scalar_a).into();
+                let point_a = generator;
+                let c_a: GroupAffine<EdwardsParameters> =
+                    (point_a * scalar_a).into();
 
                 // Second component
-                let scalar_b = JubJubScalar::from(445566u64);
+                let scalar_b = Fr::from(445566u64);
                 let bls_scalar =
-                    E::Fr::from_bytes(&scalar_b.to_bytes()).unwrap();
+                    BlsScalar::from_le_bytes_mod_order(&scalar_b.to_bytes())
+                        .unwrap();
                 let secret_scalar_b = composer.add_input(bls_scalar);
                 let point_b = point_a.double() + point_a;
-                let c_b: JubJubAffine = (point_b * scalar_b).into();
+                let c_b: GroupAffine<EdwardsParameters> =
+                    (point_b * scalar_b).into();
 
                 // Expected pedersen hash
-                let expected_point: JubJubAffine =
+                let expected_point: GroupAffine<EdwardsParameters> =
                     (point_a * scalar_a + point_b * scalar_b).into();
 
                 // To check this pedersen commitment, we will need to do:
@@ -309,10 +326,8 @@ mod tests {
                 // - One curve addition
                 //
                 // Scalar multiplications
-                let aG =
-                    composer.fixed_base_scalar_mul(secret_scalar_a, point_a);
-                let bH =
-                    composer.fixed_base_scalar_mul(secret_scalar_b, point_b);
+                let aG = composer.fixed_base_scalar_mul(secret_scalar_a);
+                let bH = composer.fixed_base_scalar_mul(secret_scalar_b);
 
                 // Depending on the context, one can check if the resulting aG
                 // and bH are as expected
@@ -337,36 +352,42 @@ mod tests {
         let res = gadget_tester(
             |composer| {
                 // First component
-                let scalar_a = JubJubScalar::from(25u64);
+                let scalar_a = Fr::from(25u64);
                 let bls_scalar_a =
-                    E::Fr::from_bytes(&scalar_a.to_bytes()).unwrap();
+                    BlsScalar::from_le_bytes_mod_order(&scalar_a.to_bytes())
+                        .unwrap();
                 let secret_scalar_a = composer.add_input(bls_scalar_a);
                 // Second component
-                let scalar_b = JubJubScalar::from(30u64);
+                let scalar_b = Fr::from(30u64);
                 let bls_scalar_b =
-                    E::Fr::from_bytes(&scalar_b.to_bytes()).unwrap();
+                    BlsScalar::from_le_bytes_mod_order(&scalar_b.to_bytes())
+                        .unwrap();
                 let secret_scalar_b = composer.add_input(bls_scalar_b);
                 // Third component
-                let scalar_c = JubJubScalar::from(10u64);
+                let scalar_c = Fr::from(10u64);
                 let bls_scalar_c =
-                    E::Fr::from_bytes(&scalar_c.to_bytes()).unwrap();
+                    BlsScalar::from_le_bytes_mod_order(&scalar_c.to_bytes())
+                        .unwrap();
                 let secret_scalar_c = composer.add_input(bls_scalar_c);
                 // Fourth component
-                let scalar_d = JubJubScalar::from(45u64);
+                let scalar_d = Fr::from(45u64);
                 let bls_scalar_d =
-                    E::Fr::from_bytes(&scalar_d.to_bytes()).unwrap();
+                    BlsScalar::from_le_bytes_mod_order(&scalar_d.to_bytes())
+                        .unwrap();
                 let secret_scalar_d = composer.add_input(bls_scalar_d);
 
-                let gen = GENERATOR_EXTENDED;
-                let expected_lhs: JubJubAffine =
+                let (x, y) = EdwardsParameters::AFFINE_GENERATOR_COEFFS;
+                let gen = ark_ed_on_bls12_381::EdwardsAffine::new(x, y);
+
+                let expected_lhs: GroupAffine<EdwardsParameters> =
                     (gen * (scalar_a + scalar_b)).into();
-                let expected_rhs: JubJubAffine =
+                let expected_rhs: GroupAffine<EdwardsParameters> =
                     (gen * (scalar_c + scalar_d)).into();
 
-                let P1 = composer.fixed_base_scalar_mul(secret_scalar_a, gen);
-                let P2 = composer.fixed_base_scalar_mul(secret_scalar_b, gen);
-                let P3 = composer.fixed_base_scalar_mul(secret_scalar_c, gen);
-                let P4 = composer.fixed_base_scalar_mul(secret_scalar_d, gen);
+                let P1 = composer.fixed_base_scalar_mul(secret_scalar_a);
+                let P2 = composer.fixed_base_scalar_mul(secret_scalar_b);
+                let P3 = composer.fixed_base_scalar_mul(secret_scalar_c);
+                let P4 = composer.fixed_base_scalar_mul(secret_scalar_d);
 
                 let commitment_a = composer.point_addition_gate(P1, P2);
                 let commitment_b = composer.point_addition_gate(P3, P4);

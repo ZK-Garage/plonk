@@ -61,13 +61,11 @@ bit_iterator!(u8, BitIterator8);
 #[cfg(test)]
 mod test {
     use super::*;
-    use alloc::vec::Vec;
-    use dusk_bls12_381::BlsScalar;
-    use dusk_bytes::Serializable;
+    use ark_ec::bls12::Bls12;
 
     #[test]
     fn test_bit_iterator8() {
-        let mut a = BitIterator8::new(BlsScalar::one().to_bytes());
+        let mut a = BitIterator8::new(Bls12::Fr::one().to_bytes());
         let expected = "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001";
         for e in expected.chars() {
             assert!(a.next().unwrap() == (e == '1'));

@@ -6,14 +6,14 @@
 
 //! Methods to preprocess the constraint system for use in a proof
 
-use ark_poly_commit::CommitKey;
 use crate::constraint_system::StandardComposer;
+use ark_poly_commit::CommitKey;
 
 use crate::error::Error;
-use ark_poly::{EvaluationDomain, Evaluations, Polynomial};
-use ark_ff::PrimeField;
-use arc_ec::PairingEngine;
 use crate::proof_system::{widget, ProverKey};
+use arc_ec::PairingEngine;
+use ark_ff::PrimeField;
+use ark_poly::{EvaluationDomain, Evaluations, Polynomial};
 use merlin::Transcript;
 
 /// Struct that contains all of the selector and permutation [`Polynomial`]s in
@@ -264,7 +264,11 @@ impl<E: PairingEngine> StandardComposer<E> {
         commit_key: &CommitKey<E>,
         transcript: &mut Transcript,
     ) -> Result<
-        (widget::VerifierKey<E>, SelectorPolynomials<E::Fr>, EvaluationDomain<E::Fr>),
+        (
+            widget::VerifierKey<E>,
+            SelectorPolynomials<E::Fr>,
+            EvaluationDomain<E::Fr>,
+        ),
         Error,
     > {
         let domain = EvaluationDomain::new(self.circuit_size())?;

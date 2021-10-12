@@ -4,14 +4,14 @@
 //
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
-use ark_poly_commity::{CommitterKey, VerifierKey as OpeningKey};
 use crate::constraint_system::StandardComposer;
 use crate::error::Error;
 use crate::proof_system::widget::VerifierKey;
 use crate::proof_system::Proof;
-use merlin::Transcript;
 use ark_ec::PairingEngine;
 use ark_ff::PrimeField;
+use ark_poly_commity::{CommitterKey, VerifierKey as OpeningKey};
+use merlin::Transcript;
 
 /// Abstraction structure designed verify [`Proof`]s.
 #[allow(missing_debug_implementations)]
@@ -29,7 +29,7 @@ pub struct Verifier<E: PairingEngine> {
 }
 
 impl<E: PairingEngine> Default for Verifier<E> {
-    fn default() -> Verifier::<E> {
+    fn default() -> Verifier<E> {
         Verifier::new(b"plonk")
     }
 }
@@ -66,7 +66,10 @@ impl<E: PairingEngine> Verifier<E> {
     /// Preprocess a circuit to obtain a [`VerifierKey`] and a circuit
     /// descriptor so that the `Verifier` instance can verify [`Proof`]s
     /// for this circuit descriptor instance.
-    pub fn preprocess(&mut self, commit_key: &CommitterKey<E>) -> Result<(), Error> {
+    pub fn preprocess(
+        &mut self,
+        commit_key: &CommitterKey<E>,
+    ) -> Result<(), Error> {
         let vk = self.cs.preprocess_verifier(
             commit_key,
             &mut self.preprocessed_transcript,

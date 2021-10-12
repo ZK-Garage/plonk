@@ -4,11 +4,9 @@
 //
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
-use ark_poly::{
-    EvaluationDomain, Polynomial,
-};
+use ark_poly::{EvaluationDomain, Polynomial};
 
-ark_poly_commit::ProverKey,
+//ark_poly_commit::ProverKey;
 
 use ark_ec::PairingEngine;
 use ark_ff::PrimeField;
@@ -63,7 +61,6 @@ pub(crate) struct ProofEvaluations<F: PrimeField> {
     pub(crate) perm_eval: F,
 }
 
-
 /// Compute the linearisation polynomial.
 pub(crate) fn compute<E: PairingEngine>(
     domain: &EvaluationDomain<E::Fr>,
@@ -77,16 +74,7 @@ pub(crate) fn compute<E: PairingEngine>(
         fixed_base_separation_challenge,
         var_base_separation_challenge,
         z_challenge,
-    ): &(
-        E::Fr,
-        E::Fr,
-        E::Fr,
-        E::Fr,
-        E::Fr,
-        E::Fr,
-        E::Fr,
-        E::Fr,
-    ),
+    ): &(E::Fr, E::Fr, E::Fr, E::Fr, E::Fr, E::Fr, E::Fr, E::Fr),
     w_l_poly: &Polynomial<E::Fr>,
     w_r_poly: &Polynomial<E::Fr>,
     w_o_poly: &Polynomial<E::Fr>,

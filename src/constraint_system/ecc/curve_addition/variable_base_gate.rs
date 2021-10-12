@@ -6,10 +6,13 @@
 
 use crate::constraint_system::ecc::Point;
 use crate::constraint_system::StandardComposer;
-use dusk_jubjub::{JubJubAffine, JubJubExtended};
-use ark_ec::PairingEngine;
+use ark_ec::models::twisted_edwards_extended::GroupAffine;
+use ark_ec::models::TEModelParameters;
+use ark_ec::{PairingEngine, ProjectiveCurve};
 
-impl <E: PairingEngine> StandardComposer<E> {
+impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
+    StandardComposer<E, T, P>
+{
     /// Adds two curve points together using a curve addition gate
     /// Note that since the points are not fixed the generator is not a part of
     /// the circuit description, however it is less efficient for a program
@@ -35,10 +38,10 @@ impl <E: PairingEngine> StandardComposer<E> {
         let x_2_scalar = self.variables.get(&x_2).unwrap();
         let y_2_scalar = self.variables.get(&y_2).unwrap();
 
-        let p1 = JubJubAffine::from_raw_unchecked(*x_1_scalar, *y_1_scalar);
-        let p2 = JubJubAffine::from_raw_unchecked(*x_2_scalar, *y_2_scalar);
+        let p1 = GroupAffine::<P>::new(*x_1_scalar, *y_1_scalar);
+        let p2 = GroupAffine::<P>::new(*x_2_scalar, *y_2_scalar);
 
-        let point: JubJubAffine = (JubJubExtended::from(p1) + p2).into();
+        let point = p1 + p2;
         let x_3_scalar = point.get_x();
         let y_3_scalar = point.get_y();
 
@@ -85,19 +88,21 @@ impl <E: PairingEngine> StandardComposer<E> {
     }
 }
 
-#[cfg(feature = "std")]
 #[cfg(test)]
-mod test {
+mod variable_base_gate_tests {
     use super::*;
     use crate::constraint_system::helper::*;
-    use dusk_jubjub::GENERATOR;
-    use dusk_jubjub::{JubJubAffine, JubJubExtended, EDWARDS_D};
-
+    use ark_bls12_381::Bls12_381;
+    use ark_ed_on_bls12_381::{EdwardsParameters, EdwardsProjective};
     /// Adds two curve points together using the classical point addition
     /// algorithm. This method is slower than WNaf and is just meant to be the
     /// source of truth to test the WNaf method.
     pub fn classical_point_addition(
-        composer: &mut StandardComposer,
+        composer: &mut StandardComposer<
+            Bls12_381,
+            EdwardsProjective,
+            EdwardsParameters,
+        >,
         point_a: Point,
         point_b: Point,
     ) -> Point {
@@ -109,41 +114,46 @@ mod test {
 
         // x1 * y2
         let x1_y2 =
-            composer.mul(E::Fr::one(), x1, y2, E::Fr::zero(), None);
+            composer.mul(Bls12_381::one(), x1, y2, Bls12_381::zero(), None);
         // y1 * x2
         let y1_x2 =
-            composer.mul(E::Fr::one(), y1, x2, E::Fr::zero(), None);
+            composer.mul(Bls12_381::one(), y1, x2, Bls12_381::zero(), None);
         // y1 * y2
         let y1_y2 =
-            composer.mul(E::Fr::one(), y1, y2, E::Fr::zero(), None);
+            composer.mul(Bls12_381::one(), y1, y2, Bls12_381::zero(), None);
         // x1 * x2
         let x1_x2 =
-            composer.mul(E::Fr::one(), x1, x2, E::Fr::zero(), None);
+            composer.mul(Bls12_381::one(), x1, x2, Bls12_381::zero(), None);
         // d x1x2 * y1y2
-        let d_x1_x2_y1_y2 =
-            composer.mul(EDWARDS_D, x1_x2, y1_y2, E::Fr::zero(), None);
+        let d_x1_x2_y1_y2 = composer.mul(
+            EdwardsParameters::COEFF_D,
+            x1_x2,
+            y1_y2,
+            Bls12_381::zero(),
+            None,
+        );
 
         // x1y2 + y1x2
         let x_numerator = composer.add(
-            (E::Fr::one(), x1_y2),
-            (E::Fr::one(), y1_x2),
-            E::Fr::zero(),
+            (Bls12_381::one(), x1_y2),
+            (Bls12_381::one(), y1_x2),
+            Bls12_381::zero(),
             None,
         );
 
         // y1y2 - a * x1x2 (a=-1) => y1y2 + x1x2
         let y_numerator = composer.add(
-            (E::Fr::one(), y1_y2),
-            (E::Fr::one(), x1_x2),
-            E::Fr::zero(),
+            (Bls12_381::one(), y1_y2),
+            (Bls12_381::one(), x1_x2),
+            Bls12_381::zero(),
             None,
         );
 
         // 1 + dx1x2y1y2
         let x_denominator = composer.add(
-            (E::Fr::one(), d_x1_x2_y1_y2),
-            (E::Fr::zero(), composer.zero_var),
-            E::Fr::one(),
+            (Bls12_381::one(), d_x1_x2_y1_y2),
+            (Bls12_381::zero(), composer.zero_var),
+            Bls12_381::one(),
             None,
         );
 
@@ -162,17 +172,17 @@ mod test {
             x_denominator,
             inv_x_denom,
             composer.zero_var,
-            E::Fr::one(),
-            E::Fr::zero(),
-            -E::Fr::one(),
+            Bls12_381::one(),
+            Bls12_381::zero(),
+            -Bls12_381::one(),
             None,
         );
 
         // 1 - dx1x2y1y2
         let y_denominator = composer.add(
-            (-E::Fr::one(), d_x1_x2_y1_y2),
-            (E::Fr::zero(), composer.zero_var),
-            E::Fr::one(),
+            (-Bls12_381::one(), d_x1_x2_y1_y2),
+            (Bls12_381::zero(), composer.zero_var),
+            Bls12_381::one(),
             None,
         );
         let inv_y_denom = composer
@@ -188,26 +198,26 @@ mod test {
             y_denominator,
             inv_y_denom,
             composer.zero_var,
-            E::Fr::one(),
-            E::Fr::zero(),
-            -E::Fr::one(),
+            Bls12_381::one(),
+            Bls12_381::zero(),
+            -Bls12_381::one(),
             None,
         );
 
         // We can now use the inverses
 
         let x_3 = composer.mul(
-            E::Fr::one(),
+            Bls12_381::one(),
             inv_x_denom,
             x_numerator,
-            E::Fr::zero(),
+            Bls12_381::zero(),
             None,
         );
         let y_3 = composer.mul(
-            E::Fr::one(),
+            Bls12_381::one(),
             inv_y_denom,
             y_numerator,
-            E::Fr::zero(),
+            Bls12_381::zero(),
             None,
         );
 
@@ -218,12 +228,10 @@ mod test {
     fn test_curve_addition() {
         let res = gadget_tester(
             |composer| {
-                let expected_point: JubJubAffine =
-                    (JubJubExtended::from(GENERATOR)
-                        + JubJubExtended::from(GENERATOR))
-                    .into();
-                let x = composer.add_input(GENERATOR.get_x());
-                let y = composer.add_input(GENERATOR.get_y());
+                let (x, y) = EdwardsParameters::AFFINE_GENERATOR_COEFFS;
+                let generator = ark_ed_on_bls12_381::EdwardsAffine::new(x, y);
+                let expected_point: ark_ed_on_bls12_381::EdwardsAffine =
+                    generator + generator.into();
                 let point_a = Point { x, y };
                 let point_b = Point { x, y };
 

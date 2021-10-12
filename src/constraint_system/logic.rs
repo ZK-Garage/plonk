@@ -7,10 +7,11 @@
 use crate::bit_iterator::*;
 use crate::constraint_system::StandardComposer;
 use crate::constraint_system::{Variable, WireData};
-use alloc::vec::Vec;
-use ark_ec::PairingEngine;
+use ark_ec::{PairingEngine, ProjectiveCurve, TEModelParameters};
 
-impl<E: PairingEngine> StandardComposer<E> {
+impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
+    StandardComposer<E, T, P>
+{
     /// Performs a logical AND or XOR op between the inputs provided for the
     /// specified number of bits.
     ///
@@ -321,24 +322,23 @@ impl<E: PairingEngine> StandardComposer<E> {
     }
 }
 
-#[cfg(feature = "std")]
 #[cfg(test)]
-mod tests {
+mod logic_gate_tests {
     use super::super::helper::*;
-    use dusk_bls12_381::E::Fr;
+    use ark_bls12_381::Fr as BlsScalar;
 
     #[test]
     fn test_logic_xor_and_constraint() {
         // Should pass since the XOR result is correct and the bit-num is even.
         let res = gadget_tester(
             |composer| {
-                let witness_a = composer.add_input(E::Fr::from(500u64));
-                let witness_b = composer.add_input(E::Fr::from(357u64));
+                let witness_a = composer.add_input(BlsScalar::from(500u64));
+                let witness_b = composer.add_input(BlsScalar::from(357u64));
                 let xor_res = composer.xor_gate(witness_a, witness_b, 10);
                 // Check that the XOR result is indeed what we are expecting.
                 composer.constrain_to_constant(
                     xor_res,
-                    E::Fr::from(500u64 ^ 357u64),
+                    BlsScalar::from(500u64 ^ 357u64),
                     None,
                 );
             },
@@ -349,13 +349,13 @@ mod tests {
         // Should pass since the AND result is correct even the bit-num is even.
         let res = gadget_tester(
             |composer| {
-                let witness_a = composer.add_input(E::Fr::from(469u64));
-                let witness_b = composer.add_input(E::Fr::from(321u64));
+                let witness_a = composer.add_input(BlsScalar::from(469u64));
+                let witness_b = composer.add_input(BlsScalar::from(321u64));
                 let xor_res = composer.and_gate(witness_a, witness_b, 10);
                 // Check that the AND result is indeed what we are expecting.
                 composer.constrain_to_constant(
                     xor_res,
-                    E::Fr::from(469u64 & 321u64),
+                    BlsScalar::from(469u64 & 321u64),
                     None,
                 );
             },
@@ -367,13 +367,13 @@ mod tests {
         // is even.
         let res = gadget_tester(
             |composer| {
-                let witness_a = composer.add_input(E::Fr::from(139u64));
-                let witness_b = composer.add_input(E::Fr::from(33u64));
+                let witness_a = composer.add_input(BlsScalar::from(139u64));
+                let witness_b = composer.add_input(BlsScalar::from(33u64));
                 let xor_res = composer.xor_gate(witness_a, witness_b, 10);
                 // Check that the XOR result is indeed what we are expecting.
                 composer.constrain_to_constant(
                     xor_res,
-                    E::Fr::from(139u64 & 33u64),
+                    BlsScalar::from(139u64 & 33u64),
                     None,
                 );
             },
@@ -384,13 +384,13 @@ mod tests {
         // Should pass even the bitnum is less than the number bit-size
         let res = gadget_tester(
             |composer| {
-                let witness_a = composer.add_input(E::Fr::from(256u64));
-                let witness_b = composer.add_input(E::Fr::from(235u64));
+                let witness_a = composer.add_input(BlsScalar::from(256u64));
+                let witness_b = composer.add_input(BlsScalar::from(235u64));
                 let xor_res = composer.xor_gate(witness_a, witness_b, 2);
                 // Check that the XOR result is indeed what we are expecting.
                 composer.constrain_to_constant(
                     xor_res,
-                    E::Fr::from(256 ^ 235),
+                    BlsScalar::from(256 ^ 235),
                     None,
                 );
             },
@@ -405,13 +405,13 @@ mod tests {
         // Should fail since the bit-num is odd.
         let _ = gadget_tester(
             |composer| {
-                let witness_a = composer.add_input(E::Fr::from(500u64));
-                let witness_b = composer.add_input(E::Fr::from(499u64));
+                let witness_a = composer.add_input(BlsScalar::from(500u64));
+                let witness_b = composer.add_input(BlsScalar::from(499u64));
                 let xor_res = composer.xor_gate(witness_a, witness_b, 9);
                 // Check that the XOR result is indeed what we are expecting.
                 composer.constrain_to_constant(
                     xor_res,
-                    E::Fr::from(7u64),
+                    BlsScalar::from(7u64),
                     None,
                 );
             },

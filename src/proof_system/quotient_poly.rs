@@ -4,14 +4,11 @@
 //
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
-    use ark_poly::{EvaluationDomain, Polynomial},
-use crate::{
-    error::Error,
-    proof_system::ProverKey,
-};
+use crate::{error::Error, proof_system::ProverKey};
 use alloc::vec::Vec;
 use ark_ec::PairingEngine;
 use ark_ff::PrimeField;
+use ark_poly::{EvaluationDomain, Polynomial};
 #[cfg(feature = "std")]
 use rayon::prelude::*;
 
@@ -36,15 +33,7 @@ pub(crate) fn compute<F: PrimeField>(
         logic_challenge,
         fixed_base_challenge,
         var_base_challenge,
-    ): &(
-        F,
-        F,
-        F,
-        F,
-        F,
-        F,
-        F,
-    ),
+    ): &(F, F, F, F, F, F, F),
 ) -> Result<Polynomial<F>, Error> {
     // Compute 4n eval of z(X)
     let domain_4n = EvaluationDomain::new(4 * domain.size())?;
@@ -123,12 +112,7 @@ fn compute_circuit_satisfiability_equation<F: PrimeField>(
         var_base_challenge,
     ): (&F, &F, &F, &F),
     prover_key: &ProverKey<F>,
-    (wl_eval_4n, wr_eval_4n, wo_eval_4n, w4_eval_4n): (
-        &[F],
-        &[F],
-        &[F],
-        &[F],
-    ),
+    (wl_eval_4n, wr_eval_4n, wo_eval_4n, w4_eval_4n): (&[F], &[F], &[F], &[F]),
     pi_poly: &Polynomial<F>,
 ) -> Vec<F> {
     let domain_4n = EvaluationDomain::new(4 * domain.size()).unwrap();
@@ -208,12 +192,7 @@ fn compute_circuit_satisfiability_equation<F: PrimeField>(
 fn compute_permutation_checks<F: PrimeField>(
     domain: &EvaluationDomain<F>,
     prover_key: &ProverKey<F>,
-    (wl_eval_4n, wr_eval_4n, wo_eval_4n, w4_eval_4n): (
-        &[F],
-        &[F],
-        &[F],
-        &[F],
-    ),
+    (wl_eval_4n, wr_eval_4n, wo_eval_4n, w4_eval_4n): (&[F], &[F], &[F], &[F]),
     z_eval_4n: &[F],
     (alpha, beta, gamma): (&F, &F, &F),
 ) -> Vec<F> {

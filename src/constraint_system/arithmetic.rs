@@ -6,10 +6,11 @@
 
 use crate::constraint_system::StandardComposer;
 use crate::constraint_system::Variable;
-use ark_ec::PairingEngine;
-use num_traits::{One, Zero};
+use ark_ec::{PairingEngine, ProjectiveCurve, TEModelParameters};
 
-impl<E: PairingEngine> StandardComposer<E> {
+impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
+    StandardComposer<E, T, P>
+{
     /// Adds a width-3 add gate to the circuit, linking the addition of the
     /// provided inputs, scaled by the selector coefficients with the output
     /// provided.
@@ -24,18 +25,7 @@ impl<E: PairingEngine> StandardComposer<E> {
         q_c: E::Fr,
         pi: Option<E::Fr>,
     ) -> Variable {
-        self.big_add_gate(
-            a,
-            b,
-            c,
-            None,
-            q_l,
-            q_r,
-            q_o,
-            E::Fr::zero(),
-            q_c,
-            pi,
-        )
+        self.big_add_gate(a, b, c, None, q_l, q_r, q_o, E::Fr::zero(), q_c, pi)
     }
 
     /// Adds a width-4 add gate to the circuit and it's corresponding
@@ -314,9 +304,8 @@ impl<E: PairingEngine> StandardComposer<E> {
     }
 }
 
-#[cfg(feature = "std")]
 #[cfg(test)]
-mod tests {
+mod arithmetic_gates_tests {
     use crate::constraint_system::helper::*;
     use ark_ec::bls12::Bls12;
 

@@ -20,11 +20,13 @@
 
 use crate::constraint_system::Variable;
 use crate::permutation::Permutation;
-// use alloc::collections::BTreeMap;
-// use alloc::vec::Vec;
+use ark_ec::models::TEModelParameters;
 use ark_ec::PairingEngine;
+use ark_ec::{AffineCurve, ProjectiveCurve};
+use core::marker::PhantomData;
 use hashbrown::HashMap;
 use num_traits::{One, Zero};
+use std::collections::BTreeMap;
 
 /// The StandardComposer is the circuit-builder tool that the `dusk-plonk`
 /// repository provides so that circuit descriptions can be written, stored and
@@ -51,8 +53,13 @@ use num_traits::{One, Zero};
 /// Each gate or group of gates adds an specific functionallity or operation to
 /// the circuit description, and so, that's why we can understand
 /// the StandardComposer as a builder.
+
 #[derive(Debug)]
-pub struct StandardComposer<E: PairingEngine> {
+pub struct StandardComposer<
+    E: PairingEngine,
+    T: ProjectiveCurve,
+    P: TEModelParameters,
+> {
     /// Number of arithmetic gates in the circuit
     pub(crate) n: usize,
 
@@ -105,9 +112,15 @@ pub struct StandardComposer<E: PairingEngine> {
 
     /// Permutation argument.
     pub(crate) perm: Permutation<E::Fr>,
+
+    // Markers
+    _marker: PhantomData<P>,
+    _marker2: PhantomData<T>,
 }
 
-impl<E: PairingEngine> StandardComposer<E> {
+impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
+    StandardComposer<E, T, P>
+{
     /// Returns the number of gates in the circuit
     pub fn circuit_size(&self) -> usize {
         self.n
@@ -137,13 +150,17 @@ impl<E: PairingEngine> StandardComposer<E> {
     }
 }
 
-impl<E: PairingEngine> Default for StandardComposer<E> {
+impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters> Default
+    for StandardComposer<E, T, P>
+{
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<E: PairingEngine> StandardComposer<E> {
+impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
+    StandardComposer<E, T, P>
+{
     /// Generates a new empty `StandardComposer` with all of it's fields
     /// set to hold an initial capacity of 0.
     ///
@@ -198,6 +215,9 @@ impl<E: PairingEngine> StandardComposer<E> {
             variables: HashMap::with_capacity(expected_size),
 
             perm: Permutation::new(),
+
+            _marker: PhantomData,
+            _marker2: PhantomData,
         };
 
         // Reserve the first variable to be zero
@@ -615,18 +635,24 @@ impl<E: PairingEngine> StandardComposer<E> {
 
 #[cfg(feature = "std")]
 #[cfg(test)]
-mod tests {
+mod general_composer_tests {
     use super::*;
     use crate::constraint_system::helper::*;
     use crate::proof_system::{Prover, Verifier};
-    use ark_poly_commit::PublicParameters;
+    use ark_bls12_381::Bls12_381;
+    use ark_bls12_381::Fr as BlsScalar;
+    use ark_ed_on_bls12_381::{EdwardsParameters, EdwardsProjective};
+    use ark_poly_commit::kzg10::UniversalParams;
     use rand_core::OsRng;
-    use num_traits::{One, Zero};
 
     #[test]
     /// Tests that a circuit initially has 3 gates
     fn test_initial_circuit_size() {
-        let composer: StandardComposer<E::Fr> = StandardComposer::new();
+        let composer: StandardComposer<
+            Bls12_381,
+            EdwardsProjective,
+            EdwardsParameters,
+        > = StandardComposer::new();
         // Circuit size is n+3 because
         // - We have an extra gate which forces the first witness to be zero.
         //   This is used when the advice wire is not being used.
@@ -642,7 +668,11 @@ mod tests {
     #[ignore]
     /// Tests that an empty circuit proof passes
     fn test_prove_verify() {
-        let res = gadget_tester(
+        let res: StandardComposer<
+            Bls12_381,
+            EdwardsProjective,
+            EdwardsParameters,
+        > = gadget_tester(
             |composer| {
                 // do nothing except add the dummy constraints
             },
@@ -655,11 +685,11 @@ mod tests {
     fn test_conditional_select() {
         let res = gadget_tester(
             |composer| {
-                let bit_1 = composer.add_input(E::Fr::one());
+                let bit_1 = composer.add_input(BlsScalar::one());
                 let bit_0 = composer.zero_var();
 
-                let choice_a = composer.add_input(E::Fr::from(10u64));
-                let choice_b = composer.add_input(E::Fr::from(20u64));
+                let choice_a = composer.add_input(BlsScalar::from(10u64));
+                let choice_b = composer.add_input(BlsScalar::from(20u64));
 
                 let choice =
                     composer.conditional_select(bit_1, choice_a, choice_b);
@@ -678,7 +708,7 @@ mod tests {
     // XXX: Move this to integration tests
     fn test_multiple_proofs() {
         let public_parameters =
-            PublicParameters::setup(2 * 30, &mut OsRng).unwrap();
+            UniversalParams::setup(2 * 30, &mut OsRng).unwrap();
 
         // Create a prover struct
         let mut prover = Prover::new(b"demo");

@@ -10,19 +10,22 @@ pub mod curve_addition;
 pub mod scalar_mul;
 
 use crate::constraint_system::{variable::Variable, StandardComposer};
-use ark_ec::PairingEngine;
+use ark_ec::{
+    twisted_edwards_extended::GroupAffine, PairingEngine, ProjectiveCurve,
+    TEModelParameters,
+};
 use num_traits::{One, Zero};
 
-/// Represents a JubJub point in the circuit
+/// Represents a point of the embeded curve in the circuit
 #[derive(Debug, Clone, Copy)]
 pub struct Point {
     x: Variable,
     y: Variable,
 }
 
-impl Point {
+impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters> Point {
     /// Returns an identity point
-    pub fn identity(composer: &mut StandardComposer<E>) -> Point {
+    pub fn identity(composer: &mut StandardComposer<E, T, P>) -> Point {
         let one = composer.add_witness_to_circuit_description(E::Fr::one());
         Point {
             x: composer.zero_var,
@@ -40,32 +43,23 @@ impl Point {
     }
 }
 
-impl<E: PairingEngine> StandardComposer<E> {
-    /// Converts an JubJubAffine into a constraint system Point
+impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
+    StandardComposer<E, T, P>
+{
+    /// Converts an embeded curve point into a constraint system Point
     /// without constraining the values
-    pub fn add_affine(&mut self, affine: dusk_jubjub::JubJubAffine) -> Point {
-        let x = self.add_input(affine.get_x());
-        let y = self.add_input(affine.get_y());
+    pub fn add_affine(&mut self, affine: GroupAffine<P>) -> Point {
+        let x = self.add_input(affine.x);
+        let y = self.add_input(affine.y);
         Point { x, y }
     }
 
-    /// Converts an JubJubAffine into a constraint system Point
+    /// Converts an embeded curve point into a constraint system Point
     /// without constraining the values
-    pub fn add_public_affine(
-        &mut self,
-        affine: dusk_jubjub::JubJubAffine,
-    ) -> Point {
+    pub fn add_public_affine(&mut self, affine: GroupAffine<P>) -> Point {
         let point = self.add_affine(affine);
-        self.constrain_to_constant(
-            point.x,
-            E::Fr::zero(),
-            Some(-affine.get_x()),
-        );
-        self.constrain_to_constant(
-            point.y,
-            E::Fr::zero(),
-            Some(-affine.get_y()),
-        );
+        self.constrain_to_constant(point.x, E::Fr::zero(), Some(-affine.x));
+        self.constrain_to_constant(point.y, E::Fr::zero(), Some(-affine.y));
 
         point
     }
@@ -74,11 +68,11 @@ impl<E: PairingEngine> StandardComposer<E> {
     /// constrained witness value
     pub fn add_affine_to_circuit_description(
         &mut self,
-        affine: dusk_jubjub::JubJubAffine,
+        affine: GroupAffine<P>,
     ) -> Point {
         // Not using individual gates because one of these may be zero
-        let x = self.add_witness_to_circuit_description(affine.get_x());
-        let y = self.add_witness_to_circuit_description(affine.get_y());
+        let x = self.add_witness_to_circuit_description(affine.x);
+        let y = self.add_witness_to_circuit_description(affine.y);
 
         Point { x, y }
     }
@@ -88,17 +82,17 @@ impl<E: PairingEngine> StandardComposer<E> {
     pub fn assert_equal_public_point(
         &mut self,
         point: Point,
-        public_point: dusk_jubjub::JubJubAffine,
+        public_point: GroupAffine<P>,
     ) {
         self.constrain_to_constant(
             point.x,
             E::Fr::zero(),
-            Some(-public_point.get_x()),
+            Some(-public_point.x()),
         );
         self.constrain_to_constant(
             point.y,
             E::Fr::zero(),
-            Some(-public_point.get_y()),
+            Some(-public_point.y()),
         );
     }
     /// Asserts that a point in the circuit is equal to another point in the
@@ -155,18 +149,19 @@ impl<E: PairingEngine> StandardComposer<E> {
 mod tests {
     use super::*;
     use crate::constraint_system::helper::*;
+    use ark_bls12_381::Fr as BlsScalar;
 
     #[test]
     fn test_conditional_select_point() {
         let res = gadget_tester(
             |composer| {
-                let bit_1 = composer.add_input(E::Fr::one());
+                let bit_1 = composer.add_input(BlsScalar::one());
                 let bit_0 = composer.zero_var();
 
                 let point_a = Point::identity(composer);
                 let point_b = Point {
-                    x: composer.add_input(E::Fr::from(10u64)),
-                    y: composer.add_input(E::Fr::from(20u64)),
+                    x: composer.add_input(BlsScalar::from(10u64)),
+                    y: composer.add_input(BlsScalar::from(20u64)),
                 };
 
                 let choice =

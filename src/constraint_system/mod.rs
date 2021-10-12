@@ -18,7 +18,6 @@ mod boolean;
 /// Elliptic Curve Crypto gates
 pub mod ecc;
 
-#[cfg(feature = "std")]
 #[cfg(test)]
 pub(crate) mod helper;
 /// XOR and AND gates

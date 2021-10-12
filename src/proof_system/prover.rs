@@ -4,8 +4,6 @@
 //
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
-    use ark_poly_commit::CommitKey,
-    use ark_poly::{EvaluationDomain, Polynomial},
 use crate::{
     constraint_system::{StandardComposer, Variable},
     error::Error,
@@ -15,9 +13,11 @@ use crate::{
     transcript::TranscriptProtocol,
 };
 use alloc::vec::Vec;
-use merlin::Transcript;
 use ark_ec::PairingEngine;
 use ark_ff::PrimeField;
+use ark_poly::{EvaluationDomain, Polynomial};
+use ark_poly_commit::CommitKey;
+use merlin::Transcript;
 
 /// Abstraction structure designed to construct a circuit and generate
 /// [`Proof`]s for it.
@@ -39,7 +39,10 @@ impl<E: PairingEngine> Prover<E> {
     }
 
     /// Preprocesses the underlying constraint system.
-    pub fn preprocess(&mut self, commit_key: &CommitKey<E>) -> Result<(), Error> {
+    pub fn preprocess(
+        &mut self,
+        commit_key: &CommitKey<E>,
+    ) -> Result<(), Error> {
         if self.prover_key.is_some() {
             return Err(Error::CircuitAlreadyPreprocessed);
         }
@@ -87,7 +90,12 @@ impl<E: PairingEngine> Prover<E> {
         &self,
         n: usize,
         t_x: &Polynomial<E::Fr>,
-    ) -> (Polynomial<E::Fr>, Polynomial<E::Fr>, Polynomial<E::Fr>, Polynomial<E::Fr>) {
+    ) -> (
+        Polynomial<E::Fr>,
+        Polynomial<E::Fr>,
+        Polynomial<E::Fr>,
+        Polynomial<E::Fr>,
+    ) {
         (
             Polynomial::from_coefficients_vec(t_x[0..n].to_vec()),
             Polynomial::from_coefficients_vec(t_x[n..2 * n].to_vec()),
@@ -235,14 +243,19 @@ impl<E: PairingEngine> Prover<E> {
         //
         // Compute quotient challenge; `alpha`
         let alpha = TranscriptProtocol::<E>::challenge_scalar(b"alpha");
-        let range_sep_challenge =
-            TranscriptProtocol::<E>::challenge_scalar(b"range separation challenge");
-        let logic_sep_challenge =
-            TranscriptProtocol::<E>::challenge_scalar(b"logic separation challenge");
+        let range_sep_challenge = TranscriptProtocol::<E>::challenge_scalar(
+            b"range separation challenge",
+        );
+        let logic_sep_challenge = TranscriptProtocol::<E>::challenge_scalar(
+            b"logic separation challenge",
+        );
         let fixed_base_sep_challenge =
-            TranscriptProtocol::<E>::challenge_scalar(b"fixed base separation challenge");
-        let var_base_sep_challenge =
-            TranscriptProtocol::<E>::challenge_scalar(b"variable base separation challenge");
+            TranscriptProtocol::<E>::challenge_scalar(
+                b"fixed base separation challenge",
+            );
+        let var_base_sep_challenge = TranscriptProtocol::<E>::challenge_scalar(
+            b"variable base separation challenge",
+        );
 
         let t_poly = quotient_poly::compute(
             &domain,
@@ -304,16 +317,34 @@ impl<E: PairingEngine> Prover<E> {
         );
 
         // Add evaluations to transcript
-        TranscriptProtocol::<E>::append_scalar(b"a_eval", &evaluations.proof.a_eval);
-        TranscriptProtocol::<E>::append_scalar(b"b_eval", &evaluations.proof.b_eval);
-        TranscriptProtocol::<E>::append_scalar(b"c_eval", &evaluations.proof.c_eval);
-        TranscriptProtocol::<E>::append_scalar(b"d_eval", &evaluations.proof.d_eval);
-        TranscriptProtocol::<E>::
-            append_scalar(b"a_next_eval", &evaluations.proof.a_next_eval);
-        TranscriptProtocol::<E>::
-            append_scalar(b"b_next_eval", &evaluations.proof.b_next_eval);
-        TranscriptProtocol::<E>::
-            append_scalar(b"d_next_eval", &evaluations.proof.d_next_eval);
+        TranscriptProtocol::<E>::append_scalar(
+            b"a_eval",
+            &evaluations.proof.a_eval,
+        );
+        TranscriptProtocol::<E>::append_scalar(
+            b"b_eval",
+            &evaluations.proof.b_eval,
+        );
+        TranscriptProtocol::<E>::append_scalar(
+            b"c_eval",
+            &evaluations.proof.c_eval,
+        );
+        TranscriptProtocol::<E>::append_scalar(
+            b"d_eval",
+            &evaluations.proof.d_eval,
+        );
+        TranscriptProtocol::<E>::append_scalar(
+            b"a_next_eval",
+            &evaluations.proof.a_next_eval,
+        );
+        TranscriptProtocol::<E>::append_scalar(
+            b"b_next_eval",
+            &evaluations.proof.b_next_eval,
+        );
+        TranscriptProtocol::<E>::append_scalar(
+            b"d_next_eval",
+            &evaluations.proof.d_next_eval,
+        );
         TranscriptProtocol::<E>::append_scalar(
             b"left_sig_eval",
             &evaluations.proof.left_sigma_eval,
@@ -322,16 +353,38 @@ impl<E: PairingEngine> Prover<E> {
             b"right_sig_eval",
             &evaluations.proof.right_sigma_eval,
         );
-        TranscriptProtocol::<E>::
-            append_scalar(b"out_sig_eval", &evaluations.proof.out_sigma_eval);
-        TranscriptProtocol::<E>::
-            append_scalar(b"q_arith_eval", &evaluations.proof.q_arith_eval);
-        TranscriptProtocol::<E>::append_scalar(b"q_c_eval", &evaluations.proof.q_c_eval);
-        TranscriptProtocol::<E>::append_scalar(b"q_l_eval", &evaluations.proof.q_l_eval);
-        TranscriptProtocol::<E>::append_scalar(b"q_r_eval", &evaluations.proof.q_r_eval);
-        TranscriptProtocol::<E>::append_scalar(b"perm_eval", &evaluations.proof.perm_eval);
-        TranscriptProtocol::<E>::append_scalar(b"t_eval", &evaluations.quot_eval);
-        TranscriptProtocol::<E>::append_scalar(b"r_eval", &evaluations.proof.lin_poly_eval);
+        TranscriptProtocol::<E>::append_scalar(
+            b"out_sig_eval",
+            &evaluations.proof.out_sigma_eval,
+        );
+        TranscriptProtocol::<E>::append_scalar(
+            b"q_arith_eval",
+            &evaluations.proof.q_arith_eval,
+        );
+        TranscriptProtocol::<E>::append_scalar(
+            b"q_c_eval",
+            &evaluations.proof.q_c_eval,
+        );
+        TranscriptProtocol::<E>::append_scalar(
+            b"q_l_eval",
+            &evaluations.proof.q_l_eval,
+        );
+        TranscriptProtocol::<E>::append_scalar(
+            b"q_r_eval",
+            &evaluations.proof.q_r_eval,
+        );
+        TranscriptProtocol::<E>::append_scalar(
+            b"perm_eval",
+            &evaluations.proof.perm_eval,
+        );
+        TranscriptProtocol::<E>::append_scalar(
+            b"t_eval",
+            &evaluations.quot_eval,
+        );
+        TranscriptProtocol::<E>::append_scalar(
+            b"r_eval",
+            &evaluations.proof.lin_poly_eval,
+        );
 
         // 5. Compute Openings using KZG10
         //
@@ -398,7 +451,10 @@ impl<E: PairingEngine> Prover<E> {
     /// Proves a circuit is satisfied, then clears the witness variables
     /// If the circuit is not pre-processed, then the preprocessed circuit will
     /// also be computed.
-    pub fn prove(&mut self, commit_key: &CommitKey<E>) -> Result<Proof<E>, Error> {
+    pub fn prove(
+        &mut self,
+        commit_key: &CommitKey<E>,
+    ) -> Result<Proof<E>, Error> {
         let prover_key: &ProverKey<E::Fr>;
 
         if self.prover_key.is_none() {

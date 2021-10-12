@@ -4,13 +4,17 @@
 //
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
+use crate::bit_iterator::BitIterator8;
 use crate::constraint_system::ecc::Point;
 use crate::constraint_system::{variable::Variable, StandardComposer};
-use alloc::vec::Vec;
-use ark_ec::PairingEngine;
+use ark_ec::models::TEModelParameters;
+use ark_ec::{PairingEngine, ProjectiveCurve};
+use ark_ff::PrimeField;
 use num_traits::{One, Zero};
 
-impl<E: PairingEngine> StandardComposer<E> {
+impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
+    StandardComposer<E, T, P>
+{
     /// Adds a variable-base scalar multiplication to the circuit description.
     ///
     /// # Note
@@ -19,13 +23,13 @@ impl<E: PairingEngine> StandardComposer<E> {
     /// which is optimized for fixed_base ops.
     pub fn variable_base_scalar_mul(
         &mut self,
-        jubjub_var: Variable,
+        curve_var: Variable,
         point: Point,
     ) -> Point {
         // Turn scalar into bits
         let raw_bls_scalar = *self
             .variables
-            .get(&jubjub_var)
+            .get(&curve_var)
             // We can unwrap safely here since it should be impossible to obtain
             // a `Variable` without first linking it inside of the
             // HashMap from which we are calling the `get()` now. Therefore, if
@@ -33,7 +37,7 @@ impl<E: PairingEngine> StandardComposer<E> {
             // bad.
             .expect("Variable in existance without referenced scalar");
         let scalar_bits_var =
-            self.scalar_decomposition(jubjub_var, raw_bls_scalar);
+            self.scalar_decomposition(curve_var, raw_bls_scalar);
 
         let identity = Point::identity(self);
         let mut result = identity;
@@ -53,16 +57,17 @@ impl<E: PairingEngine> StandardComposer<E> {
         witness_scalar: E::Fr,
     ) -> Vec<Variable> {
         // Decompose the bits
-        let scalar_bits = scalar_to_bits(&witness_scalar);
+        let scalar_bits_iter = BitIterator8::new(witness_scalar.to_bytes());
 
         // Add all the bits into the composer
-        let scalar_bits_var: Vec<Variable> = scalar_bits
-            .iter()
+        let scalar_bits_var: Vec<Variable> = scalar_bits_iter
             .map(|bit| self.add_input(E::Fr::from(*bit as u64)))
             .collect();
 
         // Take the first 252 bits
-        let scalar_bits_var = scalar_bits_var[..252].to_vec();
+        let scalar_bits_var = scalar_bits_var
+            [..<P::BaseField as PrimeField>::Params::MODULUS_BITS as usize]
+            .to_vec();
 
         // Now ensure that the bits correctly accumulate to the witness given
         let mut accumulator_var = self.zero_var;
@@ -71,7 +76,7 @@ impl<E: PairingEngine> StandardComposer<E> {
         for (power, bit) in scalar_bits_var.iter().enumerate() {
             self.boolean_gate(*bit);
 
-            let two_pow = E::Fr::pow(power as u64);
+            let two_pow = E::Fr::from(2u64).pow([power as u64, 0, 0, 0]);
 
             let q_l_a = (two_pow, *bit);
             let q_r_b = (E::Fr::one(), accumulator_var);
@@ -80,7 +85,7 @@ impl<E: PairingEngine> StandardComposer<E> {
             accumulator_var = self.add(q_l_a, q_r_b, q_c, None);
 
             accumulator_scalar +=
-                two_pow * E::Fr::from(scalar_bits[power] as u64);
+                two_pow * E::Fr::from(scalar_bits_iter[power] as u64);
         }
         self.assert_equal(accumulator_var, witness_var);
 
@@ -88,29 +93,18 @@ impl<E: PairingEngine> StandardComposer<E> {
     }
 }
 
-fn scalar_to_bits(scalar: &E::Fr) -> [u8; 256] {
-    let mut res = [0u8; 256];
-    let bytes = scalar.to_bytes();
-    for (byte, bits) in bytes.iter().zip(res.chunks_mut(8)) {
-        bits.iter_mut()
-            .enumerate()
-            .for_each(|(i, bit)| *bit = (byte >> i) & 1)
-    }
-    res
-}
-
 #[cfg(feature = "std")]
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::constraint_system::helper::*;
-    use dusk_jubjub::GENERATOR;
-    use dusk_jubjub::{JubJubAffine, JubJubExtended, JubJubScalar};
+    use ark_bls12_381::Fr as BlsScalar;
+    use ark_ed_on_bls12_381::{EdwardsAffine, EdwardsParameters, Fr};
     #[test]
     fn test_var_base_scalar_mul() {
         let res = gadget_tester(
             |composer| {
-                let scalar = JubJubScalar::from_bytes_wide(&[
+                let scalar = Fr::from_le_bytes_mod_order(&[
                     182, 44, 247, 214, 94, 14, 151, 208, 130, 16, 200, 204,
                     147, 32, 104, 166, 0, 59, 52, 1, 1, 59, 103, 6, 169, 175,
                     51, 101, 234, 180, 125, 14, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -118,13 +112,16 @@ mod tests {
                     0, 0,
                 ]);
                 let bls_scalar =
-                    E::Fr::from_bytes(&scalar.to_bytes()).unwrap();
+                    BlsScalar::from_le_bytes_mod_order(&scalar.to_bytes())
+                        .unwrap();
                 let secret_scalar = composer.add_input(bls_scalar);
 
-                let expected_point: JubJubAffine =
-                    (JubJubExtended::from(GENERATOR) * scalar).into();
+                let (x, y) = EdwardsParameters::AFFINE_GENERATOR_COEFFS;
+                let generator = ark_ed_on_bls12_381::EdwardsAffine::new(x, y);
 
-                let point = composer.add_affine(GENERATOR);
+                let expected_point: EdwardsAffine = (generator * scalar).into();
+
+                let point = composer.add_affine(generator);
 
                 let point_scalar =
                     composer.variable_base_scalar_mul(secret_scalar, point);

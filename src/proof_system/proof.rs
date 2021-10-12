@@ -19,13 +19,13 @@ use crate::{
     transcript::TranscriptProtocol,
     util::batch_inversion,
 };
-use ark_ff::PrimeField;
+use ark_ec::msm::VariableBaseMSM;
 use ark_ec::PairingEngine;
+use ark_ff::PrimeField;
 use ark_poly_commit::sonic_pc::Commitment;
 use merlin::Transcript;
-use rayon::prelude::*;
-use ark_ec::msm::VariableBaseMSM;
 use num_traits::{One, Zero};
+use rayon::prelude::*;
 
 /// A Proof is a composition of `Commitment`s to the Witness, Permutation,
 /// Quotient, Shifted and Opening polynomials as well as the

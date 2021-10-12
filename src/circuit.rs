@@ -6,12 +6,13 @@
 
 //! Tools & traits for PLONK circuits
 
-use ark_poly_commit::PublicParameters;
 use crate::constraint_system::StandardComposer;
 use crate::error::Error;
 use crate::proof_system::{Proof, Prover, ProverKey, Verifier, VerifierKey};
-use alloc::vec::Vec;
+use ark_ec::models::TEModelParameters;
 use ark_ec::PairingEngine;
+use ark_ec::ProjectiveCurve;
+use ark_poly_commit::kzg10::UniversalParams;
 
 #[derive(Default, Debug, Clone)]
 /// Structure that represents a PLONK Circuit Public Input converted into its
@@ -219,14 +220,20 @@ impl VerifierData {
 ///     b"Test",
 /// )
 /// }
-pub trait Circuit
+pub trait Circuit<E, T, PT>
 where
+    E: PairingEngine,
+    T: ProjectiveCurve,
+    PT: TEModelParameters,
     Self: Sized,
 {
     /// Circuit identifier associated constant.
     const CIRCUIT_ID: [u8; 32];
     /// Gadget implementation used to fill the composer.
-    fn gadget(&mut self, composer: &mut StandardComposer<E>) -> Result<(), Error>;
+    fn gadget(
+        &mut self,
+        composer: &mut StandardComposer<E, T, PT>,
+    ) -> Result<(), Error>;
     /// Compiles the circuit by using a function that returns a `Result`
     /// with the `ProverKey`, `VerifierKey` and the circuit size.
     fn compile(
