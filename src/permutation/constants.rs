@@ -6,7 +6,8 @@
 
 use ark_ff::PrimeField;
 
-/// Constants used in the permutation argument to ensure that the wire subsets are disjoint.
+/// Constants used in the permutation argument to ensure that the wire subsets
+/// are disjoint.
 pub(crate) fn K1<F: PrimeField>() -> F {
     F::from(7 as u64)
 }
