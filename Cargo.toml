@@ -3,7 +3,8 @@ name = "dusk-plonk"
 version = "0.8.2"
 authors = ["Kevaundray Wedderburn <kevtheappdev@gmail.com>",
            "Luke Pearson <luke@dusk.network>", 
-           "CPerezz <carlos@dusk.network>"] 
+           "CPerezz <carlos@dusk.network>",
+           "Jules de Smit <jules@aleo.org>"] 
 readme = "README.md"
 repository = "https://github.com/dusk-network/plonk"
 keywords = ["cryptography", "plonk", "zk-snarks", "zero-knowledge", "crypto"]
