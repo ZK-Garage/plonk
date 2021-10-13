@@ -10,7 +10,7 @@ use crate::proof_system::widget::VerifierKey;
 use crate::proof_system::Proof;
 use ark_ec::PairingEngine;
 use ark_ff::PrimeField;
-use ark_poly_commity::{CommitterKey, VerifierKey as OpeningKey};
+use ark_poly_commit::{CommitterKey, VerifierKey as OpeningKey};
 use merlin::Transcript;
 
 /// Abstraction structure designed verify [`Proof`]s.

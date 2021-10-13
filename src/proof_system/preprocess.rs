@@ -13,7 +13,8 @@ use crate::error::Error;
 use crate::proof_system::{widget, ProverKey};
 use arc_ec::PairingEngine;
 use ark_ff::PrimeField;
-use ark_poly::{EvaluationDomain, Evaluations, Polynomial};
+use ark_poly::polynomial::univariate::DensePolynomial as Polynomial;
+use ark_poly::{Evaluations, Radix2EvaluationDomain as EvaluationDomain};
 use merlin::Transcript;
 
 /// Struct that contains all of the selector and permutation [`Polynomial`]s in
@@ -171,7 +172,7 @@ impl<E: PairingEngine> StandardComposer<E> {
         );
         // XXX: Remove this and compute it on the fly
         let linear_eval_4n = Evaluations::from_vec_and_domain(
-            domain_4n.coset_fft(&[BlsScalar::zero(), BlsScalar::one()]),
+            domain_4n.coset_fft(&[E::Fr::zero(), E::Fr::one()]),
             domain_4n,
         );
 

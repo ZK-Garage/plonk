@@ -14,7 +14,6 @@ use super::linearisation_poly::ProofEvaluations;
 use crate::{
     commitment_scheme::kzg10::{AggregateProof, OpeningKey},
     error::Error,
-    fft::EvaluationDomain,
     proof_system::widget::VerifierKey,
     transcript::TranscriptProtocol,
     util::batch_inversion,
@@ -22,6 +21,7 @@ use crate::{
 use ark_ec::msm::VariableBaseMSM;
 use ark_ec::PairingEngine;
 use ark_ff::PrimeField;
+use ark_poly::Radix2EvaluationDomain as EvaluationDomain;
 use ark_poly_commit::sonic_pc::Commitment;
 use merlin::Transcript;
 use num_traits::{One, Zero};
@@ -347,7 +347,7 @@ impl<E: PairingEngine> Proof<E> {
         &self,
         z_challenge: &E::Fr,
         n: usize,
-    ) -> Commitment {
+    ) -> Commitment<E> {
         let z_n = z_challenge.pow(&[n as u64, 0, 0, 0]);
         let z_two_n = z_challenge.pow(&[2 * n as u64, 0, 0, 0]);
         let z_three_n = z_challenge.pow(&[3 * n as u64, 0, 0, 0]);
