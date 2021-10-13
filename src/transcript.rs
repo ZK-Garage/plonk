@@ -8,7 +8,7 @@
 //! which adds a few extra functionalities.
 use ark_ec::PairingEngine;
 use ark_ff::{Field, PrimeField};
-use ark_poly_commit::sonic_pc::Commitment;
+use ark_poly_commit::kzg10::Commitment;
 use ark_serialize::CanonicalSerialize;
 use merlin::Transcript;
 use std::vec::Vec;

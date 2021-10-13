@@ -4,17 +4,15 @@
 //
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
-use ark_poly::{EvaluationDomain, Polynomial};
-
-//ark_poly_commit::ProverKey;
-
+use super::ProverKey;
 use ark_ec::PairingEngine;
 use ark_ff::PrimeField;
+use ark_poly::{univariate::DensePolynomial, GeneralEvaluationDomain};
 
 #[allow(dead_code)]
 /// Evaluations at points `z` or and `z * root of unity`
 pub(crate) struct Evaluations<F: PrimeField> {
-    pub(crate) proof: ProofEvaluations,
+    pub(crate) proof: ProofEvaluations<F>,
     // Evaluation of the linearisation sigma polynomial at `z`
     pub(crate) quot_eval: F,
 }
@@ -63,7 +61,7 @@ pub(crate) struct ProofEvaluations<F: PrimeField> {
 
 /// Compute the linearisation polynomial.
 pub(crate) fn compute<E: PairingEngine>(
-    domain: &EvaluationDomain<E::Fr>,
+    domain: &GeneralEvaluationDomain<E::Fr>,
     prover_key: &ProverKey<E::Fr>,
     (
         alpha,
@@ -75,13 +73,13 @@ pub(crate) fn compute<E: PairingEngine>(
         var_base_separation_challenge,
         z_challenge,
     ): &(E::Fr, E::Fr, E::Fr, E::Fr, E::Fr, E::Fr, E::Fr, E::Fr),
-    w_l_poly: &Polynomial<E::Fr>,
-    w_r_poly: &Polynomial<E::Fr>,
-    w_o_poly: &Polynomial<E::Fr>,
-    w_4_poly: &Polynomial<E::Fr>,
-    t_x_poly: &Polynomial<E::Fr>,
-    z_poly: &Polynomial<E::Fr>,
-) -> (Polynomial<E::Fr>, Evaluations<E::Fr>) {
+    w_l_poly: &DensePolynomial<E::Fr>,
+    w_r_poly: &DensePolynomial<E::Fr>,
+    w_o_poly: &DensePolynomial<E::Fr>,
+    w_4_poly: &DensePolynomial<E::Fr>,
+    t_x_poly: &DensePolynomial<E::Fr>,
+    z_poly: &DensePolynomial<E::Fr>,
+) -> (DensePolynomial<E::Fr>, Evaluations<E::Fr>) {
     // Compute evaluations
     let quot_eval = t_x_poly.evaluate(z_challenge);
     let a_eval = w_l_poly.evaluate(z_challenge);
@@ -184,7 +182,7 @@ fn compute_circuit_satisfiability<E: PairingEngine>(
     q_l_eval: &E::Fr,
     q_r_eval: &E::Fr,
     prover_key: &ProverKey<E::Fr>,
-) -> Polynomial<E::Fr> {
+) -> DensePolynomial<E::Fr> {
     let a = prover_key.arithmetic.compute_linearisation(
         a_eval,
         b_eval,

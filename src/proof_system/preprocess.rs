@@ -7,37 +7,38 @@
 //! Methods to preprocess the constraint system for use in a proof
 
 use crate::constraint_system::StandardComposer;
-use ark_poly_commit::CommitKey;
-
 use crate::error::Error;
 use crate::proof_system::{widget, ProverKey};
-use arc_ec::PairingEngine;
+use ark_ec::{PairingEngine, ProjectiveCurve, TEModelParameters};
 use ark_ff::PrimeField;
-use ark_poly::polynomial::univariate::DensePolynomial as Polynomial;
-use ark_poly::{Evaluations, Radix2EvaluationDomain as EvaluationDomain};
+use ark_poly::polynomial::univariate::DensePolynomial;
+use ark_poly::{Evaluations, GeneralEvaluationDomain};
+use ark_poly_commit::kzg10::Powers;
 use merlin::Transcript;
 
 /// Struct that contains all of the selector and permutation [`Polynomial`]s in
 /// PLONK.
 pub(crate) struct SelectorPolynomials<F: PrimeField> {
-    q_m: Polynomial<F>,
-    q_l: Polynomial<F>,
-    q_r: Polynomial<F>,
-    q_o: Polynomial<F>,
-    q_c: Polynomial<F>,
-    q_4: Polynomial<F>,
-    q_arith: Polynomial<F>,
-    q_range: Polynomial<F>,
-    q_logic: Polynomial<F>,
-    q_fixed_group_add: Polynomial<F>,
-    q_variable_group_add: Polynomial<F>,
-    left_sigma: Polynomial<F>,
-    right_sigma: Polynomial<F>,
-    out_sigma: Polynomial<F>,
-    fourth_sigma: Polynomial<F>,
+    q_m: DensePolynomial<F>,
+    q_l: DensePolynomial<F>,
+    q_r: DensePolynomial<F>,
+    q_o: DensePolynomial<F>,
+    q_c: DensePolynomial<F>,
+    q_4: DensePolynomial<F>,
+    q_arith: DensePolynomial<F>,
+    q_range: DensePolynomial<F>,
+    q_logic: DensePolynomial<F>,
+    q_fixed_group_add: DensePolynomial<F>,
+    q_variable_group_add: DensePolynomial<F>,
+    left_sigma: DensePolynomial<F>,
+    right_sigma: DensePolynomial<F>,
+    out_sigma: DensePolynomial<F>,
+    fourth_sigma: DensePolynomial<F>,
 }
 
-impl<E: PairingEngine> StandardComposer<E> {
+impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
+    StandardComposer<E, T, P>
+{
     /// Pads the circuit to the next power of two.
     ///
     /// # Note
@@ -102,13 +103,13 @@ impl<E: PairingEngine> StandardComposer<E> {
     /// prover and verifier to have the same view
     pub fn preprocess_prover(
         &mut self,
-        commit_key: &CommitKey<E>,
+        commit_key: &Powers<E>,
         transcript: &mut Transcript,
     ) -> Result<ProverKey<E::Fr>, Error> {
         let (_, selectors, domain) =
             self.preprocess_shared(commit_key, transcript)?;
 
-        let domain_4n = EvaluationDomain::new(4 * domain.size())?;
+        let domain_4n = GeneralEvaluationDomain::new(4 * domain.size())?;
         let q_m_eval_4n = Evaluations::from_vec_and_domain(
             domain_4n.coset_fft(&selectors.q_m),
             domain_4n,
@@ -248,7 +249,7 @@ impl<E: PairingEngine> StandardComposer<E> {
     /// verifier by skipping the FFTs needed to compute the 4n evaluations.
     pub fn preprocess_verifier(
         &mut self,
-        commit_key: &CommitKey<E>,
+        commit_key: &Powers<E>,
         transcript: &mut Transcript,
     ) -> Result<widget::VerifierKey<E>, Error> {
         let (verifier_key, _, _) =
@@ -262,17 +263,17 @@ impl<E: PairingEngine> StandardComposer<E> {
     /// view.
     fn preprocess_shared(
         &mut self,
-        commit_key: &CommitKey<E>,
+        commit_key: &Powers<E>,
         transcript: &mut Transcript,
     ) -> Result<
         (
             widget::VerifierKey<E>,
             SelectorPolynomials<E::Fr>,
-            EvaluationDomain<E::Fr>,
+            GeneralEvaluationDomain<E::Fr>,
         ),
         Error,
     > {
-        let domain = EvaluationDomain::new(self.circuit_size())?;
+        let domain = GeneralEvaluationDomain::new(self.circuit_size())?;
 
         // Check that the length of the wires is consistent.
         self.check_poly_same_len()?;
@@ -281,29 +282,33 @@ impl<E: PairingEngine> StandardComposer<E> {
         self.pad(domain.size as usize - self.n);
 
         let q_m_poly =
-            Polynomial::from_coefficients_slice(&domain.ifft(&self.q_m));
+            DensePolynomial::from_coefficients_slice(&domain.ifft(&self.q_m));
         let q_l_poly =
-            Polynomial::from_coefficients_slice(&domain.ifft(&self.q_l));
+            DensePolynomial::from_coefficients_slice(&domain.ifft(&self.q_l));
         let q_r_poly =
-            Polynomial::from_coefficients_slice(&domain.ifft(&self.q_r));
+            DensePolynomial::from_coefficients_slice(&domain.ifft(&self.q_r));
         let q_o_poly =
-            Polynomial::from_coefficients_slice(&domain.ifft(&self.q_o));
+            DensePolynomial::from_coefficients_slice(&domain.ifft(&self.q_o));
         let q_c_poly =
-            Polynomial::from_coefficients_slice(&domain.ifft(&self.q_c));
+            DensePolynomial::from_coefficients_slice(&domain.ifft(&self.q_c));
         let q_4_poly =
-            Polynomial::from_coefficients_slice(&domain.ifft(&self.q_4));
-        let q_arith_poly =
-            Polynomial::from_coefficients_slice(&domain.ifft(&self.q_arith));
-        let q_range_poly =
-            Polynomial::from_coefficients_slice(&domain.ifft(&self.q_range));
-        let q_logic_poly =
-            Polynomial::from_coefficients_slice(&domain.ifft(&self.q_logic));
-        let q_fixed_group_add_poly = Polynomial::from_coefficients_slice(
+            DensePolynomial::from_coefficients_slice(&domain.ifft(&self.q_4));
+        let q_arith_poly = DensePolynomial::from_coefficients_slice(
+            &domain.ifft(&self.q_arith),
+        );
+        let q_range_poly = DensePolynomial::from_coefficients_slice(
+            &domain.ifft(&self.q_range),
+        );
+        let q_logic_poly = DensePolynomial::from_coefficients_slice(
+            &domain.ifft(&self.q_logic),
+        );
+        let q_fixed_group_add_poly = DensePolynomial::from_coefficients_slice(
             &domain.ifft(&self.q_fixed_group_add),
         );
-        let q_variable_group_add_poly = Polynomial::from_coefficients_slice(
-            &domain.ifft(&self.q_variable_group_add),
-        );
+        let q_variable_group_add_poly =
+            DensePolynomial::from_coefficients_slice(
+                &domain.ifft(&self.q_variable_group_add),
+            );
 
         // 2. Compute the sigma polynomials
         let (

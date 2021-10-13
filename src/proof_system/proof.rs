@@ -11,18 +11,13 @@
 //! `Proof` structure and it's methods.
 
 use super::linearisation_poly::ProofEvaluations;
-use crate::{
-    commitment_scheme::kzg10::{AggregateProof, OpeningKey},
-    error::Error,
-    proof_system::widget::VerifierKey,
-    transcript::TranscriptProtocol,
-    util::batch_inversion,
-};
+use super::AggregateProof;
+use crate::error::Error;
 use ark_ec::msm::VariableBaseMSM;
 use ark_ec::PairingEngine;
-use ark_ff::PrimeField;
-use ark_poly::Radix2EvaluationDomain as EvaluationDomain;
-use ark_poly_commit::sonic_pc::Commitment;
+use ark_ff::{fields::batch_inversion, PrimeField};
+use ark_poly::GeneralEvaluationDomain;
+use ark_poly_commit::kzg10::{Commitment, VerifierKey};
 use merlin::Transcript;
 use num_traits::{One, Zero};
 use rayon::prelude::*;
@@ -77,7 +72,7 @@ impl<E: PairingEngine> Proof<E> {
         opening_key: &OpeningKey<E>,
         pub_inputs: &[E::Fr],
     ) -> Result<(), Error> {
-        let domain = EvaluationDomain::new(verifier_key.n)?;
+        let domain = GeneralEvaluationDomain::new(verifier_key.n)?;
 
         // Subgroup checks are done when the proof is deserialised.
 
@@ -95,27 +90,22 @@ impl<E: PairingEngine> Proof<E> {
         transcript.append_commitment(b"w_4", &self.d_comm);
 
         // Compute beta and gamma challenges
-        let beta = TranscriptProtocol::<E>::challenge_scalar(b"beta");
-        TranscriptProtocol::<E>::append_scalar(b"beta", &beta);
-        let gamma = TranscriptProtocol::<E>::challenge_scalar(b"gamma");
+        let beta = transcript.challenge_scalar(b"beta");
+        transcript.append_scalar(b"beta", &beta);
+        let gamma = transcript.challenge_scalar(b"gamma");
         // Add commitment to permutation polynomial to transcript
         transcript.append_commitment(b"z", &self.z_comm);
 
         // Compute quotient challenge
-        let alpha = TranscriptProtocol::<E>::challenge_scalar(b"alpha");
-        let range_sep_challenge = TranscriptProtocol::<E>::challenge_scalar(
-            b"range separation challenge",
-        );
-        let logic_sep_challenge = TranscriptProtocol::<E>::challenge_scalar(
-            b"logic separation challenge",
-        );
+        let alpha = transcript.challenge_scalar(b"alpha");
+        let range_sep_challenge =
+            transcript.challenge_scalar(b"range separation challenge");
+        let logic_sep_challenge =
+            transcript.challenge_scalar(b"logic separation challenge");
         let fixed_base_sep_challenge =
-            TranscriptProtocol::<E>::challenge_scalar(
-                b"fixed base separation challenge",
-            );
-        let var_base_sep_challenge = TranscriptProtocol::<E>::challenge_scalar(
-            b"variable base separation challenge",
-        );
+            transcript.challenge_scalar(b"fixed base separation challenge");
+        let var_base_sep_challenge =
+            transcript.challenge_scalar(b"variable base separation challenge");
 
         // Add commitment to quotient polynomial to transcript
         transcript.append_commitment(b"t_1", &self.t_1_comm);
@@ -124,7 +114,7 @@ impl<E: PairingEngine> Proof<E> {
         transcript.append_commitment(b"t_4", &self.t_4_comm);
 
         // Compute evaluation challenge
-        let z_challenge = TranscriptProtocol::<E>::challenge_scalar(b"z");
+        let z_challenge = transcript.challenge_scalar(b"z");
 
         // Compute zero polynomial evaluated at `z_challenge`
         let z_h_eval = domain.evaluate_vanishing_polynomial(&z_challenge);
@@ -153,71 +143,44 @@ impl<E: PairingEngine> Proof<E> {
             self.compute_quotient_commitment(&z_challenge, domain.size());
 
         // Add evaluations to transcript
-        TranscriptProtocol::<E>::append_scalar(
-            b"a_eval",
-            &self.evaluations.a_eval,
-        );
-        TranscriptProtocol::<E>::append_scalar(
-            b"b_eval",
-            &self.evaluations.b_eval,
-        );
-        TranscriptProtocol::<E>::append_scalar(
-            b"c_eval",
-            &self.evaluations.c_eval,
-        );
-        TranscriptProtocol::<E>::append_scalar(
-            b"d_eval",
-            &self.evaluations.d_eval,
-        );
-        TranscriptProtocol::<E>::append_scalar(
+        Transcript::append_scalar(b"a_eval", &self.evaluations.a_eval);
+        Transcript::append_scalar(b"b_eval", &self.evaluations.b_eval);
+        Transcript::append_scalar(b"c_eval", &self.evaluations.c_eval);
+        Transcript::append_scalar(b"d_eval", &self.evaluations.d_eval);
+        Transcript::append_scalar(
             b"a_next_eval",
             &self.evaluations.a_next_eval,
         );
-        TranscriptProtocol::<E>::append_scalar(
+        Transcript::append_scalar(
             b"b_next_eval",
             &self.evaluations.b_next_eval,
         );
-        TranscriptProtocol::<E>::append_scalar(
+        Transcript::append_scalar(
             b"d_next_eval",
             &self.evaluations.d_next_eval,
         );
-        TranscriptProtocol::<E>::append_scalar(
+        Transcript::append_scalar(
             b"left_sig_eval",
             &self.evaluations.left_sigma_eval,
         );
-        TranscriptProtocol::<E>::append_scalar(
+        Transcript::append_scalar(
             b"right_sig_eval",
             &self.evaluations.right_sigma_eval,
         );
-        TranscriptProtocol::<E>::append_scalar(
+        Transcript::append_scalar(
             b"out_sig_eval",
             &self.evaluations.out_sigma_eval,
         );
-        TranscriptProtocol::<E>::append_scalar(
+        Transcript::append_scalar(
             b"q_arith_eval",
             &self.evaluations.q_arith_eval,
         );
-        TranscriptProtocol::<E>::append_scalar(
-            b"q_c_eval",
-            &self.evaluations.q_c_eval,
-        );
-        TranscriptProtocol::<E>::append_scalar(
-            b"q_l_eval",
-            &self.evaluations.q_l_eval,
-        );
-        TranscriptProtocol::<E>::append_scalar(
-            b"q_r_eval",
-            &self.evaluations.q_r_eval,
-        );
-        TranscriptProtocol::<E>::append_scalar(
-            b"perm_eval",
-            &self.evaluations.perm_eval,
-        );
-        TranscriptProtocol::<E>::append_scalar(b"t_eval", &t_eval);
-        TranscriptProtocol::<E>::append_scalar(
-            b"r_eval",
-            &self.evaluations.lin_poly_eval,
-        );
+        Transcript::append_scalar(b"q_c_eval", &self.evaluations.q_c_eval);
+        Transcript::append_scalar(b"q_l_eval", &self.evaluations.q_l_eval);
+        Transcript::append_scalar(b"q_r_eval", &self.evaluations.q_r_eval);
+        Transcript::append_scalar(b"perm_eval", &self.evaluations.perm_eval);
+        Transcript::append_scalar(b"t_eval", &t_eval);
+        Transcript::append_scalar(b"r_eval", &self.evaluations.lin_poly_eval);
 
         // Compute linearisation commitment
         let r_comm = self.compute_linearisation_commitment(
@@ -302,7 +265,7 @@ impl<E: PairingEngine> Proof<E> {
 
     fn compute_quotient_evaluation(
         &self,
-        domain: &EvaluationDomain<E::Fr>,
+        domain: &GeneralEvaluationDomain<E::Fr>,
         pub_inputs: &[E::Fr],
         alpha: &E::Fr,
         beta: &E::Fr,
@@ -432,7 +395,7 @@ impl<E: PairingEngine> Proof<E> {
 }
 
 fn compute_first_lagrange_evaluation<F: PrimeField>(
-    domain: &EvaluationDomain<F>,
+    domain: &GeneralEvaluationDomain<F>,
     z_h_eval: &F,
     z_challenge: &F,
 ) -> F {
@@ -444,16 +407,10 @@ fn compute_first_lagrange_evaluation<F: PrimeField>(
 fn compute_barycentric_eval<F: PrimeField>(
     evaluations: &[F],
     point: &F,
-    domain: &EvaluationDomain<F>,
+    domain: &GeneralEvaluationDomain<F>,
 ) -> F {
     let numerator = (point.pow(&[domain.size() as u64, 0, 0, 0]) - F::one())
         * domain.size_inv;
-
-    // Indices with non-zero evaluations
-    #[cfg(not(feature = "std"))]
-    let range = (0..evaluations.len()).into_iter();
-
-    #[cfg(feature = "std")]
     let range = (0..evaluations.len()).into_par_iter();
 
     let non_zero_evaluations: Vec<usize> = range
@@ -464,10 +421,6 @@ fn compute_barycentric_eval<F: PrimeField>(
         .collect();
 
     // Only compute the denominators with non-zero evaluations
-    #[cfg(not(feature = "std"))]
-    let range = (0..non_zero_evaluations.len()).into_iter();
-
-    #[cfg(feature = "std")]
     let range = (0..non_zero_evaluations.len()).into_par_iter();
 
     let mut denominators: Vec<F> = range
@@ -497,23 +450,24 @@ fn compute_barycentric_eval<F: PrimeField>(
 #[cfg(test)]
 mod proof_tests {
     use super::*;
-    use dusk_bls12_381::BlsScalar;
+    use ark_bls12_381::{Bls12_381, Fr as BlsScalar};
+    use ark_poly_commit::kzg10::Commitment;
     use rand_core::OsRng;
 
     #[test]
     fn test_dusk_bytes_serde_proof() {
         let proof = Proof {
-            a_comm: Commitment::default(),
-            b_comm: Commitment::default(),
-            c_comm: Commitment::default(),
-            d_comm: Commitment::default(),
-            z_comm: Commitment::default(),
-            t_1_comm: Commitment::default(),
-            t_2_comm: Commitment::default(),
-            t_3_comm: Commitment::default(),
-            t_4_comm: Commitment::default(),
-            w_z_comm: Commitment::default(),
-            w_zw_comm: Commitment::default(),
+            a_comm: Commitment::<Bls12_381>::default(),
+            b_comm: Commitment::<Bls12_381>::default(),
+            c_comm: Commitment::<Bls12_381>::default(),
+            d_comm: Commitment::<Bls12_381>::default(),
+            z_comm: Commitment::<Bls12_381>::default(),
+            t_1_comm: Commitment::<Bls12_381>::default(),
+            t_2_comm: Commitment::<Bls12_381>::default(),
+            t_3_comm: Commitment::<Bls12_381>::default(),
+            t_4_comm: Commitment::<Bls12_381>::default(),
+            w_z_comm: Commitment::<Bls12_381>::default(),
+            w_zw_comm: Commitment::<Bls12_381>::default(),
             evaluations: ProofEvaluations {
                 a_eval: BlsScalar::random(&mut OsRng),
                 b_eval: BlsScalar::random(&mut OsRng),

@@ -5,26 +5,23 @@
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
 use crate::{error::Error, proof_system::ProverKey};
-use alloc::vec::Vec;
 use ark_ec::PairingEngine;
 use ark_ff::PrimeField;
-use ark_poly::{EvaluationDomain, Polynomial};
-#[cfg(feature = "std")]
-use rayon::prelude::*;
+use ark_poly::{univariate::DensePolynomial, GeneralEvaluationDomain};
 
-/// Computes the Quotient [`Polynomial`] given the [`EvaluationDomain`], a
+/// Computes the Quotient [`DensePolynomial`] given the [`EvaluationDomain`], a
 /// [`ProverKey`] and some other info.
 pub(crate) fn compute<F: PrimeField>(
-    domain: &EvaluationDomain<F>,
+    domain: &GeneralEvaluationDomain<F>,
     prover_key: &ProverKey<F>,
-    z_poly: &Polynomial<F>,
+    z_poly: &DensePolynomial<F>,
     (w_l_poly, w_r_poly, w_o_poly, w_4_poly): (
-        &Polynomial<F>,
-        &Polynomial<F>,
-        &Polynomial<F>,
-        &Polynomial<F>,
+        &DensePolynomial<F>,
+        &DensePolynomial<F>,
+        &DensePolynomial<F>,
+        &DensePolynomial<F>,
     ),
-    public_inputs_poly: &Polynomial<F>,
+    public_inputs_poly: &DensePolynomial<F>,
     (
         alpha,
         beta,
@@ -34,16 +31,16 @@ pub(crate) fn compute<F: PrimeField>(
         fixed_base_challenge,
         var_base_challenge,
     ): &(F, F, F, F, F, F, F),
-) -> Result<Polynomial<F>, Error> {
+) -> Result<DensePolynomial<F>, Error> {
     // Compute 4n eval of z(X)
-    let domain_4n = EvaluationDomain::new(4 * domain.size())?;
+    let domain_4n = GeneralEvaluationDomain::new(4 * domain.size())?;
     let mut z_eval_4n = domain_4n.coset_fft(&z_poly);
     z_eval_4n.push(z_eval_4n[0]);
     z_eval_4n.push(z_eval_4n[1]);
     z_eval_4n.push(z_eval_4n[2]);
     z_eval_4n.push(z_eval_4n[3]);
 
-    // Compute 4n evaluations of the wire polynomials
+    // Compute 4n evaluations of the wire Densepolynomials
     let mut wl_eval_4n = domain_4n.coset_fft(&w_l_poly);
     wl_eval_4n.push(wl_eval_4n[0]);
     wl_eval_4n.push(wl_eval_4n[1]);
@@ -82,12 +79,7 @@ pub(crate) fn compute<F: PrimeField>(
         &z_eval_4n,
         (alpha, beta, gamma),
     );
-
-    #[cfg(not(feature = "std"))]
     let range = (0..domain_4n.size()).into_iter();
-
-    #[cfg(feature = "std")]
-    let range = (0..domain_4n.size()).into_par_iter();
 
     let quotient: Vec<_> = range
         .map(|i| {
@@ -97,14 +89,14 @@ pub(crate) fn compute<F: PrimeField>(
         })
         .collect();
 
-    Ok(Polynomial::from_coefficients_vec(
+    Ok(DensePolynomial::from_coefficients_vec(
         domain_4n.coset_ifft(&quotient),
     ))
 }
 
 // Ensures that the circuit is satisfied
 fn compute_circuit_satisfiability_equation<F: PrimeField>(
-    domain: &EvaluationDomain<F>,
+    domain: &GeneralEvaluationDomain<F>,
     (
         range_challenge,
         logic_challenge,
@@ -113,16 +105,12 @@ fn compute_circuit_satisfiability_equation<F: PrimeField>(
     ): (&F, &F, &F, &F),
     prover_key: &ProverKey<F>,
     (wl_eval_4n, wr_eval_4n, wo_eval_4n, w4_eval_4n): (&[F], &[F], &[F], &[F]),
-    pi_poly: &Polynomial<F>,
+    pi_poly: &DensePolynomial<F>,
 ) -> Vec<F> {
-    let domain_4n = EvaluationDomain::new(4 * domain.size()).unwrap();
+    let domain_4n = GeneralEvaluationDomain::new(4 * domain.size()).unwrap();
     let pi_eval_4n = domain_4n.coset_fft(pi_poly);
 
-    #[cfg(not(feature = "std"))]
     let range = (0..domain_4n.size()).into_iter();
-
-    #[cfg(feature = "std")]
-    let range = (0..domain_4n.size()).into_par_iter();
 
     let t: Vec<_> = range
         .map(|i| {
@@ -190,22 +178,18 @@ fn compute_circuit_satisfiability_equation<F: PrimeField>(
 }
 
 fn compute_permutation_checks<F: PrimeField>(
-    domain: &EvaluationDomain<F>,
+    domain: &GeneralEvaluationDomain<F>,
     prover_key: &ProverKey<F>,
     (wl_eval_4n, wr_eval_4n, wo_eval_4n, w4_eval_4n): (&[F], &[F], &[F], &[F]),
     z_eval_4n: &[F],
     (alpha, beta, gamma): (&F, &F, &F),
 ) -> Vec<F> {
-    let domain_4n = EvaluationDomain::new(4 * domain.size()).unwrap();
+    let domain_4n = GeneralEvaluationDomain::new(4 * domain.size()).unwrap();
     let l1_poly_alpha =
         compute_first_lagrange_poly_scaled(domain, alpha.square());
     let l1_alpha_sq_evals = domain_4n.coset_fft(&l1_poly_alpha.coeffs);
 
-    #[cfg(not(feature = "std"))]
     let range = (0..domain_4n.size()).into_iter();
-
-    #[cfg(feature = "std")]
-    let range = (0..domain_4n.size()).into_par_iter();
 
     let t: Vec<_> = range
         .map(|i| {
@@ -227,11 +211,11 @@ fn compute_permutation_checks<F: PrimeField>(
     t
 }
 fn compute_first_lagrange_poly_scaled<F: PrimeField>(
-    domain: &EvaluationDomain<F>,
+    domain: &GeneralEvaluationDomain<F>,
     scale: F,
-) -> Polynomial<F> {
-    let mut x_evals = vec![BlsScalar::zero(); domain.size()];
+) -> DensePolynomial<F> {
+    let mut x_evals = vec![F::zero(); domain.size()];
     x_evals[0] = scale;
     domain.ifft_in_place(&mut x_evals);
-    Polynomial::from_coefficients_vec(x_evals)
+    DensePolynomial::from_coefficients_vec(x_evals)
 }

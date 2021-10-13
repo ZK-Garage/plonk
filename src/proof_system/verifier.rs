@@ -8,18 +8,19 @@ use crate::constraint_system::StandardComposer;
 use crate::error::Error;
 use crate::proof_system::widget::VerifierKey;
 use crate::proof_system::Proof;
-use ark_ec::PairingEngine;
+use ark_ec::{PairingEngine, ProjectiveCurve, TEModelParameters};
 use ark_ff::PrimeField;
-use ark_poly_commit::{CommitterKey, VerifierKey as OpeningKey};
+use ark_poly_commit::kzg10::{Powers, PreparedVerifierKey};
 use merlin::Transcript;
 
 /// Abstraction structure designed verify [`Proof`]s.
 #[allow(missing_debug_implementations)]
-pub struct Verifier<E: PairingEngine> {
+pub struct Verifier<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
+{
     /// VerificationKey which is used to verify a specific PLONK circuit
     pub verifier_key: Option<VerifierKey<E>>,
 
-    pub(crate) cs: StandardComposer<E>,
+    pub(crate) cs: StandardComposer<E, T, P>,
     /// Store the messages exchanged during the preprocessing stage
     /// This is copied each time, we make a proof, so that we can use the same
     /// verifier to Verify multiple proofs from the same circuit. If this
@@ -28,15 +29,19 @@ pub struct Verifier<E: PairingEngine> {
     pub preprocessed_transcript: Transcript,
 }
 
-impl<E: PairingEngine> Default for Verifier<E> {
-    fn default() -> Verifier<E> {
+impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters> Default
+    for Verifier<E, T, P>
+{
+    fn default() -> Verifier<E, T, P> {
         Verifier::new(b"plonk")
     }
 }
 
-impl<E: PairingEngine> Verifier<E> {
+impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
+    Verifier<E, T, P>
+{
     /// Creates a new `Verifier` instance.
-    pub fn new(label: &'static [u8]) -> Verifier<E> {
+    pub fn new(label: &'static [u8]) -> Verifier<E, T, P> {
         Verifier {
             verifier_key: None,
             cs: StandardComposer::new(),
@@ -45,7 +50,10 @@ impl<E: PairingEngine> Verifier<E> {
     }
 
     /// Creates a new `Verifier` instance with some expected size.
-    pub fn with_expected_size(label: &'static [u8], size: usize) -> Verifier {
+    pub fn with_expected_size(
+        label: &'static [u8],
+        size: usize,
+    ) -> Verifier<E, T, P> {
         Verifier {
             verifier_key: None,
             cs: StandardComposer::with_expected_size(size),
@@ -59,17 +67,14 @@ impl<E: PairingEngine> Verifier<E> {
     }
 
     /// Returns a mutable copy of the underlying composer.
-    pub fn mut_cs(&mut self) -> &mut StandardComposer<E> {
+    pub fn mut_cs(&mut self) -> &mut StandardComposer<E, T, P> {
         &mut self.cs
     }
 
     /// Preprocess a circuit to obtain a [`VerifierKey`] and a circuit
     /// descriptor so that the `Verifier` instance can verify [`Proof`]s
     /// for this circuit descriptor instance.
-    pub fn preprocess(
-        &mut self,
-        commit_key: &CommitterKey<E>,
-    ) -> Result<(), Error> {
+    pub fn preprocess(&mut self, commit_key: &Powers<E>) -> Result<(), Error> {
         let vk = self.cs.preprocess_verifier(
             commit_key,
             &mut self.preprocessed_transcript,
