@@ -5,15 +5,15 @@
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
 use crate::{error::Error, proof_system::ProverKey};
-use ark_ec::PairingEngine;
+use ark_ec::TEModelParameters;
 use ark_ff::PrimeField;
 use ark_poly::{univariate::DensePolynomial, GeneralEvaluationDomain};
 
 /// Computes the Quotient [`DensePolynomial`] given the [`EvaluationDomain`], a
 /// [`ProverKey`] and some other info.
-pub(crate) fn compute<F: PrimeField>(
+pub(crate) fn compute<F: PrimeField, P: TEModelParameters>(
     domain: &GeneralEvaluationDomain<F>,
-    prover_key: &ProverKey<F>,
+    prover_key: &ProverKey<F, P>,
     z_poly: &DensePolynomial<F>,
     (w_l_poly, w_r_poly, w_o_poly, w_4_poly): (
         &DensePolynomial<F>,
@@ -95,7 +95,10 @@ pub(crate) fn compute<F: PrimeField>(
 }
 
 // Ensures that the circuit is satisfied
-fn compute_circuit_satisfiability_equation<F: PrimeField>(
+fn compute_circuit_satisfiability_equation<
+    F: PrimeField,
+    P: TEModelParameters,
+>(
     domain: &GeneralEvaluationDomain<F>,
     (
         range_challenge,
@@ -103,7 +106,7 @@ fn compute_circuit_satisfiability_equation<F: PrimeField>(
         fixed_base_challenge,
         var_base_challenge,
     ): (&F, &F, &F, &F),
-    prover_key: &ProverKey<F>,
+    prover_key: &ProverKey<F, P>,
     (wl_eval_4n, wr_eval_4n, wo_eval_4n, w4_eval_4n): (&[F], &[F], &[F], &[F]),
     pi_poly: &DensePolynomial<F>,
 ) -> Vec<F> {
@@ -177,9 +180,9 @@ fn compute_circuit_satisfiability_equation<F: PrimeField>(
     t
 }
 
-fn compute_permutation_checks<F: PrimeField>(
+fn compute_permutation_checks<F: PrimeField, P: TEModelParameters>(
     domain: &GeneralEvaluationDomain<F>,
-    prover_key: &ProverKey<F>,
+    prover_key: &ProverKey<F, P>,
     (wl_eval_4n, wr_eval_4n, wo_eval_4n, w4_eval_4n): (&[F], &[F], &[F], &[F]),
     z_eval_4n: &[F],
     (alpha, beta, gamma): (&F, &F, &F),

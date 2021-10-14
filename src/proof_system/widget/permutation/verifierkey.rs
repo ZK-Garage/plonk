@@ -22,7 +22,7 @@ impl<E: PairingEngine> VerifierKey<E> {
         &self,
         scalars: &mut Vec<E::Fr>,
         points: &mut Vec<E::G1Affine>,
-        evaluations: &ProofEvaluations,
+        evaluations: &ProofEvaluations<E::Fr>,
         z_challenge: &E::Fr,
         (alpha, beta, gamma): (&E::Fr, &E::Fr, &E::Fr),
         l1_eval: &E::Fr,

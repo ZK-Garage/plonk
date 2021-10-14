@@ -35,7 +35,7 @@
 #![deny(missing_docs)]
 
 mod bit_iterator;
-pub mod circuit;
+//pub mod circuit;
 pub mod constraint_system;
 mod permutation;
 mod util;

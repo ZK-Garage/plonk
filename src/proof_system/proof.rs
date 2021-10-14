@@ -10,14 +10,17 @@
 //! This module contains the implementation of the `StandardComposer`s
 //! `Proof` structure and it's methods.
 
+use super::aggregated_proof::AggregateProof;
 use super::linearisation_poly::ProofEvaluations;
-use super::AggregateProof;
 use crate::error::Error;
-use ark_ec::msm::VariableBaseMSM;
+use crate::proof_system::VerifierKey;
 use ark_ec::PairingEngine;
+use ark_ec::{msm::VariableBaseMSM, TEModelParameters};
 use ark_ff::{fields::batch_inversion, PrimeField};
 use ark_poly::GeneralEvaluationDomain;
-use ark_poly_commit::kzg10::{Commitment, VerifierKey};
+use ark_poly_commit::kzg10::{
+    Commitment, PreparedVerifierKey as PCVerifierKey,
+};
 use merlin::Transcript;
 use num_traits::{One, Zero};
 use rayon::prelude::*;
@@ -33,7 +36,7 @@ use rayon::prelude::*;
 /// capabilities of adquiring any kind of knowledge about the witness used to
 /// construct the Proof.
 #[derive(Debug, Eq, PartialEq, Clone, Default)]
-pub struct Proof<E: PairingEngine> {
+pub struct Proof<E: PairingEngine, P: TEModelParameters> {
     /// Commitment to the witness polynomial for the left wires.
     pub(crate) a_comm: Commitment<E>,
     /// Commitment to the witness polynomial for the right wires.
@@ -63,13 +66,13 @@ pub struct Proof<E: PairingEngine> {
     pub(crate) evaluations: ProofEvaluations<E::Fr>,
 }
 
-impl<E: PairingEngine> Proof<E> {
+impl<E: PairingEngine, P: TEModelParameters> Proof<E, P> {
     /// Performs the verification of a [`Proof`] returning a boolean result.
     pub(crate) fn verify(
         &self,
-        verifier_key: &VerifierKey<E>,
+        verifier_key: &VerifierKey<E, P>,
         transcript: &mut Transcript,
-        opening_key: &OpeningKey<E>,
+        opening_key: &PCVerifierKey<E>,
         pub_inputs: &[E::Fr],
     ) -> Result<(), Error> {
         let domain = GeneralEvaluationDomain::new(verifier_key.n)?;
@@ -143,44 +146,29 @@ impl<E: PairingEngine> Proof<E> {
             self.compute_quotient_commitment(&z_challenge, domain.size());
 
         // Add evaluations to transcript
-        Transcript::append_scalar(b"a_eval", &self.evaluations.a_eval);
-        Transcript::append_scalar(b"b_eval", &self.evaluations.b_eval);
-        Transcript::append_scalar(b"c_eval", &self.evaluations.c_eval);
-        Transcript::append_scalar(b"d_eval", &self.evaluations.d_eval);
-        Transcript::append_scalar(
-            b"a_next_eval",
-            &self.evaluations.a_next_eval,
-        );
-        Transcript::append_scalar(
-            b"b_next_eval",
-            &self.evaluations.b_next_eval,
-        );
-        Transcript::append_scalar(
-            b"d_next_eval",
-            &self.evaluations.d_next_eval,
-        );
-        Transcript::append_scalar(
-            b"left_sig_eval",
-            &self.evaluations.left_sigma_eval,
-        );
-        Transcript::append_scalar(
+        transcript.append_scalar(b"a_eval", &self.evaluations.a_eval);
+        transcript.append_scalar(b"b_eval", &self.evaluations.b_eval);
+        transcript.append_scalar(b"c_eval", &self.evaluations.c_eval);
+        transcript.append_scalar(b"d_eval", &self.evaluations.d_eval);
+        transcript.append_scalar(b"a_next_eval", &self.evaluations.a_next_eval);
+        transcript.append_scalar(b"b_next_eval", &self.evaluations.b_next_eval);
+        transcript.append_scalar(b"d_next_eval", &self.evaluations.d_next_eval);
+        transcript
+            .append_scalar(b"left_sig_eval", &self.evaluations.left_sigma_eval);
+        transcript.append_scalar(
             b"right_sig_eval",
             &self.evaluations.right_sigma_eval,
         );
-        Transcript::append_scalar(
-            b"out_sig_eval",
-            &self.evaluations.out_sigma_eval,
-        );
-        Transcript::append_scalar(
-            b"q_arith_eval",
-            &self.evaluations.q_arith_eval,
-        );
-        Transcript::append_scalar(b"q_c_eval", &self.evaluations.q_c_eval);
-        Transcript::append_scalar(b"q_l_eval", &self.evaluations.q_l_eval);
-        Transcript::append_scalar(b"q_r_eval", &self.evaluations.q_r_eval);
-        Transcript::append_scalar(b"perm_eval", &self.evaluations.perm_eval);
-        Transcript::append_scalar(b"t_eval", &t_eval);
-        Transcript::append_scalar(b"r_eval", &self.evaluations.lin_poly_eval);
+        transcript
+            .append_scalar(b"out_sig_eval", &self.evaluations.out_sigma_eval);
+        transcript
+            .append_scalar(b"q_arith_eval", &self.evaluations.q_arith_eval);
+        transcript.append_scalar(b"q_c_eval", &self.evaluations.q_c_eval);
+        transcript.append_scalar(b"q_l_eval", &self.evaluations.q_l_eval);
+        transcript.append_scalar(b"q_r_eval", &self.evaluations.q_r_eval);
+        transcript.append_scalar(b"perm_eval", &self.evaluations.perm_eval);
+        transcript.append_scalar(b"t_eval", &t_eval);
+        transcript.append_scalar(b"r_eval", &self.evaluations.lin_poly_eval);
 
         // Compute linearisation commitment
         let r_comm = self.compute_linearisation_commitment(
@@ -335,7 +323,7 @@ impl<E: PairingEngine> Proof<E> {
         ): (&E::Fr, &E::Fr, &E::Fr, &E::Fr),
         z_challenge: &E::Fr,
         l1_eval: E::Fr,
-        verifier_key: &VerifierKey<E>,
+        verifier_key: &VerifierKey<E, P>,
     ) -> Commitment<E> {
         let mut scalars: Vec<_> = Vec::with_capacity(6);
         let mut points: Vec<E::G1Affine> = Vec::with_capacity(6);
@@ -394,6 +382,7 @@ impl<E: PairingEngine> Proof<E> {
     }
 }
 
+// TODO: Document this with the Lagrange formula if possible.
 fn compute_first_lagrange_evaluation<F: PrimeField>(
     domain: &GeneralEvaluationDomain<F>,
     z_h_eval: &F,

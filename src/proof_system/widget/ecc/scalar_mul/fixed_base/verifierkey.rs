@@ -8,18 +8,17 @@ use crate::proof_system::linearisation_poly::ProofEvaluations;
 use crate::proof_system::widget::ecc::scalar_mul::fixed_base::proverkey::{
     check_bit_consistency, extract_bit,
 };
-use ark_ec::PairingEngine;
-use ark_poly_commit::sonic_pc::Commitment;
-use dusk_jubjub::EDWARDS_D;
+use ark_ec::{PairingEngine, TEModelParameters};
+use ark_poly_commit::kzg10::Commitment;
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
-pub(crate) struct VerifierKey<E: PairingEngine> {
+pub(crate) struct VerifierKey<E: PairingEngine, P: TEModelParameters> {
     pub(crate) q_l: Commitment<E>,
     pub(crate) q_r: Commitment<E>,
     pub(crate) q_fixed_group_add: Commitment<E>,
 }
 
-impl<E: PairingEngine> VerifierKey<E> {
+impl<E: PairingEngine, P: TEModelParameters> VerifierKey<E, P> {
     pub(crate) fn compute_linearisation_commitment(
         &self,
         ecc_separation_challenge: &E::Fr,
@@ -58,13 +57,13 @@ impl<E: PairingEngine> VerifierKey<E> {
 
         // x accumulator consistency check
         let x_3 = acc_x_next;
-        let lhs = x_3 + (x_3 * xy_alpha * acc_x * acc_y * EDWARDS_D);
+        let lhs = x_3 + (x_3 * xy_alpha * acc_x * acc_y * P::COEFF_D);
         let rhs = (x_alpha * acc_y) + (y_alpha * acc_x);
         let x_acc_consistency = (lhs - rhs) * kappa_sq;
 
         // y accumulator consistency check
         let y_3 = acc_y_next;
-        let lhs = y_3 - (y_3 * xy_alpha * acc_x * acc_y * EDWARDS_D);
+        let lhs = y_3 - (y_3 * xy_alpha * acc_x * acc_y * P::COEFF_D);
         let rhs = (x_alpha * acc_x) + (y_alpha * acc_y);
         let y_acc_consistency = (lhs - rhs) * kappa_cu;
 

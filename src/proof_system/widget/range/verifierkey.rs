@@ -20,7 +20,7 @@ impl<E: PairingEngine> VerifierKey<E> {
         range_separation_challenge: &E::Fr,
         scalars: &mut Vec<E::Fr>,
         points: &mut Vec<E::G1Affine>,
-        evaluations: &ProofEvaluations,
+        evaluations: &ProofEvaluations<E::Fr>,
     ) {
         let four = E::Fr::from(4);
 

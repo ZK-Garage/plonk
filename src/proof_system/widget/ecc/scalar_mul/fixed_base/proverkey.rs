@@ -4,20 +4,20 @@
 //
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
+use ark_ec::TEModelParameters;
 use ark_ff::PrimeField;
-use ark_poly::polynomial::univariate::DensePolynomial as Polynomial;
+use ark_poly::polynomial::univariate::DensePolynomial;
 use ark_poly::Evaluations;
-use dusk_jubjub::EDWARDS_D;
 
 #[derive(Debug, Eq, PartialEq, Clone)]
-pub(crate) struct ProverKey<F: PrimeField> {
-    pub(crate) q_l: (Polynomial<F>, Evaluations<F>),
-    pub(crate) q_r: (Polynomial<F>, Evaluations<F>),
-    pub(crate) q_c: (Polynomial<F>, Evaluations<F>),
-    pub(crate) q_fixed_group_add: (Polynomial<F>, Evaluations<F>),
+pub(crate) struct ProverKey<F: PrimeField, P: TEModelParameters> {
+    pub(crate) q_l: (DensePolynomial<F>, Evaluations<F>),
+    pub(crate) q_r: (DensePolynomial<F>, Evaluations<F>),
+    pub(crate) q_c: (DensePolynomial<F>, Evaluations<F>),
+    pub(crate) q_fixed_group_add: (DensePolynomial<F>, Evaluations<F>),
 }
 
-impl<F: PrimeField> ProverKey<F> {
+impl<F: PrimeField, P: TEModelParameters> ProverKey<F, P> {
     pub(crate) fn compute_quotient_i(
         &self,
         index: usize,
@@ -65,13 +65,13 @@ impl<F: PrimeField> ProverKey<F> {
 
         // x accumulator consistency check
         let x_3 = acc_x_next;
-        let lhs = x_3 + (x_3 * xy_alpha * acc_x * acc_y * EDWARDS_D);
+        let lhs = x_3 + (x_3 * xy_alpha * acc_x * acc_y * P::COEFF_D);
         let rhs = (acc_x * y_alpha) + (acc_y * x_alpha);
         let x_acc_consistency = (lhs - rhs) * kappa_sq;
 
         // y accumulator consistency check
         let y_3 = acc_y_next;
-        let lhs = y_3 - (y_3 * xy_alpha * acc_x * acc_y * EDWARDS_D);
+        let lhs = y_3 - (y_3 * xy_alpha * acc_x * acc_y * P::COEFF_D);
         let rhs = (acc_y * y_alpha) + (acc_x * x_alpha);
         let y_acc_consistency = (lhs - rhs) * kappa_cu;
 
@@ -96,7 +96,7 @@ impl<F: PrimeField> ProverKey<F> {
         q_l_eval: &F,
         q_r_eval: &F,
         q_c_eval: &F,
-    ) -> Polynomial<F> {
+    ) -> DensePolynomial<F> {
         let q_fixed_group_add_poly = &self.q_fixed_group_add.0;
 
         let kappa = ecc_separation_challenge.square();
@@ -129,13 +129,13 @@ impl<F: PrimeField> ProverKey<F> {
 
         // x accumulator consistency check
         let x_3 = acc_x_next;
-        let lhs = x_3 + (x_3 * xy_alpha * acc_x * acc_y * EDWARDS_D);
+        let lhs = x_3 + (x_3 * xy_alpha * acc_x * acc_y * P::COEFF_D);
         let rhs = (x_alpha * acc_y) + (y_alpha * acc_x);
         let x_acc_consistency = (lhs - rhs) * kappa_sq;
 
         // y accumulator consistency check
         let y_3 = acc_y_next;
-        let lhs = y_3 - (y_3 * xy_alpha * acc_x * acc_y * EDWARDS_D);
+        let lhs = y_3 - (y_3 * xy_alpha * acc_x * acc_y * P::COEFF_D);
         let rhs = (x_alpha * acc_x) + (y_alpha * acc_y);
         let y_acc_consistency = (lhs - rhs) * kappa_cu;
 

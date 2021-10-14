@@ -22,7 +22,7 @@ use merlin::Transcript;
 #[allow(missing_debug_implementations)]
 pub struct Prover<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters> {
     /// ProverKey which is used to create proofs about a specific PLONK circuit
-    pub prover_key: Option<ProverKey<E::Fr>>,
+    pub prover_key: Option<ProverKey<E::Fr, P>>,
 
     pub(crate) cs: StandardComposer<E, T, P>,
     /// Store the messages exchanged during the preprocessing stage
@@ -166,8 +166,8 @@ impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
     pub fn prove_with_preprocessed(
         &self,
         commit_key: &Powers<E>,
-        prover_key: &ProverKey<E::Fr>,
-    ) -> Result<Proof<E>, Error> {
+        prover_key: &ProverKey<E::Fr, P>,
+    ) -> Result<Proof<E, P>, Error> {
         let domain = GeneralEvaluationDomain::new(self.cs.circuit_size())?;
 
         // Since the caller is passing a pre-processed circuit
@@ -410,7 +410,10 @@ impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
     /// Proves a circuit is satisfied, then clears the witness variables
     /// If the circuit is not pre-processed, then the preprocessed circuit will
     /// also be computed.
-    pub fn prove(&mut self, commit_key: &Powers<E>) -> Result<Proof<E>, Error> {
+    pub fn prove(
+        &mut self,
+        commit_key: &Powers<E>,
+    ) -> Result<Proof<E, P>, Error> {
         let prover_key: &ProverKey<E::Fr>;
 
         if self.prover_key.is_none() {

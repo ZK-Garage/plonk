@@ -4,16 +4,17 @@
 //
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
+use ark_ec::TEModelParameters;
 use ark_ff::PrimeField;
 use ark_poly::polynomial::univariate::DensePolynomial as Polynomial;
 use ark_poly::Evaluations;
 
 #[derive(Debug, Eq, PartialEq, Clone)]
-pub(crate) struct ProverKey<F: PrimeField> {
+pub(crate) struct ProverKey<F: PrimeField, P: TEModelParameters> {
     pub(crate) q_variable_group_add: (Polynomial<F>, Evaluations<F>),
 }
 
-impl<F: PrimeField> ProverKey<F> {
+impl<F: PrimeField, P: TEModelParameters> ProverKey<F, P> {
     pub(crate) fn compute_quotient_i(
         &self,
         index: usize,
@@ -49,12 +50,12 @@ impl<F: PrimeField> ProverKey<F> {
 
         // Check x_3 is correct
         let x3_lhs = x1_y2 + y1_x2;
-        let x3_rhs = x_3 + (x_3 * EDWARDS_D * x1_y2 * y1_x2);
+        let x3_rhs = x_3 + (x_3 * P::COEFF_D * x1_y2 * y1_x2);
         let x3_consistency = (x3_lhs - x3_rhs) * kappa;
 
         // // Check y_3 is correct
         let y3_lhs = y1_y2 + x1_x2;
-        let y3_rhs = y_3 - y_3 * EDWARDS_D * x1_y2 * y1_x2;
+        let y3_rhs = y_3 - y_3 * P::COEFF_D * x1_y2 * y1_x2;
         let y3_consistency = (y3_lhs - y3_rhs) * kappa.square();
 
         let identity = xy_consistency + x3_consistency + y3_consistency;
@@ -96,12 +97,12 @@ impl<F: PrimeField> ProverKey<F> {
 
         // Check x_3 is correct
         let x3_lhs = x1_y2 + y1_x2;
-        let x3_rhs = x_3 + (x_3 * (EDWARDS_D * x1_y2 * y1_x2));
+        let x3_rhs = x_3 + (x_3 * (P::COEFF_D * x1_y2 * y1_x2));
         let x3_consistency = (x3_lhs - x3_rhs) * kappa;
 
         // Check y_3 is correct
         let y3_lhs = y1_y2 + x1_x2;
-        let y3_rhs = y_3 - y_3 * EDWARDS_D * x1_y2 * y1_x2;
+        let y3_rhs = y_3 - y_3 * P::COEFF_D * x1_y2 * y1_x2;
         let y3_consistency = (y3_lhs - y3_rhs) * kappa.square();
 
         let identity = xy_consistency + x3_consistency + y3_consistency;

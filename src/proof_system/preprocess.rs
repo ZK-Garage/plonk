@@ -105,7 +105,7 @@ impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
         &mut self,
         commit_key: &Powers<E>,
         transcript: &mut Transcript,
-    ) -> Result<ProverKey<E::Fr>, Error> {
+    ) -> Result<ProverKey<E::Fr, P>, Error> {
         let (_, selectors, domain) =
             self.preprocess_shared(commit_key, transcript)?;
 
@@ -251,7 +251,7 @@ impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
         &mut self,
         commit_key: &Powers<E>,
         transcript: &mut Transcript,
-    ) -> Result<widget::VerifierKey<E>, Error> {
+    ) -> Result<widget::VerifierKey<E, P>, Error> {
         let (verifier_key, _, _) =
             self.preprocess_shared(commit_key, transcript)?;
         Ok(verifier_key)
@@ -267,7 +267,7 @@ impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
         transcript: &mut Transcript,
     ) -> Result<
         (
-            widget::VerifierKey<E>,
+            widget::VerifierKey<E, P>,
             SelectorPolynomials<E::Fr>,
             GeneralEvaluationDomain<E::Fr>,
         ),

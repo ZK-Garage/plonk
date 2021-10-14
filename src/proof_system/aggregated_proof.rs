@@ -40,8 +40,10 @@ impl<E: PairingEngine> PCAggregateProof<E> {
     /// used to aggregate the witness in the proving stage.
     pub(crate) fn flatten(&self, transcript: &mut Transcript) -> PCProof {
         let challenge = transcript.challenge_scalar(b"aggregate_witness");
-        let powers =
-            powers_of(&challenge, self.commitments_to_polynomials.len() - 1);
+        let powers = crate::util::powers_of(
+            &challenge,
+            self.commitments_to_polynomials.len() - 1,
+        );
 
         let flattened_poly_commitments_iter = self
             .commitments_to_polynomials

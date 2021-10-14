@@ -9,8 +9,7 @@ use crate::error::Error;
 use crate::proof_system::widget::VerifierKey;
 use crate::proof_system::Proof;
 use ark_ec::{PairingEngine, ProjectiveCurve, TEModelParameters};
-use ark_ff::PrimeField;
-use ark_poly_commit::kzg10::{Powers, PreparedVerifierKey};
+use ark_poly_commit::kzg10::{Powers, PreparedVerifierKey as PCVerifierKey};
 use merlin::Transcript;
 
 /// Abstraction structure designed verify [`Proof`]s.
@@ -18,7 +17,7 @@ use merlin::Transcript;
 pub struct Verifier<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
 {
     /// VerificationKey which is used to verify a specific PLONK circuit
-    pub verifier_key: Option<VerifierKey<E>>,
+    pub verifier_key: Option<VerifierKey<E, P>>,
 
     pub(crate) cs: StandardComposer<E, T, P>,
     /// Store the messages exchanged during the preprocessing stage
@@ -93,9 +92,9 @@ impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
     /// Verifies a [`Proof`].
     pub fn verify(
         &self,
-        proof: &Proof<E>,
-        opening_key: &OpeningKey<E>,
-        public_inputs: &[F],
+        proof: &Proof<E, P>,
+        pc_verifier_key: &PCVerifierKey<E>,
+        public_inputs: &[E::Fr],
     ) -> Result<(), Error> {
         let mut cloned_transcript = self.preprocessed_transcript.clone();
         let verifier_key = self.verifier_key.as_ref().unwrap();
@@ -103,7 +102,7 @@ impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
         proof.verify(
             verifier_key,
             &mut cloned_transcript,
-            opening_key,
+            pc_verifier_key,
             public_inputs,
         )
     }

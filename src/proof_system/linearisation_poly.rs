@@ -5,7 +5,7 @@
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
 use super::ProverKey;
-use ark_ec::PairingEngine;
+use ark_ec::{PairingEngine, TEModelParameters};
 use ark_ff::PrimeField;
 use ark_poly::{univariate::DensePolynomial, GeneralEvaluationDomain};
 
@@ -60,9 +60,9 @@ pub(crate) struct ProofEvaluations<F: PrimeField> {
 }
 
 /// Compute the linearisation polynomial.
-pub(crate) fn compute<E: PairingEngine>(
+pub(crate) fn compute<E: PairingEngine, P: TEModelParameters>(
     domain: &GeneralEvaluationDomain<E::Fr>,
-    prover_key: &ProverKey<E::Fr>,
+    prover_key: &ProverKey<E::Fr, P>,
     (
         alpha,
         beta,
@@ -163,7 +163,7 @@ pub(crate) fn compute<E: PairingEngine>(
     )
 }
 
-fn compute_circuit_satisfiability<E: PairingEngine>(
+fn compute_circuit_satisfiability<E: PairingEngine, P: TEModelParameters>(
     (
         range_separation_challenge,
         logic_separation_challenge,
@@ -181,7 +181,7 @@ fn compute_circuit_satisfiability<E: PairingEngine>(
     q_c_eval: &E::Fr,
     q_l_eval: &E::Fr,
     q_r_eval: &E::Fr,
-    prover_key: &ProverKey<E::Fr>,
+    prover_key: &ProverKey<E::Fr, P>,
 ) -> DensePolynomial<E::Fr> {
     let a = prover_key.arithmetic.compute_linearisation(
         a_eval,
