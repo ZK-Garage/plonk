@@ -7,7 +7,9 @@
 use super::ProverKey;
 use ark_ec::{PairingEngine, TEModelParameters};
 use ark_ff::PrimeField;
-use ark_poly::{univariate::DensePolynomial, GeneralEvaluationDomain};
+use ark_poly::{
+    univariate::DensePolynomial, GeneralEvaluationDomain, Polynomial,
+};
 
 #[allow(dead_code)]
 /// Evaluations at points `z` or and `z * root of unity`
@@ -97,12 +99,19 @@ pub(crate) fn compute<E: PairingEngine, P: TEModelParameters>(
     let q_l_eval = prover_key.fixed_base.q_l.0.evaluate(z_challenge);
     let q_r_eval = prover_key.fixed_base.q_r.0.evaluate(z_challenge);
 
-    let a_next_eval = w_l_poly.evaluate(&(z_challenge * domain.group_gen));
-    let b_next_eval = w_r_poly.evaluate(&(z_challenge * domain.group_gen));
-    let d_next_eval = w_4_poly.evaluate(&(z_challenge * domain.group_gen));
-    let perm_eval = z_poly.evaluate(&(z_challenge * domain.group_gen));
+    // Maybe we should use Radix2EvaluationDomain directly and remove this bit
+    let domain_gen = match *domain {
+        GeneralEvaluationDomain::Radix2(r2ED) => r2ED.group_gen,
+        GeneralEvaluationDomain::MixedRadix(mrED) => mrED.group_gen,
+        _ => unreachable!(),
+    };
 
-    let f_1 = compute_circuit_satisfiability::<E>(
+    let a_next_eval = w_l_poly.evaluate(&(*z_challenge * domain_gen));
+    let b_next_eval = w_r_poly.evaluate(&(*z_challenge * domain_gen));
+    let d_next_eval = w_4_poly.evaluate(&(*z_challenge * domain_gen));
+    let perm_eval = z_poly.evaluate(&(*z_challenge * domain_gen));
+
+    let f_1 = compute_circuit_satisfiability::<E, P>(
         (
             range_separation_challenge,
             logic_separation_challenge,
