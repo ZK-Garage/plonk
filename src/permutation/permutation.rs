@@ -7,7 +7,7 @@
 use super::constants::{K1, K2, K3};
 use crate::constraint_system::{Variable, WireData};
 use ark_ff::PrimeField;
-use ark_poly::domain::Radix2EvaluationDomain as EvaluationDomain;
+use ark_poly::domain::GeneralEvaluationDomain;
 use ark_poly::polynomial::univariate::DensePolynomial as Polynomial;
 use hashbrown::HashMap;
 use itertools::izip;
@@ -143,7 +143,7 @@ impl<F: PrimeField> Permutation<F> {
     fn compute_permutation_lagrange(
         &self,
         sigma_mapping: &[WireData],
-        domain: &EvaluationDomain<F>,
+        domain: &GeneralEvaluationDomain<F>,
     ) -> Vec<F> {
         let roots: Vec<_> = domain.elements().collect();
 
@@ -177,7 +177,7 @@ impl<F: PrimeField> Permutation<F> {
     pub(crate) fn compute_sigma_polynomials(
         &mut self,
         n: usize,
-        domain: &EvaluationDomain<F>,
+        domain: &GeneralEvaluationDomain<F>,
     ) -> (Polynomial<F>, Polynomial<F>, Polynomial<F>, Polynomial<F>) {
         // Compute sigma mappings
         let sigmas = self.compute_sigma_permutations(n);
@@ -214,7 +214,7 @@ impl<F: PrimeField> Permutation<F> {
     #[allow(dead_code)]
     fn compute_slow_permutation_poly<I>(
         &self,
-        domain: &EvaluationDomain<F>,
+        domain: &GeneralEvaluationDomain<F>,
         w_l: I,
         w_r: I,
         w_o: I,
@@ -401,7 +401,7 @@ impl<F: PrimeField> Permutation<F> {
     #[allow(dead_code)]
     fn compute_fast_permutation_poly(
         &self,
-        domain: &EvaluationDomain<F>,
+        domain: &GeneralEvaluationDomain<F>,
         w_l: &[F],
         w_r: &[F],
         w_o: &[F],
@@ -623,7 +623,7 @@ impl<F: PrimeField> Permutation<F> {
     // in the numerator_irreducible and denominator_irreducible functions
     pub(crate) fn compute_permutation_poly(
         &self,
-        domain: &EvaluationDomain<F>,
+        domain: &GeneralEvaluationDomain<F>,
         wires: (&[F], &[F], &[F], &[F]),
         beta: &F,
         gamma: &F,
@@ -764,9 +764,10 @@ mod test {
         // x3 * x4 = 2*x2
         cs.poly_gate(x3, x4, x2, one, zero, zero, -two, zero, None);
 
-        let domain =
-            EvaluationDomain::<Bls12Parameters::Fp>::new(cs.circuit_size())
-                .unwrap();
+        let domain = GeneralEvaluationDomain::<Bls12Parameters::Fp>::new(
+            cs.circuit_size(),
+        )
+        .unwrap();
         let pad = vec![Bls12::Fr::zero(); domain.size() - cs.w_l.len()];
         let mut w_l_scalar: Vec<Bls12<dyn Bls12Parameters>::Fr> =
             cs.w_l.iter().map(|v| cs.variables[v]).collect();
@@ -932,9 +933,10 @@ mod test {
         assert_eq!(fourth_sigma[2], WireData::Fourth(3));
         assert_eq!(fourth_sigma[3], WireData::Fourth(0));
 
-        let domain =
-            EvaluationDomain::<Bls12Parameters::Fp>::new(num_wire_mappings)
-                .unwrap();
+        let domain = GeneralEvaluationDomain::<Bls12Parameters::Fp>::new(
+            num_wire_mappings,
+        )
+        .unwrap();
         let w = domain.group_gen;
         let w_squared = w.pow(&[2, 0, 0, 0]);
         let w_cubed = w.pow(&[3, 0, 0, 0]);
@@ -1093,9 +1095,10 @@ mod test {
         Fourth_Sigma : {0,1,2,3} -> {F1, F2, F3, F0}
             When encoded using w, K1, K2,K3 we have {w * K3, w^2 * K3, w^3 * K3, 1 * K3}
         */
-        let domain =
-            EvaluationDomain::<Bls12Parameters::Fp>::new(num_wire_mappings)
-                .unwrap();
+        let domain = GeneralEvaluationDomain::<Bls12Parameters::Fp>::new(
+            num_wire_mappings,
+        )
+        .unwrap();
         let w = domain.group_gen;
         let w_squared = w.pow(&[2, 0, 0, 0]);
         let w_cubed = w.pow(&[3, 0, 0, 0]);
@@ -1142,9 +1145,10 @@ mod test {
     fn test_basic_slow_permutation_poly() {
         let num_wire_mappings = 2;
         let mut perm = Permutation::new();
-        let domain =
-            EvaluationDomain::<Bls12Parameters::Fp>::new(num_wire_mappings)
-                .unwrap();
+        let domain = GeneralEvaluationDomain::<Bls12Parameters::Fp>::new(
+            num_wire_mappings,
+        )
+        .unwrap();
 
         let var_one = perm.new_variable();
         let var_two = perm.new_variable();
@@ -1193,7 +1197,7 @@ mod test {
     fn test_correct_permutation_poly<F: PrimeField>(
         n: usize,
         mut perm: Permutation<F>,
-        domain: &EvaluationDomain<F>,
+        domain: &GeneralEvaluationDomain<F>,
         w_l: Vec<F>,
         w_r: Vec<F>,
         w_o: Vec<F>,
