@@ -14,6 +14,7 @@ use ark_ff::PrimeField;
 use ark_poly::polynomial::univariate::DensePolynomial;
 use ark_poly::{Evaluations, GeneralEvaluationDomain};
 use ark_poly_commit::kzg10::Powers;
+use core::marker::PhantomData;
 use merlin::Transcript;
 
 /// Struct that contains all of the selector and permutation [`Polynomial`]s in
@@ -208,6 +209,7 @@ impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
                 selectors.q_fixed_group_add,
                 q_fixed_group_add_eval_4n,
             ),
+            _marker: PhantomData,
         };
 
         // Prover Key for permutation argument
@@ -226,6 +228,7 @@ impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
                     selectors.q_variable_group_add,
                     q_variable_group_add_eval_4n,
                 ),
+                _marker: PhantomData,
             };
 
         let prover_key = ProverKey {
@@ -367,11 +370,13 @@ impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
                 q_l: q_l_poly_commit,
                 q_r: q_r_poly_commit,
                 q_fixed_group_add: q_fixed_group_add_poly_commit,
+                _marker: PhantomData,
             };
         // Verifier Key for curve addition circuits
         let curve_addition_verifier_key =
             widget::ecc::curve_addition::VerifierKey {
                 q_variable_group_add: q_variable_group_add_poly_commit,
+                _marker: PhantomData,
             };
         // Verifier Key for permutation argument
         let permutation_verifier_key = widget::permutation::VerifierKey {
@@ -416,7 +421,7 @@ impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
     }
 }
 
-#[cfg(feature = "std")]
+/*
 #[cfg(test)]
 mod test {
     use super::*;
@@ -449,3 +454,4 @@ mod test {
         assert!(composer.w_o.len() == size);
     }
 }
+*/

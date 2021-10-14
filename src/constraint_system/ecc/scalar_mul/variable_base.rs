@@ -24,8 +24,8 @@ impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
     pub fn variable_base_scalar_mul(
         &mut self,
         curve_var: Variable,
-        point: Point,
-    ) -> Point {
+        point: Point<E, T, P>,
+    ) -> Point<E, T, P> {
         // Turn scalar into bits
         let raw_bls_scalar = *self
             .variables
@@ -93,6 +93,7 @@ impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
     }
 }
 
+/*
 #[cfg(feature = "std")]
 #[cfg(test)]
 mod tests {
@@ -134,3 +135,4 @@ mod tests {
         assert!(res.is_ok());
     }
 }
+*/

@@ -19,9 +19,9 @@ impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
     /// width of 4.
     pub fn point_addition_gate(
         &mut self,
-        point_a: Point,
-        point_b: Point,
-    ) -> Point {
+        point_a: Point<E, T, P>,
+        point_b: Point<E, T, P>,
+    ) -> Point<E, T, P> {
         // In order to verify that two points were correctly added
         // without going over a degree 4 polynomial, we will need
         // x_1, y_1, x_2, y_2
@@ -84,9 +84,11 @@ impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
         );
         self.n += 1;
 
-        Point { x: x_3, y: y_3 }
+        Point::<E, T, P>::new(x_3, y_3)
     }
 }
+
+/*
 
 #[cfg(test)]
 mod variable_base_gate_tests {
@@ -249,3 +251,4 @@ mod variable_base_gate_tests {
         assert!(res.is_ok());
     }
 }
+*/

@@ -10,12 +10,14 @@ use crate::proof_system::widget::ecc::scalar_mul::fixed_base::proverkey::{
 };
 use ark_ec::{PairingEngine, TEModelParameters};
 use ark_poly_commit::kzg10::Commitment;
+use core::marker::PhantomData;
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub(crate) struct VerifierKey<E: PairingEngine, P: TEModelParameters> {
     pub(crate) q_l: Commitment<E>,
     pub(crate) q_r: Commitment<E>,
     pub(crate) q_fixed_group_add: Commitment<E>,
+    _marker: PhantomData<P>,
 }
 
 impl<E: PairingEngine, P: TEModelParameters> VerifierKey<E, P> {

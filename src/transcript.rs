@@ -11,7 +11,6 @@ use ark_ff::{Field, PrimeField};
 use ark_poly_commit::kzg10::Commitment;
 use ark_serialize::CanonicalSerialize;
 use merlin::Transcript;
-use std::vec::Vec;
 
 /// Transcript adds an abstraction over the Merlin transcript
 /// For convenience
@@ -47,7 +46,8 @@ impl<E: PairingEngine> TranscriptProtocol<E> for Transcript {
     }
 
     fn challenge_scalar(&mut self, label: &'static [u8]) -> E::Fr {
-        let mut buf = Vec::with_size(E::Fr::size_in_bits() / 8 - 1);
+        // XXX: review this
+        let mut buf = Vec::with_capacity(E::Fr::size_in_bits() / 8 - 1);
         self.challenge_bytes(label, &mut buf);
 
         E::Fr::from_random_bytes(&buf).unwrap()

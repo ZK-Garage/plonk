@@ -194,6 +194,7 @@ impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
     }
 }
 
+/*
 #[cfg(test)]
 mod range_gate_tests {
     use super::super::helper::*;
@@ -249,3 +250,4 @@ mod range_gate_tests {
         );
     }
 }
+*/

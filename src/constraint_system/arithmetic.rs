@@ -304,6 +304,7 @@ impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
     }
 }
 
+/*
 #[cfg(test)]
 mod arithmetic_gates_tests {
     use crate::constraint_system::helper::*;
@@ -505,3 +506,4 @@ mod arithmetic_gates_tests {
         assert!(res.is_err());
     }
 }
+*/

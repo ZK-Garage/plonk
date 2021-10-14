@@ -46,6 +46,7 @@ impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
     }
 }
 
+/*
 #[cfg(test)]
 mod boolean_gates_tests {
     use super::super::helper::*;
@@ -80,3 +81,5 @@ mod boolean_gates_tests {
         assert!(res.is_err())
     }
 }
+
+ */

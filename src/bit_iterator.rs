@@ -57,7 +57,7 @@ macro_rules! bit_iterator {
 }
 bit_iterator!(u8, BitIterator8);
 
-#[cfg(feature = "std")]
+/*
 #[cfg(test)]
 mod test {
     use super::*;
@@ -73,3 +73,4 @@ mod test {
         let _a_vec: Vec<_> = a.collect();
     }
 }
+*/

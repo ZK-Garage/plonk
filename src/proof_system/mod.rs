@@ -17,7 +17,7 @@ pub use prover::Prover;
 pub use verifier::Verifier;
 pub use widget::*;
 
-pub(crate) use aggregated_proof::AggregateProof;
+pub(crate) use aggregated_proof::PCAggregateProof;
 /// Represents a PLONK Proof
 pub mod proof;
 pub(crate) mod widget;

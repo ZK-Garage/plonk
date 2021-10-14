@@ -322,6 +322,7 @@ impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
     }
 }
 
+/*
 #[cfg(test)]
 mod logic_gate_tests {
     use super::super::helper::*;
@@ -419,3 +420,4 @@ mod logic_gate_tests {
         );
     }
 }
+*/

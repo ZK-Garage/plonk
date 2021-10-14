@@ -39,7 +39,10 @@ impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
     /// the **ONLY** `generator` inputs that should be passed to this
     /// function as inputs are [`dusk_jubjub::GENERATOR`] or
     /// [`dusk_jubjub::GENERATOR_NUMS`].
-    pub fn fixed_base_scalar_mul(&mut self, jubjub_scalar: Variable) -> Point {
+    pub fn fixed_base_scalar_mul(
+        &mut self,
+        jubjub_scalar: Variable,
+    ) -> Point<E, T, P> {
         let num_bits =
             <P::BaseField as PrimeField>::Params::MODULUS_BITS as usize;
         // compute 2^iG
@@ -116,7 +119,7 @@ impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
 
             let xy_beta = x_beta * y_beta;
 
-            let wnaf_round = WnafRound {
+            let wnaf_round = WnafRound::new_wnaf(
                 acc_x,
                 acc_y,
                 accumulated_bit,
@@ -124,7 +127,7 @@ impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
                 x_beta,
                 y_beta,
                 xy_beta,
-            };
+            );
 
             self.fixed_group_add(wnaf_round);
         }
@@ -153,10 +156,11 @@ impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
         // input jubjub scalar
         self.assert_equal(last_accumulated_bit, jubjub_scalar);
 
-        Point { x: acc_x, y: acc_y }
+        Point::<E, T, P>::new(acc_x, acc_y)
     }
 }
 
+/*
 #[cfg(feature = "std")]
 #[cfg(test)]
 mod tests {
@@ -268,16 +272,12 @@ mod tests {
 
                 let var_point_a_x = composer.add_input(affine_point_a.get_x());
                 let var_point_a_y = composer.add_input(affine_point_a.get_y());
-                let point_a = Point {
-                    x: var_point_a_x,
-                    y: var_point_a_y,
-                };
+                let point_a =
+                    Point::<E, T, P>::new(var_point_a_x, var_point_a_y);
                 let var_point_b_x = composer.add_input(affine_point_b.get_x());
                 let var_point_b_y = composer.add_input(affine_point_b.get_y());
-                let point_b = Point {
-                    x: var_point_b_x,
-                    y: var_point_b_y,
-                };
+                let point_b =
+                    Point::<E, T, P>::new(var_point_b_x, var_point_b_y);
                 let new_point = composer.point_addition_gate(point_a, point_b);
 
                 composer.assert_equal_public_point(
@@ -402,3 +402,5 @@ mod tests {
         assert!(res.is_ok());
     }
 }
+
+*/
