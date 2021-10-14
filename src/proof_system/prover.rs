@@ -13,9 +13,13 @@ use crate::{
     transcript::TranscriptProtocol,
 };
 use ark_ec::{PairingEngine, ProjectiveCurve, TEModelParameters};
-use ark_poly::{univariate::DensePolynomial, GeneralEvaluationDomain};
+use ark_ff::Field;
+use ark_poly::{
+    univariate::DensePolynomial, EvaluationDomain, GeneralEvaluationDomain,
+};
 use ark_poly_commit::kzg10::Powers;
 use merlin::Transcript;
+use num_traits::{One, Zero};
 
 /// Abstraction structure designed to construct a circuit and generate
 /// [`Proof`]s for it.
@@ -101,10 +105,18 @@ impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
         DensePolynomial<E::Fr>,
     ) {
         (
-            DensePolynomial::from_coefficients_vec(t_x[0..n].to_vec()),
-            DensePolynomial::from_coefficients_vec(t_x[n..2 * n].to_vec()),
-            DensePolynomial::from_coefficients_vec(t_x[2 * n..3 * n].to_vec()),
-            DensePolynomial::from_coefficients_vec(t_x[3 * n..].to_vec()),
+            DensePolynomial {
+                coeffs: (t_x[0..n].to_vec()),
+            },
+            DensePolynomial {
+                coeffs: (t_x[n..2 * n].to_vec()),
+            },
+            DensePolynomial {
+                coeffs: (t_x[2 * n..3 * n].to_vec()),
+            },
+            DensePolynomial {
+                coeffs: (t_x[3 * n..].to_vec()),
+            },
         )
     }
 
@@ -123,9 +135,9 @@ impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
         let z_three_n = z_challenge.pow(&[3 * n as u64, 0, 0, 0]);
 
         let a = t_1_poly;
-        let b = t_2_poly * &z_n;
-        let c = t_3_poly * &z_two_n;
-        let d = t_4_poly * &z_three_n;
+        let b = t_2_poly * z_n;
+        let c = t_3_poly * z_two_n;
+        let d = t_4_poly * z_three_n;
         let abc = &(a + &b) + &c;
         &abc + &d
     }
@@ -168,7 +180,8 @@ impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
         commit_key: &Powers<E>,
         prover_key: &ProverKey<E::Fr, P>,
     ) -> Result<Proof<E, P>, Error> {
-        let domain = GeneralEvaluationDomain::new(self.cs.circuit_size())?;
+        let domain =
+            GeneralEvaluationDomain::new(self.cs.circuit_size()).unwrap();
 
         // Since the caller is passing a pre-processed circuit
         // We assume that the Transcript has been seeded with the preprocessed
@@ -187,14 +200,18 @@ impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
 
         // Witnesses are now in evaluation form, convert them to coefficients
         // So that we may commit to them
-        let w_l_poly =
-            DensePolynomial::from_coefficients_vec(domain.ifft(w_l_scalar));
-        let w_r_poly =
-            DensePolynomial::from_coefficients_vec(domain.ifft(w_r_scalar));
-        let w_o_poly =
-            DensePolynomial::from_coefficients_vec(domain.ifft(w_o_scalar));
-        let w_4_poly =
-            DensePolynomial::from_coefficients_vec(domain.ifft(w_4_scalar));
+        let w_l_poly = DensePolynomial {
+            coeffs: (domain.ifft(w_l_scalar)),
+        };
+        let w_r_poly = DensePolynomial {
+            coeffs: (domain.ifft(w_r_scalar)),
+        };
+        let w_o_poly = DensePolynomial {
+            coeffs: (domain.ifft(w_o_scalar)),
+        };
+        let w_4_poly = DensePolynomial {
+            coeffs: (domain.ifft(w_4_scalar)),
+        };
 
         // Commit to witness polynomials
         let w_l_poly_commit = commit_key.commit(&w_l_poly)?;
@@ -216,18 +233,16 @@ impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
         transcript.append_scalar(b"beta", &beta);
         let gamma = transcript.challenge_scalar(b"gamma");
 
-        let z_poly = DensePolynomial::from_coefficients_slice(
-            &self.cs.perm.compute_permutation_poly(
-                &domain,
-                (&w_l_scalar, &w_r_scalar, &w_o_scalar, &w_4_scalar),
-                &beta,
-                &gamma,
-                (
-                    &prover_key.permutation.left_sigma.0,
-                    &prover_key.permutation.right_sigma.0,
-                    &prover_key.permutation.out_sigma.0,
-                    &prover_key.permutation.fourth_sigma.0,
-                ),
+        let z_poly = self.cs.perm.compute_permutation_poly(
+            &domain,
+            (&w_l_scalar, &w_r_scalar, &w_o_scalar, &w_4_scalar),
+            &beta,
+            &gamma,
+            (
+                &prover_key.permutation.left_sigma.0,
+                &prover_key.permutation.right_sigma.0,
+                &prover_key.permutation.out_sigma.0,
+                &prover_key.permutation.fourth_sigma.0,
             ),
         );
 
@@ -239,9 +254,9 @@ impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
         transcript.append_commitment(b"z", &z_poly_commit);
 
         // 3. Compute public inputs polynomial
-        let pi_poly = DensePolynomial::from_coefficients_vec(
-            domain.ifft(&self.cs.construct_dense_pi_vec()),
-        );
+        let pi_poly = DensePolynomial {
+            coeffs: domain.ifft(&self.cs.construct_dense_pi_vec()),
+        };
 
         // 4. Compute quotient polynomial
         //
@@ -294,7 +309,7 @@ impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
         // Compute evaluation challenge; `z`
         let z_challenge = transcript.challenge_scalar(b"z");
 
-        let (lin_poly, evaluations) = linearisation_poly::compute::<E>(
+        let (lin_poly, evaluations) = linearisation_poly::compute::<E, P>(
             &domain,
             &prover_key,
             &(
