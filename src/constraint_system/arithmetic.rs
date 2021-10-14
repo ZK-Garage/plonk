@@ -7,6 +7,7 @@
 use crate::constraint_system::StandardComposer;
 use crate::constraint_system::Variable;
 use ark_ec::{PairingEngine, ProjectiveCurve, TEModelParameters};
+use num_traits::{One, Zero};
 
 impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
     StandardComposer<E, T, P>

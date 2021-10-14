@@ -45,7 +45,8 @@ impl<E: PairingEngine, P: TEModelParameters> PCAggregateProof<E, P> {
     /// The transcript must have the same view as the transcript that was
     /// used to aggregate the witness in the proving stage.
     pub(crate) fn flatten(&self, transcript: &mut Transcript) -> KZGProof<E> {
-        let challenge = transcript.challenge_scalar(b"aggregate_witness");
+        let challenge =
+            transcript.challenge_scalar::<E::Fr>(b"aggregate_witness");
         let powers: Vec<E::Fr> = crate::util::powers_of(
             &challenge,
             self.commitments_to_polynomials.len() - 1,
