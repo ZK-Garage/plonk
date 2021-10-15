@@ -9,6 +9,7 @@ use ark_ec::TEModelParameters;
 use ark_ff::PrimeField;
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, GeneralEvaluationDomain,
+    UVPolynomial,
 };
 
 /// Computes the Quotient [`DensePolynomial`] given the [`EvaluationDomain`], a
@@ -35,7 +36,8 @@ pub(crate) fn compute<F: PrimeField, P: TEModelParameters<BaseField = F>>(
     ): &(F, F, F, F, F, F, F),
 ) -> Result<DensePolynomial<F>, Error> {
     // Compute 4n eval of z(X)
-    let domain_4n = GeneralEvaluationDomain::new(4 * domain.size()).unwrap();
+    let domain_4n =
+        GeneralEvaluationDomain::<F>::new(4 * domain.size()).unwrap();
     let mut z_eval_4n = domain_4n.coset_fft(&z_poly);
     z_eval_4n.push(z_eval_4n[0]);
     z_eval_4n.push(z_eval_4n[1]);
@@ -87,13 +89,13 @@ pub(crate) fn compute<F: PrimeField, P: TEModelParameters<BaseField = F>>(
         .map(|i| {
             let numerator = t_1[i] + t_2[i];
             let denominator = prover_key.v_h_coset_4n()[i];
-            numerator * denominator.invert().unwrap()
+            numerator * denominator.inverse().unwrap()
         })
         .collect();
 
-    Ok(DensePolynomial::from_coefficients_vec(
-        domain_4n.coset_ifft(&quotient),
-    ))
+    Ok(DensePolynomial {
+        coeffs: domain_4n.coset_ifft(&quotient),
+    })
 }
 
 // Ensures that the circuit is satisfied
@@ -112,7 +114,8 @@ fn compute_circuit_satisfiability_equation<
     (wl_eval_4n, wr_eval_4n, wo_eval_4n, w4_eval_4n): (&[F], &[F], &[F], &[F]),
     pi_poly: &DensePolynomial<F>,
 ) -> Vec<F> {
-    let domain_4n = GeneralEvaluationDomain::new(4 * domain.size()).unwrap();
+    let domain_4n =
+        GeneralEvaluationDomain::<F>::new(4 * domain.size()).unwrap();
     let pi_eval_4n = domain_4n.coset_fft(pi_poly);
 
     let range = (0..domain_4n.size()).into_iter();
@@ -192,7 +195,8 @@ fn compute_permutation_checks<
     z_eval_4n: &[F],
     (alpha, beta, gamma): (&F, &F, &F),
 ) -> Vec<F> {
-    let domain_4n = GeneralEvaluationDomain::new(4 * domain.size()).unwrap();
+    let domain_4n =
+        GeneralEvaluationDomain::<F>::new(4 * domain.size()).unwrap();
     let l1_poly_alpha =
         compute_first_lagrange_poly_scaled(domain, alpha.square());
     let l1_alpha_sq_evals = domain_4n.coset_fft(&l1_poly_alpha.coeffs);
