@@ -10,8 +10,11 @@ use crate::constraint_system::{Variable, WireData};
 use ark_ec::{PairingEngine, ProjectiveCurve, TEModelParameters};
 use num_traits::{One, Zero};
 
-impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
-    StandardComposer<E, T, P>
+impl<
+        E: PairingEngine<Fr = T::BaseField>,
+        T: ProjectiveCurve<BaseField = P::BaseField>,
+        P: TEModelParameters,
+    > StandardComposer<E, T, P>
 {
     /// Adds a range-constraint gate that checks and constrains a
     /// [`Variable`] to be inside of the range \[0,num_bits\].

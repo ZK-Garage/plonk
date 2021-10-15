@@ -9,8 +9,11 @@ use crate::constraint_system::Variable;
 use ark_ec::{PairingEngine, ProjectiveCurve, TEModelParameters};
 use num_traits::{One, Zero};
 
-impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
-    StandardComposer<E, T, P>
+impl<
+        E: PairingEngine<Fr = T::BaseField>,
+        T: ProjectiveCurve<BaseField = P::BaseField>,
+        P: TEModelParameters,
+    > StandardComposer<E, T, P>
 {
     /// Adds a width-3 add gate to the circuit, linking the addition of the
     /// provided inputs, scaled by the selector coefficients with the output

@@ -8,7 +8,10 @@ use crate::transcript::TranscriptProtocol;
 /// Proof that multiple polynomials were correctly evaluated at a point `z`,
 /// each producing their respective evaluated points p_i(z).
 #[derive(Debug)]
-pub(crate) struct PCAggregateProof<E: PairingEngine, P: TEModelParameters> {
+pub(crate) struct PCAggregateProof<
+    E: PairingEngine<Fr = P::BaseField>,
+    P: TEModelParameters,
+> {
     /// This is a commitment to the aggregated witness polynomial.
     /// The aggregate witness polynomial is a linear combination of the
     /// witness polynomials (p_i(X) - p_i(z)) / (X-z)
@@ -21,7 +24,9 @@ pub(crate) struct PCAggregateProof<E: PairingEngine, P: TEModelParameters> {
     _marker: PhantomData<P>,
 }
 
-impl<E: PairingEngine, P: TEModelParameters> PCAggregateProof<E, P> {
+impl<E: PairingEngine<Fr = P::BaseField>, P: TEModelParameters>
+    PCAggregateProof<E, P>
+{
     /// Initialises an `AggregatedProof` with the commitment to the witness.
     pub(crate) fn with_witness(
         witness: Commitment<E>,

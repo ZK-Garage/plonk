@@ -14,7 +14,10 @@ use num_traits::{One, Zero};
 #[derive(Debug, Clone, Copy)]
 /// Contains all of the components needed to verify that a bit scalar
 /// multiplication was computed correctly
-pub(crate) struct WnafRound<E: PairingEngine, T: ProjectiveCurve> {
+pub(crate) struct WnafRound<
+    E: PairingEngine<Fr = T::BaseField>,
+    T: ProjectiveCurve,
+> {
     /// This is the accumulated x coordinate point that we wish to add (so
     /// far.. depends on where you are in the scalar mul) it is linked to
     /// the wnaf entry, so must not be revealed
@@ -42,8 +45,11 @@ pub(crate) struct WnafRound<E: PairingEngine, T: ProjectiveCurve> {
     _marker1: PhantomData<T>,
 }
 
-impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
-    StandardComposer<E, T, P>
+impl<
+        E: PairingEngine<Fr = T::BaseField>,
+        T: ProjectiveCurve,
+        P: TEModelParameters,
+    > StandardComposer<E, T, P>
 {
     /// Generates a new structure for preparing a WNAF ROUND
     pub fn new_wnaf(

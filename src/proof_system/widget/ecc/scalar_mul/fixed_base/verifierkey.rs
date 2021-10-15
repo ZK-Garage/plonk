@@ -13,14 +13,19 @@ use ark_poly_commit::kzg10::Commitment;
 use core::marker::PhantomData;
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
-pub(crate) struct VerifierKey<E: PairingEngine, P: TEModelParameters> {
+pub(crate) struct VerifierKey<
+    E: PairingEngine<Fr = P::BaseField>,
+    P: TEModelParameters,
+> {
     pub(crate) q_l: Commitment<E>,
     pub(crate) q_r: Commitment<E>,
     pub(crate) q_fixed_group_add: Commitment<E>,
     _marker: PhantomData<P>,
 }
 
-impl<E: PairingEngine, P: TEModelParameters> VerifierKey<E, P> {
+impl<E: PairingEngine<Fr = P::BaseField>, P: TEModelParameters>
+    VerifierKey<E, P>
+{
     pub(crate) fn compute_linearisation_commitment(
         &self,
         ecc_separation_challenge: &E::Fr,

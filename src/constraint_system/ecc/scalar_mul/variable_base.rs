@@ -12,8 +12,11 @@ use ark_ec::{PairingEngine, ProjectiveCurve};
 use ark_ff::PrimeField;
 use num_traits::{One, Zero};
 
-impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
-    StandardComposer<E, T, P>
+impl<
+        E: PairingEngine<Fr = T::BaseField>,
+        T: ProjectiveCurve<BaseField = P::BaseField>,
+        P: TEModelParameters,
+    > StandardComposer<E, T, P>
 {
     /// Adds a variable-base scalar multiplication to the circuit description.
     ///

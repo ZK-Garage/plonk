@@ -39,8 +39,11 @@ pub(crate) struct SelectorPolynomials<F: PrimeField> {
     fourth_sigma: DensePolynomial<F>,
 }
 
-impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
-    StandardComposer<E, T, P>
+impl<
+        E: PairingEngine<Fr = T::BaseField>,
+        T: ProjectiveCurve<BaseField = P::BaseField>,
+        P: TEModelParameters,
+    > StandardComposer<E, T, P>
 {
     /// Pads the circuit to the next power of two.
     ///

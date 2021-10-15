@@ -11,7 +11,8 @@ use ark_poly::Evaluations;
 use core::marker::PhantomData;
 
 #[derive(Debug, Eq, PartialEq, Clone)]
-pub(crate) struct ProverKey<F: PrimeField, P: TEModelParameters> {
+pub(crate) struct ProverKey<F: PrimeField, P: TEModelParameters<BaseField = F>>
+{
     pub(crate) q_l: (DensePolynomial<F>, Evaluations<F>),
     pub(crate) q_r: (DensePolynomial<F>, Evaluations<F>),
     pub(crate) q_c: (DensePolynomial<F>, Evaluations<F>),
@@ -19,7 +20,7 @@ pub(crate) struct ProverKey<F: PrimeField, P: TEModelParameters> {
     _marker: PhantomData<P>,
 }
 
-impl<F: PrimeField, P: TEModelParameters> ProverKey<F, P> {
+impl<F: PrimeField, P: TEModelParameters<BaseField = F>> ProverKey<F, P> {
     pub(crate) fn compute_quotient_i(
         &self,
         index: usize,

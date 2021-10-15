@@ -14,8 +14,11 @@ use merlin::Transcript;
 
 /// Abstraction structure designed verify [`Proof`]s.
 #[allow(missing_debug_implementations)]
-pub struct Verifier<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
-{
+pub struct Verifier<
+    E: PairingEngine<Fr = T::BaseField>,
+    T: ProjectiveCurve<BaseField = P::BaseField>,
+    P: TEModelParameters,
+> {
     /// VerificationKey which is used to verify a specific PLONK circuit
     pub verifier_key: Option<VerifierKey<E, P>>,
 
@@ -28,16 +31,22 @@ pub struct Verifier<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
     pub preprocessed_transcript: Transcript,
 }
 
-impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters> Default
-    for Verifier<E, T, P>
+impl<
+        E: PairingEngine<Fr = T::BaseField>,
+        T: ProjectiveCurve<BaseField = P::BaseField>,
+        P: TEModelParameters,
+    > Default for Verifier<E, T, P>
 {
     fn default() -> Verifier<E, T, P> {
         Verifier::new(b"plonk")
     }
 }
 
-impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
-    Verifier<E, T, P>
+impl<
+        E: PairingEngine<Fr = T::BaseField>,
+        T: ProjectiveCurve<BaseField = P::BaseField>,
+        P: TEModelParameters,
+    > Verifier<E, T, P>
 {
     /// Creates a new `Verifier` instance.
     pub fn new(label: &'static [u8]) -> Verifier<E, T, P> {

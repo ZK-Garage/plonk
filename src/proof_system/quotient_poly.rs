@@ -11,7 +11,7 @@ use ark_poly::{univariate::DensePolynomial, GeneralEvaluationDomain};
 
 /// Computes the Quotient [`DensePolynomial`] given the [`EvaluationDomain`], a
 /// [`ProverKey`] and some other info.
-pub(crate) fn compute<F: PrimeField, P: TEModelParameters>(
+pub(crate) fn compute<F: PrimeField, P: TEModelParameters<BaseField = F>>(
     domain: &GeneralEvaluationDomain<F>,
     prover_key: &ProverKey<F, P>,
     z_poly: &DensePolynomial<F>,
@@ -97,7 +97,7 @@ pub(crate) fn compute<F: PrimeField, P: TEModelParameters>(
 // Ensures that the circuit is satisfied
 fn compute_circuit_satisfiability_equation<
     F: PrimeField,
-    P: TEModelParameters,
+    P: TEModelParameters<BaseField = F>,
 >(
     domain: &GeneralEvaluationDomain<F>,
     (

@@ -36,7 +36,7 @@ use rayon::prelude::*;
 /// capabilities of adquiring any kind of knowledge about the witness used to
 /// construct the Proof.
 #[derive(Debug, Eq, PartialEq, Clone, Default)]
-pub struct Proof<E: PairingEngine, P: TEModelParameters> {
+pub struct Proof<E: PairingEngine<Fr = P::BaseField>, P: TEModelParameters> {
     /// Commitment to the witness polynomial for the left wires.
     pub(crate) a_comm: Commitment<E>,
     /// Commitment to the witness polynomial for the right wires.
@@ -67,7 +67,7 @@ pub struct Proof<E: PairingEngine, P: TEModelParameters> {
     _marker: PhantomData<P>,
 }
 
-impl<E: PairingEngine, P: TEModelParameters> Proof<E, P> {
+impl<E: PairingEngine<Fr = P::BaseField>, P: TEModelParameters> Proof<E, P> {
     /// Performs the verification of a [`Proof`] returning a boolean result.
     pub(crate) fn verify(
         &self,

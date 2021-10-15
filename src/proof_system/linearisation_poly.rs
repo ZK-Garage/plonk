@@ -253,7 +253,7 @@ fn compute_circuit_satisfiability<E: PairingEngine, P: TEModelParameters>(
 
     linearisation_poly
 }
-
+/*
 #[cfg(test)]
 mod evaluations_tests {
     use super::*;
@@ -267,3 +267,4 @@ mod evaluations_tests {
         assert_eq!(proof_evals.to_bytes(), obtained_evals.to_bytes())
     }
 }
+*/

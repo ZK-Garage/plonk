@@ -24,7 +24,11 @@ use num_traits::{One, Zero};
 /// Abstraction structure designed to construct a circuit and generate
 /// [`Proof`]s for it.
 #[allow(missing_debug_implementations)]
-pub struct Prover<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters> {
+pub struct Prover<
+    E: PairingEngine<Fr = T::BaseField>,
+    T: ProjectiveCurve<BaseField = P::BaseField>,
+    P: TEModelParameters,
+> {
     /// ProverKey which is used to create proofs about a specific PLONK circuit
     pub prover_key: Option<ProverKey<E::Fr, P>>,
 
@@ -34,8 +38,11 @@ pub struct Prover<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters> {
     pub preprocessed_transcript: Transcript,
 }
 
-impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
-    Prover<E, T, P>
+impl<
+        E: PairingEngine<Fr = T::BaseField>,
+        T: ProjectiveCurve<BaseField = P::BaseField>,
+        P: TEModelParameters,
+    > Prover<E, T, P>
 {
     /// Returns a mutable copy of the underlying [`StandardComposer`].
     pub fn mut_cs(&mut self) -> &mut StandardComposer<E, T, P> {
@@ -55,16 +62,22 @@ impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
     }
 }
 
-impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters> Default
-    for Prover<E, T, P>
+impl<
+        E: PairingEngine<Fr = T::BaseField>,
+        T: ProjectiveCurve<BaseField = P::BaseField>,
+        P: TEModelParameters,
+    > Default for Prover<E, T, P>
 {
     fn default() -> Prover<E, T, P> {
         Prover::new(b"plonk")
     }
 }
 
-impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
-    Prover<E, T, P>
+impl<
+        E: PairingEngine<Fr = T::BaseField>,
+        T: ProjectiveCurve<BaseField = P::BaseField>,
+        P: TEModelParameters,
+    > Prover<E, T, P>
 {
     /// Creates a new `Prover` instance.
     pub fn new(label: &'static [u8]) -> Prover<E, T, P> {

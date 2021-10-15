@@ -84,8 +84,8 @@ pub fn setup<R: RngCore + CryptoRng, E: PairingEngine>(
 
 /// Adds dummy constraints using arithmetic gates
 pub(crate) fn dummy_gadget<
-    E: PairingEngine,
-    T: ProjectiveCurve,
+    E: PairingEngine<Fr = T::BaseField>,
+    T: ProjectiveCurve<BaseField = P::BaseField>,
     P: TEModelParameters,
 >(
     n: usize,
@@ -109,8 +109,8 @@ pub(crate) fn dummy_gadget<
 /// Takes a generic gadget function with no auxillary input and
 /// tests whether it passes an end-to-end test
 pub(crate) fn gadget_tester<
-    E: PairingEngine,
-    T: ProjectiveCurve,
+    E: PairingEngine<Fr = T::BaseField>,
+    T: ProjectiveCurve<BaseField = P::BaseField>,
     P: TEModelParameters,
 >(
     gadget: fn(composer: &mut StandardComposer<E, T, P>),
