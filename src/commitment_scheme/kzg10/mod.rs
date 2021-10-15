@@ -6,16 +6,25 @@
 
 //! Implementation of the KZG10 polynomial commitment scheme.
 
-cfg_if::cfg_if!(
-    if #[cfg(feature = "alloc")]
-    {
-        pub mod key;
-        pub mod srs;
-        pub use key::{CommitKey, OpeningKey};
-        pub(crate) use proof::alloc::AggregateProof;
-        pub use srs::PublicParameters;
-    });
+// cfg_if::cfg_if!(
+//     if #[cfg(feature = "alloc")]
+//     {
+//         pub mod key;
+//         pub mod srs;
+//         pub use key::{CommitKey, OpeningKey};
+//         pub(crate) use proof::alloc::AggregateProof;
+//         pub use srs::PublicParameters;
+//     });
     
-    pub(crate) mod commitment;
-    pub(crate) mod proof;
-    pub(crate) use commitment::Commitment;
+//     pub(crate) mod commitment;
+//     pub(crate) mod proof;
+//     pub(crate) use commitment::Commitment;
+
+pub mod key;
+pub mod srs;
+pub use key::{CommitKey, OpeningKey};
+pub(crate) use proof::alloc::AggregateProof;
+pub use srs::PublicParameters;
+pub(crate) mod commitment;
+pub(crate) mod proof;
+pub(crate) use commitment::Commitment;    

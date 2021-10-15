@@ -5,66 +5,72 @@
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
 //! Module containing the representation of a Commitment to a Polynomial.
-use dusk_bls12_381::{G1Affine, G1Projective};
-use dusk_bytes::{DeserializableSlice, Serializable};
+// use std::path::PathBuf;
+
+use ark_ec::PairingEngine;
+// use dusk_bytes::{DeserializableSlice, Serializable};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 /// Holds a commitment to a polynomial in a form of a [`G1Affine`]-bls12_381
 /// point.
-pub(crate) struct Commitment(
+pub(crate) struct Commitment<E: PairingEngine>(
     /// The commitment is a group element.
-    pub(crate) G1Affine,
+    pub(crate) E::G1Affine,
 );
 
-impl From<G1Affine> for Commitment {
-    fn from(point: G1Affine) -> Commitment {
+impl<E: PairingEngine> From<E::G1Affine> for Commitment<E> {
+    fn from(point: E::G1Affine) -> Commitment<E> {
         Commitment(point)
     }
 }
 
-impl From<G1Projective> for Commitment {
-    fn from(point: G1Projective) -> Commitment {
+impl<E: PairingEngine> From<E::G1Projective> for Commitment<E> {
+    fn from(point: E::G1Projective) -> Commitment<E> {
         Commitment(point.into())
     }
 }
 
-impl Serializable<{ G1Affine::SIZE }> for Commitment {
-    type Error = dusk_bytes::Error;
+// impl<E: PairingEngine> Serializable<{ E::G1Affine::SIZE }> for Commitment<E> {
+//     type Error = dusk_bytes::Error;
 
-    fn to_bytes(&self) -> [u8; Self::SIZE] {
-        self.0.to_bytes()
-    }
+//     fn to_bytes(&self) -> [u8; Self::SIZE] {
+//         self.0.to_bytes()
+//     }
 
-    fn from_bytes(buf: &[u8; Self::SIZE]) -> Result<Self, Self::Error> {
-        let g1 = G1Affine::from_slice(buf)?;
-        Ok(Self(g1))
-    }
-}
+//     fn from_bytes(buf: &[u8; Self::SIZE]) -> Result<Self, Self::Error> {
+//         let g1 = G1Affine::from_slice(buf)?;
+//         Ok(Self(g1))
+//     }
+// }
 
-impl Commitment {
+impl<E: PairingEngine> Commitment<E> {
     /// Builds an identity [`Commitment`] which is equivalent to the
     /// [`G1Affine`] identity point in bls12_381.
-    fn identity() -> Commitment {
-        Commitment(G1Affine::identity())
+    fn identity() -> Commitment<E> {
+        Commitment(E::G1Affine::identity())
     }
 }
 
-impl Default for Commitment {
-    fn default() -> Commitment {
+impl<E: PairingEngine> Default for Commitment<E> {
+    fn default() -> Commitment<E> {
         Commitment::identity()
     }
 }
 
+/*
 #[cfg(test)]
 mod commitment_tests {
     use super::*;
+    use ark_ec::bls12::Bls12;
+    use ark_ff::FpParameters;
+    use ark_ec::bls12::g1;
 
     #[test]
     fn commitment_dusk_bytes_serde() {
-        let commitment = Commitment(dusk_bls12_381::G1Affine::generator());
+        let commitment = Commitment(g1::G1Affine);
         let bytes = commitment.to_bytes();
         let obtained_comm = Commitment::from_slice(&bytes)
             .expect("Error on the deserialization");
         assert_eq!(commitment, obtained_comm);
     }
-}
+} */

@@ -4,20 +4,22 @@
 //
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
+use ark_ec::PairingEngine;
+
 use super::Commitment;
-use dusk_bls12_381::BlsScalar;
+
 
 #[derive(Copy, Clone, Debug)]
 /// Proof that a polynomial `p` was correctly evaluated at a point `z`
 /// producing the evaluated point p(z).
-pub(crate) struct Proof {
+pub(crate) struct Proof<E: PairingEngine> {
     /// This is a commitment to the witness polynomial.
-    pub(crate) commitment_to_witness: Commitment,
+    pub(crate) commitment_to_witness: Commitment<E>,
     /// This is the result of evaluating a polynomial at the point `z`.
-    pub(crate) evaluated_point: BlsScalar,
+    pub(crate) evaluated_point: E::Fr,
     /// This is the commitment to the polynomial that you want to prove a
     /// statement about.
-    pub(crate) commitment_to_polynomial: Commitment,
+    pub(crate) commitment_to_polynomial: Commitment<E>,
 }
 
 #[cfg(feature = "alloc")]
