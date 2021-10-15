@@ -6,9 +6,9 @@
 
 //! This is an extension over the [Merlin Transcript](Transcript)
 //! which adds a few extra functionalities.
+use crate::commitment_scheme::kzg10::Commitment;
 use ark_ec::PairingEngine;
 use ark_ff::{Field, PrimeField};
-use ark_poly_commit::kzg10::Commitment;
 use ark_serialize::CanonicalSerialize;
 use merlin::Transcript;
 
