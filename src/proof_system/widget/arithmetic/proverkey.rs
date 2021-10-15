@@ -5,18 +5,18 @@
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
 use ark_ff::PrimeField;
-use ark_poly::polynomial::univariate::DensePolynomial as Polynomial;
+use ark_poly::polynomial::univariate::DensePolynomial;
 use ark_poly::Evaluations;
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub(crate) struct ProverKey<F: PrimeField> {
-    pub q_m: (Polynomial<F>, Evaluations<F>),
-    pub q_l: (Polynomial<F>, Evaluations<F>),
-    pub q_r: (Polynomial<F>, Evaluations<F>),
-    pub q_o: (Polynomial<F>, Evaluations<F>),
-    pub q_c: (Polynomial<F>, Evaluations<F>),
-    pub q_4: (Polynomial<F>, Evaluations<F>),
-    pub q_arith: (Polynomial<F>, Evaluations<F>),
+    pub q_m: (DensePolynomial<F>, Evaluations<F>),
+    pub q_l: (DensePolynomial<F>, Evaluations<F>),
+    pub q_r: (DensePolynomial<F>, Evaluations<F>),
+    pub q_o: (DensePolynomial<F>, Evaluations<F>),
+    pub q_c: (DensePolynomial<F>, Evaluations<F>),
+    pub q_4: (DensePolynomial<F>, Evaluations<F>),
+    pub q_arith: (DensePolynomial<F>, Evaluations<F>),
 }
 
 impl<F: PrimeField> ProverKey<F> {
@@ -55,7 +55,7 @@ impl<F: PrimeField> ProverKey<F> {
         c_eval: &F,
         d_eval: &F,
         q_arith_eval: &F,
-    ) -> Polynomial<F> {
+    ) -> DensePolynomial<F> {
         let q_m_poly = &self.q_m.0;
         let q_l_poly = &self.q_l.0;
         let q_r_poly = &self.q_r.0;

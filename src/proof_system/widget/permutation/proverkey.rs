@@ -6,15 +6,15 @@
 
 use crate::permutation::constants::{K1, K2, K3};
 use ark_ff::PrimeField;
-use ark_poly::polynomial::univariate::DensePolynomial as Polynomial;
-use ark_poly::{Evaluations, Radix2EvaluationDomain as EvaluationDomain};
+use ark_poly::polynomial::univariate::DensePolynomial;
+use ark_poly::{Evaluations, GeneralEvaluationDomain};
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub(crate) struct ProverKey<F: PrimeField> {
-    pub(crate) left_sigma: (Polynomial<F>, Evaluations<F>),
-    pub(crate) right_sigma: (Polynomial<F>, Evaluations<F>),
-    pub(crate) out_sigma: (Polynomial<F>, Evaluations<F>),
-    pub(crate) fourth_sigma: (Polynomial<F>, Evaluations<F>),
+    pub(crate) left_sigma: (DensePolynomial<F>, Evaluations<F>),
+    pub(crate) right_sigma: (DensePolynomial<F>, Evaluations<F>),
+    pub(crate) out_sigma: (DensePolynomial<F>, Evaluations<F>),
+    pub(crate) fourth_sigma: (DensePolynomial<F>, Evaluations<F>),
     pub(crate) linear_evaluations: Evaluations<F>,
     /* Evaluations of f(x) = X
      * [XXX: Remove this and
@@ -112,8 +112,8 @@ impl<F: PrimeField> ProverKey<F> {
         (a_eval, b_eval, c_eval, d_eval): (&F, &F, &F, &F),
         (sigma_1_eval, sigma_2_eval, sigma_3_eval): (&F, &F, &F),
         z_eval: &F,
-        z_poly: &Polynomial<F>,
-    ) -> Polynomial<F> {
+        z_poly: &DensePolynomial<F>,
+    ) -> DensePolynomial<F> {
         let a = self.compute_lineariser_identity_range_check(
             (&a_eval, &b_eval, &c_eval, &d_eval),
             z_challenge,
@@ -130,7 +130,7 @@ impl<F: PrimeField> ProverKey<F> {
             &self.fourth_sigma.0,
         );
 
-        let domain = EvaluationDomain::new(z_poly.degree()).unwrap();
+        let domain = GeneralEvaluationDomain::new(z_poly.degree()).unwrap();
         let c = self.compute_lineariser_check_is_one(
             &domain,
             z_challenge,
@@ -146,8 +146,8 @@ impl<F: PrimeField> ProverKey<F> {
         (a_eval, b_eval, c_eval, d_eval): (&F, &F, &F, &F),
         z_challenge: &F,
         (alpha, beta, gamma): (&F, &F, &F),
-        z_poly: &Polynomial<F>,
-    ) -> Polynomial<F> {
+        z_poly: &DensePolynomial<F>,
+    ) -> DensePolynomial<F> {
         let beta_z = beta * z_challenge;
 
         // a_eval + beta * z_challenge + gamma
@@ -189,8 +189,8 @@ impl<F: PrimeField> ProverKey<F> {
         sigma_2_eval: &F,
         sigma_3_eval: &F,
         (alpha, beta, gamma): (&F, &F, &F),
-        fourth_sigma_poly: &Polynomial<F>,
-    ) -> Polynomial<F> {
+        fourth_sigma_poly: &DensePolynomial<F>,
+    ) -> DensePolynomial<F> {
         // a_eval + beta * sigma_1 + gamma
         let beta_sigma_1 = beta * sigma_1_eval;
         let mut a_0 = a_eval + beta_sigma_1;
@@ -221,11 +221,11 @@ impl<F: PrimeField> ProverKey<F> {
 
     fn compute_lineariser_check_is_one(
         &self,
-        domain: &EvaluationDomain<F>,
+        domain: &GeneralEvaluationDomain<F>,
         z_challenge: &F,
         alpha_sq: &F,
-        z_coeffs: &Polynomial<F>,
-    ) -> Polynomial<F> {
+        z_coeffs: &DensePolynomial<F>,
+    ) -> DensePolynomial<F> {
         // Evaluate l_1(z)
         let l_1_z = domain.evaluate_all_lagrange_coefficients(*z_challenge)[0];
 

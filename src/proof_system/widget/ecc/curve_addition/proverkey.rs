@@ -6,14 +6,14 @@
 
 use ark_ec::TEModelParameters;
 use ark_ff::PrimeField;
-use ark_poly::polynomial::univariate::DensePolynomial as Polynomial;
+use ark_poly::polynomial::univariate::DensePolynomial;
 use ark_poly::Evaluations;
 use core::marker::PhantomData;
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub(crate) struct ProverKey<F: PrimeField, P: TEModelParameters<BaseField = F>>
 {
-    pub(crate) q_variable_group_add: (Polynomial<F>, Evaluations<F>),
+    pub(crate) q_variable_group_add: (DensePolynomial<F>, Evaluations<F>),
     _marker: PhantomData<P>,
 }
 
@@ -76,7 +76,7 @@ impl<F: PrimeField, P: TEModelParameters<BaseField = F>> ProverKey<F, P> {
         c_eval: &F,
         d_eval: &F,
         d_next_eval: &F,
-    ) -> Polynomial<F> {
+    ) -> DensePolynomial<F> {
         let q_variable_group_add_poly = &self.q_variable_group_add.0;
 
         let kappa = curve_add_separation_challenge.square();

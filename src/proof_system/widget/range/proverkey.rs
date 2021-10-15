@@ -5,12 +5,12 @@
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
 use ark_ff::PrimeField;
-use ark_poly::polynomial::univariate::DensePolynomial as Polynomial;
+use ark_poly::polynomial::univariate::DensePolynomial;
 use ark_poly::Evaluations;
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub(crate) struct ProverKey<F: PrimeField> {
-    pub(crate) q_range: (Polynomial<F>, Evaluations<F>),
+    pub(crate) q_range: (DensePolynomial<F>, Evaluations<F>),
 }
 
 impl<F: PrimeField> ProverKey<F> {
@@ -49,7 +49,7 @@ impl<F: PrimeField> ProverKey<F> {
         c_eval: &F,
         d_eval: &F,
         d_next_eval: &F,
-    ) -> Polynomial<F> {
+    ) -> DensePolynomial<F> {
         let four = F::from(4);
         let q_range_poly = &self.q_range.0;
 
