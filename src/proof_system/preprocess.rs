@@ -302,6 +302,9 @@ impl<
         let q_o_poly: DensePolynomial<E::Fr> = DensePolynomial {
             coeffs: domain.ifft(&self.q_o),
         };
+        let q_c_poly: DensePolynomial<E::Fr> = DensePolynomial {
+            coeffs: domain.ifft(&self.q_c),
+        };
         let q_4_poly: DensePolynomial<E::Fr> = DensePolynomial {
             coeffs: domain.ifft(&self.q_4),
         };
