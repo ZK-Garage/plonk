@@ -62,7 +62,10 @@ pub(crate) struct ProofEvaluations<F: PrimeField> {
 }
 
 /// Compute the linearisation polynomial.
-pub(crate) fn compute<E: PairingEngine, P: TEModelParameters>(
+pub(crate) fn compute<
+    E: PairingEngine,
+    P: TEModelParameters<BaseField = E::Fr>,
+>(
     domain: &GeneralEvaluationDomain<E::Fr>,
     prover_key: &ProverKey<E::Fr, P>,
     (
@@ -172,7 +175,10 @@ pub(crate) fn compute<E: PairingEngine, P: TEModelParameters>(
     )
 }
 
-fn compute_circuit_satisfiability<E: PairingEngine, P: TEModelParameters>(
+fn compute_circuit_satisfiability<
+    E: PairingEngine,
+    P: TEModelParameters<BaseField = E::Fr>,
+>(
     (
         range_separation_challenge,
         logic_separation_challenge,

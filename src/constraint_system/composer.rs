@@ -56,9 +56,9 @@ use std::collections::BTreeMap;
 
 #[derive(Debug)]
 pub struct StandardComposer<
-    E: PairingEngine<Fr = T::BaseField>,
-    T: ProjectiveCurve<BaseField = P::BaseField>,
-    P: TEModelParameters,
+    E: PairingEngine,
+    T: ProjectiveCurve<BaseField = E::Fr>,
+    P: TEModelParameters<BaseField = E::Fr>,
 > {
     /// Number of arithmetic gates in the circuit
     pub(crate) n: usize,
@@ -119,9 +119,9 @@ pub struct StandardComposer<
 }
 
 impl<
-        E: PairingEngine<Fr = T::BaseField>,
-        T: ProjectiveCurve<BaseField = P::BaseField>,
-        P: TEModelParameters,
+        E: PairingEngine,
+        T: ProjectiveCurve<BaseField = E::Fr>,
+        P: TEModelParameters<BaseField = E::Fr>,
     > StandardComposer<E, T, P>
 {
     /// Returns the number of gates in the circuit
@@ -154,9 +154,9 @@ impl<
 }
 
 impl<
-        E: PairingEngine<Fr = T::BaseField>,
-        T: ProjectiveCurve<BaseField = P::BaseField>,
-        P: TEModelParameters,
+        E: PairingEngine,
+        T: ProjectiveCurve<BaseField = E::Fr>,
+        P: TEModelParameters<BaseField = E::Fr>,
     > Default for StandardComposer<E, T, P>
 {
     fn default() -> Self {
@@ -165,9 +165,9 @@ impl<
 }
 
 impl<
-        E: PairingEngine<Fr = T::BaseField>,
-        T: ProjectiveCurve<BaseField = P::BaseField>,
-        P: TEModelParameters,
+        E: PairingEngine,
+        T: ProjectiveCurve<BaseField = E::Fr>,
+        P: TEModelParameters<BaseField = E::Fr>,
     > StandardComposer<E, T, P>
 {
     /// Generates a new empty `StandardComposer` with all of it's fields

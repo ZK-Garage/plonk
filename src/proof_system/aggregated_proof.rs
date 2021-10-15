@@ -9,8 +9,8 @@ use crate::transcript::TranscriptProtocol;
 /// each producing their respective evaluated points p_i(z).
 #[derive(Debug)]
 pub(crate) struct PCAggregateProof<
-    E: PairingEngine<Fr = P::BaseField>,
-    P: TEModelParameters,
+    E: PairingEngine,
+    P: TEModelParameters<BaseField = E::Fr>,
 > {
     /// This is a commitment to the aggregated witness polynomial.
     /// The aggregate witness polynomial is a linear combination of the
@@ -24,7 +24,7 @@ pub(crate) struct PCAggregateProof<
     _marker: PhantomData<P>,
 }
 
-impl<E: PairingEngine<Fr = P::BaseField>, P: TEModelParameters>
+impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
     PCAggregateProof<E, P>
 {
     /// Initialises an `AggregatedProof` with the commitment to the witness.

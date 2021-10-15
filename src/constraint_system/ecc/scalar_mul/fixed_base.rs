@@ -29,9 +29,9 @@ fn compute_wnaf_point_multiples<P: TEModelParameters>() -> Vec<GroupAffine<P>> {
 }
 
 impl<
-        E: PairingEngine<Fr = T::BaseField>,
-        T: ProjectiveCurve<BaseField = P::BaseField>,
-        P: TEModelParameters,
+        E: PairingEngine,
+        T: ProjectiveCurve<BaseField = E::Fr>,
+        P: TEModelParameters<BaseField = E::Fr>,
     > StandardComposer<E, T, P>
 {
     /// Adds an elliptic curve Scalar multiplication gate to the circuit

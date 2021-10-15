@@ -14,7 +14,7 @@ use std::marker::PhantomData;
 use crate::{error::Error, transcript::TranscriptProtocol};
 use ark_ec::{PairingEngine, TEModelParameters};
 use ark_ff::PrimeField;
-use ark_poly::{Evaluations, GeneralEvaluationDomain, Polynomial};
+use ark_poly::Evaluations;
 use ark_poly_commit::sonic_pc::Commitment;
 use merlin::Transcript;
 
@@ -24,8 +24,8 @@ use merlin::Transcript;
 /// [`Proof`](super::Proof).
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub struct VerifierKey<
-    E: PairingEngine<Fr = P::BaseField>,
-    P: TEModelParameters,
+    E: PairingEngine,
+    P: TEModelParameters<BaseField = E::Fr>,
 > {
     /// Circuit size (not padded to a power of two).
     pub(crate) n: usize,
@@ -43,7 +43,7 @@ pub struct VerifierKey<
     pub(crate) permutation: permutation::VerifierKey<E>,
 }
 
-impl<E: PairingEngine<Fr = P::BaseField>, P: TEModelParameters>
+impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
     VerifierKey<E, P>
 {
     /// Returns the Circuit size padded to the next power of two.
@@ -114,7 +114,7 @@ impl<E: PairingEngine<Fr = P::BaseField>, P: TEModelParameters>
     }
 }
 
-impl<E: PairingEngine<Fr = P::BaseField>, P: TEModelParameters>
+impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
     VerifierKey<E, P>
 {
     /// Adds the circuit description to the transcript

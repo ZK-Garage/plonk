@@ -10,9 +10,9 @@ use ark_ec::{PairingEngine, ProjectiveCurve, TEModelParameters};
 use num_traits::{One, Zero};
 
 impl<
-        E: PairingEngine<Fr = T::BaseField>,
-        T: ProjectiveCurve<BaseField = P::BaseField>,
-        P: TEModelParameters,
+        E: PairingEngine,
+        T: ProjectiveCurve<BaseField = E::Fr>,
+        P: TEModelParameters<BaseField = E::Fr>,
     > StandardComposer<E, T, P>
 {
     /// Adds a boolean constraint (also known as binary constraint) where
