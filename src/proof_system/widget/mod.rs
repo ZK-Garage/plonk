@@ -12,9 +12,7 @@ pub mod range;
 use crate::{error::Error, transcript::TranscriptProtocol};
 use ark_ec::{PairingEngine, TEModelParameters};
 use ark_ff::PrimeField;
-use ark_poly::{
-    Evaluations, Polynomial, Radix2EvaluationDomain as EvaluationDomain,
-};
+use ark_poly::{Evaluations, GeneralEvaluationDomain, Polynomial};
 use ark_poly_commit::sonic_pc::Commitment;
 use merlin::Transcript;
 
@@ -23,7 +21,10 @@ use merlin::Transcript;
 /// This structure is used by the Verifier in order to verify a
 /// [`Proof`](super::Proof).
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
-pub struct VerifierKey<E: PairingEngine, P: TEModelParameters> {
+pub struct VerifierKey<
+    E: PairingEngine<Fr = P::BaseField>,
+    P: TEModelParameters,
+> {
     /// Circuit size (not padded to a power of two).
     pub(crate) n: usize,
     /// VerifierKey for arithmetic gates
@@ -40,7 +41,9 @@ pub struct VerifierKey<E: PairingEngine, P: TEModelParameters> {
     pub(crate) permutation: permutation::VerifierKey<E>,
 }
 
-impl<E: PairingEngine, P: TEModelParameters> VerifierKey<E, P> {
+impl<E: PairingEngine<Fr = P::BaseField>, P: TEModelParameters>
+    VerifierKey<E, P>
+{
     /// Returns the Circuit size padded to the next power of two.
     pub const fn padded_circuit_size(&self) -> usize {
         self.n.next_power_of_two()
@@ -107,7 +110,9 @@ impl<E: PairingEngine, P: TEModelParameters> VerifierKey<E, P> {
     }
 }
 
-impl<E: PairingEngine, P: TEModelParameters> VerifierKey<E, P> {
+impl<E: PairingEngine<Fr = P::BaseField>, P: TEModelParameters>
+    VerifierKey<E, P>
+{
     /// Adds the circuit description to the transcript
     pub(crate) fn seed_transcript(&self, transcript: &mut Transcript) {
         transcript.append_commitment(b"q_m", &self.arithmetic.q_m);
@@ -146,7 +151,7 @@ impl<E: PairingEngine, P: TEModelParameters> VerifierKey<E, P> {
 /// This structure is used by the Prover in order to construct a
 /// [`Proof`](crate::proof_system::Proof).
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub struct ProverKey<F: PrimeField, P: TEModelParameters> {
+pub struct ProverKey<F: PrimeField, P: TEModelParameters<BaseField = F>> {
     /// Circuit size
     pub(crate) n: usize,
     /// ProverKey for arithmetic gate
@@ -169,7 +174,7 @@ pub struct ProverKey<F: PrimeField, P: TEModelParameters> {
     pub(crate) v_h_coset_4n: Evaluations<F>,
 }
 
-impl<F: PrimeField, P: TEModelParameters> ProverKey<F, P> {
+impl<F: PrimeField, P: TEModelParameters<BaseField = F>> ProverKey<F, P> {
     /// Returns the number of [`Polynomial`]s contained in a ProverKey.
     const fn num_polys() -> usize {
         15
@@ -188,7 +193,7 @@ impl<F: PrimeField, P: TEModelParameters> ProverKey<F, P> {
 /*#[cfg(test)]
 mod test {
     use super::*;
-    use crate::fft::{EvaluationDomain, Evaluations, Polynomial};
+    use crate::fft::{GeneralEvaluationDomain, Evaluations, Polynomial};
     use dusk_bls12_381::BlsScalar;
     use rand_core::OsRng;
 
@@ -198,7 +203,7 @@ mod test {
     }
 
     fn rand_evaluations(n: usize) -> Evaluations {
-        let domain = EvaluationDomain::new(4 * n).unwrap();
+        let domain = GeneralEvaluationDomain::new(4 * n).unwrap();
         let values: Vec<_> =
             (0..4 * n).map(|_| BlsScalar::random(&mut OsRng)).collect();
         let evaluations = Evaluations::from_vec_and_domain(values, domain);
