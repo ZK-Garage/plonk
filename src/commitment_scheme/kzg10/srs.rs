@@ -34,7 +34,7 @@ impl<E: PairingEngine> PublicParameters {
 
     /// Returns an [`OpeningKey`] reference contained in the
     /// `PublicParameters` instance.
-    pub fn opening_key(&self) -> &OpeningKey {
+    pub fn opening_key(&self) -> &OpeningKey<E> {
         &self.opening_key
     }
 
@@ -43,10 +43,10 @@ impl<E: PairingEngine> PublicParameters {
     /// In reality, a `Trusted party` or a `Multiparty Computation` will be used
     /// to generate the SRS. Returns an error if the configured degree is less
     /// than one.
-    pub fn setup<R: RngCore + CryptoRng, E: PairingEngine>(
+    pub fn setup<R: RngCore + CryptoRng>(
         max_degree: usize,
         mut rng: &mut R,
-    ) -> Result<PublicParameters, Error> {
+    ) -> Result<PublicParameters<E>, Error> {
         // Cannot commit to constants
         if max_degree < 1 {
             return Err(Error::DegreeIsZero);

@@ -289,8 +289,9 @@ impl<E: PairingEngine> OpeningKey<E> {
             (&affine_total_c, &self.prepared_h),
         ])
         .final_exponentiation();
-
-        if pairing != dusk_bls12_381::Gt::identity() {
+        
+        /// TODO: Make this access pairing element, Gt, from Fp12
+        if pairing != E::Gt::identity() {
             return Err(Error::PairingCheckFailure);
         };
         Ok(())

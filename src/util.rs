@@ -8,7 +8,7 @@ use ark_ec::PairingEngine;
 use ark_ff::PrimeField;
 use rand_core::{CryptoRng, RngCore};
 
-/// Returns a vector of BlsScalars of increasing powers of x from x^0 to x^d.
+/// Returns a vector of scalars of increasing powers of x from x^0 to x^d.
 pub(crate) fn powers_of<F: PrimeField>(
     scalar: &F,
     max_degree: usize,
@@ -21,7 +21,7 @@ pub(crate) fn powers_of<F: PrimeField>(
     powers
 }
 
-/// Generates a random BlsScalar using a RNG seed.
+/// Generates a random scalar using a RNG seed.
 pub(crate) fn random_scalar<R: RngCore + CryptoRng, E: PairingEngine>(
     rng: &mut R,
 ) -> E::Fr {
@@ -86,23 +86,24 @@ pub fn batch_inversion<E: PairingEngine>(v: &mut [E::Fr]) {
         tmp = new_tmp;
     }
 }
-// #[cfg(test)]
-// mod test {
-//     use super::*;
-//     #[test]
-//     fn test_batch_inversion() {
-//         let one = BlsScalar::from(1);
-//         let two = BlsScalar::from(2);
-//         let three = BlsScalar::from(3);
-//         let four = BlsScalar::from(4);
-//         let five = BlsScalar::from(5);
+#[cfg(test)]
+mod test {
+    use super::*;
+    use ark_ec::bls12::Bls12;
+    #[test]
+    fn test_batch_inversion() {
+        let one = Bls12::Fr::from(1);
+        let two = Bls12::Fr::from(2);
+        let three = Bls12::Fr::from(3);
+        let four = Bls12::Fr::from(4);
+        let five = Bls12::Fr::from(5);
 
-//         let original_scalars = vec![one, two, three, four, five];
-//         let mut inverted_scalars = vec![one, two, three, four, five];
+        let original_scalars = vec![one, two, three, four, five];
+        let mut inverted_scalars = vec![one, two, three, four, five];
 
-//         batch_inversion(&mut inverted_scalars);
-//         for (x, x_inv) in
-// original_scalars.iter().zip(inverted_scalars.iter()) {             
-// assert_eq!(x.invert().unwrap(), *x_inv);         }
-//     }
-// }
+        batch_inversion(&mut inverted_scalars);
+        for (x, x_inv) in
+        original_scalars.iter().zip(inverted_scalars.iter()) {             
+        assert_eq!(x.invert().unwrap(), *x_inv);         }
+    }
+}
