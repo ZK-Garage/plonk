@@ -18,6 +18,7 @@ use ark_ec::{PairingEngine, ProjectiveCurve, TEModelParameters};
 use ark_ff::Field;
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, GeneralEvaluationDomain,
+    UVPolynomial,
 };
 use ark_poly_commit::kzg10::Powers;
 use merlin::Transcript;
@@ -120,18 +121,10 @@ impl<
         DensePolynomial<E::Fr>,
     ) {
         (
-            DensePolynomial {
-                coeffs: (t_x[0..n].to_vec()),
-            },
-            DensePolynomial {
-                coeffs: (t_x[n..2 * n].to_vec()),
-            },
-            DensePolynomial {
-                coeffs: (t_x[2 * n..3 * n].to_vec()),
-            },
-            DensePolynomial {
-                coeffs: (t_x[3 * n..].to_vec()),
-            },
+            DensePolynomial::from_coefficients_vec(t_x[0..n].to_vec()),
+            DensePolynomial::from_coefficients_vec(t_x[n..2 * n].to_vec()),
+            DensePolynomial::from_coefficients_vec(t_x[2 * n..3 * n].to_vec()),
+            DensePolynomial::from_coefficients_vec(t_x[3 * n..].to_vec()),
         )
     }
 
@@ -215,18 +208,10 @@ impl<
 
         // Witnesses are now in evaluation form, convert them to coefficients
         // So that we may commit to them
-        let w_l_poly = DensePolynomial {
-            coeffs: (domain.ifft(w_l_scalar)),
-        };
-        let w_r_poly = DensePolynomial {
-            coeffs: (domain.ifft(w_r_scalar)),
-        };
-        let w_o_poly = DensePolynomial {
-            coeffs: (domain.ifft(w_o_scalar)),
-        };
-        let w_4_poly = DensePolynomial {
-            coeffs: (domain.ifft(w_4_scalar)),
-        };
+        let w_l_poly = DensePolynomial::from_coefficients_vec(domain.ifft(w_l_scalar)),
+        let w_r_poly = DensePolynomial::from_coefficients_vec(domain.ifft(w_r_scalar)),
+        let w_o_poly = DensePolynomial::from_coefficients_vec(domain.ifft(w_o_scalar)),
+        let w_4_poly = DensePolynomial::from_coefficients_vec(domain.ifft(w_4_scalar)),
 
         // Commit to witness polynomials
         let w_l_poly_commit = commit_key.commit(&w_l_poly)?;
@@ -248,7 +233,8 @@ impl<
         transcript.append_scalar(b"beta", &beta);
         let gamma = transcript.challenge_scalar(b"gamma");
 
-        let z_poly = self.cs.perm.compute_permutation_poly(
+        let z_poly = DensePolynomial::from_coefficients_vec(
+            &self.cs.perm.compute_permutation_poly(
             &domain,
             (&w_l_scalar, &w_r_scalar, &w_o_scalar, &w_4_scalar),
             &beta,
@@ -259,7 +245,7 @@ impl<
                 &prover_key.permutation.out_sigma.0,
                 &prover_key.permutation.fourth_sigma.0,
             ),
-        );
+        ));
 
         // Commit to permutation polynomial
         //
@@ -269,9 +255,9 @@ impl<
         transcript.append_commitment(b"z", &z_poly_commit);
 
         // 3. Compute public inputs polynomial
-        let pi_poly = DensePolynomial {
-            coeffs: domain.ifft(&self.cs.construct_dense_pi_vec()),
-        };
+        let pi_poly = DensePolynomial::from_coefficients_vec(
+            domain.ifft(&self.cs.construct_dense_pi_vec())
+        );
 
         // 4. Compute quotient polynomial
         //
