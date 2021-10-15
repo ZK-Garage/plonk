@@ -56,9 +56,9 @@ use std::collections::BTreeMap;
 
 #[derive(Debug)]
 pub struct StandardComposer<
-    E: PairingEngine<Fr = T::BaseField>,
-    T: ProjectiveCurve<BaseField = P::BaseField>,
-    P: TEModelParameters,
+    E: PairingEngine,
+    T: ProjectiveCurve<BaseField = E::Fr>,
+    P: TEModelParameters<BaseField = E::Fr>,
 > {
     /// Number of arithmetic gates in the circuit
     pub(crate) n: usize,
