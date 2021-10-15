@@ -27,9 +27,9 @@ use num_traits::{One, Zero};
 /// [`Proof`]s for it.
 #[allow(missing_debug_implementations)]
 pub struct Prover<
-    E: PairingEngine<Fr = T::BaseField>,
-    T: ProjectiveCurve<BaseField = P::BaseField>,
-    P: TEModelParameters,
+    E: PairingEngine,
+    T: ProjectiveCurve<BaseField = E::Fr>,
+    P: TEModelParameters<BaseField = E::Fr>,
 > {
     /// ProverKey which is used to create proofs about a specific PLONK circuit
     pub prover_key: Option<ProverKey<E::Fr, P>>,
@@ -41,9 +41,9 @@ pub struct Prover<
 }
 
 impl<
-        E: PairingEngine<Fr = T::BaseField>,
-        T: ProjectiveCurve<BaseField = P::BaseField>,
-        P: TEModelParameters,
+        E: PairingEngine,
+        T: ProjectiveCurve<BaseField = E::Fr>,
+        P: TEModelParameters<BaseField = E::Fr>,
     > Prover<E, T, P>
 {
     /// Returns a mutable copy of the underlying [`StandardComposer`].
@@ -65,9 +65,9 @@ impl<
 }
 
 impl<
-        E: PairingEngine<Fr = T::BaseField>,
-        T: ProjectiveCurve<BaseField = P::BaseField>,
-        P: TEModelParameters,
+        E: PairingEngine,
+        T: ProjectiveCurve<BaseField = E::Fr>,
+        P: TEModelParameters<BaseField = E::Fr>,
     > Default for Prover<E, T, P>
 {
     fn default() -> Prover<E, T, P> {
@@ -76,9 +76,9 @@ impl<
 }
 
 impl<
-        E: PairingEngine<Fr = T::BaseField>,
-        T: ProjectiveCurve<BaseField = P::BaseField>,
-        P: TEModelParameters,
+        E: PairingEngine,
+        T: ProjectiveCurve<BaseField = E::Fr>,
+        P: TEModelParameters<BaseField = E::Fr>,
     > Prover<E, T, P>
 {
     /// Creates a new `Prover` instance.

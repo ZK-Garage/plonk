@@ -11,9 +11,9 @@ use ark_ec::models::TEModelParameters;
 use ark_ec::{PairingEngine, ProjectiveCurve};
 
 impl<
-        E: PairingEngine<Fr = T::BaseField>,
-        T: ProjectiveCurve<BaseField = P::BaseField>,
-        P: TEModelParameters,
+        E: PairingEngine,
+        T: ProjectiveCurve<BaseField = E::Fr>,
+        P: TEModelParameters<BaseField = E::Fr>,
     > StandardComposer<E, T, P>
 {
     /// Adds two curve points together using a curve addition gate

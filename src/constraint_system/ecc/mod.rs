@@ -18,7 +18,11 @@ use core::marker::PhantomData;
 use num_traits::{One, Zero};
 /// Represents a point of the embeded curve in the circuit
 #[derive(Debug, Clone, Copy)]
-pub struct Point<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters> {
+pub struct Point<
+    E: PairingEngine,
+    T: ProjectiveCurve<BaseField = E::Fr>,
+    P: TEModelParameters<BaseField = E::Fr>,
+> {
     x: Variable,
     y: Variable,
     _marker0: PhantomData<E>,
@@ -26,8 +30,11 @@ pub struct Point<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters> {
     _marker2: PhantomData<P>,
 }
 
-impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
-    Point<E, T, P>
+impl<
+        E: PairingEngine,
+        T: ProjectiveCurve<BaseField = E::Fr>,
+        P: TEModelParameters<BaseField = E::Fr>,
+    > Point<E, T, P>
 {
     /// Creates a new point including the markers.
     pub fn new(x: Variable, y: Variable) -> Point<E, T, P> {
@@ -57,8 +64,11 @@ impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
     }
 }
 
-impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
-    StandardComposer<E, T, P>
+impl<
+        E: PairingEngine,
+        T: ProjectiveCurve<BaseField = E::Fr>,
+        P: TEModelParameters<BaseField = E::Fr>,
+    > StandardComposer<E, T, P>
 {
     /// Converts an embeded curve point into a constraint system Point
     /// without constraining the values

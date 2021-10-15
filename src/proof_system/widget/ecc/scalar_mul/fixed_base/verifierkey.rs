@@ -14,8 +14,8 @@ use core::marker::PhantomData;
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub(crate) struct VerifierKey<
-    E: PairingEngine<Fr = P::BaseField>,
-    P: TEModelParameters,
+    E: PairingEngine,
+    P: TEModelParameters<BaseField = E::Fr>,
 > {
     pub(crate) q_l: Commitment<E>,
     pub(crate) q_r: Commitment<E>,
@@ -23,7 +23,7 @@ pub(crate) struct VerifierKey<
     _marker: PhantomData<P>,
 }
 
-impl<E: PairingEngine<Fr = P::BaseField>, P: TEModelParameters>
+impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
     VerifierKey<E, P>
 {
     pub(crate) fn compute_linearisation_commitment(

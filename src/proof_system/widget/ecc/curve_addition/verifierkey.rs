@@ -11,14 +11,14 @@ use core::marker::PhantomData;
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub(crate) struct VerifierKey<
-    E: PairingEngine<Fr = P::BaseField>,
-    P: TEModelParameters,
+    E: PairingEngine,
+    P: TEModelParameters<BaseField = E::Fr>,
 > {
     pub(crate) q_variable_group_add: Commitment<E>,
     _marker: PhantomData<P>,
 }
 
-impl<E: PairingEngine<Fr = P::BaseField>, P: TEModelParameters>
+impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
     VerifierKey<E, P>
 {
     pub(crate) fn compute_linearisation_commitment(

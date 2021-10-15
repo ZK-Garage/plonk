@@ -10,9 +10,9 @@ use crate::constraint_system::{Variable, WireData};
 use ark_ec::{PairingEngine, ProjectiveCurve, TEModelParameters};
 
 impl<
-        E: PairingEngine<Fr = T::BaseField>,
-        T: ProjectiveCurve<BaseField = P::BaseField>,
-        P: TEModelParameters,
+        E: PairingEngine,
+        T: ProjectiveCurve<BaseField = E::Fr>,
+        P: TEModelParameters<BaseField = E::Fr>,
     > StandardComposer<E, T, P>
 {
     /// Performs a logical AND or XOR op between the inputs provided for the

@@ -7,7 +7,9 @@
 use crate::{error::Error, proof_system::ProverKey};
 use ark_ec::TEModelParameters;
 use ark_ff::PrimeField;
-use ark_poly::{univariate::DensePolynomial, GeneralEvaluationDomain};
+use ark_poly::{
+    univariate::DensePolynomial, EvaluationDomain, GeneralEvaluationDomain,
+};
 
 /// Computes the Quotient [`DensePolynomial`] given the [`EvaluationDomain`], a
 /// [`ProverKey`] and some other info.
@@ -33,7 +35,7 @@ pub(crate) fn compute<F: PrimeField, P: TEModelParameters<BaseField = F>>(
     ): &(F, F, F, F, F, F, F),
 ) -> Result<DensePolynomial<F>, Error> {
     // Compute 4n eval of z(X)
-    let domain_4n = GeneralEvaluationDomain::new(4 * domain.size())?;
+    let domain_4n = GeneralEvaluationDomain::new(4 * domain.size()).unwrap();
     let mut z_eval_4n = domain_4n.coset_fft(&z_poly);
     z_eval_4n.push(z_eval_4n[0]);
     z_eval_4n.push(z_eval_4n[1]);
@@ -180,7 +182,10 @@ fn compute_circuit_satisfiability_equation<
     t
 }
 
-fn compute_permutation_checks<F: PrimeField, P: TEModelParameters>(
+fn compute_permutation_checks<
+    F: PrimeField,
+    P: TEModelParameters<BaseField = F>,
+>(
     domain: &GeneralEvaluationDomain<F>,
     prover_key: &ProverKey<F, P>,
     (wl_eval_4n, wr_eval_4n, wo_eval_4n, w4_eval_4n): (&[F], &[F], &[F], &[F]),

@@ -222,9 +222,9 @@ impl VerifierData {
 /// }
 pub trait Circuit<E, T, PT>
 where
-    E: PairingEngine<Fr = T::BaseField>,
-    T: ProjectiveCurve<BaseField = P::BaseField>,
-    P: TEModelParameters,
+    E: PairingEngine,
+    T: ProjectiveCurve<BaseField = E::Fr>,
+    P: TEModelParameters<BaseField = E::Fr>,
     Self: Sized,
 {
     /// Circuit identifier associated constant.
