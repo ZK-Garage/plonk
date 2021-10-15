@@ -7,6 +7,7 @@
 use crate::proof_system::linearisation_poly::ProofEvaluations;
 use crate::proof_system::widget::range::proverkey::delta;
 use ark_ec::PairingEngine;
+use ark_ff::Field;
 use ark_poly_commit::sonic_pc::Commitment;
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
@@ -22,7 +23,7 @@ impl<E: PairingEngine> VerifierKey<E> {
         points: &mut Vec<E::G1Affine>,
         evaluations: &ProofEvaluations<E::Fr>,
     ) {
-        let four = E::Fr::from(4);
+        let four = E::Fr::from(4u64);
 
         let kappa = range_separation_challenge.square();
         let kappa_sq = kappa.square();

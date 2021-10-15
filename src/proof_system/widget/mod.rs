@@ -87,12 +87,13 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
             q_l,
             q_r,
             q_fixed_group_add,
-            _marker: PhantomData::new(),
+            //XXX: Add constructor that abstracts over the marker declaration
+            _marker: core::marker::PhantomData,
         };
 
         let variable_base = ecc::curve_addition::VerifierKey {
             q_variable_group_add,
-            _marker: PhantomData::new(),
+            _marker: core::marker::PhantomData,
         };
 
         let permutation = permutation::VerifierKey {
