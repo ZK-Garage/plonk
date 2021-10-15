@@ -153,8 +153,8 @@ TODO
 
 ## Acknowledgements
 
-- Reference implementation https://github.com/AztecProtocol/barretenberg
-- @kobigurk initial implementation of PLONK with arkworks back end
+- Reference [implementation](https://github.com/AztecProtocol/barretenberg) by Aztec Protocol
+- Initial [implementation](https://github.com/kobigurk/plonk/tree/kobigurk/port_to_zexe) of PLONK with arkworks backend by Kobi Gurkan
 
 
 ## Licensing
@@ -162,7 +162,7 @@ TODO
 This code is licensed under Mozilla Public License Version 2.0 (MPL-2.0). Please see [LICENSE](https://github.com/rust-zkp/ark-plonk/blob/master/LICENSE) for further info.
 
 ## About
-Initial [implementation](https://github.com/dusk-network/plonk) created by @kevaundray @CPerezz and @LukePearson1 at Dusk Network. 
+Initial [implementation](https://github.com/dusk-network/plonk) created by [Kev](https://github.com/kevaundray), [Carlos](https://github.com/CPerezz) and [Luke](https://github.com/LukePearson1) at Dusk Network. 
 Redesigned by the [rust zkp](https://github.com/rust-zkp) team to have a backend which is compatible with the [arkworks](https://github.com/arkworks-rs) suite. This allows us to leverage the multitude of curves 
 and optimised algebra present in various arkworks repositories. 
 
