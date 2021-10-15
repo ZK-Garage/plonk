@@ -15,7 +15,7 @@
 //         pub(crate) use proof::alloc::AggregateProof;
 //         pub use srs::PublicParameters;
 //     });
-    
+
 //     pub(crate) mod commitment;
 //     pub(crate) mod proof;
 //     pub(crate) use commitment::Commitment;
@@ -27,4 +27,4 @@ pub(crate) use proof::alloc::AggregateProof;
 pub use srs::PublicParameters;
 pub(crate) mod commitment;
 pub(crate) mod proof;
-pub(crate) use commitment::Commitment;    
+pub(crate) use commitment::Commitment;

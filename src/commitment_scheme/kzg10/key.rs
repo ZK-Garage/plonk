@@ -8,14 +8,12 @@
 //! that support the generation and usage of Commit and
 //! Opening keys.
 use super::{proof::Proof, Commitment};
-use crate::{
-    error::Error, transcript::TranscriptProtocol, util,
-};
+use crate::{error::Error, transcript::TranscriptProtocol, util};
 // use alloc::vec::Vec;
 // use dusk_bytes::{DeserializableSlice, Serializable};
-use merlin::Transcript;
 use ark_ec::PairingEngine;
 use ark_poly_commit::Polynomial;
+use merlin::Transcript;
 /// CommitKey is used to commit to a polynomial which is bounded by the
 /// max_degree.
 #[derive(Debug, Clone, PartialEq)]
@@ -208,7 +206,10 @@ pub struct OpeningKey<E: PairingEngine> {
     pub(crate) prepared_beta_h: E::G2Prepared,
 }
 
-impl<E: PairingEngine> Serializable<{ E::G1Affine::SIZE + E::G2Affine::SIZE * 2 }> for OpeningKey<E> {
+impl<E: PairingEngine>
+    Serializable<{ E::G1Affine::SIZE + E::G2Affine::SIZE * 2 }>
+    for OpeningKey<E>
+{
     // type Error = dusk_bytes::Error;
     #[allow(unused_must_use)]
     fn to_bytes(&self) -> [u8; Self::SIZE] {
@@ -313,8 +314,8 @@ impl<E: PairingEngine> OpeningKey<E> {
 //             - (op_key.g * proof.evaluated_point))
 //             .into();
 
-//         let inner_b: E::G2Affine = (op_key.beta_h - (op_key.h * point)).into();
-//         let prepared_inner_b = E::G2Prepared::from(-inner_b);
+//         let inner_b: E::G2Affine = (op_key.beta_h - (op_key.h *
+// point)).into();         let prepared_inner_b = E::G2Prepared::from(-inner_b);
 
 //         let pairing = dusk_bls12_381::multi_miller_loop(&[
 //             (&inner_a, &op_key.prepared_h),
@@ -325,8 +326,8 @@ impl<E: PairingEngine> OpeningKey<E> {
 //         pairing == dusk_bls12_381::Gt::identity()
 //     }
 
-//     // Creates an opening proof that a polynomial `p` was correctly evaluated at
-//     // p(z) and produced the value `v`. ie v = p(z).
+//     // Creates an opening proof that a polynomial `p` was correctly evaluated
+// at     // p(z) and produced the value `v`. ie v = p(z).
 //     // Returns an error if the polynomials degree is too large.
 //     fn open_single(
 //         ck: &CommitKey,
@@ -342,10 +343,10 @@ impl<E: PairingEngine> OpeningKey<E> {
 //         })
 //     }
 
-//     // Creates an opening proof that multiple polynomials were evaluated at the
-//     // same point and that each evaluation produced the correct evaluation
-//     // point. Returns an error if any of the polynomial's degrees are too
-//     // large.
+//     // Creates an opening proof that multiple polynomials were evaluated at
+// the     // same point and that each evaluation produced the correct
+// evaluation     // point. Returns an error if any of the polynomial's degrees
+// are too     // large.
 //     fn open_multiple(
 //         ck: &CommitKey,
 //         polynomials: &[Polynomial],
@@ -354,9 +355,9 @@ impl<E: PairingEngine> OpeningKey<E> {
 //         transcript: &mut Transcript,
 //     ) -> Result<AggregateProof, Error> {
 //         // Commit to polynomials
-//         let mut polynomial_commitments = Vec::with_capacity(polynomials.len());
-//         for poly in polynomials.iter() {
-//             polynomial_commitments.push(ck.commit(poly)?)
+//         let mut polynomial_commitments =
+// Vec::with_capacity(polynomials.len());         for poly in polynomials.iter()
+// {             polynomial_commitments.push(ck.commit(poly)?)
 //         }
 
 //         // Compute the aggregate witness for polynomials
@@ -377,10 +378,10 @@ impl<E: PairingEngine> OpeningKey<E> {
 //     // For a given polynomial `p` and a point `z`, compute the witness
 //     // for p(z) using Ruffini's method for simplicity.
 //     // The Witness is the quotient of f(x) - f(z) / x-z.
-//     // However we note that the quotient polynomial is invariant under the value
-//     // f(z) ie. only the remainder changes. We can therefore compute the
-//     // witness as f(x) / x - z and only use the remainder term f(z) during
-//     // verification.
+//     // However we note that the quotient polynomial is invariant under the
+// value     // f(z) ie. only the remainder changes. We can therefore compute
+// the     // witness as f(x) / x - z and only use the remainder term f(z)
+// during     // verification.
 //     fn compute_single_witness(
 //         polynomial: &Polynomial,
 //         point: &E::Fr,
@@ -465,9 +466,9 @@ impl<E: PairingEngine> OpeningKey<E> {
 //         // Verifier's View
 //         let ok = {
 //             let flattened_proof =
-//                 aggregated_proof.flatten(&mut Transcript::new(b"agg_flatten"));
-//             check(&opening_key, point, flattened_proof)
-//         };
+//                 aggregated_proof.flatten(&mut
+// Transcript::new(b"agg_flatten"));             check(&opening_key, point,
+// flattened_proof)         };
 
 //         assert!(ok);
 //         Ok(())

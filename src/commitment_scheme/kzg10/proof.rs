@@ -8,7 +8,6 @@ use ark_ec::PairingEngine;
 
 use super::Commitment;
 
-
 #[derive(Copy, Clone, Debug)]
 /// Proof that a polynomial `p` was correctly evaluated at a point `z`
 /// producing the evaluated point p(z).

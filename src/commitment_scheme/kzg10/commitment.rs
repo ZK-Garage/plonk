@@ -30,8 +30,8 @@ impl<E: PairingEngine> From<E::G1Projective> for Commitment<E> {
     }
 }
 
-// impl<E: PairingEngine> Serializable<{ E::G1Affine::SIZE }> for Commitment<E> {
-//     type Error = dusk_bytes::Error;
+// impl<E: PairingEngine> Serializable<{ E::G1Affine::SIZE }> for Commitment<E>
+// {     type Error = dusk_bytes::Error;
 
 //     fn to_bytes(&self) -> [u8; Self::SIZE] {
 //         self.0.to_bytes()

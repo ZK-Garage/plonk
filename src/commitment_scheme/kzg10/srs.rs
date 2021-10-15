@@ -209,7 +209,8 @@ impl<E: PairingEngine> PublicParameters {
 //     fn test_serialise_deserialise_public_parameter() {
 //         let pp = PublicParameters::setup(1 << 7, &mut OsRng).unwrap();
 
-//         let got_pp = PublicParameters::from_slice(&pp.to_var_bytes()).unwrap();
+//         let got_pp =
+// PublicParameters::from_slice(&pp.to_var_bytes()).unwrap();
 
 //         assert_eq!(got_pp.commit_key.powers_of_g, pp.commit_key.powers_of_g);
 //         assert_eq!(got_pp.opening_key.g, pp.opening_key.g);

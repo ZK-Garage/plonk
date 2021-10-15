@@ -4,8 +4,8 @@
 //
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
-use ark_ff::PrimeField;
 use ark_ec::PairingEngine;
+use ark_ff::PrimeField;
 use rand_core::{CryptoRng, RngCore};
 
 /// Returns a vector of BlsScalars of increasing powers of x from x^0 to x^d.
@@ -22,7 +22,9 @@ pub(crate) fn powers_of<F: PrimeField>(
 }
 
 /// Generates a random BlsScalar using a RNG seed.
-pub(crate) fn random_scalar<R: RngCore + CryptoRng, E: PairingEngine>(rng: &mut R) -> E::Fr {
+pub(crate) fn random_scalar<R: RngCore + CryptoRng, E: PairingEngine>(
+    rng: &mut R,
+) -> E::Fr {
     E::Fr::random(rng)
 }
 
@@ -99,8 +101,8 @@ pub fn batch_inversion<E: PairingEngine>(v: &mut [E::Fr]) {
 //         let mut inverted_scalars = vec![one, two, three, four, five];
 
 //         batch_inversion(&mut inverted_scalars);
-//         for (x, x_inv) in original_scalars.iter().zip(inverted_scalars.iter()) {
-//             assert_eq!(x.invert().unwrap(), *x_inv);
-//         }
+//         for (x, x_inv) in
+// original_scalars.iter().zip(inverted_scalars.iter()) {             
+// assert_eq!(x.invert().unwrap(), *x_inv);         }
 //     }
 // }

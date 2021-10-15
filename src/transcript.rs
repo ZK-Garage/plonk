@@ -16,7 +16,7 @@ use merlin::Transcript;
 /// For convenience
 pub(crate) trait TranscriptProtocol<E: PairingEngine> {
     /// Append a `commitment` with the given `label`.
-    fn append_commitment(&mut self, label: &'static [u8], comm: &Commitment<E>);
+    fn append_commitment(&mut self, label: &'static [u8], comm: &Commitment);
 
     /// Append a scalar with the given `label`.
     fn append_scalar(&mut self, label: &'static [u8], s: &E::Fr);
