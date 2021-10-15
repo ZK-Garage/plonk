@@ -4,6 +4,8 @@
 //
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
+use std::marker::PhantomData;
+
 use crate::{
     constraint_system::{StandardComposer, Variable},
     error::Error,
@@ -432,6 +434,7 @@ impl<
             w_zw_comm: w_zx_comm,
 
             evaluations: evaluations.proof,
+            _marker: PhantomData::new(),
         })
     }
 

@@ -9,6 +9,8 @@ pub mod ecc;
 pub mod logic;
 pub mod permutation;
 pub mod range;
+use std::marker::PhantomData;
+
 use crate::{error::Error, transcript::TranscriptProtocol};
 use ark_ec::{PairingEngine, TEModelParameters};
 use ark_ff::PrimeField;
@@ -85,10 +87,12 @@ impl<E: PairingEngine<Fr = P::BaseField>, P: TEModelParameters>
             q_l,
             q_r,
             q_fixed_group_add,
+            _marker: PhantomData::new(),
         };
 
         let variable_base = ecc::curve_addition::VerifierKey {
             q_variable_group_add,
+            _marker: PhantomData::new(),
         };
 
         let permutation = permutation::VerifierKey {

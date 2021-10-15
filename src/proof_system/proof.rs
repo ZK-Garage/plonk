@@ -477,6 +477,7 @@ mod proof_tests {
                 lin_poly_eval: BlsScalar::random(&mut OsRng),
                 perm_eval: BlsScalar::random(&mut OsRng),
             },
+            _marker: PhantomData::new(),
         };
 
         let proof_bytes = proof.to_bytes();
