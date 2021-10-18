@@ -34,7 +34,6 @@
 #![deny(rustdoc::broken_intra_doc_links)]
 #![deny(missing_docs)]
 
-mod bit_iterator;
 //pub mod circuit;
 pub mod constraint_system;
 mod permutation;
