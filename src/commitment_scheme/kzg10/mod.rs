@@ -23,8 +23,7 @@
 pub mod key;
 pub mod srs;
 pub use key::{CommitKey, OpeningKey};
-pub(crate) use proof::alloc::AggregateProof;
+pub(crate) use proof::KZGAggregateProof;
 pub use srs::PublicParameters;
-pub(crate) mod commitment;
 pub(crate) mod proof;
-pub(crate) use commitment::Commitment;
+pub use proof::KZGProof;

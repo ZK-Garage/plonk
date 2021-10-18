@@ -1,4 +1,3 @@
-// This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 //
@@ -7,13 +6,19 @@
 //! Key module contains the utilities and data structures
 //! that support the generation and usage of Commit and
 //! Opening keys.
-use super::{proof::Proof, Commitment};
+use super::proof::KZGProof;
 use crate::{error::Error, transcript::TranscriptProtocol, util};
-// use alloc::vec::Vec;
-// use dusk_bytes::{DeserializableSlice, Serializable};
-use ark_ec::{PairingEngine, msm::VariableBaseMSM};
-use ark_poly_commit::Polynomial;
+use ark_ec::{
+    msm::VariableBaseMSM, AffineCurve, PairingEngine, ProjectiveCurve,
+};
+use ark_ff::PrimeField;
+use ark_poly::{
+    polynomial::univariate::DensePolynomial, Polynomial, UVPolynomial,
+};
+use ark_poly_commit::kzg10::Commitment;
 use merlin::Transcript;
+use num_traits::{One, Zero};
+
 /// CommitKey is used to commit to a polynomial which is bounded by the
 /// max_degree.
 #[derive(Debug, Clone, PartialEq)]
@@ -24,6 +29,7 @@ pub struct CommitKey<E: PairingEngine> {
 }
 
 impl<E: PairingEngine> CommitKey<E> {
+    /*
     /// Serialize the [`CommitKey`] into bytes.
     ///
     /// This operation is designed to store the raw representation of the
@@ -102,6 +108,7 @@ impl<E: PairingEngine> CommitKey<E> {
 
         Ok(CommitKey { powers_of_g })
     }
+    */
 
     /// Returns the maximum degree polynomial that you can commit to.
     pub(crate) fn max_degree(&self) -> usize {
@@ -154,13 +161,23 @@ impl<E: PairingEngine> CommitKey<E> {
     /// of the commit key.
     pub(crate) fn commit(
         &self,
-        polynomial: &Polynomial,
-    ) -> Result<Commitment, Error> {
+        polynomial: &DensePolynomial<E::Fr>,
+    ) -> Result<Commitment<E>, Error> {
         // Check whether we can safely commit to this polynomial
         self.check_commit_degree_is_within_bounds(polynomial.degree())?;
 
         // Compute commitment
-        Ok(Commitment::from(VariableBaseMSM::multi_scalar_mul(self.powers_of_g, polynomial.coeffs.into_iter().map(|s|.into_repr()).collect::<Vec<>(),));
+        let com_point: E::G1Projective = VariableBaseMSM::multi_scalar_mul(
+            &self.powers_of_g,
+            polynomial
+                .coeffs()
+                .iter()
+                .map(|s| s.into_repr())
+                .collect::<Vec<<E::Fr as PrimeField>::BigInt>>()
+                .as_slice(),
+        );
+
+        Ok(Commitment(com_point.into()))
     }
 
     /// Computes a single witness for multiple polynomials at the same point, by
@@ -169,21 +186,27 @@ impl<E: PairingEngine> CommitKey<E> {
     /// removing f(z).
     pub(crate) fn compute_aggregate_witness(
         &self,
-        polynomials: &[Polynomial],
+        polynomials: &[DensePolynomial<E::Fr>],
         point: &E::Fr,
         transcript: &mut Transcript,
-    ) -> Polynomial {
-        let challenge = transcript.challenge_scalar(b"aggregate_witness");
+    ) -> DensePolynomial<E::Fr> {
+        let challenge: E::Fr =
+            transcript.challenge_scalar(b"aggregate_witness");
         let powers = util::powers_of(&challenge, polynomials.len() - 1);
 
         assert_eq!(powers.len(), polynomials.len());
 
-        let numerator: Polynomial = polynomials
+        let numerator_terms: Vec<DensePolynomial<E::Fr>> = polynomials
             .iter()
             .zip(powers.iter())
-            .map(|(poly, challenge)| poly * challenge)
-            .sum();
-        numerator.ruffini(*point)
+            .map(|(poly, challenge_power)| poly * *challenge_power)
+            .collect();
+
+        let numerator = DensePolynomial::zero();
+        for term in numerator_terms.iter() {
+            numerator += term;
+        }
+        util::ruffini(numerator, *point)
     }
 }
 
@@ -203,6 +226,7 @@ pub struct OpeningKey<E: PairingEngine> {
     pub(crate) prepared_beta_h: E::G2Prepared,
 }
 
+/*
 impl<E: PairingEngine>
     Serializable<{ E::G1Affine::SIZE + E::G2Affine::SIZE * 2 }>
     for OpeningKey<E>
@@ -231,12 +255,13 @@ impl<E: PairingEngine>
     }
 }
 
+*/
 impl<E: PairingEngine> OpeningKey<E> {
     pub(crate) fn new(
         g: E::G1Affine,
         h: E::G2Affine,
         beta_h: E::G2Affine,
-    ) -> OpeningKey {
+    ) -> OpeningKey<E> {
         let prepared_h = E::G2Prepared::from(h);
         let prepared_beta_h = E::G2Prepared::from(beta_h);
         OpeningKey {
@@ -253,13 +278,13 @@ impl<E: PairingEngine> OpeningKey<E> {
     pub(crate) fn batch_check(
         &self,
         points: &[E::Fr],
-        proofs: &[Proof],
+        proofs: &[KZGProof<E>],
         transcript: &mut Transcript,
     ) -> Result<(), Error> {
-        let mut total_c = E::G1Projective::identity();
-        let mut total_w = E::G1Projective::identity();
+        let mut total_c = E::G1Projective::zero();
+        let mut total_w = E::G1Projective::zero();
 
-        let challenge = transcript.challenge_scalar(b"batch"); // XXX: Verifier can add their own randomness at this point
+        let challenge: E::Fr = transcript.challenge_scalar(b"batch"); // XXX: Verifier can add their own randomness at this point
         let powers = util::powers_of(&challenge, proofs.len() - 1);
         // Instead of multiplying g and gamma_g in each turn, we simply
         // accumulate their coefficients and perform a final
@@ -270,25 +295,29 @@ impl<E: PairingEngine> OpeningKey<E> {
         {
             let mut c = E::G1Projective::from(proof.commitment_to_polynomial.0);
             let w = proof.commitment_to_witness.0;
-            c += w * point;
+            c += w.mul(point.into_repr());
             g_multiplier += challenge * proof.evaluated_point;
 
-            total_c += c * challenge;
-            total_w += w * challenge;
+            total_c += c.mul(challenge.into_repr());
+            total_w += w.mul(challenge.into_repr());
         }
-        total_c -= self.g * g_multiplier;
+        total_c -= self.g.mul(g_multiplier.into());
 
         let affine_total_w = E::G1Affine::from(-total_w);
         let affine_total_c = E::G1Affine::from(total_c);
 
-        let pairing = dusk_bls12_381::multi_miller_loop(&[
-            (&affine_total_w, &self.prepared_beta_h),
-            (&affine_total_c, &self.prepared_h),
-        ])
-        .final_exponentiation();
-        
-        /// TODO: Make this access pairing element, Gt, from Fp12
-        if pairing != E::Gt::identity() {
+        // let pairing = E::miller_loop(&[
+        //     (&affine_total_w, &self.prepared_beta_h),
+        //     (&affine_total_c, &self.prepared_h),
+        // ])
+        // .final_exponentiation();
+
+        let pairing = E::product_of_pairings(&[
+            (affine_total_w.into(), self.prepared_beta_h),
+            (affine_total_c.into(), self.prepared_h),
+        ]);
+
+        if pairing != E::Fqk::one() {
             return Err(Error::PairingCheckFailure);
         };
         Ok(())

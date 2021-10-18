@@ -8,28 +8,29 @@
 // use std::path::PathBuf;
 
 use ark_ec::PairingEngine;
+use ark_poly_commit::kzg10::Commitment;
 // use dusk_bytes::{DeserializableSlice, Serializable};
 use num_traits::Zero;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 /// Holds a commitment to a polynomial in a form of a [`G1Affine`]-bls12_381
 /// point.
-pub(crate) struct Commitment<E: PairingEngine>(
-    /// The commitment is a group element.
-    pub(crate) E::G1Affine,
-);
+// pub(crate) struct Commitment<E: PairingEngine>(
+//     /// The commitment is a group element.
+//     pub(crate) E::G1Affine,
+// );
 
-impl<E: PairingEngine> From<E::G1Affine> for Commitment<E> {
-    fn from(point: E::G1Affine) -> Commitment<E> {
-        Commitment(point)
-    }
-}
+// impl<E: PairingEngine> From<E::G1Affine> for Commitment<E> {
+//     fn from(point: E::G1Affine) -> Commitment<E> {
+//         Commitment(point)
+//     }
+// }
 
-impl<E: PairingEngine> From<E::G1Projective> for Commitment<E> {
-    fn from(point: E::G1Projective) -> Commitment<E> {
-        Commitment(point.into())
-    }
-}
+// impl<E: PairingEngine> From<E::G1Projective> for Commitment<E> {
+//     fn from(point: E::G1Projective) -> Commitment<E> {
+//         Commitment(point.into())
+//     }
+// }
 
 // impl<E: PairingEngine> Serializable<{ E::G1Affine::SIZE }> for Commitment<E>
 // {     type Error = dusk_bytes::Error;

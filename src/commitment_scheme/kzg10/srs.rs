@@ -8,9 +8,9 @@
 //! String (SRS).
 use super::key::{CommitKey, OpeningKey};
 use crate::{error::Error, util};
-use alloc::vec::Vec;
-use ark_ec::PairingEngine;
-use dusk_bytes::{DeserializableSlice, Serializable};
+use ark_ec::{PairingEngine, ProjectiveCurve};
+use ark_ff::{PrimeField, UniformRand};
+use num_traits::Zero;
 use rand_core::{CryptoRng, RngCore};
 
 /// The Public Parameters can also be referred to as the Structured Reference
@@ -25,7 +25,7 @@ pub struct PublicParameters<E: PairingEngine> {
     pub(crate) opening_key: OpeningKey<E>,
 }
 
-impl<E: PairingEngine> PublicParameters {
+impl<E: PairingEngine> PublicParameters<E> {
     /// Returns an untrimmed [`CommitKey`] reference contained in the
     /// `PublicParameters` instance.
     pub fn commit_key(&self) -> &CommitKey<E> {
@@ -43,7 +43,7 @@ impl<E: PairingEngine> PublicParameters {
     /// In reality, a `Trusted party` or a `Multiparty Computation` will be used
     /// to generate the SRS. Returns an error if the configured degree is less
     /// than one.
-    pub fn setup<R: RngCore + CryptoRng>(
+    pub fn setup<R: RngCore + CryptoRng + UniformRand>(
         max_degree: usize,
         mut rng: &mut R,
     ) -> Result<PublicParameters<E>, Error> {
@@ -53,112 +53,117 @@ impl<E: PairingEngine> PublicParameters {
         }
 
         // Generate the secret scalar beta
-        let beta = util::random_scalar(&mut rng);
+        let beta = E::Fr::rand(&mut rng);
 
         // Compute powers of beta up to and including beta^max_degree
         let powers_of_beta = util::powers_of(&beta, max_degree);
 
         // Powers of G1 that will be used to commit to a specified polynomial
-        let g = util::random_g1_point(&mut rng);
-        let powers_of_g: Vec<E::G1Projective> =
-            util::slow_multiscalar_mul_single_base(&powers_of_beta, g);
+        let g: E::G1Projective = E::G1Projective::rand(&mut rng);
+        let powers_of_g: Vec<E::G1Projective> = powers_of_beta
+            .iter()
+            .copied()
+            .map(|s| g.mul(s.into_repr()))
+            .collect();
         assert_eq!(powers_of_g.len(), max_degree + 1);
 
         // Normalise all projective points
-        let mut normalised_g = vec![E::G1Affine::identity(); max_degree + 1];
-        E::G1Projective::batch_normalize(&powers_of_g, &mut normalised_g);
+        let mut normalised_g = vec![E::G1Affine::zero(); max_degree + 1];
+        normalised_g =
+            E::G1Projective::batch_normalization_into_affine(&powers_of_g);
 
         // Compute beta*G2 element and stored cached elements for verifying
         // multiple proofs.
-        let h: E::G2Affine = util::random_g2_point(&mut rng).into();
-        let beta_h: E::G2Affine = (h * beta).into();
+        let h: E::G2Projective = E::G2Projective::rand(&mut rng);
+        let beta_h: E::G2Projective = h.mul(beta.into_repr());
 
         Ok(PublicParameters {
             commit_key: CommitKey {
                 powers_of_g: normalised_g,
             },
-            opening_key: OpeningKey::new(g.into(), h, beta_h),
+            opening_key: OpeningKey::new(g.into(), h.into(), beta_h.into()),
         })
     }
 
-    /// Serialize the [`PublicParameters`] into bytes.
-    ///
-    /// This operation is designed to store the raw representation of the
-    /// contents of the PublicParameters. Therefore, the size of the bytes
-    /// outputed by this function is expected to be the double than the one
-    /// that [`PublicParameters::to_var_bytes`].
-    ///
-    /// # Note
-    /// This function should be used when we want to serialize the
-    /// PublicParameters allowing a really fast deserialization later.
-    /// This functions output should not be used by the regular
-    /// [`PublicParameters::from_slice`] fn.
-    pub fn to_raw_var_bytes(&self) -> Vec<u8> {
-        let mut bytes = self.opening_key.to_bytes().to_vec();
-        bytes.extend(&self.commit_key.to_raw_var_bytes());
+    /*
+        /// Serialize the [`PublicParameters`] into bytes.
+        ///
+        /// This operation is designed to store the raw representation of the
+        /// contents of the PublicParameters. Therefore, the size of the bytes
+        /// outputed by this function is expected to be the double than the one
+        /// that [`PublicParameters::to_var_bytes`].
+        ///
+        /// # Note
+        /// This function should be used when we want to serialize the
+        /// PublicParameters allowing a really fast deserialization later.
+        /// This functions output should not be used by the regular
+        /// [`PublicParameters::from_slice`] fn.
+        pub fn to_raw_var_bytes(&self) -> Vec<u8> {
+            let mut bytes = self.opening_key.to_bytes().to_vec();
+            bytes.extend(&self.commit_key.to_raw_var_bytes());
 
-        bytes
-    }
-
-    /// Deserialize [`PublicParameters`] from a set of bytes created by
-    /// [`PublicParameters::to_raw_var_bytes`].
-    ///
-    /// The bytes source is expected to be trusted and no checks will be
-    /// performed reggarding the content of the points that the bytes
-    /// contain serialized.
-    ///
-    /// # Safety
-    /// This function will not produce any memory errors but can deal to the
-    /// generation of invalid or unsafe points/keys. To make sure this does not
-    /// happen, the inputed bytes must match the ones that were generated by
-    /// the encoding functions of this lib.
-    pub unsafe fn from_slice_unchecked(bytes: &[u8]) -> Self {
-        let opening_key = &bytes[..OpeningKey::SIZE];
-        let opening_key = OpeningKey::from_slice(opening_key)
-            .expect("Error at OpeningKey deserialization");
-
-        let commit_key = &bytes[OpeningKey::SIZE..];
-        let commit_key = CommitKey::from_slice_unchecked(commit_key);
-
-        Self {
-            commit_key,
-            opening_key,
+            bytes
         }
-    }
 
-    /// Serialises a [`PublicParameters`] struct into a slice of bytes.
-    pub fn to_var_bytes(&self) -> Vec<u8> {
-        let mut bytes = self.opening_key.to_bytes().to_vec();
-        bytes.extend(self.commit_key.to_var_bytes().iter());
-        bytes
-    }
+        /// Deserialize [`PublicParameters`] from a set of bytes created by
+        /// [`PublicParameters::to_raw_var_bytes`].
+        ///
+        /// The bytes source is expected to be trusted and no checks will be
+        /// performed reggarding the content of the points that the bytes
+        /// contain serialized.
+        ///
+        /// # Safety
+        /// This function will not produce any memory errors but can deal to the
+        /// generation of invalid or unsafe points/keys. To make sure this does not
+        /// happen, the inputed bytes must match the ones that were generated by
+        /// the encoding functions of this lib.
+        pub unsafe fn from_slice_unchecked(bytes: &[u8]) -> Self {
+            let opening_key = &bytes[..OpeningKey::SIZE];
+            let opening_key = OpeningKey::from_slice(opening_key)
+                .expect("Error at OpeningKey deserialization");
 
-    /// Deserialise a slice of bytes into a Public Parameter struct performing
-    /// security and consistency checks for each point that the bytes
-    /// contain.
-    ///
-    /// # Note
-    /// This function can be really slow if the [`PublicParameters`] have a
-    /// certain degree. If the bytes come from a trusted source such as a
-    /// local file, we recommend to use
-    /// [`PublicParameters::from_slice_unchecked`] and
-    /// [`PublicParameters::to_raw_var_bytes`].
-    pub fn from_slice(bytes: &[u8]) -> Result<PublicParameters, Error> {
-        if bytes.len() <= OpeningKey::SIZE {
-            return Err(Error::NotEnoughBytes);
+            let commit_key = &bytes[OpeningKey::SIZE..];
+            let commit_key = CommitKey::from_slice_unchecked(commit_key);
+
+            Self {
+                commit_key,
+                opening_key,
+            }
         }
-        let mut buf = bytes;
-        let opening_key = OpeningKey::from_reader(&mut buf)?;
-        let commit_key = CommitKey::from_slice(&buf)?;
 
-        let pp = PublicParameters {
-            commit_key,
-            opening_key,
-        };
+        /// Serialises a [`PublicParameters`] struct into a slice of bytes.
+        pub fn to_var_bytes(&self) -> Vec<u8> {
+            let mut bytes = self.opening_key.to_bytes().to_vec();
+            bytes.extend(self.commit_key.to_var_bytes().iter());
+            bytes
+        }
 
-        Ok(pp)
-    }
+        /// Deserialise a slice of bytes into a Public Parameter struct performing
+        /// security and consistency checks for each point that the bytes
+        /// contain.
+        ///
+        /// # Note
+        /// This function can be really slow if the [`PublicParameters`] have a
+        /// certain degree. If the bytes come from a trusted source such as a
+        /// local file, we recommend to use
+        /// [`PublicParameters::from_slice_unchecked`] and
+        /// [`PublicParameters::to_raw_var_bytes`].
+        pub fn from_slice(bytes: &[u8]) -> Result<PublicParameters<E>, Error> {
+            if bytes.len() <= OpeningKey::SIZE {
+                return Err(Error::NotEnoughBytes);
+            }
+            let mut buf = bytes;
+            let opening_key = OpeningKey::from_reader(&mut buf)?;
+            let commit_key = CommitKey::from_slice(&buf)?;
 
+            let pp = PublicParameters {
+                commit_key,
+                opening_key,
+            };
+
+            Ok(pp)
+        }
+    */
     /// Trim truncates the [`PublicParameters`] to allow the prover to commit to
     /// polynomials up to the and including the truncated degree.
     /// Returns the [`CommitKey`] and [`OpeningKey`] used to generate and verify
@@ -169,7 +174,7 @@ impl<E: PairingEngine> PublicParameters {
     pub fn trim(
         &self,
         truncated_degree: usize,
-    ) -> Result<(CommitKey, OpeningKey), Error> {
+    ) -> Result<(CommitKey<E>, OpeningKey<E>), Error> {
         let truncated_prover_key =
             self.commit_key.truncate(truncated_degree)?;
         let opening_key = self.opening_key.clone();
