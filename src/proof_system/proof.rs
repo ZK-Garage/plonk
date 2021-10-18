@@ -11,15 +11,14 @@
 //! `Proof` structure and it's methods.
 
 use super::{linearisation_poly::ProofEvaluations, PCAggregateProof};
+use crate::commitment_scheme::kzg10::OpeningKey;
 use crate::proof_system::VerifierKey;
 use crate::{error::Error, transcript::TranscriptProtocol};
-use ark_ec::PairingEngine;
 use ark_ec::{msm::VariableBaseMSM, AffineCurve, TEModelParameters};
+use ark_ec::{PairingEngine, ProjectiveCurve};
 use ark_ff::{fields::batch_inversion, Field, FpParameters, PrimeField};
 use ark_poly::{EvaluationDomain, GeneralEvaluationDomain};
-use ark_poly_commit::kzg10::{
-    Commitment, PreparedVerifierKey as PCVerifierKey,
-};
+use ark_poly_commit::kzg10::Commitment;
 use core::marker::PhantomData;
 use merlin::Transcript;
 use num_traits::{One, Zero};
@@ -73,7 +72,7 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Proof<E, P> {
         &self,
         verifier_key: &VerifierKey<E, P>,
         transcript: &mut Transcript,
-        opening_key: &PCVerifierKey<E>,
+        opening_key: &OpeningKey<E>,
         pub_inputs: &[E::Fr],
     ) -> Result<(), Error> {
         let domain =
@@ -315,7 +314,7 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Proof<E, P> {
             + &(self.t_2_comm.0.mul(z_n.into_repr()))
             + &(self.t_3_comm.0.mul(z_two_n.into_repr()))
             + &(self.t_4_comm.0.mul(z_three_n.into_repr()));
-        Commitment::from_projective(t_comm)
+        Commitment(t_comm.into_affine())
     }
 
     // Commitment to [r]_1
@@ -381,13 +380,20 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Proof<E, P> {
             self.z_comm.0,
         );
 
-        Commitment::from_projective(VariableBaseMSM::multi_scalar_mul(
-            &points,
-            &scalars
-                .into_iter()
-                .map(|s| s.into_repr())
-                .collect::<Vec<_>>(),
-        ))
+        let scalars_repr: Vec<<E::Fr as PrimeField>::BigInt> =
+            scalars.iter().map(|s| s.into_repr()).collect();
+
+        Commitment(
+            VariableBaseMSM::multi_scalar_mul(&points, &scalars_repr).into(),
+        )
+
+        // Commitment::from_projective(VariableBaseMSM::multi_scalar_mul(
+        //     &points,
+        //     &scalars
+        //         .into_iter()
+        //         .map(|s| s.into_repr())
+        //         .collect::<Vec<_>>(),
+        // ))
     }
 }
 

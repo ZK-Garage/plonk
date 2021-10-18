@@ -1,7 +1,9 @@
+use crate::commitment_scheme::kzg10::KZGProof;
 use ark_ec::{AffineCurve, PairingEngine, TEModelParameters};
-use ark_poly_commit::kzg10::{Commitment, Proof as KZGProof};
+use ark_poly_commit::kzg10::Commitment;
 use core::marker::PhantomData;
 use merlin::Transcript;
+use num_traits::Zero;
 
 use crate::transcript::TranscriptProtocol;
 
@@ -63,22 +65,26 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
             self.evaluated_points.iter().zip(powers.iter());
 
         // Flattened polynomial commitments using challenge
-        let flattened_poly_commitments = Commitment(
-            flattened_poly_commitments_iter
-                .map(|(poly_commitment, challenge_power)| {
-                    (poly_commitment.0).mul(*challenge_power)
-                })
-                .sum(),
+        let poly_commitment_terms = flattened_poly_commitments_iter.map(
+            |(poly_commitment, challenge_power)| {
+                (poly_commitment.0).mul(*challenge_power)
+            },
         );
-        //);
+        let flattened_poly_commitments_point = E::G1Projective::zero();
+        for term in poly_commitment_terms {
+            flattened_poly_commitments_point += term;
+        }
+        let flattened_poly_commitments =
+            Commitment(flattened_poly_commitments_point.into());
         // Flattened evaluation points
         let flattened_poly_evaluations: E::Fr = flattened_poly_evaluations_iter
             .map(|(eval, challenge_power)| *challenge_power * eval)
             .sum();
 
         KZGProof::<E> {
-            random_v: Some(flattened_poly_evaluations),
-            w: flattened_poly_commitments.0,
+            commitment_to_witness: self.commitment_to_witness,
+            evaluated_point: flattened_poly_evaluations,
+            commitment_to_polynomial: flattened_poly_commitments,
         }
     }
 }
