@@ -4,7 +4,6 @@
 //
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
-
 pub(crate) mod proverkey;
 pub(crate) use proverkey::ProverKey;
 

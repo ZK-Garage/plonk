@@ -39,6 +39,7 @@ pub mod constraint_system;
 mod permutation;
 mod util;
 
+pub mod commitment_scheme;
 pub mod error;
 pub mod prelude;
 pub mod proof_system;

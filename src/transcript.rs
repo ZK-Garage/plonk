@@ -6,9 +6,9 @@
 
 //! This is an extension over the [Merlin Transcript](Transcript)
 //! which adds a few extra functionalities.
+use crate::commitment_scheme::kzg10::Commitment;
 use ark_ec::PairingEngine;
 use ark_ff::{Field, PrimeField};
-use ark_poly_commit::kzg10::Commitment;
 use ark_serialize::CanonicalSerialize;
 use merlin::Transcript;
 
@@ -16,7 +16,7 @@ use merlin::Transcript;
 /// For convenience
 pub(crate) trait TranscriptProtocol<E: PairingEngine> {
     /// Append a `commitment` with the given `label`.
-    fn append_commitment(&mut self, label: &'static [u8], comm: &Commitment<E>);
+    fn append_commitment(&mut self, label: &'static [u8], comm: &Commitment);
 
     /// Append a scalar with the given `label`.
     fn append_scalar(&mut self, label: &'static [u8], s: &E::Fr);
