@@ -11,7 +11,7 @@ use super::{proof::Proof, Commitment};
 use crate::{error::Error, transcript::TranscriptProtocol, util};
 // use alloc::vec::Vec;
 // use dusk_bytes::{DeserializableSlice, Serializable};
-use ark_ec::PairingEngine;
+use ark_ec::{PairingEngine, msm::VariableBaseMSM};
 use ark_poly_commit::Polynomial;
 use merlin::Transcript;
 /// CommitKey is used to commit to a polynomial which is bounded by the
@@ -160,10 +160,7 @@ impl<E: PairingEngine> CommitKey<E> {
         self.check_commit_degree_is_within_bounds(polynomial.degree())?;
 
         // Compute commitment
-        Ok(Commitment::from(msm_variable_base(
-            &self.powers_of_g,
-            &polynomial.coeffs,
-        )))
+        Ok(Commitment::from(VariableBaseMSM::multi_scalar_mul(self.powers_of_g, polynomial.coeffs.into_iter().map(|s|.into_repr()).collect::<Vec<>(),));
     }
 
     /// Computes a single witness for multiple polynomials at the same point, by

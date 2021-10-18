@@ -9,6 +9,7 @@
 
 use ark_ec::PairingEngine;
 // use dusk_bytes::{DeserializableSlice, Serializable};
+use num_traits::Zero;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 /// Holds a commitment to a polynomial in a form of a [`G1Affine`]-bls12_381
@@ -47,13 +48,13 @@ impl<E: PairingEngine> Commitment<E> {
     /// Builds an identity [`Commitment`] which is equivalent to the
     /// [`G1Affine`] identity point in bls12_381.
     fn identity() -> Commitment<E> {
-        Commitment(E::G1Affine::identity())
+        Commitment(E::G1Affine::zero())
     }
 }
 
 impl<E: PairingEngine> Default for Commitment<E> {
     fn default() -> Commitment<E> {
-        Commitment::identity()
+        Commitment::zero()
     }
 }
 
