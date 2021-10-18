@@ -9,6 +9,7 @@ use crate::constraint_system::StandardComposer;
 use ark_ec::models::twisted_edwards_extended::GroupAffine;
 use ark_ec::models::TEModelParameters;
 use ark_ec::{PairingEngine, ProjectiveCurve};
+use num_traits::{One, Zero};
 
 impl<
         E: PairingEngine,
@@ -45,10 +46,10 @@ impl<
         let p2 = GroupAffine::<P>::new(*x_2_scalar, *y_2_scalar);
 
         let point = p1 + p2;
-        let x_3_scalar = point.get_x();
-        let y_3_scalar = point.get_y();
+        let x_3_scalar = point.x;
+        let y_3_scalar = point.y;
 
-        let x1_scalar_y2_scalar = x_1_scalar * y_2_scalar;
+        let x1_scalar_y2_scalar = *x_1_scalar * y_2_scalar;
 
         // Add the rest of the prepared points into the composer
         let x_1_y_2 = self.add_input(x1_scalar_y2_scalar);

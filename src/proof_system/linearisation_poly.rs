@@ -121,26 +121,26 @@ pub(crate) fn compute<
             fixed_base_separation_challenge,
             var_base_separation_challenge,
         ),
-        &a_eval,
-        &b_eval,
-        &c_eval,
-        &d_eval,
-        &a_next_eval,
-        &b_next_eval,
-        &d_next_eval,
-        &q_arith_eval,
-        &q_c_eval,
-        &q_l_eval,
-        &q_r_eval,
+        a_eval,
+        b_eval,
+        c_eval,
+        d_eval,
+        a_next_eval,
+        b_next_eval,
+        d_next_eval,
+        q_arith_eval,
+        q_c_eval,
+        q_l_eval,
+        q_r_eval,
         prover_key,
     );
 
     let f_2 = prover_key.permutation.compute_linearisation(
-        z_challenge,
-        (alpha, beta, gamma),
-        (&a_eval, &b_eval, &c_eval, &d_eval),
-        (&left_sigma_eval, &right_sigma_eval, &out_sigma_eval),
-        &perm_eval,
+        *z_challenge,
+        (*alpha, *beta, *gamma),
+        (a_eval, b_eval, c_eval, d_eval),
+        (left_sigma_eval, right_sigma_eval, out_sigma_eval),
+        perm_eval,
         z_poly,
     );
 
@@ -185,17 +185,17 @@ fn compute_circuit_satisfiability<
         fixed_base_separation_challenge,
         var_base_separation_challenge,
     ): (&E::Fr, &E::Fr, &E::Fr, &E::Fr),
-    a_eval: &E::Fr,
-    b_eval: &E::Fr,
-    c_eval: &E::Fr,
-    d_eval: &E::Fr,
-    a_next_eval: &E::Fr,
-    b_next_eval: &E::Fr,
-    d_next_eval: &E::Fr,
-    q_arith_eval: &E::Fr,
-    q_c_eval: &E::Fr,
-    q_l_eval: &E::Fr,
-    q_r_eval: &E::Fr,
+    a_eval: E::Fr,
+    b_eval: E::Fr,
+    c_eval: E::Fr,
+    d_eval: E::Fr,
+    a_next_eval: E::Fr,
+    b_next_eval: E::Fr,
+    d_next_eval: E::Fr,
+    q_arith_eval: E::Fr,
+    q_c_eval: E::Fr,
+    q_l_eval: E::Fr,
+    q_r_eval: E::Fr,
     prover_key: &ProverKey<E::Fr, P>,
 ) -> DensePolynomial<E::Fr> {
     let a = prover_key.arithmetic.compute_linearisation(
@@ -207,16 +207,16 @@ fn compute_circuit_satisfiability<
     );
 
     let b = prover_key.range.compute_linearisation(
-        range_separation_challenge,
+        *range_separation_challenge,
         a_eval,
         b_eval,
         c_eval,
         d_eval,
-        &d_next_eval,
+        d_next_eval,
     );
 
     let c = prover_key.logic.compute_linearisation(
-        logic_separation_challenge,
+        *logic_separation_challenge,
         a_eval,
         a_next_eval,
         b_eval,
@@ -228,7 +228,7 @@ fn compute_circuit_satisfiability<
     );
 
     let d = prover_key.fixed_base.compute_linearisation(
-        fixed_base_separation_challenge,
+        *fixed_base_separation_challenge,
         a_eval,
         a_next_eval,
         b_eval,
@@ -242,7 +242,7 @@ fn compute_circuit_satisfiability<
     );
 
     let e = prover_key.variable_base.compute_linearisation(
-        var_base_separation_challenge,
+        *var_base_separation_challenge,
         a_eval,
         a_next_eval,
         b_eval,

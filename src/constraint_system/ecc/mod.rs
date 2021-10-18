@@ -41,9 +41,9 @@ impl<
         Point::<E, T, P> {
             x,
             y,
-            _marker0: PhantomData::new(),
-            _marker1: PhantomData::new(),
-            _marker2: PhantomData::new(),
+            _marker0: PhantomData,
+            _marker1: PhantomData,
+            _marker2: PhantomData,
         }
     }
     /// Returns an identity point
@@ -114,12 +114,12 @@ impl<
         self.constrain_to_constant(
             point.x,
             E::Fr::zero(),
-            Some(-public_point.x()),
+            Some(-public_point.x),
         );
         self.constrain_to_constant(
             point.y,
             E::Fr::zero(),
-            Some(-public_point.y()),
+            Some(-public_point.y),
         );
     }
     /// Asserts that a point in the circuit is equal to another point in the
@@ -148,8 +148,8 @@ impl<
         point_b: Point<E, T, P>,
         bit: Variable,
     ) -> Point<E, T, P> {
-        let x = self.conditional_select(bit, *point_a.x(), *point_b.x());
-        let y = self.conditional_select(bit, *point_a.y(), *point_b.y());
+        let x = self.conditional_select(bit, point_a.x, point_b.x);
+        let y = self.conditional_select(bit, point_a.y, point_b.y);
 
         Point::<E, T, P>::new(x, y)
     }
@@ -168,8 +168,8 @@ impl<
         bit: Variable,
         point_b: Point<E, T, P>,
     ) -> Point<E, T, P> {
-        let x = self.conditional_select_zero(bit, *point_b.x());
-        let y = self.conditional_select_one(bit, *point_b.y());
+        let x = self.conditional_select_zero(bit, point_b.x);
+        let y = self.conditional_select_one(bit, point_b.y);
 
         Point::<E, T, P>::new(x, y)
     }

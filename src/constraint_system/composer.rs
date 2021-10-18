@@ -22,7 +22,7 @@ use crate::constraint_system::Variable;
 use crate::permutation::Permutation;
 use ark_ec::models::TEModelParameters;
 use ark_ec::PairingEngine;
-use ark_ec::{AffineCurve, ProjectiveCurve};
+use ark_ec::ProjectiveCurve;
 use core::marker::PhantomData;
 use hashbrown::HashMap;
 use num_traits::{One, Zero};

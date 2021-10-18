@@ -7,8 +7,8 @@
 use super::constants::{K1, K2, K3};
 use crate::constraint_system::{Variable, WireData};
 use ark_ff::PrimeField;
-use ark_poly::domain::GeneralEvaluationDomain;
-use ark_poly::polynomial::univariate::DensePolynomial as Polynomial;
+use ark_poly::domain::{EvaluationDomain, GeneralEvaluationDomain};
+use ark_poly::{univariate::DensePolynomial, UVPolynomial};
 use hashbrown::HashMap;
 use itertools::izip;
 use std::marker::PhantomData;
@@ -178,7 +178,12 @@ impl<F: PrimeField> Permutation<F> {
         &mut self,
         n: usize,
         domain: &GeneralEvaluationDomain<F>,
-    ) -> (Polynomial<F>, Polynomial<F>, Polynomial<F>, Polynomial<F>) {
+    ) -> (
+        DensePolynomial<F>,
+        DensePolynomial<F>,
+        DensePolynomial<F>,
+        DensePolynomial<F>,
+    ) {
         // Compute sigma mappings
         let sigmas = self.compute_sigma_permutations(n);
 
@@ -195,13 +200,13 @@ impl<F: PrimeField> Permutation<F> {
             self.compute_permutation_lagrange(&sigmas[3], domain);
 
         let left_sigma_poly =
-            Polynomial::from_coefficients_vec(domain.ifft(&left_sigma));
+            DensePolynomial::from_coefficients_vec(domain.ifft(&left_sigma));
         let right_sigma_poly =
-            Polynomial::from_coefficients_vec(domain.ifft(&right_sigma));
+            DensePolynomial::from_coefficients_vec(domain.ifft(&right_sigma));
         let out_sigma_poly =
-            Polynomial::from_coefficients_vec(domain.ifft(&out_sigma));
+            DensePolynomial::from_coefficients_vec(domain.ifft(&out_sigma));
         let fourth_sigma_poly =
-            Polynomial::from_coefficients_vec(domain.ifft(&fourth_sigma));
+            DensePolynomial::from_coefficients_vec(domain.ifft(&fourth_sigma));
 
         (
             left_sigma_poly,
@@ -222,10 +227,10 @@ impl<F: PrimeField> Permutation<F> {
         beta: &F,
         gamma: &F,
         (left_sigma_poly, right_sigma_poly, out_sigma_poly, fourth_sigma_poly): (
-            &Polynomial<F>,
-            &Polynomial<F>,
-            &Polynomial<F>,
-            &Polynomial<F>,
+            &DensePolynomial<F>,
+            &DensePolynomial<F>,
+            &DensePolynomial<F>,
+            &DensePolynomial<F>,
         ),
     ) -> (Vec<F>, Vec<F>, Vec<F>)
     where
@@ -252,13 +257,16 @@ impl<F: PrimeField> Permutation<F> {
         let beta_roots_iter = domain.elements().map(|root| root * beta);
 
         // Compute beta * roots * K1
-        let beta_roots_k1_iter = domain.elements().map(|root| K1 * beta * root);
+        let beta_roots_k1_iter =
+            domain.elements().map(|root| K1::<F>() * beta * root);
 
         // Compute beta * roots * K2
-        let beta_roots_k2_iter = domain.elements().map(|root| K2 * beta * root);
+        let beta_roots_k2_iter =
+            domain.elements().map(|root| K2::<F>() * beta * root);
 
         // Compute beta * roots * K3
-        let beta_roots_k3_iter = domain.elements().map(|root| K3 * beta * root);
+        let beta_roots_k3_iter =
+            domain.elements().map(|root| K3::<F>() * beta * root);
 
         // Compute left_wire + gamma
         let w_l_gamma: Vec<_> = w_l.map(|w| w + gamma).collect();
@@ -374,7 +382,7 @@ impl<F: PrimeField> Permutation<F> {
         assert_ne!(a, &F::zero());
         let b = denominator_coefficients.last().unwrap();
         assert_ne!(b, &F::zero());
-        assert_eq!(*a * b.invert().unwrap(), F::one());
+        assert_eq!(*a * b.inverse().unwrap(), F::one());
 
         // Remove those extra elements
         numerator_coefficients.remove(n);
@@ -387,7 +395,7 @@ impl<F: PrimeField> Permutation<F> {
             .iter()
             .zip(denominator_coefficients.iter())
         {
-            z_coefficients.push(*numerator * denominator.invert().unwrap());
+            z_coefficients.push(*numerator * denominator.inverse().unwrap());
         }
         assert_eq!(z_coefficients.len(), n);
 
@@ -406,13 +414,13 @@ impl<F: PrimeField> Permutation<F> {
         w_r: &[F],
         w_o: &[F],
         w_4: &[F],
-        beta: &F,
-        gamma: &F,
+        beta: F,
+        gamma: F,
         (left_sigma_poly, right_sigma_poly, out_sigma_poly, fourth_sigma_poly): (
-            &Polynomial<F>,
-            &Polynomial<F>,
-            &Polynomial<F>,
-            &Polynomial<F>,
+            &DensePolynomial<F>,
+            &DensePolynomial<F>,
+            &DensePolynomial<F>,
+            &DensePolynomial<F>,
         ),
     ) -> Vec<F> {
         let n = domain.size();
@@ -429,42 +437,61 @@ impl<F: PrimeField> Permutation<F> {
         // Compute beta * sigma polynomials
         let beta_left_sigmas: Vec<_> = left_sigma_mapping
             .iter()
+            .copied()
             .map(|sigma| sigma * beta)
             .collect();
         let beta_right_sigmas: Vec<_> = right_sigma_mapping
             .iter()
+            .copied()
             .map(|sigma| sigma * beta)
             .collect();
-        let beta_out_sigmas: Vec<_> =
-            out_sigma_mapping.iter().map(|sigma| sigma * beta).collect();
+        let beta_out_sigmas: Vec<_> = out_sigma_mapping
+            .iter()
+            .copied()
+            .map(|sigma| sigma * beta)
+            .collect();
         let beta_fourth_sigmas: Vec<_> = fourth_sigma_mapping
             .iter()
+            .copied()
             .map(|sigma| sigma * beta)
             .collect();
 
         // Compute beta * roots * K1
-        let beta_roots_k1: Vec<_> =
-            common_roots.iter().map(|x| x * K1).collect();
+        let beta_roots_k1: Vec<_> = common_roots
+            .iter()
+            .copied()
+            .map(|x| x * K1::<F>())
+            .collect();
 
         // Compute beta * roots * K2
-        let beta_roots_k2: Vec<_> =
-            common_roots.iter().map(|x| x * K2).collect();
+        let beta_roots_k2: Vec<_> = common_roots
+            .iter()
+            .copied()
+            .map(|x| x * K2::<F>())
+            .collect();
 
         // Compute beta * roots * K3
-        let beta_roots_k3: Vec<_> =
-            common_roots.iter().map(|x| x * K3).collect();
+        let beta_roots_k3: Vec<_> = common_roots
+            .iter()
+            .copied()
+            .map(|x| x * K3::<F>())
+            .collect();
 
         // Compute left_wire + gamma
-        let w_l_gamma: Vec<_> = w_l.iter().map(|w_l| w_l + gamma).collect();
+        let w_l_gamma: Vec<_> =
+            w_l.iter().copied().map(|w_l| w_l + gamma).collect();
 
         // Compute right_wire + gamma
-        let w_r_gamma: Vec<_> = w_r.iter().map(|w_r| w_r + gamma).collect();
+        let w_r_gamma: Vec<_> =
+            w_r.iter().copied().map(|w_r| w_r + gamma).collect();
 
         // Compute out_wire + gamma
-        let w_o_gamma: Vec<_> = w_o.iter().map(|w_o| w_o + gamma).collect();
+        let w_o_gamma: Vec<_> =
+            w_o.iter().copied().map(|w_o| w_o + gamma).collect();
 
         // Compute fourth_wire + gamma
-        let w_4_gamma: Vec<_> = w_4.iter().map(|w_4| w_4 + gamma).collect();
+        let w_4_gamma: Vec<_> =
+            w_4.iter().copied().map(|w_4| w_4 + gamma).collect();
 
         // Compute 6 accumulator components
         // Parallisable
@@ -510,16 +537,16 @@ impl<F: PrimeField> Permutation<F> {
                 let ac4 = w_4_gamma + beta_root_k3;
 
                 // 1 / w_j + beta * sigma(j) + gamma
-                let ac5 = (w_l_gamma + beta_left_sigma).invert().unwrap();
+                let ac5 = (w_l_gamma + beta_left_sigma).inverse().unwrap();
 
                 // 1 / w_{n+j} + beta * sigma(n+j) + gamma
-                let ac6 = (w_r_gamma + beta_right_sigma).invert().unwrap();
+                let ac6 = (w_r_gamma + beta_right_sigma).inverse().unwrap();
 
                 // 1 / w_{2n+j} + beta * sigma(2n+j) + gamma
-                let ac7 = (w_o_gamma + beta_out_sigma).invert().unwrap();
+                let ac7 = (w_o_gamma + beta_out_sigma).inverse().unwrap();
 
                 // 1 / w_{3n+j} + beta * sigma(3n+j) + gamma
-                let ac8 = (w_4_gamma + beta_fourth_sigma).invert().unwrap();
+                let ac8 = (w_4_gamma + beta_fourth_sigma).inverse().unwrap();
 
                 (ac1, ac2, ac3, ac4, ac5, ac6, ac7, ac8)
             },
@@ -603,18 +630,18 @@ impl<F: PrimeField> Permutation<F> {
 
     // These are the formulas for the irreducible factors used in the product
     // argument
-    fn numerator_irreducible(root: &F, w: &F, k: &F, beta: &F, gamma: &F) -> F {
-        w + *beta * k * root + gamma
+    fn numerator_irreducible(root: F, w: F, k: F, beta: F, gamma: F) -> F {
+        w + beta * k * root + gamma
     }
 
     fn denominator_irreducible(
-        _root: &F,
-        w: &F,
-        sigma: &F,
-        beta: &F,
-        gamma: &F,
+        _root: F,
+        w: F,
+        sigma: F,
+        beta: F,
+        gamma: F,
     ) -> F {
-        w + *beta * sigma + gamma
+        w + beta * sigma + gamma
     }
 
     // Uses a rayon multizip to allow more code flexibility while remaining
@@ -625,19 +652,19 @@ impl<F: PrimeField> Permutation<F> {
         &self,
         domain: &GeneralEvaluationDomain<F>,
         wires: (&[F], &[F], &[F], &[F]),
-        beta: &F,
-        gamma: &F,
+        beta: F,
+        gamma: F,
         sigma_polys: (
-            &Polynomial<F>,
-            &Polynomial<F>,
-            &Polynomial<F>,
-            &Polynomial<F>,
+            &DensePolynomial<F>,
+            &DensePolynomial<F>,
+            &DensePolynomial<F>,
+            &DensePolynomial<F>,
         ),
-    ) -> Polynomial<F> {
+    ) -> DensePolynomial<F> {
         let n = domain.size();
 
         // Constants defining cosets H, k1H, k2H, etc
-        let ks = vec![F::one(), K1, K2, K3];
+        let ks = vec![F::one(), K1::<F>(), K2::<F>(), K3::<F>()];
 
         let sigma_mappings = (
             domain.fft(sigma_polys.0),
@@ -682,7 +709,7 @@ impl<F: PrimeField> Permutation<F> {
                         .clone()
                         .map(|(_sigma, wire, k)| {
                             Permutation::numerator_irreducible(
-                                &gate_root, wire, &k, beta, gamma,
+                                gate_root, *wire, *k, beta, gamma,
                             )
                         })
                         .product::<F>(),
@@ -690,14 +717,14 @@ impl<F: PrimeField> Permutation<F> {
                     wire_params
                         .map(|(sigma, wire, _k)| {
                             Permutation::denominator_irreducible(
-                                &gate_root, wire, &sigma, beta, gamma,
+                                gate_root, *wire, sigma, beta, gamma,
                             )
                         })
                         .product::<F>(),
                 )
             })
             // Divide each pair to get the single scalar representing each gate
-            .map(|(n, d)| n * d.invert().unwrap())
+            .map(|(n, d)| n * d.inverse().unwrap())
             // Collect into vector intermediary since rayon does not support
             // `scan`
             .collect::<Vec<F>>();
@@ -720,11 +747,11 @@ impl<F: PrimeField> Permutation<F> {
 
         assert_eq!(n, z.len());
 
-        Polynomial::<F>::from_coefficients_vec(domain.ifft(&z))
+        DensePolynomial::<F>::from_coefficients_vec(domain.ifft(&z))
     }
 }
 
-#[cfg(feature = "std")]
+/*
 #[cfg(test)]
 mod test {
     use super::*;
@@ -795,7 +822,7 @@ mod test {
 
         let sigma_polys: Vec<Polynomial<Bls12::<dyn Bls12Parameters>::Fr>> = sigmas
             .iter()
-            .map(|v| Polynomial::Bls12::<dyn Bls12Parameters>::Fr::from_coefficients_vec(domain.ifft(&v)))
+            .map(|v| DensePolynomial::Bls12::<dyn Bls12Parameters>::Fr::from_coefficients_vec(domain.ifft(&v)))
             .collect();
 
         let mz = cs.perm.compute_permutation_poly(
@@ -812,7 +839,7 @@ mod test {
         );
 
         let old_z =
-            Polynomial::Bls12::<dyn Bls12Parameters>::Fr::from_coefficients_vec(
+            DensePolynomial::Bls12::<dyn Bls12Parameters>::Fr::from_coefficients_vec(
                 domain.ifft(&cs.perm.compute_fast_permutation_poly(
                     &domain,
                     &w_l_scalar,
@@ -1268,12 +1295,12 @@ mod test {
         for n in denominator_components.iter() {
             b_0 = b_0 * n;
         }
-        assert_eq!(a_0 * b_0.invert().unwrap(), F::one());
+        assert_eq!(a_0 * b_0.inverse().unwrap(), F::one());
 
         //3. Now we perform the two checks that need to be done on the
         // permutation polynomial (z)
         let z_poly =
-            Polynomial::<F>::from_coefficients_vec(domain.ifft(&z_vec));
+            DensePolynomial::<F>::from_coefficients_vec(domain.ifft(&z_vec));
         //
         // Check that z(w^{n+1}) == z(1) == 1
         // This is the first check in the protocol
@@ -1322,8 +1349,9 @@ mod test {
 
         // Test that the shifted polynomial is correct
         let shifted_z = shift_poly_by_one(fast_z_vec);
-        let shifted_z_poly =
-            Polynomial::<F>::from_coefficients_vec(domain.ifft(&shifted_z));
+        let shifted_z_poly = DensePolynomial::<F>::from_coefficients_vec(
+            domain.ifft(&shifted_z),
+        );
         for element in domain.elements() {
             let z_eval = z_poly.evaluate(&(element * domain.group_gen));
             let shifted_z_eval = shifted_z_poly.evaluate(&element);
@@ -1340,3 +1368,4 @@ use rand_core::RngCore;
 pub(crate) fn random_scalar<F: PrimeField, R: RngCore>(rng: &mut R) -> F {
     F::rand(rng)
 }
+*/

@@ -4,10 +4,10 @@
 //
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
-use crate::bit_iterator::*;
 use crate::constraint_system::StandardComposer;
 use crate::constraint_system::{Variable, WireData};
 use ark_ec::{PairingEngine, ProjectiveCurve, TEModelParameters};
+use ark_ff::{BigInteger, PrimeField};
 use num_traits::{One, Zero};
 
 impl<
@@ -28,33 +28,34 @@ impl<
     pub fn range_gate(&mut self, witness: Variable, num_bits: usize) {
         // Adds `variable` into the appropriate witness position
         // based on the accumulator number a_i
-        let add_wire =
-            |composer: &mut StandardComposer, i: usize, variable: Variable| {
-                // Since four quads can fit into one gate, the gate index does
-                // not change for every four wires
-                let gate_index = composer.circuit_size() + (i / 4);
+        let add_wire = |composer: &mut StandardComposer<E, T, P>,
+                        i: usize,
+                        variable: Variable| {
+            // Since four quads can fit into one gate, the gate index does
+            // not change for every four wires
+            let gate_index = composer.circuit_size() + (i / 4);
 
-                let wire_data = match i % 4 {
-                    0 => {
-                        composer.w_4.push(variable);
-                        WireData::Fourth(gate_index)
-                    }
-                    1 => {
-                        composer.w_o.push(variable);
-                        WireData::Output(gate_index)
-                    }
-                    2 => {
-                        composer.w_r.push(variable);
-                        WireData::Right(gate_index)
-                    }
-                    3 => {
-                        composer.w_l.push(variable);
-                        WireData::Left(gate_index)
-                    }
-                    _ => unreachable!(),
-                };
-                composer.perm.add_variable_to_map(variable, wire_data);
+            let wire_data = match i % 4 {
+                0 => {
+                    composer.w_4.push(variable);
+                    WireData::Fourth(gate_index)
+                }
+                1 => {
+                    composer.w_o.push(variable);
+                    WireData::Output(gate_index)
+                }
+                2 => {
+                    composer.w_r.push(variable);
+                    WireData::Right(gate_index)
+                }
+                3 => {
+                    composer.w_l.push(variable);
+                    WireData::Left(gate_index)
+                }
+                _ => unreachable!(),
             };
+            composer.perm.add_variable_to_map(variable, wire_data);
+        };
 
         // Note: A quad is a quaternary digit
         //
@@ -63,9 +64,7 @@ impl<
         assert!(num_bits % 2 == 0);
 
         // Convert witness to bit representation and reverse
-        let value = self.variables[&witness];
-        let bit_iter = BitIterator8::new(value.to_bytes());
-        let mut bits: Vec<_> = bit_iter.collect();
+        let mut bits = self.variables[&witness].into_repr().to_bits_le();
         bits.reverse();
 
         // For a width-4 program, one gate will contain 4 accumulators
@@ -138,7 +137,7 @@ impl<
         // and keep a running count of the current accumulator
         let mut accumulators: Vec<Variable> = Vec::new();
         let mut accumulator = E::Fr::zero();
-        let four = E::Fr::from(4);
+        let four = E::Fr::from(4u64);
 
         // First we pad our gates by the necessary amount
         for i in 0..pad {

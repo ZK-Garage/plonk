@@ -14,7 +14,7 @@ use super::{linearisation_poly::ProofEvaluations, PCAggregateProof};
 use crate::proof_system::VerifierKey;
 use crate::{error::Error, transcript::TranscriptProtocol};
 use ark_ec::PairingEngine;
-use ark_ec::{msm::VariableBaseMSM, TEModelParameters};
+use ark_ec::{msm::VariableBaseMSM, AffineCurve, TEModelParameters};
 use ark_ff::{fields::batch_inversion, Field, FpParameters, PrimeField};
 use ark_poly::{EvaluationDomain, GeneralEvaluationDomain};
 use ark_poly_commit::kzg10::{
