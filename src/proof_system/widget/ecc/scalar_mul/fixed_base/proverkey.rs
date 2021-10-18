@@ -9,6 +9,7 @@ use ark_ff::PrimeField;
 use ark_poly::polynomial::univariate::DensePolynomial;
 use ark_poly::Evaluations;
 use core::marker::PhantomData;
+use num_traits::One;
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub(crate) struct ProverKey<F: PrimeField, P: TEModelParameters<BaseField = F>>
@@ -24,14 +25,14 @@ impl<F: PrimeField, P: TEModelParameters<BaseField = F>> ProverKey<F, P> {
     pub(crate) fn compute_quotient_i(
         &self,
         index: usize,
-        ecc_separation_challenge: &F,
-        w_l_i: &F,      // acc_x or curr_x
-        w_l_i_next: &F, //  // next_x
-        w_r_i: &F,      // acc_y or curr_y
-        w_r_i_next: &F, // next_y
-        w_o_i: &F,      // xy_alpha
-        w_4_i: &F,      // accumulated_bit
-        w_4_i_next: &F, // accumulated_bit_next
+        ecc_separation_challenge: F,
+        w_l_i: F,      // acc_x or curr_x
+        w_l_i_next: F, //  // next_x
+        w_r_i: F,      // acc_y or curr_y
+        w_r_i_next: F, // next_y
+        w_o_i: F,      // xy_alpha
+        w_4_i: F,      // accumulated_bit
+        w_4_i_next: F, // accumulated_bit_next
     ) -> F {
         let q_fixed_group_add_i = &self.q_fixed_group_add.1[index];
         let q_c_i = &self.q_c.1[index];
@@ -60,7 +61,7 @@ impl<F: PrimeField, P: TEModelParameters<BaseField = F>> ProverKey<F, P> {
         let bit_consistency = check_bit_consistency(bit);
 
         // Derive y_alpha and x_alpha from bit
-        let y_alpha = bit.square() * (y_beta - F::one()) + F::one();
+        let y_alpha = bit.square() * (*y_beta - F::one()) + F::one();
         let x_alpha = bit * x_beta;
 
         // xy_alpha consistency check
@@ -88,17 +89,17 @@ impl<F: PrimeField, P: TEModelParameters<BaseField = F>> ProverKey<F, P> {
 
     pub(crate) fn compute_linearisation(
         &self,
-        ecc_separation_challenge: &F,
-        a_eval: &F,
-        a_next_eval: &F,
-        b_eval: &F,
-        b_next_eval: &F,
-        c_eval: &F,
-        d_eval: &F,
-        d_next_eval: &F,
-        q_l_eval: &F,
-        q_r_eval: &F,
-        q_c_eval: &F,
+        ecc_separation_challenge: F,
+        a_eval: F,
+        a_next_eval: F,
+        b_eval: F,
+        b_next_eval: F,
+        c_eval: F,
+        d_eval: F,
+        d_next_eval: F,
+        q_l_eval: F,
+        q_r_eval: F,
+        q_c_eval: F,
     ) -> DensePolynomial<F> {
         let q_fixed_group_add_poly = &self.q_fixed_group_add.0;
 
@@ -147,11 +148,11 @@ impl<F: PrimeField, P: TEModelParameters<BaseField = F>> ProverKey<F, P> {
             + y_acc_consistency
             + xy_consistency;
 
-        q_fixed_group_add_poly * &(a * ecc_separation_challenge)
+        q_fixed_group_add_poly * (a * ecc_separation_challenge)
     }
 }
 
-pub(crate) fn extract_bit<F: PrimeField>(curr_acc: &F, next_acc: &F) -> F {
+pub(crate) fn extract_bit<F: PrimeField>(curr_acc: F, next_acc: F) -> F {
     // Next - 2 * current
     next_acc - curr_acc - curr_acc
 }

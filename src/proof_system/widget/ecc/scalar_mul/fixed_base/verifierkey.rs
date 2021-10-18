@@ -9,8 +9,10 @@ use crate::proof_system::widget::ecc::scalar_mul::fixed_base::proverkey::{
     check_bit_consistency, extract_bit,
 };
 use ark_ec::{PairingEngine, TEModelParameters};
+use ark_ff::Field;
 use ark_poly_commit::kzg10::Commitment;
 use core::marker::PhantomData;
+use num_traits::One;
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub(crate) struct VerifierKey<
@@ -28,7 +30,7 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
 {
     pub(crate) fn compute_linearisation_commitment(
         &self,
-        ecc_separation_challenge: &E::Fr,
+        ecc_separation_challenge: E::Fr,
         scalars: &mut Vec<E::Fr>,
         points: &mut Vec<E::G1Affine>,
         evaluations: &ProofEvaluations<E::Fr>,
@@ -49,7 +51,7 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
 
         let accumulated_bit = evaluations.d_eval;
         let accumulated_bit_next = evaluations.d_next_eval;
-        let bit = extract_bit(&accumulated_bit, &accumulated_bit_next);
+        let bit = extract_bit(accumulated_bit, accumulated_bit_next);
 
         // Check bit consistency
         let bit_consistency = check_bit_consistency(bit);

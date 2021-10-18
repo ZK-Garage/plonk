@@ -21,14 +21,14 @@ impl<F: PrimeField, P: TEModelParameters<BaseField = F>> ProverKey<F, P> {
     pub(crate) fn compute_quotient_i(
         &self,
         index: usize,
-        curve_add_separation_challenge: &F,
-        w_l_i: &F,      // x_1
-        w_l_i_next: &F, // x_3
-        w_r_i: &F,      // y_1
-        w_r_i_next: &F, // y_3
-        w_o_i: &F,      // x_2
-        w_4_i: &F,      // y_2
-        w_4_i_next: &F, // x_1 * y_2
+        curve_add_separation_challenge: F,
+        w_l_i: F,      // x_1
+        w_l_i_next: F, // x_3
+        w_r_i: F,      // y_1
+        w_r_i_next: F, // y_3
+        w_o_i: F,      // x_2
+        w_4_i: F,      // y_2
+        w_4_i_next: F, // x_1 * y_2
     ) -> F {
         let q_variable_group_add_i = &self.q_variable_group_add.1[index];
 
@@ -68,14 +68,14 @@ impl<F: PrimeField, P: TEModelParameters<BaseField = F>> ProverKey<F, P> {
 
     pub(crate) fn compute_linearisation(
         &self,
-        curve_add_separation_challenge: &F,
-        a_eval: &F,
-        a_next_eval: &F,
-        b_eval: &F,
-        b_next_eval: &F,
-        c_eval: &F,
-        d_eval: &F,
-        d_next_eval: &F,
+        curve_add_separation_challenge: F,
+        a_eval: F,
+        a_next_eval: F,
+        b_eval: F,
+        b_next_eval: F,
+        c_eval: F,
+        d_eval: F,
+        d_next_eval: F,
     ) -> DensePolynomial<F> {
         let q_variable_group_add_poly = &self.q_variable_group_add.0;
 
@@ -110,6 +110,6 @@ impl<F: PrimeField, P: TEModelParameters<BaseField = F>> ProverKey<F, P> {
 
         let identity = xy_consistency + x3_consistency + y3_consistency;
 
-        q_variable_group_add_poly * &(identity * curve_add_separation_challenge)
+        q_variable_group_add_poly * (identity * curve_add_separation_challenge)
     }
 }

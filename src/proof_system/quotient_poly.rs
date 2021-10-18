@@ -66,10 +66,10 @@ pub(crate) fn compute<F: PrimeField, P: TEModelParameters<BaseField = F>>(
     let t_1 = compute_circuit_satisfiability_equation(
         &domain,
         (
-            range_challenge,
-            logic_challenge,
-            fixed_base_challenge,
-            var_base_challenge,
+            *range_challenge,
+            *logic_challenge,
+            *fixed_base_challenge,
+            *var_base_challenge,
         ),
         prover_key,
         (&wl_eval_4n, &wr_eval_4n, &wo_eval_4n, &w4_eval_4n),
@@ -109,7 +109,7 @@ fn compute_circuit_satisfiability_equation<
         logic_challenge,
         fixed_base_challenge,
         var_base_challenge,
-    ): (&F, &F, &F, &F),
+    ): (F, F, F, F),
     prover_key: &ProverKey<F, P>,
     (wl_eval_4n, wr_eval_4n, wo_eval_4n, w4_eval_4n): (&[F], &[F], &[F], &[F]),
     pi_poly: &DensePolynomial<F>,
@@ -122,14 +122,14 @@ fn compute_circuit_satisfiability_equation<
 
     let t: Vec<_> = range
         .map(|i| {
-            let wl = &wl_eval_4n[i];
-            let wr = &wr_eval_4n[i];
-            let wo = &wo_eval_4n[i];
-            let w4 = &w4_eval_4n[i];
-            let wl_next = &wl_eval_4n[i + 4];
-            let wr_next = &wr_eval_4n[i + 4];
-            let w4_next = &w4_eval_4n[i + 4];
-            let pi = &pi_eval_4n[i];
+            let wl = wl_eval_4n[i];
+            let wr = wr_eval_4n[i];
+            let wo = wo_eval_4n[i];
+            let w4 = w4_eval_4n[i];
+            let wl_next = wl_eval_4n[i + 4];
+            let wr_next = wr_eval_4n[i + 4];
+            let w4_next = w4_eval_4n[i + 4];
+            let pi = pi_eval_4n[i];
 
             let a = prover_key.arithmetic.compute_quotient_i(i, wl, wr, wo, w4);
 
@@ -146,37 +146,37 @@ fn compute_circuit_satisfiability_equation<
             let c = prover_key.logic.compute_quotient_i(
                 i,
                 logic_challenge,
-                &wl,
-                &wl_next,
-                &wr,
-                &wr_next,
-                &wo,
-                &w4,
-                &w4_next,
+                wl,
+                wl_next,
+                wr,
+                wr_next,
+                wo,
+                w4,
+                w4_next,
             );
 
             let d = prover_key.fixed_base.compute_quotient_i(
                 i,
                 fixed_base_challenge,
-                &wl,
-                &wl_next,
-                &wr,
-                &wr_next,
-                &wo,
-                &w4,
-                &w4_next,
+                wl,
+                wl_next,
+                wr,
+                wr_next,
+                wo,
+                w4,
+                w4_next,
             );
 
             let e = prover_key.variable_base.compute_quotient_i(
                 i,
                 var_base_challenge,
-                &wl,
-                &wl_next,
-                &wr,
-                &wr_next,
-                &wo,
-                &w4,
-                &w4_next,
+                wl,
+                wl_next,
+                wr,
+                wr_next,
+                wo,
+                w4,
+                w4_next,
             );
 
             (a + pi) + b + c + d + e
@@ -193,7 +193,7 @@ fn compute_permutation_checks<
     prover_key: &ProverKey<F, P>,
     (wl_eval_4n, wr_eval_4n, wo_eval_4n, w4_eval_4n): (&[F], &[F], &[F], &[F]),
     z_eval_4n: &[F],
-    (alpha, beta, gamma): (&F, &F, &F),
+    (alpha, beta, gamma): (F, F, F),
 ) -> Vec<F> {
     let domain_4n =
         GeneralEvaluationDomain::<F>::new(4 * domain.size()).unwrap();
@@ -207,16 +207,16 @@ fn compute_permutation_checks<
         .map(|i| {
             prover_key.permutation.compute_quotient_i(
                 i,
-                &wl_eval_4n[i],
-                &wr_eval_4n[i],
-                &wo_eval_4n[i],
-                &w4_eval_4n[i],
-                &z_eval_4n[i],
-                &z_eval_4n[i + 4],
-                &alpha,
-                &l1_alpha_sq_evals[i],
-                &beta,
-                &gamma,
+                wl_eval_4n[i],
+                wr_eval_4n[i],
+                wo_eval_4n[i],
+                w4_eval_4n[i],
+                z_eval_4n[i],
+                z_eval_4n[i + 4],
+                alpha,
+                l1_alpha_sq_evals[i],
+                beta,
+                gamma,
             )
         })
         .collect();

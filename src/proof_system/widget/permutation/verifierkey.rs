@@ -7,6 +7,7 @@
 use crate::permutation::constants::{K1, K2, K3};
 use crate::proof_system::linearisation_poly::ProofEvaluations;
 use ark_ec::PairingEngine;
+use ark_ff::Field;
 use ark_poly_commit::sonic_pc::Commitment;
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
@@ -23,9 +24,9 @@ impl<E: PairingEngine> VerifierKey<E> {
         scalars: &mut Vec<E::Fr>,
         points: &mut Vec<E::G1Affine>,
         evaluations: &ProofEvaluations<E::Fr>,
-        z_challenge: &E::Fr,
-        (alpha, beta, gamma): (&E::Fr, &E::Fr, &E::Fr),
-        l1_eval: &E::Fr,
+        z_challenge: E::Fr,
+        (alpha, beta, gamma): (E::Fr, E::Fr, E::Fr),
+        l1_eval: E::Fr,
         z_comm: E::G1Affine,
     ) {
         let alpha_sq = alpha.square();

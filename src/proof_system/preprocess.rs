@@ -10,7 +10,7 @@ use crate::constraint_system::StandardComposer;
 use crate::error::Error;
 use crate::proof_system::{widget, ProverKey};
 use ark_ec::{PairingEngine, ProjectiveCurve, TEModelParameters};
-use ark_ff::PrimeField;
+use ark_ff::{FftField, FpParameters, PrimeField};
 use ark_poly::domain::EvaluationDomain;
 use ark_poly::polynomial::univariate::DensePolynomial;
 use ark_poly::{Evaluations, GeneralEvaluationDomain};
@@ -246,8 +246,10 @@ impl<
             variable_base: curve_addition_prover_key,
             fixed_base: ecc_prover_key,
             // Compute 4n evaluations for X^n -1
-            v_h_coset_4n: domain_4n
-                .compute_vanishing_poly_over_coset(domain.size() as u64),
+            v_h_coset_4n: compute_vanishing_poly_over_coset(
+                domain_4n,
+                domain_4n.size() as u64,
+            ),
         };
 
         Ok(prover_key)
@@ -431,6 +433,38 @@ impl<
 
         Ok((verifier_key, selectors, domain))
     }
+}
+
+/// Given that the domain size is `D`  
+/// This function computes the `D` evaluation points for
+/// the vanishing polynomial of degree `n` over a coset
+pub(crate) fn compute_vanishing_poly_over_coset<
+    F: PrimeField,
+    D: EvaluationDomain<F>,
+>(
+    domain: D,        // domain to evaluate over
+    poly_degree: u64, // degree of the vanishing polynomial
+) -> Evaluations<F, D> {
+    assert!((domain.size() as u64) > poly_degree);
+    let coset_gen = F::from_repr(<F::Params>::GENERATOR).unwrap().pow(&[
+        poly_degree,
+        0,
+        0,
+        0,
+    ]);
+    let v_h: Vec<_> = (0..domain.size())
+        .map(|i| {
+            (coset_gen
+                * F::from_repr(<F::Params>::GENERATOR).unwrap().pow(&[
+                    poly_degree * i as u64,
+                    0,
+                    0,
+                    0,
+                ]))
+                - F::one()
+        })
+        .collect();
+    Evaluations::from_vec_and_domain(v_h, domain)
 }
 
 /*

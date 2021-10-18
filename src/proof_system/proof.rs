@@ -11,12 +11,12 @@
 //! `Proof` structure and it's methods.
 
 use super::{linearisation_poly::ProofEvaluations, PCAggregateProof};
-use crate::error::Error;
 use crate::proof_system::VerifierKey;
+use crate::{error::Error, transcript::TranscriptProtocol};
 use ark_ec::PairingEngine;
 use ark_ec::{msm::VariableBaseMSM, TEModelParameters};
-use ark_ff::{fields::batch_inversion, PrimeField};
-use ark_poly::GeneralEvaluationDomain;
+use ark_ff::{fields::batch_inversion, Field, FpParameters, PrimeField};
+use ark_poly::{EvaluationDomain, GeneralEvaluationDomain};
 use ark_poly_commit::kzg10::{
     Commitment, PreparedVerifierKey as PCVerifierKey,
 };
@@ -76,7 +76,8 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Proof<E, P> {
         opening_key: &PCVerifierKey<E>,
         pub_inputs: &[E::Fr],
     ) -> Result<(), Error> {
-        let domain = GeneralEvaluationDomain::new(verifier_key.n)?;
+        let domain =
+            GeneralEvaluationDomain::<E::Fr>::new(verifier_key.n).unwrap();
 
         // Subgroup checks are done when the proof is deserialised.
 
@@ -121,7 +122,7 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Proof<E, P> {
         let z_challenge = transcript.challenge_scalar(b"z");
 
         // Compute zero polynomial evaluated at `z_challenge`
-        let z_h_eval = domain.evaluate_vanishing_polynomial(&z_challenge);
+        let z_h_eval = domain.evaluate_vanishing_polynomial(z_challenge);
 
         // Compute first lagrange polynomial evaluated at `z_challenge`
         let l1_eval =
@@ -131,13 +132,13 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Proof<E, P> {
         let t_eval = self.compute_quotient_evaluation(
             &domain,
             pub_inputs,
-            &alpha,
-            &beta,
-            &gamma,
-            &z_challenge,
-            &z_h_eval,
-            &l1_eval,
-            &self.evaluations.perm_eval,
+            alpha,
+            beta,
+            gamma,
+            z_challenge,
+            z_h_eval,
+            l1_eval,
+            self.evaluations.perm_eval,
         );
 
         // Compute commitment to quotient polynomial
@@ -173,16 +174,16 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Proof<E, P> {
 
         // Compute linearisation commitment
         let r_comm = self.compute_linearisation_commitment(
-            &alpha,
-            &beta,
-            &gamma,
+            alpha,
+            beta,
+            gamma,
             (
-                &range_sep_challenge,
-                &logic_sep_challenge,
-                &fixed_base_sep_challenge,
-                &var_base_sep_challenge,
+                range_sep_challenge,
+                logic_sep_challenge,
+                fixed_base_sep_challenge,
+                var_base_sep_challenge,
             ),
-            &z_challenge,
+            z_challenge,
             l1_eval,
             &verifier_key,
         );
@@ -239,10 +240,16 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Proof<E, P> {
         transcript.append_commitment(b"w_z", &self.w_z_comm);
         transcript.append_commitment(b"w_z_w", &self.w_zw_comm);
 
+        // XXX: Move this to a constants file with the K1...
+        let group_gen = E::Fr::from_repr(
+            <<E as PairingEngine>::Fr as PrimeField>::Params::GENERATOR,
+        )
+        .unwrap();
+
         // Batch check
         if opening_key
             .batch_check(
-                &[z_challenge, (z_challenge * domain.group_gen)],
+                &[z_challenge, (z_challenge * group_gen)],
                 &[flattened_proof_a, flattened_proof_b],
                 transcript,
             )
@@ -257,13 +264,13 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Proof<E, P> {
         &self,
         domain: &GeneralEvaluationDomain<E::Fr>,
         pub_inputs: &[E::Fr],
-        alpha: &E::Fr,
-        beta: &E::Fr,
-        gamma: &E::Fr,
-        z_challenge: &E::Fr,
-        z_h_eval: &E::Fr,
-        l1_eval: &E::Fr,
-        z_hat_eval: &E::Fr,
+        alpha: E::Fr,
+        beta: E::Fr,
+        gamma: E::Fr,
+        z_challenge: E::Fr,
+        z_h_eval: E::Fr,
+        l1_eval: E::Fr,
+        z_hat_eval: E::Fr,
     ) -> E::Fr {
         // Compute the public input polynomial evaluated at `z_challenge`
         let pi_eval = compute_barycentric_eval(pub_inputs, z_challenge, domain);
@@ -314,16 +321,16 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Proof<E, P> {
     // Commitment to [r]_1
     fn compute_linearisation_commitment(
         &self,
-        alpha: &E::Fr,
-        beta: &E::Fr,
-        gamma: &E::Fr,
+        alpha: E::Fr,
+        beta: E::Fr,
+        gamma: E::Fr,
         (
             range_sep_challenge,
             logic_sep_challenge,
             fixed_base_sep_challenge,
             var_base_sep_challenge,
-        ): (&E::Fr, &E::Fr, &E::Fr, &E::Fr),
-        z_challenge: &E::Fr,
+        ): (E::Fr, E::Fr, E::Fr, E::Fr),
+        z_challenge: E::Fr,
         l1_eval: E::Fr,
         verifier_key: &VerifierKey<E, P>,
     ) -> Commitment<E> {
@@ -337,28 +344,28 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Proof<E, P> {
         );
 
         verifier_key.range.compute_linearisation_commitment(
-            &range_sep_challenge,
+            range_sep_challenge,
             &mut scalars,
             &mut points,
             &self.evaluations,
         );
 
         verifier_key.logic.compute_linearisation_commitment(
-            &logic_sep_challenge,
+            logic_sep_challenge,
             &mut scalars,
             &mut points,
             &self.evaluations,
         );
 
         verifier_key.fixed_base.compute_linearisation_commitment(
-            &fixed_base_sep_challenge,
+            fixed_base_sep_challenge,
             &mut scalars,
             &mut points,
             &self.evaluations,
         );
 
         verifier_key.variable_base.compute_linearisation_commitment(
-            &var_base_sep_challenge,
+            var_base_sep_challenge,
             &mut scalars,
             &mut points,
             &self.evaluations,
@@ -370,7 +377,7 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Proof<E, P> {
             &self.evaluations,
             z_challenge,
             (alpha, beta, gamma),
-            &l1_eval,
+            l1_eval,
             self.z_comm.0,
         );
 
@@ -397,11 +404,11 @@ fn compute_first_lagrange_evaluation<F: PrimeField>(
 
 fn compute_barycentric_eval<F: PrimeField>(
     evaluations: &[F],
-    point: &F,
+    point: F,
     domain: &GeneralEvaluationDomain<F>,
 ) -> F {
     let numerator = (point.pow(&[domain.size() as u64, 0, 0, 0]) - F::one())
-        * domain.size_inv;
+        * F::from(domain.size() as u64).inverse().unwrap();
     let range = (0..evaluations.len()).into_par_iter();
 
     let non_zero_evaluations: Vec<usize> = range
@@ -420,7 +427,14 @@ fn compute_barycentric_eval<F: PrimeField>(
             // index of non-zero evaluation
             let index = non_zero_evaluations[i];
 
-            (domain.group_gen_inv.pow(&[index as u64, 0, 0, 0]) * point)
+            // XXX: Move this to ctants file like K1...
+
+            (F::from_repr(<F::Params>::GENERATOR)
+                .unwrap()
+                .inverse()
+                .unwrap()
+                .pow(&[index as u64, 0, 0, 0])
+                * point)
                 - F::one()
         })
         .collect();
@@ -438,6 +452,7 @@ fn compute_barycentric_eval<F: PrimeField>(
     result * numerator
 }
 
+/*
 #[cfg(test)]
 mod proof_tests {
     use super::*;
@@ -485,3 +500,4 @@ mod proof_tests {
         assert_eq!(got_proof, proof);
     }
 }
+*/

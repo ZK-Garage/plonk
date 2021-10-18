@@ -9,9 +9,8 @@ pub mod ecc;
 pub mod logic;
 pub mod permutation;
 pub mod range;
-use std::marker::PhantomData;
 
-use crate::{error::Error, transcript::TranscriptProtocol};
+use crate::transcript::TranscriptProtocol;
 use ark_ec::{PairingEngine, TEModelParameters};
 use ark_ff::PrimeField;
 use ark_poly::Evaluations;

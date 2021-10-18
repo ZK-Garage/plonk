@@ -18,7 +18,7 @@ pub(crate) struct VerifierKey<E: PairingEngine> {
 impl<E: PairingEngine> VerifierKey<E> {
     pub(crate) fn compute_linearisation_commitment(
         &self,
-        range_separation_challenge: &E::Fr,
+        range_separation_challenge: E::Fr,
         scalars: &mut Vec<E::Fr>,
         points: &mut Vec<E::G1Affine>,
         evaluations: &ProofEvaluations<E::Fr>,

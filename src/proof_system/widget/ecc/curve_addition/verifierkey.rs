@@ -6,6 +6,7 @@
 
 use crate::proof_system::linearisation_poly::ProofEvaluations;
 use ark_ec::{PairingEngine, TEModelParameters};
+use ark_ff::Field;
 use ark_poly_commit::kzg10::Commitment;
 use core::marker::PhantomData;
 
@@ -23,7 +24,7 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
 {
     pub(crate) fn compute_linearisation_commitment(
         &self,
-        curve_add_separation_challenge: &E::Fr,
+        curve_add_separation_challenge: E::Fr,
         scalars: &mut Vec<E::Fr>,
         points: &mut Vec<E::G1Affine>,
         evaluations: &ProofEvaluations<E::Fr>,

@@ -18,19 +18,19 @@ impl<F: PrimeField> ProverKey<F> {
     pub(crate) fn compute_quotient_i(
         &self,
         index: usize,
-        logic_separation_challenge: &F,
-        w_l_i: &F,
-        w_l_i_next: &F,
-        w_r_i: &F,
-        w_r_i_next: &F,
-        w_o_i: &F,
-        w_4_i: &F,
-        w_4_i_next: &F,
+        logic_separation_challenge: F,
+        w_l_i: F,
+        w_l_i_next: F,
+        w_r_i: F,
+        w_r_i_next: F,
+        w_o_i: F,
+        w_4_i: F,
+        w_4_i_next: F,
     ) -> F {
         let four = F::from(4 as u64);
 
-        let q_logic_i = &self.q_logic.1[index];
-        let q_c_i = &self.q_c.1[index];
+        let q_logic_i = self.q_logic.1[index];
+        let q_c_i = self.q_c.1[index];
 
         let kappa = logic_separation_challenge.square();
         let kappa_sq = kappa.square();
@@ -49,22 +49,22 @@ impl<F: PrimeField> ProverKey<F> {
         let w = w_o_i;
         let c_3 = (w - a * b) * kappa_cu;
 
-        let c_4 = delta_xor_and(&a, &b, w, &d, &q_c_i) * kappa_qu;
+        let c_4 = delta_xor_and(a, b, w, d, q_c_i) * kappa_qu;
 
         q_logic_i * (c_3 + c_0 + c_1 + c_2 + c_4) * logic_separation_challenge
     }
 
     pub(crate) fn compute_linearisation(
         &self,
-        logic_separation_challenge: &F,
-        a_eval: &F,
-        a_next_eval: &F,
-        b_eval: &F,
-        b_next_eval: &F,
-        c_eval: &F,
-        d_eval: &F,
-        d_next_eval: &F,
-        q_c_eval: &F,
+        logic_separation_challenge: F,
+        a_eval: F,
+        a_next_eval: F,
+        b_eval: F,
+        b_next_eval: F,
+        c_eval: F,
+        d_eval: F,
+        d_next_eval: F,
+        q_c_eval: F,
     ) -> DensePolynomial<F> {
         let four = F::from(4 as u64);
         let q_logic_poly = &self.q_logic.0;
@@ -86,11 +86,11 @@ impl<F: PrimeField> ProverKey<F> {
         let w = c_eval;
         let c_3 = (w - a * b) * kappa_cu;
 
-        let c_4 = delta_xor_and(&a, &b, w, &d, &q_c_eval) * kappa_qu;
+        let c_4 = delta_xor_and(a, b, w, d, q_c_eval) * kappa_qu;
 
         let t = (c_0 + c_1 + c_2 + c_3 + c_4) * logic_separation_challenge;
 
-        q_logic_poly * &t
+        q_logic_poly * t
     }
 }
 
@@ -109,11 +109,11 @@ pub(crate) fn delta<F: PrimeField>(f: F) -> F {
 // F = w[w(4w - 18(a+b) + 81) + 18(a^2 + b^2) - 81(a+b) + 83]
 #[allow(non_snake_case)]
 pub(crate) fn delta_xor_and<F: PrimeField>(
-    a: &F,
-    b: &F,
-    w: &F,
-    c: &F,
-    q_c: &F,
+    a: F,
+    b: F,
+    w: F,
+    c: F,
+    q_c: F,
 ) -> F {
     let nine = F::from(9 as u64);
     let two = F::from(2 as u64);
