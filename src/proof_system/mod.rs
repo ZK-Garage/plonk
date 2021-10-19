@@ -5,7 +5,6 @@
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
 //! Proving system
-mod aggregated_proof;
 mod preprocess;
 /// Represents a PLONK Prover
 pub mod prover;
@@ -16,8 +15,6 @@ pub mod verifier;
 pub use prover::Prover;
 pub use verifier::Verifier;
 pub use widget::*;
-
-pub(crate) use aggregated_proof::PCAggregateProof;
 /// Represents a PLONK Proof
 pub mod proof;
 pub(crate) mod widget;
