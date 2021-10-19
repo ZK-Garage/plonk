@@ -8,7 +8,7 @@ use ark_ec::{AffineCurve, PairingEngine, TEModelParameters};
 use ark_poly_commit::kzg10::Commitment;
 use core::marker::PhantomData;
 
-use crate::transcript::TranscriptProtocol;
+use crate::transcript::{TranscriptProtocol, TranscriptWrapper};
 
 #[derive(Copy, Clone, Debug)]
 /// Proof that a polynomial `p` was correctly evaluated at a point `z`
@@ -67,9 +67,9 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
     /// Flattens an `KZGAggregateProof` into a `Proof`.
     /// The transcript must have the same view as the transcript that was
     /// used to aggregate the witness in the proving stage.
-    pub(crate) fn flatten<T: TranscriptProtocol<E>>(
+    pub(crate) fn flatten(
         &self,
-        transcript: &mut T,
+        transcript: &mut TranscriptWrapper<E>,
     ) -> KZGProof<E> {
         let challenge: E::Fr =
             transcript.challenge_scalar(b"aggregate_witness");

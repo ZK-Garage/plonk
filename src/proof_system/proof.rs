@@ -13,7 +13,8 @@
 use super::linearisation_poly::ProofEvaluations;
 use crate::commitment_scheme::kzg10::{KZGAggregateProof, OpeningKey};
 use crate::proof_system::VerifierKey;
-use crate::{error::Error, transcript::TranscriptProtocol};
+use crate::transcript::TranscriptProtocol;
+use crate::{error::Error, transcript::TranscriptWrapper};
 use ark_ec::{msm::VariableBaseMSM, AffineCurve, TEModelParameters};
 use ark_ec::{PairingEngine, ProjectiveCurve};
 use ark_ff::{fields::batch_inversion, Field, FpParameters, PrimeField};
@@ -61,15 +62,15 @@ pub struct Proof<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> {
     pub(crate) w_zw_comm: Commitment<E>,
     /// Subset of all of the evaluations added to the proof.
     pub(crate) evaluations: ProofEvaluations<E::Fr>,
-    _marker: PhantomData<P>,
+    pub(crate) _marker: PhantomData<P>,
 }
 
 impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Proof<E, P> {
     /// Performs the verification of a [`Proof`] returning a boolean result.
-    pub(crate) fn verify<T: TranscriptProtocol<E>>(
+    pub(crate) fn verify(
         &self,
         verifier_key: &VerifierKey<E, P>,
-        transcript: &mut T,
+        transcript: &mut TranscriptWrapper<E>,
         opening_key: &OpeningKey<E>,
         pub_inputs: &[E::Fr],
     ) -> Result<(), Error> {

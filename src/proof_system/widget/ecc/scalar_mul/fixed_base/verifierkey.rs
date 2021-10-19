@@ -22,7 +22,7 @@ pub(crate) struct VerifierKey<
     pub(crate) q_l: Commitment<E>,
     pub(crate) q_r: Commitment<E>,
     pub(crate) q_fixed_group_add: Commitment<E>,
-    _marker: PhantomData<P>,
+    pub(crate) _marker: PhantomData<P>,
 }
 
 impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>

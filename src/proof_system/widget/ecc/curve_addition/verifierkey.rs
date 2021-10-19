@@ -16,7 +16,7 @@ pub(crate) struct VerifierKey<
     P: TEModelParameters<BaseField = E::Fr>,
 > {
     pub(crate) q_variable_group_add: Commitment<E>,
-    _marker: PhantomData<P>,
+    pub(crate) _marker: PhantomData<P>,
 }
 
 impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>

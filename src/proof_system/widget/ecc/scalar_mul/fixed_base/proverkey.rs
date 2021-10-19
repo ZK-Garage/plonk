@@ -18,7 +18,7 @@ pub(crate) struct ProverKey<F: PrimeField, P: TEModelParameters<BaseField = F>>
     pub(crate) q_r: (DensePolynomial<F>, Evaluations<F>),
     pub(crate) q_c: (DensePolynomial<F>, Evaluations<F>),
     pub(crate) q_fixed_group_add: (DensePolynomial<F>, Evaluations<F>),
-    _marker: PhantomData<P>,
+    pub(crate) _marker: PhantomData<P>,
 }
 
 impl<F: PrimeField, P: TEModelParameters<BaseField = F>> ProverKey<F, P> {

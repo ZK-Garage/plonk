@@ -240,7 +240,7 @@ impl<
     }
 
     /// Witness representation of zero of the first variable of any circuit
-    pub const fn zero_var(&self) -> Variable {
+    pub fn zero_var(&self) -> Variable {
         self.zero_var
     }
 

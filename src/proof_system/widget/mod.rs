@@ -3,11 +3,17 @@
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 //
 // Copyright (c) DUSK NETWORK. All rights reserved.
+/// XXX: Doc this
 
+/// XXX: Doc this
 pub mod arithmetic;
+/// XXX: Doc this
 pub mod ecc;
+/// XXX: Doc this
 pub mod logic;
+/// XXX: Doc this
 pub mod permutation;
+/// XXX: Doc this
 pub mod range;
 
 use crate::transcript::TranscriptProtocol;
@@ -45,7 +51,7 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
     VerifierKey<E, P>
 {
     /// Returns the Circuit size padded to the next power of two.
-    pub const fn padded_circuit_size(&self) -> usize {
+    pub fn padded_circuit_size(&self) -> usize {
         self.n.next_power_of_two()
     }
 
@@ -182,12 +188,12 @@ pub struct ProverKey<F: PrimeField, P: TEModelParameters<BaseField = F>> {
 
 impl<F: PrimeField, P: TEModelParameters<BaseField = F>> ProverKey<F, P> {
     /// Returns the number of [`Polynomial`]s contained in a ProverKey.
-    const fn num_polys() -> usize {
+    fn num_polys() -> usize {
         15
     }
 
     /// Returns the number of [`Evaluations`] contained in a ProverKey.
-    const fn num_evals() -> usize {
+    fn num_evals() -> usize {
         17
     }
 

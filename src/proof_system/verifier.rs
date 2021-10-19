@@ -8,9 +8,9 @@ use crate::constraint_system::StandardComposer;
 use crate::error::Error;
 use crate::proof_system::widget::VerifierKey;
 use crate::proof_system::Proof;
+use crate::transcript::TranscriptWrapper;
 use crate::{commitment_scheme::kzg10::OpeningKey, prelude::CommitKey};
 use ark_ec::{PairingEngine, ProjectiveCurve, TEModelParameters};
-use merlin::Transcript;
 
 /// Abstraction structure designed verify [`Proof`]s.
 #[allow(missing_debug_implementations)]
@@ -28,7 +28,7 @@ pub struct Verifier<
     /// verifier to Verify multiple proofs from the same circuit. If this
     /// is not copied, then the verification procedure will modify
     /// the transcript, making it unusable for future proofs.
-    pub preprocessed_transcript: Transcript,
+    pub preprocessed_transcript: TranscriptWrapper<E>,
 }
 
 impl<
@@ -53,7 +53,7 @@ impl<
         Verifier {
             verifier_key: None,
             cs: StandardComposer::new(),
-            preprocessed_transcript: Transcript::new(label),
+            preprocessed_transcript: TranscriptWrapper::new(label),
         }
     }
 
@@ -65,7 +65,7 @@ impl<
         Verifier {
             verifier_key: None,
             cs: StandardComposer::with_expected_size(size),
-            preprocessed_transcript: Transcript::new(label),
+            preprocessed_transcript: TranscriptWrapper::new(label),
         }
     }
 
@@ -98,7 +98,9 @@ impl<
     /// Keys the [`Transcript`] with additional seed information
     /// Wrapper around [`Transcript::append_message`].
     pub fn key_transcript(&mut self, label: &'static [u8], message: &[u8]) {
-        self.preprocessed_transcript.append_message(label, message);
+        self.preprocessed_transcript
+            .transcript
+            .append_message(label, message);
     }
 
     /// Verifies a [`Proof`].

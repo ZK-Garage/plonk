@@ -10,7 +10,6 @@ use super::key::{CommitKey, OpeningKey};
 use crate::{error::Error, util};
 use ark_ec::{PairingEngine, ProjectiveCurve};
 use ark_ff::{PrimeField, UniformRand};
-use num_traits::Zero;
 use rand_core::{CryptoRng, RngCore};
 
 /// The Public Parameters can also be referred to as the Structured Reference
@@ -68,8 +67,7 @@ impl<E: PairingEngine> PublicParameters<E> {
         assert_eq!(powers_of_g.len(), max_degree + 1);
 
         // Normalise all projective points
-        let mut normalised_g = vec![E::G1Affine::zero(); max_degree + 1];
-        normalised_g =
+        let normalised_g =
             E::G1Projective::batch_normalization_into_affine(&powers_of_g);
 
         // Compute beta*G2 element and stored cached elements for verifying

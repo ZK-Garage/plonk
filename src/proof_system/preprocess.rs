@@ -10,15 +10,13 @@ use crate::constraint_system::StandardComposer;
 use crate::error::Error;
 use crate::prelude::CommitKey;
 use crate::proof_system::{widget, ProverKey};
-use crate::transcript::TranscriptProtocol;
+use crate::transcript::TranscriptWrapper;
 use ark_ec::{PairingEngine, ProjectiveCurve, TEModelParameters};
-use ark_ff::{FftField, FpParameters, PrimeField};
+use ark_ff::{FpParameters, PrimeField};
 use ark_poly::domain::EvaluationDomain;
 use ark_poly::polynomial::univariate::DensePolynomial;
 use ark_poly::{Evaluations, GeneralEvaluationDomain};
-use ark_poly_commit::kzg10::Commitment;
 use core::marker::PhantomData;
-use merlin::Transcript;
 use num_traits::{One, Zero};
 
 /// Struct that contains all of the selector and permutation [`Polynomial`]s in
@@ -109,10 +107,10 @@ impl<
     /// Although the prover does not need the verification key, he must compute
     /// the commitments in order to seed the transcript, allowing both the
     /// prover and verifier to have the same view
-    pub fn preprocess_prover<C: TranscriptProtocol<E>>(
+    pub fn preprocess_prover(
         &mut self,
         commit_key: &CommitKey<E>,
-        transcript: &mut C,
+        transcript: &mut TranscriptWrapper<E>,
     ) -> Result<ProverKey<E::Fr, P>, Error> {
         let (_, selectors, domain) =
             self.preprocess_shared(commit_key, transcript)?;
@@ -263,7 +261,7 @@ impl<
     pub fn preprocess_verifier(
         &mut self,
         commit_key: &CommitKey<E>,
-        transcript: &mut Transcript,
+        transcript: &mut TranscriptWrapper<E>,
     ) -> Result<widget::VerifierKey<E, P>, Error> {
         let (verifier_key, _, _) =
             self.preprocess_shared(commit_key, transcript)?;
@@ -274,10 +272,10 @@ impl<
     /// must perform IFFTs on the selector polynomials and permutation
     /// polynomials in order to commit to them and have the same transcript
     /// view.
-    fn preprocess_shared<C: TranscriptProtocol<E>>(
+    fn preprocess_shared(
         &mut self,
         commit_key: &CommitKey<E>,
-        transcript: &mut C,
+        transcript: &mut TranscriptWrapper<E>,
     ) -> Result<
         (
             widget::VerifierKey<E, P>,

@@ -3,9 +3,12 @@
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 //
 // Copyright (c) DUSK NETWORK. All rights reserved.
+/// XXX: Doc this
 
+/// XXX: Doc this
 mod proverkey;
 
+/// XXX: Doc this
 mod verifierkey;
 
 pub(crate) use proverkey::ProverKey;

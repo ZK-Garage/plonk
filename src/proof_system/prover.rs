@@ -12,7 +12,7 @@ use crate::{
     proof_system::{
         linearisation_poly, proof::Proof, quotient_poly, ProverKey,
     },
-    transcript::TranscriptProtocol,
+    transcript::{TranscriptProtocol, TranscriptWrapper},
 };
 use ark_ec::{PairingEngine, ProjectiveCurve, TEModelParameters};
 use ark_ff::Field;
@@ -20,9 +20,7 @@ use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, GeneralEvaluationDomain,
     UVPolynomial,
 };
-use ark_poly_commit::kzg10::Powers;
 use core::marker::PhantomData;
-use merlin::Transcript;
 use num_traits::Zero;
 
 /// Abstraction structure designed to construct a circuit and generate
@@ -39,7 +37,7 @@ pub struct Prover<
     pub(crate) cs: StandardComposer<E, T, P>,
     /// Store the messages exchanged during the preprocessing stage
     /// This is copied each time, we make a proof
-    pub preprocessed_transcript: Transcript,
+    pub preprocessed_transcript: TranscriptWrapper<E>,
 }
 
 impl<
@@ -91,7 +89,7 @@ impl<
         Prover {
             prover_key: None,
             cs: StandardComposer::new(),
-            preprocessed_transcript: Transcript::new(label),
+            preprocessed_transcript: TranscriptWrapper::new(label),
         }
     }
 
@@ -103,7 +101,7 @@ impl<
         Prover {
             prover_key: None,
             cs: StandardComposer::with_expected_size(size),
-            preprocessed_transcript: Transcript::new(label),
+            preprocessed_transcript: TranscriptWrapper::new(label),
         }
     }
 
@@ -172,13 +170,15 @@ impl<
     pub fn clear(&mut self) {
         self.clear_witness();
         self.prover_key = None;
-        self.preprocessed_transcript = Transcript::new(b"plonk");
+        self.preprocessed_transcript = TranscriptWrapper::new(b"plonk");
     }
 
     /// Keys the [`Transcript`] with additional seed information
     /// Wrapper around [`Transcript::append_message`].
     pub fn key_transcript(&mut self, label: &'static [u8], message: &[u8]) {
-        self.preprocessed_transcript.append_message(label, message);
+        self.preprocessed_transcript
+            .transcript
+            .append_message(label, message);
     }
 
     /// Creates a [`Proof]` that demonstrates that a circuit is satisfied.

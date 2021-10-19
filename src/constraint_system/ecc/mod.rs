@@ -16,8 +16,9 @@ use ark_ec::{
 };
 use core::marker::PhantomData;
 use num_traits::{One, Zero};
+
 /// Represents a point of the embeded curve in the circuit
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug)]
 pub struct Point<
     E: PairingEngine,
     T: ProjectiveCurve<BaseField = E::Fr>,
@@ -28,6 +29,25 @@ pub struct Point<
     _marker0: PhantomData<E>,
     _marker1: PhantomData<T>,
     _marker2: PhantomData<P>,
+}
+
+impl<
+        E: PairingEngine,
+        T: ProjectiveCurve<BaseField = E::Fr>,
+        P: TEModelParameters<BaseField = E::Fr>,
+    > Copy for Point<E, T, P>
+{
+}
+
+impl<
+        E: PairingEngine,
+        T: ProjectiveCurve<BaseField = E::Fr>,
+        P: TEModelParameters<BaseField = E::Fr>,
+    > Clone for Point<E, T, P>
+{
+    fn clone(&self) -> Point<E, T, P> {
+        *self
+    }
 }
 
 impl<

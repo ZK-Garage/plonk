@@ -10,7 +10,23 @@ use ark_ec::PairingEngine;
 use ark_ff::{Field, PrimeField};
 use ark_poly_commit::kzg10::Commitment;
 use ark_serialize::CanonicalSerialize;
+use core::marker::PhantomData;
 use merlin::Transcript;
+
+#[derive(Clone)]
+pub struct TranscriptWrapper<E: PairingEngine> {
+    pub transcript: Transcript,
+    _marker: PhantomData<E>,
+}
+
+impl<E: PairingEngine> TranscriptWrapper<E> {
+    pub fn new(label: &'static [u8]) -> TranscriptWrapper<E> {
+        TranscriptWrapper {
+            transcript: Transcript::new(label),
+            _marker: PhantomData,
+        }
+    }
+}
 
 /// Transcript adds an abstraction over the Merlin transcript
 /// For convenience
@@ -28,7 +44,7 @@ pub(crate) trait TranscriptProtocol<E: PairingEngine> {
     fn circuit_domain_sep(&mut self, n: u64);
 }
 
-impl<E: PairingEngine> TranscriptProtocol<E> for Transcript {
+impl<E: PairingEngine> TranscriptProtocol<E> for TranscriptWrapper<E> {
     fn append_commitment(
         &mut self,
         label: &'static [u8],
@@ -36,25 +52,25 @@ impl<E: PairingEngine> TranscriptProtocol<E> for Transcript {
     ) {
         let mut bytes = Vec::new();
         comm.0.serialize(&mut bytes).unwrap();
-        self.append_message(label, &bytes);
+        self.transcript.append_message(label, &bytes);
     }
 
     fn append_scalar(&mut self, label: &'static [u8], s: &E::Fr) {
         let mut bytes = Vec::new();
         s.serialize(&mut bytes).unwrap();
-        self.append_message(label, &bytes)
+        self.transcript.append_message(label, &bytes)
     }
 
     fn challenge_scalar(&mut self, label: &'static [u8]) -> E::Fr {
         // XXX: review this
         let mut buf = Vec::with_capacity(E::Fr::size_in_bits() / 8 - 1);
-        self.challenge_bytes(label, &mut buf);
+        self.transcript.challenge_bytes(label, &mut buf);
 
         E::Fr::from_random_bytes(&buf).unwrap()
     }
 
     fn circuit_domain_sep(&mut self, n: u64) {
-        self.append_message(b"dom-sep", b"circuit_size");
-        self.append_u64(b"n", n);
+        self.transcript.append_message(b"dom-sep", b"circuit_size");
+        self.transcript.append_u64(b"n", n);
     }
 }

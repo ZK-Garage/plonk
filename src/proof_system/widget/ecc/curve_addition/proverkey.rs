@@ -14,7 +14,7 @@ use core::marker::PhantomData;
 pub(crate) struct ProverKey<F: PrimeField, P: TEModelParameters<BaseField = F>>
 {
     pub(crate) q_variable_group_add: (DensePolynomial<F>, Evaluations<F>),
-    _marker: PhantomData<P>,
+    pub(crate) _marker: PhantomData<P>,
 }
 
 impl<F: PrimeField, P: TEModelParameters<BaseField = F>> ProverKey<F, P> {

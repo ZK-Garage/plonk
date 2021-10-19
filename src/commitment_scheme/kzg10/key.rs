@@ -7,6 +7,7 @@
 //! that support the generation and usage of Commit and
 //! Opening keys.
 use super::proof::KZGProof;
+use crate::transcript::TranscriptWrapper;
 use crate::{error::Error, transcript::TranscriptProtocol, util};
 use ark_ec::{
     msm::VariableBaseMSM, AffineCurve, PairingEngine, ProjectiveCurve,
@@ -16,7 +17,6 @@ use ark_poly::{
     polynomial::univariate::DensePolynomial, Polynomial, UVPolynomial,
 };
 use ark_poly_commit::kzg10::Commitment;
-use merlin::Transcript;
 use num_traits::{One, Zero};
 
 /// CommitKey is used to commit to a polynomial which is bounded by the
@@ -184,11 +184,11 @@ impl<E: PairingEngine> CommitKey<E> {
     /// taking a random linear combination of the individual witnesses.
     /// We apply the same optimisation mentioned in when computing each witness;
     /// removing f(z).
-    pub(crate) fn compute_aggregate_witness<T: TranscriptProtocol<E>>(
+    pub(crate) fn compute_aggregate_witness(
         &self,
         polynomials: &[DensePolynomial<E::Fr>],
         point: &E::Fr,
-        transcript: &mut T,
+        transcript: &mut TranscriptWrapper<E>,
     ) -> DensePolynomial<E::Fr> {
         let challenge: E::Fr =
             transcript.challenge_scalar(b"aggregate_witness");
@@ -202,7 +202,7 @@ impl<E: PairingEngine> CommitKey<E> {
             .map(|(poly, challenge_power)| poly * *challenge_power)
             .collect();
 
-        let numerator = DensePolynomial::zero();
+        let mut numerator = DensePolynomial::zero();
         for term in numerator_terms.iter() {
             numerator += term;
         }
@@ -275,11 +275,11 @@ impl<E: PairingEngine> OpeningKey<E> {
 
     /// Checks whether a batch of polynomials evaluated at different points,
     /// returned their specified value.
-    pub(crate) fn batch_check<T: TranscriptProtocol<E>>(
+    pub(crate) fn batch_check(
         &self,
         points: &[E::Fr],
         proofs: &[KZGProof<E>],
-        transcript: &mut T,
+        transcript: &mut TranscriptWrapper<E>,
     ) -> Result<(), Error> {
         let mut total_c = E::G1Projective::zero();
         let mut total_w = E::G1Projective::zero();
@@ -306,15 +306,9 @@ impl<E: PairingEngine> OpeningKey<E> {
         let affine_total_w = E::G1Affine::from(-total_w);
         let affine_total_c = E::G1Affine::from(total_c);
 
-        // let pairing = E::miller_loop(&[
-        //     (&affine_total_w, &self.prepared_beta_h),
-        //     (&affine_total_c, &self.prepared_h),
-        // ])
-        // .final_exponentiation();
-
         let pairing = E::product_of_pairings(&[
-            (affine_total_w.into(), self.prepared_beta_h),
-            (affine_total_c.into(), self.prepared_h),
+            (affine_total_w.into(), self.prepared_beta_h.clone()),
+            (affine_total_c.into(), self.prepared_h.clone()),
         ]);
 
         if pairing != E::Fqk::one() {

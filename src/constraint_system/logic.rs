@@ -7,7 +7,7 @@
 use crate::constraint_system::StandardComposer;
 use crate::constraint_system::{Variable, WireData};
 use ark_ec::{PairingEngine, ProjectiveCurve, TEModelParameters};
-use ark_ff::{BigInteger, Field, PrimeField};
+use ark_ff::{BigInteger, PrimeField};
 use num_traits::{One, Zero};
 
 impl<
@@ -51,13 +51,17 @@ impl<
         let mut left_quad: u8;
         let mut right_quad: u8;
         // Get vars as bits and reverse them to get the Little Endian repr.
-        let a_bit_iter = self.variables[&a].into_repr().to_bits_le().iter();
-        let a_bits: Vec<_> = a_bit_iter
+        let a_bits: Vec<_> = self.variables[&a]
+            .into_repr()
+            .to_bits_le()
+            .iter()
             .skip(256 - num_bits)
             .map(|bit| *bit as u8)
             .collect();
-        let b_bit_iter = self.variables[&b].into_repr().to_bits_le().iter();
-        let b_bits: Vec<_> = b_bit_iter
+        let b_bits: Vec<_> = self.variables[&b]
+            .into_repr()
+            .to_bits_le()
+            .iter()
             .skip(256 - num_bits)
             .map(|bit| *bit as u8)
             .collect();
