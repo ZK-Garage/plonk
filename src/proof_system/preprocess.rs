@@ -10,6 +10,7 @@ use crate::constraint_system::StandardComposer;
 use crate::error::Error;
 use crate::prelude::CommitKey;
 use crate::proof_system::{widget, ProverKey};
+use crate::transcript::TranscriptProtocol;
 use ark_ec::{PairingEngine, ProjectiveCurve, TEModelParameters};
 use ark_ff::{FftField, FpParameters, PrimeField};
 use ark_poly::domain::EvaluationDomain;
@@ -108,10 +109,10 @@ impl<
     /// Although the prover does not need the verification key, he must compute
     /// the commitments in order to seed the transcript, allowing both the
     /// prover and verifier to have the same view
-    pub fn preprocess_prover(
+    pub fn preprocess_prover<C: TranscriptProtocol<E>>(
         &mut self,
         commit_key: &CommitKey<E>,
-        transcript: &mut Transcript,
+        transcript: &mut C,
     ) -> Result<ProverKey<E::Fr, P>, Error> {
         let (_, selectors, domain) =
             self.preprocess_shared(commit_key, transcript)?;
@@ -273,10 +274,10 @@ impl<
     /// must perform IFFTs on the selector polynomials and permutation
     /// polynomials in order to commit to them and have the same transcript
     /// view.
-    fn preprocess_shared(
+    fn preprocess_shared<C: TranscriptProtocol<E>>(
         &mut self,
         commit_key: &CommitKey<E>,
-        transcript: &mut Transcript,
+        transcript: &mut C,
     ) -> Result<
         (
             widget::VerifierKey<E, P>,

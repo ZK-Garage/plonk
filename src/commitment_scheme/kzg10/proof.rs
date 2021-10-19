@@ -7,7 +7,6 @@
 use ark_ec::{AffineCurve, PairingEngine, TEModelParameters};
 use ark_poly_commit::kzg10::Commitment;
 use core::marker::PhantomData;
-use merlin::Transcript;
 
 use crate::transcript::TranscriptProtocol;
 
@@ -68,7 +67,10 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
     /// Flattens an `KZGAggregateProof` into a `Proof`.
     /// The transcript must have the same view as the transcript that was
     /// used to aggregate the witness in the proving stage.
-    pub(crate) fn flatten(&self, transcript: &mut Transcript) -> KZGProof<E> {
+    pub(crate) fn flatten<T: TranscriptProtocol<E>>(
+        &self,
+        transcript: &mut T,
+    ) -> KZGProof<E> {
         let challenge: E::Fr =
             transcript.challenge_scalar(b"aggregate_witness");
         let powers: Vec<E::Fr> = crate::util::powers_of(

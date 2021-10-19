@@ -20,7 +20,6 @@ use ark_ff::{fields::batch_inversion, Field, FpParameters, PrimeField};
 use ark_poly::{EvaluationDomain, GeneralEvaluationDomain};
 use ark_poly_commit::kzg10::Commitment;
 use core::marker::PhantomData;
-use merlin::Transcript;
 use rayon::prelude::*;
 
 /// A Proof is a composition of `Commitment`s to the Witness, Permutation,
@@ -67,10 +66,10 @@ pub struct Proof<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> {
 
 impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Proof<E, P> {
     /// Performs the verification of a [`Proof`] returning a boolean result.
-    pub(crate) fn verify(
+    pub(crate) fn verify<T: TranscriptProtocol<E>>(
         &self,
         verifier_key: &VerifierKey<E, P>,
-        transcript: &mut Transcript,
+        transcript: &mut T,
         opening_key: &OpeningKey<E>,
         pub_inputs: &[E::Fr],
     ) -> Result<(), Error> {

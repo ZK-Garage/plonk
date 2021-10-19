@@ -184,11 +184,11 @@ impl<E: PairingEngine> CommitKey<E> {
     /// taking a random linear combination of the individual witnesses.
     /// We apply the same optimisation mentioned in when computing each witness;
     /// removing f(z).
-    pub(crate) fn compute_aggregate_witness(
+    pub(crate) fn compute_aggregate_witness<T: TranscriptProtocol<E>>(
         &self,
         polynomials: &[DensePolynomial<E::Fr>],
         point: &E::Fr,
-        transcript: &mut Transcript,
+        transcript: &mut T,
     ) -> DensePolynomial<E::Fr> {
         let challenge: E::Fr =
             transcript.challenge_scalar(b"aggregate_witness");
@@ -275,11 +275,11 @@ impl<E: PairingEngine> OpeningKey<E> {
 
     /// Checks whether a batch of polynomials evaluated at different points,
     /// returned their specified value.
-    pub(crate) fn batch_check(
+    pub(crate) fn batch_check<T: TranscriptProtocol<E>>(
         &self,
         points: &[E::Fr],
         proofs: &[KZGProof<E>],
-        transcript: &mut Transcript,
+        transcript: &mut T,
     ) -> Result<(), Error> {
         let mut total_c = E::G1Projective::zero();
         let mut total_w = E::G1Projective::zero();
@@ -301,7 +301,7 @@ impl<E: PairingEngine> OpeningKey<E> {
             total_c += c.mul(challenge.into_repr());
             total_w += w.mul(challenge.into_repr());
         }
-        total_c -= self.g.mul(g_multiplier.into());
+        total_c -= self.g.mul(g_multiplier.into_repr());
 
         let affine_total_w = E::G1Affine::from(-total_w);
         let affine_total_c = E::G1Affine::from(total_c);

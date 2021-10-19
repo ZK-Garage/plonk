@@ -15,7 +15,6 @@ use ark_ec::{PairingEngine, TEModelParameters};
 use ark_ff::PrimeField;
 use ark_poly::Evaluations;
 use ark_poly_commit::sonic_pc::Commitment;
-use merlin::Transcript;
 
 /// PLONK circuit Verification Key.
 ///
@@ -118,7 +117,10 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
     VerifierKey<E, P>
 {
     /// Adds the circuit description to the transcript
-    pub(crate) fn seed_transcript(&self, transcript: &mut Transcript) {
+    pub(crate) fn seed_transcript<T: TranscriptProtocol<E>>(
+        &self,
+        transcript: &mut T,
+    ) {
         transcript.append_commitment(b"q_m", &self.arithmetic.q_m);
         transcript.append_commitment(b"q_l", &self.arithmetic.q_l);
         transcript.append_commitment(b"q_r", &self.arithmetic.q_r);
