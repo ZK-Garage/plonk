@@ -186,53 +186,55 @@ impl<E: PairingEngine> PublicParameters<E> {
     }
 }
 
-// #[cfg(feature = "std")]
-// #[cfg(test)]
-// mod test {
-//     use super::*;
-//     // use dusk_bls12_381::BlsScalar;
-//     use rand_core::OsRng;
+#[cfg(feature = "std")]
+#[cfg(test)]
+mod test {
+    use super::*;
+    use ark_bls12_381::Fr;
+    use ark_ff::Field;
+    use rand::SeedableRng;
 
-//     #[test]
-//     fn test_powers_of() {
-//         let x = BlsScalar::from(10u64);
-//         let degree = 100u64;
+    #[test]
+    fn test_powers_of() {
+        let x = Fr::from(10u64);
+        let degree = 100u64;
 
-//         let powers_of_x = util::powers_of(&x, degree as usize);
+        let powers_of_x = util::powers_of(&x, degree as usize);
 
-//         for (i, x_i) in powers_of_x.iter().enumerate() {
-//             assert_eq!(*x_i, x.pow(&[i as u64, 0, 0, 0]))
-//         }
+        for (i, x_i) in powers_of_x.iter().enumerate() {
+            assert_eq!(*x_i, x.pow(&[i as u64, 0, 0, 0]))
+        }
 
-//         let last_element = powers_of_x.last().unwrap();
-//         assert_eq!(*last_element, x.pow(&[degree, 0, 0, 0]))
-//     }
+        let last_element = powers_of_x.last().unwrap();
+        assert_eq!(*last_element, x.pow(&[degree, 0, 0, 0]))
+    }
 
-//     #[test]
-//     fn test_serialise_deserialise_public_parameter() {
-//         let pp = PublicParameters::setup(1 << 7, &mut OsRng).unwrap();
+    /*
+    #[test]
+    fn test_serialise_deserialise_public_parameter() {
+        let pp = PublicParameters::setup(1 << 7, &mut OsRng).unwrap();
 
-//         let got_pp =
-// PublicParameters::from_slice(&pp.to_var_bytes()).unwrap();
+        let got_pp = PublicParameters::from_slice(&pp.to_var_bytes()).unwrap();
 
-//         assert_eq!(got_pp.commit_key.powers_of_g, pp.commit_key.powers_of_g);
-//         assert_eq!(got_pp.opening_key.g, pp.opening_key.g);
-//         assert_eq!(got_pp.opening_key.h, pp.opening_key.h);
-//         assert_eq!(got_pp.opening_key.beta_h, pp.opening_key.beta_h);
-//     }
+        assert_eq!(got_pp.commit_key.powers_of_g, pp.commit_key.powers_of_g);
+        assert_eq!(got_pp.opening_key.g, pp.opening_key.g);
+        assert_eq!(got_pp.opening_key.h, pp.opening_key.h);
+        assert_eq!(got_pp.opening_key.beta_h, pp.opening_key.beta_h);
+    }
 
-//     #[test]
-//     fn public_parameters_bytes_unchecked() {
-//         let pp = PublicParameters::setup(1 << 7, &mut OsRng).unwrap();
+    #[test]
+    fn public_parameters_bytes_unchecked() {
+        let pp = PublicParameters::setup(1 << 7, &mut OsRng).unwrap();
 
-//         let pp_p = unsafe {
-//             let bytes = pp.to_raw_var_bytes();
-//             PublicParameters::from_slice_unchecked(&bytes)
-//         };
+        let pp_p = unsafe {
+            let bytes = pp.to_raw_var_bytes();
+            PublicParameters::from_slice_unchecked(&bytes)
+        };
 
-//         assert_eq!(pp.commit_key, pp_p.commit_key);
-//         assert_eq!(pp.opening_key.g, pp_p.opening_key.g);
-//         assert_eq!(pp.opening_key.h, pp_p.opening_key.h);
-//         assert_eq!(pp.opening_key.beta_h, pp_p.opening_key.beta_h);
-//     }
-// }
+        assert_eq!(pp.commit_key, pp_p.commit_key);
+        assert_eq!(pp.opening_key.g, pp_p.opening_key.g);
+        assert_eq!(pp.opening_key.h, pp_p.opening_key.h);
+        assert_eq!(pp.opening_key.beta_h, pp_p.opening_key.beta_h);
+    }
+    */
+}

@@ -318,261 +318,281 @@ impl<E: PairingEngine> OpeningKey<E> {
     }
 }
 
-// #[cfg(feature = "std")]
-// #[cfg(test)]
-// mod test {
-//     use super::*;
-//     use crate::commitment_scheme::kzg10::{AggregateProof, PublicParameters};
-//     use ark_poly_commit::Polynomial;
-//     use dusk_bytes::Serializable;
-//     use merlin::Transcript;
-//     use rand_core::OsRng;
+#[cfg(test)]
+mod test {
+    use ark_bls12_381::Fr as BlsScalar;
+    use ark_ed_on_bls12_381::Fr as JubjubScalar;
+    use ark_ff::UniformRand;
+    use core::marker::PhantomData;
 
-//     // Checks that a polynomial `p` was evaluated at a point `z` and returned
-//     // the value specified `v`. ie. v = p(z).
-//     fn check(op_key: &OpeningKey<E>, point: E::Fr, proof: Proof) -> bool {
-//         let inner_a: E::G1Affine = (proof.commitment_to_polynomial.0
-//             - (op_key.g * proof.evaluated_point))
-//             .into();
+    use super::*;
+    use crate::commitment_scheme::kzg10::{
+        KZGAggregateProof, PublicParameters,
+    };
+    use ark_ec::TEModelParameters;
+    use ark_poly_commit::Polynomial;
+    use merlin::Transcript;
+    use rand::SeedableRng;
 
-//         let inner_b: E::G2Affine = (op_key.beta_h - (op_key.h *
-// point)).into();         let prepared_inner_b = E::G2Prepared::from(-inner_b);
+    // Checks that a polynomial `p` was evaluated at a point `z` and returned
+    // the value specified `v`. ie. v = p(z).
+    fn check<E: PairingEngine>(
+        op_key: &OpeningKey<E>,
+        point: E::Fr,
+        proof: KZGProof<E>,
+    ) -> bool {
+        let inner_a: E::G1Affine =
+            (proof.commitment_to_polynomial.0.into_projective()
+                - (op_key.g.mul(proof.evaluated_point.into_repr())))
+            .into();
 
-//         let pairing = dusk_bls12_381::multi_miller_loop(&[
-//             (&inner_a, &op_key.prepared_h),
-//             (&proof.commitment_to_witness.0, &prepared_inner_b),
-//         ])
-//         .final_exponentiation();
+        let inner_b: E::G2Affine =
+            (op_key.beta_h.into_projective() - (op_key.h.mul(point))).into();
+        let prepared_inner_b = E::G2Prepared::from(-inner_b);
 
-//         pairing == dusk_bls12_381::Gt::identity()
-//     }
+        let pairing = E::product_of_pairings(&[
+            (inner_a.into(), op_key.prepared_h.clone()),
+            (
+                proof.commitment_to_witness.0.into(),
+                prepared_inner_b.clone(),
+            ),
+        ]);
 
-//     // Creates an opening proof that a polynomial `p` was correctly evaluated
-// at     // p(z) and produced the value `v`. ie v = p(z).
-//     // Returns an error if the polynomials degree is too large.
-//     fn open_single(
-//         ck: &CommitKey,
-//         polynomial: &Polynomial,
-//         value: &E::Fr,
-//         point: &E::Fr,
-//     ) -> Result<Proof, Error> {
-//         let witness_poly = compute_single_witness(polynomial, point);
-//         Ok(Proof {
-//             commitment_to_witness: ck.commit(&witness_poly)?,
-//             evaluated_point: *value,
-//             commitment_to_polynomial: ck.commit(polynomial)?,
-//         })
-//     }
+        pairing == E::Fqk::one()
+    }
 
-//     // Creates an opening proof that multiple polynomials were evaluated at
-// the     // same point and that each evaluation produced the correct
-// evaluation     // point. Returns an error if any of the polynomial's degrees
-// are too     // large.
-//     fn open_multiple(
-//         ck: &CommitKey,
-//         polynomials: &[Polynomial],
-//         evaluations: Vec<E::Fr>,
-//         point: &E::Fr,
-//         transcript: &mut Transcript,
-//     ) -> Result<AggregateProof, Error> {
-//         // Commit to polynomials
-//         let mut polynomial_commitments =
-// Vec::with_capacity(polynomials.len());         for poly in polynomials.iter()
-// {             polynomial_commitments.push(ck.commit(poly)?)
-//         }
+    // Creates an opening proof that a polynomial `p` was correctly evaluated at
+    // p(z) and produced the value `v`. ie v = p(z).
+    // Returns an error if the polynomials degree is too large.
+    fn open_single<E: PairingEngine>(
+        ck: &CommitKey<E>,
+        polynomial: &DensePolynomial<E::Fr>,
+        value: &E::Fr,
+        point: &E::Fr,
+    ) -> Result<KZGProof<E>, Error> {
+        let witness_poly = compute_single_witness(polynomial, point);
+        Ok(KZGProof {
+            commitment_to_witness: ck.commit(&witness_poly)?,
+            evaluated_point: *value,
+            commitment_to_polynomial: ck.commit(polynomial)?,
+        })
+    }
 
-//         // Compute the aggregate witness for polynomials
-//         let witness_poly =
-//             ck.compute_aggregate_witness(polynomials, point, transcript);
+    // Creates an opening proof that multiple polynomials were evaluated at the
+    // same point and that each evaluation produced the correct evaluation
+    // point. Returns an error if any of the polynomial's degrees are too
+    // large.
+    fn open_multiple<
+        E: PairingEngine,
+        P: TEModelParameters<BaseField = E::Fr>,
+    >(
+        ck: &CommitKey<E>,
+        polynomials: &[DensePolynomial<E::Fr>],
+        evaluations: Vec<E::Fr>,
+        point: &E::Fr,
+        transcript: &mut TranscriptWrapper<E>,
+    ) -> Result<KZGAggregateProof<E, P>, Error> {
+        // Commit to polynomials
+        let mut polynomial_commitments = Vec::with_capacity(polynomials.len());
+        for poly in polynomials.iter() {
+            polynomial_commitments.push(ck.commit(poly)?)
+        }
 
-//         // Commit to witness polynomial
-//         let witness_commitment = ck.commit(&witness_poly)?;
+        // Compute the aggregate witness for polynomials
+        let witness_poly =
+            ck.compute_aggregate_witness(polynomials, point, transcript);
 
-//         let aggregate_proof = AggregateProof {
-//             commitment_to_witness: witness_commitment,
-//             evaluated_points: evaluations,
-//             commitments_to_polynomials: polynomial_commitments,
-//         };
-//         Ok(aggregate_proof)
-//     }
+        // Commit to witness polynomial
+        let witness_commitment = ck.commit(&witness_poly)?;
 
-//     // For a given polynomial `p` and a point `z`, compute the witness
-//     // for p(z) using Ruffini's method for simplicity.
-//     // The Witness is the quotient of f(x) - f(z) / x-z.
-//     // However we note that the quotient polynomial is invariant under the
-// value     // f(z) ie. only the remainder changes. We can therefore compute
-// the     // witness as f(x) / x - z and only use the remainder term f(z)
-// during     // verification.
-//     fn compute_single_witness(
-//         polynomial: &Polynomial,
-//         point: &E::Fr,
-//     ) -> Polynomial {
-//         // Computes `f(x) / x-z`, returning it as the witness poly
-//         polynomial.ruffini(*point)
-//     }
+        let aggregate_proof = KZGAggregateProof {
+            commitment_to_witness: witness_commitment,
+            evaluated_points: evaluations,
+            commitments_to_polynomials: polynomial_commitments,
+            _marker: PhantomData,
+        };
+        Ok(aggregate_proof)
+    }
 
-//     // Creates a proving key and verifier key based on a specified degree
-//     fn setup_test(degree: usize) -> Result<(CommitKey, OpeningKey), Error> {
-//         let srs = PublicParameters::setup(degree, &mut OsRng)?;
-//         srs.trim(degree)
-//     }
-//     #[test]
-//     fn test_basic_commit() -> Result<(), Error> {
-//         let degree = 25;
-//         let (ck, opening_key) = setup_test(degree)?;
-//         let point = E::Fr::from(10);
+    // For a given polynomial `p` and a point `z`, compute the witness
+    // for p(z) using Ruffini's method for simplicity.
+    // The Witness is the quotient of f(x) - f(z) / x-z.
+    // However we note that the quotient polynomial is invariant under the value
+    // f(z) ie. only the remainder changes. We can therefore compute the
+    // witness as f(x) / x - z and only use the remainder term f(z) during
+    // verification.
+    fn compute_single_witness<E: PairingEngine>(
+        polynomial: &DensePolynomial<E::Fr>,
+        point: &E::Fr,
+    ) -> DensePolynomial<E::Fr> {
+        // Computes `f(x) / x-z`, returning it as the witness poly
+        util::ruffini(*polynomial, *point)
+    }
 
-//         let poly = Polynomial::rand(degree, &mut OsRng);
-//         let value = poly.evaluate(&point);
+    // Creates a proving key and verifier key based on a specified degree
+    fn setup_test<E: PairingEngine>(
+        degree: usize,
+    ) -> Result<(CommitKey<E>, OpeningKey<E>), Error> {
+        let srs = PublicParameters::setup(degree, &mut OsRng)?;
+        srs.trim(degree)
+    }
+    #[test]
+    fn test_basic_commit<E: PairingEngine>() -> Result<(), Error> {
+        let degree = 25;
+        let (ck, opening_key) = setup_test(degree)?;
+        let point = E::Fr::from(10u64);
 
-//         let proof = open_single(&ck, &poly, &value, &point)?;
+        let poly = Polynomial::rand(degree, &mut OsRng);
+        let value = poly.evaluate(&point);
 
-//         let ok = check(&opening_key, point, proof);
-//         assert!(ok);
-//         Ok(())
-//     }
-//     #[test]
-//     fn test_batch_verification() -> Result<(), Error> {
-//         let degree = 25;
-//         let (ck, vk) = setup_test(degree)?;
+        let proof = open_single(&ck, &poly, &value, &point)?;
 
-//         let point_a = E::Fr::from(10);
-//         let point_b = E::Fr::from(11);
+        let ok = check(&opening_key, point, proof);
+        assert!(ok);
+        Ok(())
+    }
+    #[test]
+    fn test_batch_verification() -> Result<(), Error> {
+        let degree = 25;
+        let (ck, vk) = setup_test(degree)?;
 
-//         // Compute secret polynomial a
-//         let poly_a = Polynomial::rand(degree, &mut OsRng);
-//         let value_a = poly_a.evaluate(&point_a);
-//         let proof_a = open_single(&ck, &poly_a, &value_a, &point_a)?;
-//         assert!(check(&vk, point_a, proof_a));
+        let point_a = E::Fr::from(10u64);
+        let point_b = E::Fr::from(11u64);
 
-//         // Compute secret polynomial b
-//         let poly_b = Polynomial::rand(degree, &mut OsRng);
-//         let value_b = poly_b.evaluate(&point_b);
-//         let proof_b = open_single(&ck, &poly_b, &value_b, &point_b)?;
-//         assert!(check(&vk, point_b, proof_b));
+        // Compute secret polynomial a
+        let poly_a = Polynomial::rand(degree, &mut OsRng);
+        let value_a = poly_a.evaluate(&point_a);
+        let proof_a = open_single(&ck, &poly_a, &value_a, &point_a)?;
+        assert!(check(&vk, point_a, proof_a));
 
-//         vk.batch_check(
-//             &[point_a, point_b],
-//             &[proof_a, proof_b],
-//             &mut Transcript::new(b""),
-//         )
-//     }
-//     #[test]
-//     fn test_aggregate_witness() -> Result<(), Error> {
-//         let max_degree = 27;
-//         let (ck, opening_key) = setup_test(max_degree)?;
-//         let point = E::Fr::from(10);
+        // Compute secret polynomial b
+        let poly_b = Polynomial::rand(degree, &mut OsRng);
+        let value_b = poly_b.evaluate(&point_b);
+        let proof_b = open_single(&ck, &poly_b, &value_b, &point_b)?;
+        assert!(check(&vk, point_b, proof_b));
 
-//         // Committer's View
-//         let aggregated_proof = {
-//             // Compute secret polynomials and their evaluations
-//             let poly_a = Polynomial::rand(25, &mut OsRng);
-//             let poly_a_eval = poly_a.evaluate(&point);
+        vk.batch_check(
+            &[point_a, point_b],
+            &[proof_a, proof_b],
+            &mut Transcript::new(b""),
+        )
+    }
+    #[test]
+    fn test_aggregate_witness() -> Result<(), Error> {
+        let max_degree = 27;
+        let (ck, opening_key) = setup_test(max_degree)?;
+        let point = E::Fr::from(10);
 
-//             let poly_b = Polynomial::rand(26 + 1, &mut OsRng);
-//             let poly_b_eval = poly_b.evaluate(&point);
+        // Committer's View
+        let aggregated_proof = {
+            // Compute secret polynomials and their evaluations
+            let poly_a = Polynomial::rand(25, &mut OsRng);
+            let poly_a_eval = poly_a.evaluate(&point);
 
-//             let poly_c = Polynomial::rand(27, &mut OsRng);
-//             let poly_c_eval = poly_c.evaluate(&point);
+            let poly_b = Polynomial::rand(26 + 1, &mut OsRng);
+            let poly_b_eval = poly_b.evaluate(&point);
 
-//             open_multiple(
-//                 &ck,
-//                 &[poly_a, poly_b, poly_c],
-//                 vec![poly_a_eval, poly_b_eval, poly_c_eval],
-//                 &point,
-//                 &mut Transcript::new(b"agg_flatten"),
-//             )?
-//         };
+            let poly_c = Polynomial::rand(27, &mut OsRng);
+            let poly_c_eval = poly_c.evaluate(&point);
 
-//         // Verifier's View
-//         let ok = {
-//             let flattened_proof =
-//                 aggregated_proof.flatten(&mut
-// Transcript::new(b"agg_flatten"));             check(&opening_key, point,
-// flattened_proof)         };
+            open_multiple(
+                &ck,
+                &[poly_a, poly_b, poly_c],
+                vec![poly_a_eval, poly_b_eval, poly_c_eval],
+                &point,
+                &mut Transcript::new(b"agg_flatten"),
+            )?
+        };
 
-//         assert!(ok);
-//         Ok(())
-//     }
+        // Verifier's View
+        let ok = {
+            let flattened_proof =
+                aggregated_proof.flatten(&mut Transcript::new(b"agg_flatten"));
+            check(&opening_key, point, flattened_proof)
+        };
 
-//     #[test]
-//     fn test_batch_with_aggregation() -> Result<(), Error> {
-//         let max_degree = 28;
-//         let (ck, opening_key) = setup_test(max_degree)?;
-//         let point_a = E::Fr::from(10);
-//         let point_b = E::Fr::from(11);
+        assert!(ok);
+        Ok(())
+    }
 
-//         // Committer's View
-//         let (aggregated_proof, single_proof) = {
-//             // Compute secret polynomial and their evaluations
-//             let poly_a = Polynomial::rand(25, &mut OsRng);
-//             let poly_a_eval = poly_a.evaluate(&point_a);
+    #[test]
+    fn test_batch_with_aggregation() -> Result<(), Error> {
+        let max_degree = 28;
+        let (ck, opening_key) = setup_test(max_degree)?;
+        let point_a = E::Fr::from(10);
+        let point_b = E::Fr::from(11);
 
-//             let poly_b = Polynomial::rand(26, &mut OsRng);
-//             let poly_b_eval = poly_b.evaluate(&point_a);
+        // Committer's View
+        let (aggregated_proof, single_proof) = {
+            // Compute secret polynomial and their evaluations
+            let poly_a = Polynomial::rand(25, &mut OsRng);
+            let poly_a_eval = poly_a.evaluate(&point_a);
 
-//             let poly_c = Polynomial::rand(27, &mut OsRng);
-//             let poly_c_eval = poly_c.evaluate(&point_a);
+            let poly_b = Polynomial::rand(26, &mut OsRng);
+            let poly_b_eval = poly_b.evaluate(&point_a);
 
-//             let poly_d = Polynomial::rand(28, &mut OsRng);
-//             let poly_d_eval = poly_d.evaluate(&point_b);
+            let poly_c = Polynomial::rand(27, &mut OsRng);
+            let poly_c_eval = poly_c.evaluate(&point_a);
 
-//             let aggregated_proof = open_multiple(
-//                 &ck,
-//                 &[poly_a, poly_b, poly_c],
-//                 vec![poly_a_eval, poly_b_eval, poly_c_eval],
-//                 &point_a,
-//                 &mut Transcript::new(b"agg_batch"),
-//             )?;
+            let poly_d = Polynomial::rand(28, &mut OsRng);
+            let poly_d_eval = poly_d.evaluate(&point_b);
 
-//             let single_proof =
-//                 open_single(&ck, &poly_d, &poly_d_eval, &point_b)?;
+            let aggregated_proof = open_multiple(
+                &ck,
+                &[poly_a, poly_b, poly_c],
+                vec![poly_a_eval, poly_b_eval, poly_c_eval],
+                &point_a,
+                &mut Transcript::new(b"agg_batch"),
+            )?;
 
-//             (aggregated_proof, single_proof)
-//         };
+            let single_proof =
+                open_single(&ck, &poly_d, &poly_d_eval, &point_b)?;
 
-//         // Verifier's View
+            (aggregated_proof, single_proof)
+        };
 
-//         let mut transcript = Transcript::new(b"agg_batch");
-//         let flattened_proof = aggregated_proof.flatten(&mut transcript);
+        // Verifier's View
 
-//         opening_key.batch_check(
-//             &[point_a, point_b],
-//             &[flattened_proof, single_proof],
-//             &mut transcript,
-//         )
-//     }
+        let mut transcript = Transcript::new(b"agg_batch");
+        let flattened_proof = aggregated_proof.flatten(&mut transcript);
 
-//     #[test]
-//     fn commit_key_serde() -> Result<(), Error> {
-//         let (commit_key, _) = setup_test(11)?;
-//         let ck_bytes = commit_key.to_var_bytes();
-//         let ck_bytes_safe = CommitKey::from_slice(&ck_bytes)?;
+        opening_key.batch_check(
+            &[point_a, point_b],
+            &[flattened_proof, single_proof],
+            &mut transcript,
+        )
+    }
 
-//         assert_eq!(commit_key.powers_of_g, ck_bytes_safe.powers_of_g);
-//         Ok(())
-//     }
+    #[test]
+    fn commit_key_serde() -> Result<(), Error> {
+        let (commit_key, _) = setup_test(11)?;
+        let ck_bytes = commit_key.to_var_bytes();
+        let ck_bytes_safe = CommitKey::from_slice(&ck_bytes)?;
 
-//     #[test]
-//     fn opening_key_dusk_bytes() -> Result<(), Error> {
-//         let (_, opening_key) = setup_test(7)?;
-//         let ok_bytes = opening_key.to_bytes();
-//         let obtained_key = OpeningKey::from_bytes(&ok_bytes)?;
+        assert_eq!(commit_key.powers_of_g, ck_bytes_safe.powers_of_g);
+        Ok(())
+    }
 
-//         assert_eq!(opening_key.to_bytes(), obtained_key.to_bytes());
-//         Ok(())
-//     }
+    #[test]
+    fn opening_key_dusk_bytes() -> Result<(), Error> {
+        let (_, opening_key) = setup_test(7)?;
+        let ok_bytes = opening_key.to_bytes();
+        let obtained_key = OpeningKey::from_bytes(&ok_bytes)?;
 
-//     #[test]
-//     fn commit_key_bytes_unchecked() -> Result<(), Error> {
-//         let (ck, _) = setup_test(7)?;
+        assert_eq!(opening_key.to_bytes(), obtained_key.to_bytes());
+        Ok(())
+    }
 
-//         let ck_p = unsafe {
-//             let bytes = ck.to_raw_var_bytes();
-//             CommitKey::from_slice_unchecked(&bytes)
-//         };
+    #[test]
+    fn commit_key_bytes_unchecked() -> Result<(), Error> {
+        let (ck, _) = setup_test(7)?;
 
-//         assert_eq!(ck, ck_p);
-//         Ok(())
-//     }
-// }
+        let ck_p = unsafe {
+            let bytes = ck.to_raw_var_bytes();
+            CommitKey::from_slice_unchecked(&bytes)
+        };
+
+        assert_eq!(ck, ck_p);
+        Ok(())
+    }
+}
