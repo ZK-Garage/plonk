@@ -34,16 +34,23 @@
 #![deny(rustdoc::broken_intra_doc_links)]
 #![deny(missing_docs)]
 
-mod bit_iterator;
-pub mod circuit;
+//pub mod circuit;
 pub mod constraint_system;
 mod permutation;
 mod util;
 
+pub mod commitment_scheme;
 pub mod error;
 pub mod prelude;
 pub mod proof_system;
 mod transcript;
+
+use ark_ec::{PairingEngine, ProjectiveCurve, TEModelParameters};
+// Currently unused
+pub(crate) trait SCParams:
+    TEModelParameters + PairingEngine + ProjectiveCurve
+{
+}
 
 #[doc = include_str!("../docs/notes-intro.md")]
 pub mod notes {

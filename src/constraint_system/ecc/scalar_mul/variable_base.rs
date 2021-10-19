@@ -4,16 +4,18 @@
 //
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
-use crate::bit_iterator::BitIterator8;
 use crate::constraint_system::ecc::Point;
 use crate::constraint_system::{variable::Variable, StandardComposer};
 use ark_ec::models::TEModelParameters;
 use ark_ec::{PairingEngine, ProjectiveCurve};
-use ark_ff::PrimeField;
+use ark_ff::{BigInteger, Field, FpParameters, PrimeField};
 use num_traits::{One, Zero};
 
-impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
-    StandardComposer<E, T, P>
+impl<
+        E: PairingEngine,
+        T: ProjectiveCurve<BaseField = E::Fr>,
+        P: TEModelParameters<BaseField = E::Fr>,
+    > StandardComposer<E, T, P>
 {
     /// Adds a variable-base scalar multiplication to the circuit description.
     ///
@@ -24,8 +26,8 @@ impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
     pub fn variable_base_scalar_mul(
         &mut self,
         curve_var: Variable,
-        point: Point,
-    ) -> Point {
+        point: Point<E, T, P>,
+    ) -> Point<E, T, P> {
         // Turn scalar into bits
         let raw_bls_scalar = *self
             .variables
@@ -57,10 +59,11 @@ impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
         witness_scalar: E::Fr,
     ) -> Vec<Variable> {
         // Decompose the bits
-        let scalar_bits_iter = BitIterator8::new(witness_scalar.to_bytes());
+        let scalar_bits_iter = witness_scalar.into_repr().to_bits_le();
 
         // Add all the bits into the composer
         let scalar_bits_var: Vec<Variable> = scalar_bits_iter
+            .iter()
             .map(|bit| self.add_input(E::Fr::from(*bit as u64)))
             .collect();
 
@@ -93,6 +96,7 @@ impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
     }
 }
 
+/*
 #[cfg(feature = "std")]
 #[cfg(test)]
 mod tests {
@@ -134,3 +138,4 @@ mod tests {
         assert!(res.is_ok());
     }
 }
+*/

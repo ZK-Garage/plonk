@@ -8,12 +8,13 @@ use crate::constraint_system::StandardComposer;
 use crate::constraint_system::Variable;
 use ark_ec::models::TEModelParameters;
 use ark_ec::{PairingEngine, ProjectiveCurve};
+use core::marker::PhantomData;
 use num_traits::{One, Zero};
 
 #[derive(Debug, Clone, Copy)]
 /// Contains all of the components needed to verify that a bit scalar
 /// multiplication was computed correctly
-pub(crate) struct WnafRound<E: PairingEngine, T: ProjectiveCurve> {
+pub struct WnafRound<E: PairingEngine, T: ProjectiveCurve<BaseField = E::Fr>> {
     /// This is the accumulated x coordinate point that we wish to add (so
     /// far.. depends on where you are in the scalar mul) it is linked to
     /// the wnaf entry, so must not be revealed
@@ -37,11 +38,38 @@ pub(crate) struct WnafRound<E: PairingEngine, T: ProjectiveCurve> {
     pub y_beta: T::BaseField,
     /// This is the multiplication of x_\beta * y_\beta
     pub xy_beta: T::BaseField,
+    _marker0: PhantomData<E>,
+    _marker1: PhantomData<T>,
 }
 
-impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
-    StandardComposer<E, T, P>
+impl<
+        E: PairingEngine,
+        T: ProjectiveCurve<BaseField = E::Fr>,
+        P: TEModelParameters<BaseField = E::Fr>,
+    > StandardComposer<E, T, P>
 {
+    /// Generates a new structure for preparing a WNAF ROUND
+    pub fn new_wnaf(
+        acc_x: Variable,
+        acc_y: Variable,
+        accumulated_bit: Variable,
+        xy_alpha: Variable,
+        x_beta: T::BaseField,
+        y_beta: T::BaseField,
+        xy_beta: T::BaseField,
+    ) -> WnafRound<E, T> {
+        WnafRound {
+            acc_x,
+            acc_y,
+            accumulated_bit,
+            xy_alpha,
+            x_beta,
+            y_beta,
+            xy_beta,
+            _marker0: PhantomData,
+            _marker1: PhantomData,
+        }
+    }
     /// Fixed group addition of a jubjub point
     pub(crate) fn fixed_group_add(&mut self, wnaf_round: WnafRound<E, T>) {
         self.w_l.push(wnaf_round.acc_x);

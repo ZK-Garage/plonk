@@ -5,28 +5,28 @@
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
 use ark_ff::PrimeField;
-use ark_poly::polynomial::univariate::DensePolynomial as Polynomial;
+use ark_poly::polynomial::univariate::DensePolynomial;
 use ark_poly::Evaluations;
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub(crate) struct ProverKey<F: PrimeField> {
-    pub q_m: (Polynomial<F>, Evaluations<F>),
-    pub q_l: (Polynomial<F>, Evaluations<F>),
-    pub q_r: (Polynomial<F>, Evaluations<F>),
-    pub q_o: (Polynomial<F>, Evaluations<F>),
-    pub q_c: (Polynomial<F>, Evaluations<F>),
-    pub q_4: (Polynomial<F>, Evaluations<F>),
-    pub q_arith: (Polynomial<F>, Evaluations<F>),
+    pub q_m: (DensePolynomial<F>, Evaluations<F>),
+    pub q_l: (DensePolynomial<F>, Evaluations<F>),
+    pub q_r: (DensePolynomial<F>, Evaluations<F>),
+    pub q_o: (DensePolynomial<F>, Evaluations<F>),
+    pub q_c: (DensePolynomial<F>, Evaluations<F>),
+    pub q_4: (DensePolynomial<F>, Evaluations<F>),
+    pub q_arith: (DensePolynomial<F>, Evaluations<F>),
 }
 
 impl<F: PrimeField> ProverKey<F> {
     pub(crate) fn compute_quotient_i(
         &self,
         index: usize,
-        w_l_i: &F,
-        w_r_i: &F,
-        w_o_i: &F,
-        w_4_i: &F,
+        w_l_i: F,
+        w_r_i: F,
+        w_o_i: F,
+        w_4_i: F,
     ) -> F {
         let q_m_i = &self.q_m.1[index];
         let q_l_i = &self.q_l.1[index];
@@ -50,12 +50,12 @@ impl<F: PrimeField> ProverKey<F> {
 
     pub(crate) fn compute_linearisation(
         &self,
-        a_eval: &F,
-        b_eval: &F,
-        c_eval: &F,
-        d_eval: &F,
-        q_arith_eval: &F,
-    ) -> Polynomial<F> {
+        a_eval: F,
+        b_eval: F,
+        c_eval: F,
+        d_eval: F,
+        q_arith_eval: F,
+    ) -> DensePolynomial<F> {
         let q_m_poly = &self.q_m.0;
         let q_l_poly = &self.q_l.0;
         let q_r_poly = &self.q_r.0;
@@ -68,7 +68,7 @@ impl<F: PrimeField> ProverKey<F> {
         //
         // a_eval * b_eval * q_m_poly
         let ab = a_eval * b_eval;
-        let a_0 = q_m_poly * &ab;
+        let a_0 = q_m_poly * ab;
 
         // a_eval * q_l
         let a_1 = q_l_poly * a_eval;

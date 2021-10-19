@@ -3,27 +3,34 @@
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 //
 // Copyright (c) DUSK NETWORK. All rights reserved.
+/// XXX: Doc this
 
+/// XXX: Doc this
 pub mod arithmetic;
+/// XXX: Doc this
 pub mod ecc;
+/// XXX: Doc this
 pub mod logic;
+/// XXX: Doc this
 pub mod permutation;
+/// XXX: Doc this
 pub mod range;
-use crate::{error::Error, transcript::TranscriptProtocol};
-use ark_ec::PairingEngine;
+
+use crate::transcript::TranscriptProtocol;
+use ark_ec::{PairingEngine, TEModelParameters};
 use ark_ff::PrimeField;
-use ark_poly::{
-    Evaluations, Polynomial, Radix2EvaluationDomain as EvaluationDomain,
-};
+use ark_poly::Evaluations;
 use ark_poly_commit::sonic_pc::Commitment;
-use merlin::Transcript;
 
 /// PLONK circuit Verification Key.
 ///
 /// This structure is used by the Verifier in order to verify a
 /// [`Proof`](super::Proof).
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
-pub struct VerifierKey<E: PairingEngine> {
+pub struct VerifierKey<
+    E: PairingEngine,
+    P: TEModelParameters<BaseField = E::Fr>,
+> {
     /// Circuit size (not padded to a power of two).
     pub(crate) n: usize,
     /// VerifierKey for arithmetic gates
@@ -33,16 +40,18 @@ pub struct VerifierKey<E: PairingEngine> {
     /// VerifierKey for range gates
     pub(crate) range: range::VerifierKey<E>,
     /// VerifierKey for fixed base curve addition gates
-    pub(crate) fixed_base: ecc::scalar_mul::fixed_base::VerifierKey<E>,
+    pub(crate) fixed_base: ecc::scalar_mul::fixed_base::VerifierKey<E, P>,
     /// VerifierKey for variable base curve addition gates
-    pub(crate) variable_base: ecc::curve_addition::VerifierKey<E>,
+    pub(crate) variable_base: ecc::curve_addition::VerifierKey<E, P>,
     /// VerifierKey for permutation checks
     pub(crate) permutation: permutation::VerifierKey<E>,
 }
 
-impl<E: PairingEngine> VerifierKey<E> {
+impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
+    VerifierKey<E, P>
+{
     /// Returns the Circuit size padded to the next power of two.
-    pub const fn padded_circuit_size(&self) -> usize {
+    pub fn padded_circuit_size(&self) -> usize {
         self.n.next_power_of_two()
     }
 
@@ -66,7 +75,7 @@ impl<E: PairingEngine> VerifierKey<E> {
         right_sigma: Commitment<E>,
         out_sigma: Commitment<E>,
         fourth_sigma: Commitment<E>,
-    ) -> VerifierKey<E> {
+    ) -> VerifierKey<E, P> {
         let arithmetic = arithmetic::VerifierKey {
             q_m,
             q_l,
@@ -82,10 +91,13 @@ impl<E: PairingEngine> VerifierKey<E> {
             q_l,
             q_r,
             q_fixed_group_add,
+            //XXX: Add constructor that abstracts over the marker declaration
+            _marker: core::marker::PhantomData,
         };
 
         let variable_base = ecc::curve_addition::VerifierKey {
             q_variable_group_add,
+            _marker: core::marker::PhantomData,
         };
 
         let permutation = permutation::VerifierKey {
@@ -107,9 +119,14 @@ impl<E: PairingEngine> VerifierKey<E> {
     }
 }
 
-impl<E: PairingEngine> VerifierKey<E> {
+impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
+    VerifierKey<E, P>
+{
     /// Adds the circuit description to the transcript
-    pub(crate) fn seed_transcript(&self, transcript: &mut Transcript) {
+    pub(crate) fn seed_transcript<T: TranscriptProtocol<E>>(
+        &self,
+        transcript: &mut T,
+    ) {
         transcript.append_commitment(b"q_m", &self.arithmetic.q_m);
         transcript.append_commitment(b"q_l", &self.arithmetic.q_l);
         transcript.append_commitment(b"q_r", &self.arithmetic.q_r);
@@ -146,7 +163,7 @@ impl<E: PairingEngine> VerifierKey<E> {
 /// This structure is used by the Prover in order to construct a
 /// [`Proof`](crate::proof_system::Proof).
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub struct ProverKey<F: PrimeField> {
+pub struct ProverKey<F: PrimeField, P: TEModelParameters<BaseField = F>> {
     /// Circuit size
     pub(crate) n: usize,
     /// ProverKey for arithmetic gate
@@ -156,9 +173,9 @@ pub struct ProverKey<F: PrimeField> {
     /// ProverKey for range gate
     pub(crate) range: range::ProverKey<F>,
     /// ProverKey for fixed base curve addition gates
-    pub(crate) fixed_base: ecc::scalar_mul::fixed_base::ProverKey<F>,
+    pub(crate) fixed_base: ecc::scalar_mul::fixed_base::ProverKey<F, P>,
     /// ProverKey for variable base curve addition gates
-    pub(crate) variable_base: ecc::curve_addition::ProverKey<F>,
+    pub(crate) variable_base: ecc::curve_addition::ProverKey<F, P>,
     /// ProverKey for permutation checks
     pub(crate) permutation: permutation::ProverKey<F>,
     // Pre-processes the 4n Evaluations for the vanishing polynomial, so
@@ -169,14 +186,14 @@ pub struct ProverKey<F: PrimeField> {
     pub(crate) v_h_coset_4n: Evaluations<F>,
 }
 
-impl<F: PrimeField> ProverKey<F> {
+impl<F: PrimeField, P: TEModelParameters<BaseField = F>> ProverKey<F, P> {
     /// Returns the number of [`Polynomial`]s contained in a ProverKey.
-    const fn num_polys() -> usize {
+    fn num_polys() -> usize {
         15
     }
 
     /// Returns the number of [`Evaluations`] contained in a ProverKey.
-    const fn num_evals() -> usize {
+    fn num_evals() -> usize {
         17
     }
 
@@ -185,10 +202,10 @@ impl<F: PrimeField> ProverKey<F> {
     }
 }
 
-#[cfg(test)]
+/*#[cfg(test)]
 mod test {
     use super::*;
-    use crate::fft::{EvaluationDomain, Evaluations, Polynomial};
+    use crate::fft::{GeneralEvaluationDomain, Evaluations, Polynomial};
     use dusk_bls12_381::BlsScalar;
     use rand_core::OsRng;
 
@@ -198,7 +215,7 @@ mod test {
     }
 
     fn rand_evaluations(n: usize) -> Evaluations {
-        let domain = EvaluationDomain::new(4 * n).unwrap();
+        let domain = GeneralEvaluationDomain::new(4 * n).unwrap();
         let values: Vec<_> =
             (0..4 * n).map(|_| BlsScalar::random(&mut OsRng)).collect();
         let evaluations = Evaluations::from_vec_and_domain(values, domain);
@@ -360,3 +377,4 @@ mod test {
         assert_eq!(got, verifier_key);
     }
 }
+*/

@@ -14,23 +14,64 @@ use ark_ec::{
     twisted_edwards_extended::GroupAffine, PairingEngine, ProjectiveCurve,
     TEModelParameters,
 };
+use core::marker::PhantomData;
 use num_traits::{One, Zero};
 
 /// Represents a point of the embeded curve in the circuit
-#[derive(Debug, Clone, Copy)]
-pub struct Point {
+#[derive(Debug)]
+pub struct Point<
+    E: PairingEngine,
+    T: ProjectiveCurve<BaseField = E::Fr>,
+    P: TEModelParameters<BaseField = E::Fr>,
+> {
     x: Variable,
     y: Variable,
+    _marker0: PhantomData<E>,
+    _marker1: PhantomData<T>,
+    _marker2: PhantomData<P>,
 }
 
-impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters> Point {
-    /// Returns an identity point
-    pub fn identity(composer: &mut StandardComposer<E, T, P>) -> Point {
-        let one = composer.add_witness_to_circuit_description(E::Fr::one());
-        Point {
-            x: composer.zero_var,
-            y: one,
+impl<
+        E: PairingEngine,
+        T: ProjectiveCurve<BaseField = E::Fr>,
+        P: TEModelParameters<BaseField = E::Fr>,
+    > Copy for Point<E, T, P>
+{
+}
+
+impl<
+        E: PairingEngine,
+        T: ProjectiveCurve<BaseField = E::Fr>,
+        P: TEModelParameters<BaseField = E::Fr>,
+    > Clone for Point<E, T, P>
+{
+    fn clone(&self) -> Point<E, T, P> {
+        *self
+    }
+}
+
+impl<
+        E: PairingEngine,
+        T: ProjectiveCurve<BaseField = E::Fr>,
+        P: TEModelParameters<BaseField = E::Fr>,
+    > Point<E, T, P>
+{
+    /// Creates a new point including the markers.
+    pub fn new(x: Variable, y: Variable) -> Point<E, T, P> {
+        Point::<E, T, P> {
+            x,
+            y,
+            _marker0: PhantomData,
+            _marker1: PhantomData,
+            _marker2: PhantomData,
         }
+    }
+    /// Returns an identity point
+    pub fn identity(
+        composer: &mut StandardComposer<E, T, P>,
+    ) -> Point<E, T, P> {
+        let one = composer.add_witness_to_circuit_description(E::Fr::one());
+        Point::<E, T, P>::new(composer.zero_var, one)
     }
     /// Return the X coordinate of the point
     pub fn x(&self) -> &Variable {
@@ -43,20 +84,26 @@ impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters> Point {
     }
 }
 
-impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
-    StandardComposer<E, T, P>
+impl<
+        E: PairingEngine,
+        T: ProjectiveCurve<BaseField = E::Fr>,
+        P: TEModelParameters<BaseField = E::Fr>,
+    > StandardComposer<E, T, P>
 {
     /// Converts an embeded curve point into a constraint system Point
     /// without constraining the values
-    pub fn add_affine(&mut self, affine: GroupAffine<P>) -> Point {
+    pub fn add_affine(&mut self, affine: GroupAffine<P>) -> Point<E, T, P> {
         let x = self.add_input(affine.x);
         let y = self.add_input(affine.y);
-        Point { x, y }
+        Point::<E, T, P>::new(x, y)
     }
 
     /// Converts an embeded curve point into a constraint system Point
     /// without constraining the values
-    pub fn add_public_affine(&mut self, affine: GroupAffine<P>) -> Point {
+    pub fn add_public_affine(
+        &mut self,
+        affine: GroupAffine<P>,
+    ) -> Point<E, T, P> {
         let point = self.add_affine(affine);
         self.constrain_to_constant(point.x, E::Fr::zero(), Some(-affine.x));
         self.constrain_to_constant(point.y, E::Fr::zero(), Some(-affine.y));
@@ -69,35 +116,39 @@ impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
     pub fn add_affine_to_circuit_description(
         &mut self,
         affine: GroupAffine<P>,
-    ) -> Point {
+    ) -> Point<E, T, P> {
         // Not using individual gates because one of these may be zero
         let x = self.add_witness_to_circuit_description(affine.x);
         let y = self.add_witness_to_circuit_description(affine.y);
 
-        Point { x, y }
+        Point::<E, T, P>::new(x, y)
     }
 
     /// Asserts that a [`Point`] in the circuit is equal to a known public
     /// point.
     pub fn assert_equal_public_point(
         &mut self,
-        point: Point,
+        point: Point<E, T, P>,
         public_point: GroupAffine<P>,
     ) {
         self.constrain_to_constant(
             point.x,
             E::Fr::zero(),
-            Some(-public_point.x()),
+            Some(-public_point.x),
         );
         self.constrain_to_constant(
             point.y,
             E::Fr::zero(),
-            Some(-public_point.y()),
+            Some(-public_point.y),
         );
     }
     /// Asserts that a point in the circuit is equal to another point in the
     /// circuit
-    pub fn assert_equal_point(&mut self, point_a: Point, point_b: Point) {
+    pub fn assert_equal_point(
+        &mut self,
+        point_a: Point<E, T, P>,
+        point_b: Point<E, T, P>,
+    ) {
         self.assert_equal(point_a.x, point_b.x);
         self.assert_equal(point_b.y, point_b.y);
     }
@@ -113,14 +164,14 @@ impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
     /// [`StandardComposer::boolean_gate`].
     pub fn conditional_point_select(
         &mut self,
-        point_a: Point,
-        point_b: Point,
+        point_a: Point<E, T, P>,
+        point_b: Point<E, T, P>,
         bit: Variable,
-    ) -> Point {
-        let x = self.conditional_select(bit, *point_a.x(), *point_b.x());
-        let y = self.conditional_select(bit, *point_a.y(), *point_b.y());
+    ) -> Point<E, T, P> {
+        let x = self.conditional_select(bit, point_a.x, point_b.x);
+        let y = self.conditional_select(bit, point_a.y, point_b.y);
 
-        Point { x, y }
+        Point::<E, T, P>::new(x, y)
     }
 
     /// Adds to the circuit description the conditional selection of the
@@ -135,15 +186,16 @@ impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
     fn conditional_select_identity(
         &mut self,
         bit: Variable,
-        point_b: Point,
-    ) -> Point {
-        let x = self.conditional_select_zero(bit, *point_b.x());
-        let y = self.conditional_select_one(bit, *point_b.y());
+        point_b: Point<E, T, P>,
+    ) -> Point<E, T, P> {
+        let x = self.conditional_select_zero(bit, point_b.x);
+        let y = self.conditional_select_one(bit, point_b.y);
 
-        Point { x, y }
+        Point::<E, T, P>::new(x, y)
     }
 }
 
+/*
 #[cfg(feature = "std")]
 #[cfg(test)]
 mod tests {
@@ -178,3 +230,4 @@ mod tests {
         assert!(res.is_ok());
     }
 }
+*/

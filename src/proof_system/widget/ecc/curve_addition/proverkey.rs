@@ -4,27 +4,31 @@
 //
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
+use ark_ec::TEModelParameters;
 use ark_ff::PrimeField;
-use ark_poly::polynomial::univariate::DensePolynomial as Polynomial;
+use ark_poly::polynomial::univariate::DensePolynomial;
 use ark_poly::Evaluations;
+use core::marker::PhantomData;
 
 #[derive(Debug, Eq, PartialEq, Clone)]
-pub(crate) struct ProverKey<F: PrimeField> {
-    pub(crate) q_variable_group_add: (Polynomial<F>, Evaluations<F>),
+pub(crate) struct ProverKey<F: PrimeField, P: TEModelParameters<BaseField = F>>
+{
+    pub(crate) q_variable_group_add: (DensePolynomial<F>, Evaluations<F>),
+    pub(crate) _marker: PhantomData<P>,
 }
 
-impl<F: PrimeField> ProverKey<F> {
+impl<F: PrimeField, P: TEModelParameters<BaseField = F>> ProverKey<F, P> {
     pub(crate) fn compute_quotient_i(
         &self,
         index: usize,
-        curve_add_separation_challenge: &F,
-        w_l_i: &F,      // x_1
-        w_l_i_next: &F, // x_3
-        w_r_i: &F,      // y_1
-        w_r_i_next: &F, // y_3
-        w_o_i: &F,      // x_2
-        w_4_i: &F,      // y_2
-        w_4_i_next: &F, // x_1 * y_2
+        curve_add_separation_challenge: F,
+        w_l_i: F,      // x_1
+        w_l_i_next: F, // x_3
+        w_r_i: F,      // y_1
+        w_r_i_next: F, // y_3
+        w_o_i: F,      // x_2
+        w_4_i: F,      // y_2
+        w_4_i_next: F, // x_1 * y_2
     ) -> F {
         let q_variable_group_add_i = &self.q_variable_group_add.1[index];
 
@@ -49,12 +53,12 @@ impl<F: PrimeField> ProverKey<F> {
 
         // Check x_3 is correct
         let x3_lhs = x1_y2 + y1_x2;
-        let x3_rhs = x_3 + (x_3 * EDWARDS_D * x1_y2 * y1_x2);
+        let x3_rhs = x_3 + (x_3 * P::COEFF_D * x1_y2 * y1_x2);
         let x3_consistency = (x3_lhs - x3_rhs) * kappa;
 
         // // Check y_3 is correct
         let y3_lhs = y1_y2 + x1_x2;
-        let y3_rhs = y_3 - y_3 * EDWARDS_D * x1_y2 * y1_x2;
+        let y3_rhs = y_3 - y_3 * P::COEFF_D * x1_y2 * y1_x2;
         let y3_consistency = (y3_lhs - y3_rhs) * kappa.square();
 
         let identity = xy_consistency + x3_consistency + y3_consistency;
@@ -64,15 +68,15 @@ impl<F: PrimeField> ProverKey<F> {
 
     pub(crate) fn compute_linearisation(
         &self,
-        curve_add_separation_challenge: &F,
-        a_eval: &F,
-        a_next_eval: &F,
-        b_eval: &F,
-        b_next_eval: &F,
-        c_eval: &F,
-        d_eval: &F,
-        d_next_eval: &F,
-    ) -> Polynomial<F> {
+        curve_add_separation_challenge: F,
+        a_eval: F,
+        a_next_eval: F,
+        b_eval: F,
+        b_next_eval: F,
+        c_eval: F,
+        d_eval: F,
+        d_next_eval: F,
+    ) -> DensePolynomial<F> {
         let q_variable_group_add_poly = &self.q_variable_group_add.0;
 
         let kappa = curve_add_separation_challenge.square();
@@ -96,16 +100,16 @@ impl<F: PrimeField> ProverKey<F> {
 
         // Check x_3 is correct
         let x3_lhs = x1_y2 + y1_x2;
-        let x3_rhs = x_3 + (x_3 * (EDWARDS_D * x1_y2 * y1_x2));
+        let x3_rhs = x_3 + (x_3 * (P::COEFF_D * x1_y2 * y1_x2));
         let x3_consistency = (x3_lhs - x3_rhs) * kappa;
 
         // Check y_3 is correct
         let y3_lhs = y1_y2 + x1_x2;
-        let y3_rhs = y_3 - y_3 * EDWARDS_D * x1_y2 * y1_x2;
+        let y3_rhs = y_3 - y_3 * P::COEFF_D * x1_y2 * y1_x2;
         let y3_consistency = (y3_lhs - y3_rhs) * kappa.square();
 
         let identity = xy_consistency + x3_consistency + y3_consistency;
 
-        q_variable_group_add_poly * &(identity * curve_add_separation_challenge)
+        q_variable_group_add_poly * (identity * curve_add_separation_challenge)
     }
 }

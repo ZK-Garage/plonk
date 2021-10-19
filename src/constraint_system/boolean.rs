@@ -7,9 +7,13 @@
 use crate::constraint_system::StandardComposer;
 use crate::constraint_system::Variable;
 use ark_ec::{PairingEngine, ProjectiveCurve, TEModelParameters};
+use num_traits::{One, Zero};
 
-impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
-    StandardComposer<E, T, P>
+impl<
+        E: PairingEngine,
+        T: ProjectiveCurve<BaseField = E::Fr>,
+        P: TEModelParameters<BaseField = E::Fr>,
+    > StandardComposer<E, T, P>
 {
     /// Adds a boolean constraint (also known as binary constraint) where
     /// the gate eq. will enforce that the [`Variable`] received is either `0`
@@ -46,6 +50,7 @@ impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
     }
 }
 
+/*
 #[cfg(test)]
 mod boolean_gates_tests {
     use super::super::helper::*;
@@ -80,3 +85,5 @@ mod boolean_gates_tests {
         assert!(res.is_err())
     }
 }
+
+ */

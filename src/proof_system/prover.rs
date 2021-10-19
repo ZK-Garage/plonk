@@ -4,37 +4,50 @@
 //
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
+use crate::util::*;
 use crate::{
     constraint_system::{StandardComposer, Variable},
     error::Error,
+    prelude::CommitKey,
     proof_system::{
         linearisation_poly, proof::Proof, quotient_poly, ProverKey,
     },
-    transcript::TranscriptProtocol,
+    transcript::{TranscriptProtocol, TranscriptWrapper},
 };
-use alloc::vec::Vec;
-use ark_ec::PairingEngine;
-use ark_ff::PrimeField;
-use ark_poly::{EvaluationDomain, Polynomial};
-use ark_poly_commit::CommitKey;
-use merlin::Transcript;
+use ark_ec::{PairingEngine, ProjectiveCurve, TEModelParameters};
+use ark_ff::Field;
+use ark_poly::{
+    univariate::DensePolynomial, EvaluationDomain, GeneralEvaluationDomain,
+    UVPolynomial,
+};
+use core::marker::PhantomData;
+use num_traits::Zero;
 
 /// Abstraction structure designed to construct a circuit and generate
 /// [`Proof`]s for it.
 #[allow(missing_debug_implementations)]
-pub struct Prover<E: PairingEngine> {
+pub struct Prover<
+    E: PairingEngine,
+    T: ProjectiveCurve<BaseField = E::Fr>,
+    P: TEModelParameters<BaseField = E::Fr>,
+> {
     /// ProverKey which is used to create proofs about a specific PLONK circuit
-    pub prover_key: Option<ProverKey<E::Fr>>,
+    pub prover_key: Option<ProverKey<E::Fr, P>>,
 
-    pub(crate) cs: StandardComposer<E>,
+    pub(crate) cs: StandardComposer<E, T, P>,
     /// Store the messages exchanged during the preprocessing stage
     /// This is copied each time, we make a proof
-    pub preprocessed_transcript: Transcript,
+    pub preprocessed_transcript: TranscriptWrapper<E>,
 }
 
-impl<E: PairingEngine> Prover<E> {
+impl<
+        E: PairingEngine,
+        T: ProjectiveCurve<BaseField = E::Fr>,
+        P: TEModelParameters<BaseField = E::Fr>,
+    > Prover<E, T, P>
+{
     /// Returns a mutable copy of the underlying [`StandardComposer`].
-    pub fn mut_cs(&mut self) -> &mut StandardComposer<E> {
+    pub fn mut_cs(&mut self) -> &mut StandardComposer<E, T, P> {
         &mut self.cs
     }
 
@@ -54,28 +67,41 @@ impl<E: PairingEngine> Prover<E> {
     }
 }
 
-impl<E: PairingEngine> Default for Prover<E> {
-    fn default() -> Prover<E> {
+impl<
+        E: PairingEngine,
+        T: ProjectiveCurve<BaseField = E::Fr>,
+        P: TEModelParameters<BaseField = E::Fr>,
+    > Default for Prover<E, T, P>
+{
+    fn default() -> Prover<E, T, P> {
         Prover::new(b"plonk")
     }
 }
 
-impl<E: PairingEngine> Prover<E> {
+impl<
+        E: PairingEngine,
+        T: ProjectiveCurve<BaseField = E::Fr>,
+        P: TEModelParameters<BaseField = E::Fr>,
+    > Prover<E, T, P>
+{
     /// Creates a new `Prover` instance.
-    pub fn new(label: &'static [u8]) -> Prover<E> {
+    pub fn new(label: &'static [u8]) -> Prover<E, T, P> {
         Prover {
             prover_key: None,
             cs: StandardComposer::new(),
-            preprocessed_transcript: Transcript::new(label),
+            preprocessed_transcript: TranscriptWrapper::new(label),
         }
     }
 
     /// Creates a new `Prover` object with some expected size.
-    pub fn with_expected_size(label: &'static [u8], size: usize) -> Prover<E> {
+    pub fn with_expected_size(
+        label: &'static [u8],
+        size: usize,
+    ) -> Prover<E, T, P> {
         Prover {
             prover_key: None,
             cs: StandardComposer::with_expected_size(size),
-            preprocessed_transcript: Transcript::new(label),
+            preprocessed_transcript: TranscriptWrapper::new(label),
         }
     }
 
@@ -89,39 +115,39 @@ impl<E: PairingEngine> Prover<E> {
     pub(crate) fn split_tx_poly(
         &self,
         n: usize,
-        t_x: &Polynomial<E::Fr>,
+        t_x: &DensePolynomial<E::Fr>,
     ) -> (
-        Polynomial<E::Fr>,
-        Polynomial<E::Fr>,
-        Polynomial<E::Fr>,
-        Polynomial<E::Fr>,
+        DensePolynomial<E::Fr>,
+        DensePolynomial<E::Fr>,
+        DensePolynomial<E::Fr>,
+        DensePolynomial<E::Fr>,
     ) {
         (
-            Polynomial::from_coefficients_vec(t_x[0..n].to_vec()),
-            Polynomial::from_coefficients_vec(t_x[n..2 * n].to_vec()),
-            Polynomial::from_coefficients_vec(t_x[2 * n..3 * n].to_vec()),
-            Polynomial::from_coefficients_vec(t_x[3 * n..].to_vec()),
+            DensePolynomial::from_coefficients_vec(t_x[0..n].to_vec()),
+            DensePolynomial::from_coefficients_vec(t_x[n..2 * n].to_vec()),
+            DensePolynomial::from_coefficients_vec(t_x[2 * n..3 * n].to_vec()),
+            DensePolynomial::from_coefficients_vec(t_x[3 * n..].to_vec()),
         )
     }
 
-    /// Computes the quotient Opening [`Polynomial`].
+    /// Computes the quotient Opening [`DensePolynomial`].
     fn compute_quotient_opening_poly(
         n: usize,
-        t_1_poly: &Polynomial<E::Fr>,
-        t_2_poly: &Polynomial<E::Fr>,
-        t_3_poly: &Polynomial<E::Fr>,
-        t_4_poly: &Polynomial<E::Fr>,
+        t_1_poly: &DensePolynomial<E::Fr>,
+        t_2_poly: &DensePolynomial<E::Fr>,
+        t_3_poly: &DensePolynomial<E::Fr>,
+        t_4_poly: &DensePolynomial<E::Fr>,
         z_challenge: &E::Fr,
-    ) -> Polynomial<E::Fr> {
+    ) -> DensePolynomial<E::Fr> {
         // Compute z^n , z^2n , z^3n
         let z_n = z_challenge.pow(&[n as u64, 0, 0, 0]);
         let z_two_n = z_challenge.pow(&[2 * n as u64, 0, 0, 0]);
         let z_three_n = z_challenge.pow(&[3 * n as u64, 0, 0, 0]);
 
         let a = t_1_poly;
-        let b = t_2_poly * &z_n;
-        let c = t_3_poly * &z_two_n;
-        let d = t_4_poly * &z_three_n;
+        let b = t_2_poly * z_n;
+        let c = t_3_poly * z_two_n;
+        let d = t_4_poly * z_three_n;
         let abc = &(a + &b) + &c;
         &abc + &d
     }
@@ -144,13 +170,15 @@ impl<E: PairingEngine> Prover<E> {
     pub fn clear(&mut self) {
         self.clear_witness();
         self.prover_key = None;
-        self.preprocessed_transcript = Transcript::new(b"plonk");
+        self.preprocessed_transcript = TranscriptWrapper::new(b"plonk");
     }
 
     /// Keys the [`Transcript`] with additional seed information
     /// Wrapper around [`Transcript::append_message`].
     pub fn key_transcript(&mut self, label: &'static [u8], message: &[u8]) {
-        self.preprocessed_transcript.append_message(label, message);
+        self.preprocessed_transcript
+            .transcript
+            .append_message(label, message);
     }
 
     /// Creates a [`Proof]` that demonstrates that a circuit is satisfied.
@@ -162,9 +190,10 @@ impl<E: PairingEngine> Prover<E> {
     pub fn prove_with_preprocessed(
         &self,
         commit_key: &CommitKey<E>,
-        prover_key: &ProverKey<E::Fr>,
-    ) -> Result<Proof<E>, Error> {
-        let domain = EvaluationDomain::new(self.cs.circuit_size())?;
+        prover_key: &ProverKey<E::Fr, P>,
+    ) -> Result<Proof<E, P>, Error> {
+        let domain =
+            GeneralEvaluationDomain::new(self.cs.circuit_size()).unwrap();
 
         // Since the caller is passing a pre-processed circuit
         // We assume that the Transcript has been seeded with the preprocessed
@@ -184,13 +213,13 @@ impl<E: PairingEngine> Prover<E> {
         // Witnesses are now in evaluation form, convert them to coefficients
         // So that we may commit to them
         let w_l_poly =
-            Polynomial::from_coefficients_vec(domain.ifft(w_l_scalar));
+            DensePolynomial::from_coefficients_vec(domain.ifft(w_l_scalar));
         let w_r_poly =
-            Polynomial::from_coefficients_vec(domain.ifft(w_r_scalar));
+            DensePolynomial::from_coefficients_vec(domain.ifft(w_r_scalar));
         let w_o_poly =
-            Polynomial::from_coefficients_vec(domain.ifft(w_o_scalar));
+            DensePolynomial::from_coefficients_vec(domain.ifft(w_o_scalar));
         let w_4_poly =
-            Polynomial::from_coefficients_vec(domain.ifft(w_4_scalar));
+            DensePolynomial::from_coefficients_vec(domain.ifft(w_4_scalar));
 
         // Commit to witness polynomials
         let w_l_poly_commit = commit_key.commit(&w_l_poly)?;
@@ -208,22 +237,20 @@ impl<E: PairingEngine> Prover<E> {
         //
         //
         // Compute permutation challenges; `beta` and `gamma`
-        let beta = TranscriptProtocol::<E>::challenge_scalar(b"beta");
-        TranscriptProtocol::<E>::append_scalar(b"beta", &beta);
-        let gamma = TranscriptProtocol::<E>::challenge_scalar(b"gamma");
+        let beta = transcript.challenge_scalar(b"beta");
+        transcript.append_scalar(b"beta", &beta);
+        let gamma = transcript.challenge_scalar(b"gamma");
 
-        let z_poly = Polynomial::from_coefficients_slice(
-            &self.cs.perm.compute_permutation_poly(
-                &domain,
-                (&w_l_scalar, &w_r_scalar, &w_o_scalar, &w_4_scalar),
-                &beta,
-                &gamma,
-                (
-                    &prover_key.permutation.left_sigma.0,
-                    &prover_key.permutation.right_sigma.0,
-                    &prover_key.permutation.out_sigma.0,
-                    &prover_key.permutation.fourth_sigma.0,
-                ),
+        let z_poly = self.cs.perm.compute_permutation_poly(
+            &domain,
+            (&w_l_scalar, &w_r_scalar, &w_o_scalar, &w_4_scalar),
+            beta,
+            gamma,
+            (
+                &prover_key.permutation.left_sigma.0,
+                &prover_key.permutation.right_sigma.0,
+                &prover_key.permutation.out_sigma.0,
+                &prover_key.permutation.fourth_sigma.0,
             ),
         );
 
@@ -235,27 +262,22 @@ impl<E: PairingEngine> Prover<E> {
         transcript.append_commitment(b"z", &z_poly_commit);
 
         // 3. Compute public inputs polynomial
-        let pi_poly = Polynomial::from_coefficients_vec(
+        let pi_poly = DensePolynomial::from_coefficients_vec(
             domain.ifft(&self.cs.construct_dense_pi_vec()),
         );
 
         // 4. Compute quotient polynomial
         //
         // Compute quotient challenge; `alpha`
-        let alpha = TranscriptProtocol::<E>::challenge_scalar(b"alpha");
-        let range_sep_challenge = TranscriptProtocol::<E>::challenge_scalar(
-            b"range separation challenge",
-        );
-        let logic_sep_challenge = TranscriptProtocol::<E>::challenge_scalar(
-            b"logic separation challenge",
-        );
+        let alpha = transcript.challenge_scalar(b"alpha");
+        let range_sep_challenge =
+            transcript.challenge_scalar(b"range separation challenge");
+        let logic_sep_challenge =
+            transcript.challenge_scalar(b"logic separation challenge");
         let fixed_base_sep_challenge =
-            TranscriptProtocol::<E>::challenge_scalar(
-                b"fixed base separation challenge",
-            );
-        let var_base_sep_challenge = TranscriptProtocol::<E>::challenge_scalar(
-            b"variable base separation challenge",
-        );
+            transcript.challenge_scalar(b"fixed base separation challenge");
+        let var_base_sep_challenge =
+            transcript.challenge_scalar(b"variable base separation challenge");
 
         let t_poly = quotient_poly::compute(
             &domain,
@@ -293,9 +315,9 @@ impl<E: PairingEngine> Prover<E> {
         // 4. Compute linearisation polynomial
         //
         // Compute evaluation challenge; `z`
-        let z_challenge = TranscriptProtocol::<E>::challenge_scalar(b"z");
+        let z_challenge = transcript.challenge_scalar(b"z");
 
-        let (lin_poly, evaluations) = linearisation_poly::compute::<E>(
+        let (lin_poly, evaluations) = linearisation_poly::compute::<E, P>(
             &domain,
             &prover_key,
             &(
@@ -317,74 +339,34 @@ impl<E: PairingEngine> Prover<E> {
         );
 
         // Add evaluations to transcript
-        TranscriptProtocol::<E>::append_scalar(
-            b"a_eval",
-            &evaluations.proof.a_eval,
-        );
-        TranscriptProtocol::<E>::append_scalar(
-            b"b_eval",
-            &evaluations.proof.b_eval,
-        );
-        TranscriptProtocol::<E>::append_scalar(
-            b"c_eval",
-            &evaluations.proof.c_eval,
-        );
-        TranscriptProtocol::<E>::append_scalar(
-            b"d_eval",
-            &evaluations.proof.d_eval,
-        );
-        TranscriptProtocol::<E>::append_scalar(
-            b"a_next_eval",
-            &evaluations.proof.a_next_eval,
-        );
-        TranscriptProtocol::<E>::append_scalar(
-            b"b_next_eval",
-            &evaluations.proof.b_next_eval,
-        );
-        TranscriptProtocol::<E>::append_scalar(
-            b"d_next_eval",
-            &evaluations.proof.d_next_eval,
-        );
-        TranscriptProtocol::<E>::append_scalar(
+        transcript.append_scalar(b"a_eval", &evaluations.proof.a_eval);
+        transcript.append_scalar(b"b_eval", &evaluations.proof.b_eval);
+        transcript.append_scalar(b"c_eval", &evaluations.proof.c_eval);
+        transcript.append_scalar(b"d_eval", &evaluations.proof.d_eval);
+        transcript
+            .append_scalar(b"a_next_eval", &evaluations.proof.a_next_eval);
+        transcript
+            .append_scalar(b"b_next_eval", &evaluations.proof.b_next_eval);
+        transcript
+            .append_scalar(b"d_next_eval", &evaluations.proof.d_next_eval);
+        transcript.append_scalar(
             b"left_sig_eval",
             &evaluations.proof.left_sigma_eval,
         );
-        TranscriptProtocol::<E>::append_scalar(
+        transcript.append_scalar(
             b"right_sig_eval",
             &evaluations.proof.right_sigma_eval,
         );
-        TranscriptProtocol::<E>::append_scalar(
-            b"out_sig_eval",
-            &evaluations.proof.out_sigma_eval,
-        );
-        TranscriptProtocol::<E>::append_scalar(
-            b"q_arith_eval",
-            &evaluations.proof.q_arith_eval,
-        );
-        TranscriptProtocol::<E>::append_scalar(
-            b"q_c_eval",
-            &evaluations.proof.q_c_eval,
-        );
-        TranscriptProtocol::<E>::append_scalar(
-            b"q_l_eval",
-            &evaluations.proof.q_l_eval,
-        );
-        TranscriptProtocol::<E>::append_scalar(
-            b"q_r_eval",
-            &evaluations.proof.q_r_eval,
-        );
-        TranscriptProtocol::<E>::append_scalar(
-            b"perm_eval",
-            &evaluations.proof.perm_eval,
-        );
-        TranscriptProtocol::<E>::append_scalar(
-            b"t_eval",
-            &evaluations.quot_eval,
-        );
-        TranscriptProtocol::<E>::append_scalar(
-            b"r_eval",
-            &evaluations.proof.lin_poly_eval,
-        );
+        transcript
+            .append_scalar(b"out_sig_eval", &evaluations.proof.out_sigma_eval);
+        transcript
+            .append_scalar(b"q_arith_eval", &evaluations.proof.q_arith_eval);
+        transcript.append_scalar(b"q_c_eval", &evaluations.proof.q_c_eval);
+        transcript.append_scalar(b"q_l_eval", &evaluations.proof.q_l_eval);
+        transcript.append_scalar(b"q_r_eval", &evaluations.proof.q_r_eval);
+        transcript.append_scalar(b"perm_eval", &evaluations.proof.perm_eval);
+        transcript.append_scalar(b"t_eval", &evaluations.quot_eval);
+        transcript.append_scalar(b"r_eval", &evaluations.proof.lin_poly_eval);
 
         // 5. Compute Openings using KZG10
         //
@@ -422,7 +404,7 @@ impl<E: PairingEngine> Prover<E> {
         // evaluation challenge
         let shifted_aggregate_witness = commit_key.compute_aggregate_witness(
             &[z_poly, w_l_poly, w_r_poly, w_4_poly],
-            &(z_challenge * domain.group_gen),
+            &(z_challenge * get_domain_attrs(&domain, "group_gen")),
             &mut transcript,
         );
         let w_zx_comm = commit_key.commit(&shifted_aggregate_witness)?;
@@ -445,6 +427,7 @@ impl<E: PairingEngine> Prover<E> {
             w_zw_comm: w_zx_comm,
 
             evaluations: evaluations.proof,
+            _marker: PhantomData,
         })
     }
 
@@ -454,8 +437,8 @@ impl<E: PairingEngine> Prover<E> {
     pub fn prove(
         &mut self,
         commit_key: &CommitKey<E>,
-    ) -> Result<Proof<E>, Error> {
-        let prover_key: &ProverKey<E::Fr>;
+    ) -> Result<Proof<E, P>, Error> {
+        let prover_key: &ProverKey<E::Fr, P>;
 
         if self.prover_key.is_none() {
             // Preprocess circuit

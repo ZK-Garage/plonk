@@ -5,19 +5,26 @@
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
 use crate::proof_system::linearisation_poly::ProofEvaluations;
-use ark_ec::PairingEngine;
-use ark_poly_commit::sonic_pc::Commitment;
-use dusk_jubjub::EDWARDS_D;
+use ark_ec::{PairingEngine, TEModelParameters};
+use ark_ff::Field;
+use ark_poly_commit::kzg10::Commitment;
+use core::marker::PhantomData;
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
-pub(crate) struct VerifierKey<E: PairingEngine> {
+pub(crate) struct VerifierKey<
+    E: PairingEngine,
+    P: TEModelParameters<BaseField = E::Fr>,
+> {
     pub(crate) q_variable_group_add: Commitment<E>,
+    pub(crate) _marker: PhantomData<P>,
 }
 
-impl<E: PairingEngine> VerifierKey<E> {
+impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
+    VerifierKey<E, P>
+{
     pub(crate) fn compute_linearisation_commitment(
         &self,
-        curve_add_separation_challenge: &E::Fr,
+        curve_add_separation_challenge: E::Fr,
         scalars: &mut Vec<E::Fr>,
         points: &mut Vec<E::G1Affine>,
         evaluations: &ProofEvaluations<E::Fr>,
@@ -43,12 +50,12 @@ impl<E: PairingEngine> VerifierKey<E> {
 
         // Check x_3 is correct
         let x3_lhs = x1_y2 + y1_x2;
-        let x3_rhs = x_3 + (x_3 * (EDWARDS_D * x1_y2 * y1_x2));
+        let x3_rhs = x_3 + (x_3 * (P::COEFF_D * x1_y2 * y1_x2));
         let x3_consistency = (x3_lhs - x3_rhs) * kappa;
 
         // Check y_3 is correct
         let y3_lhs = y1_y2 + x1_x2;
-        let y3_rhs = y_3 - (y_3 * EDWARDS_D * x1_y2 * y1_x2);
+        let y3_rhs = y_3 - (y_3 * P::COEFF_D * x1_y2 * y1_x2);
         let y3_consistency = (y3_lhs - y3_rhs) * kappa.square();
 
         let identity = xy_consistency + x3_consistency + y3_consistency;

@@ -10,7 +10,11 @@
 //! with the principal data structures of the plonk library.
 
 pub use crate::{
-    circuit::{self, Circuit, PublicInputValue, VerifierData},
+    //circuit::{self, Circuit, PublicInputValue, VerifierData},
+    commitment_scheme::kzg10::{
+        key::{CommitKey, OpeningKey},
+        PublicParameters,
+    },
     constraint_system::{Point, StandardComposer, Variable},
     proof_system::{Prover, ProverKey, Verifier},
 };

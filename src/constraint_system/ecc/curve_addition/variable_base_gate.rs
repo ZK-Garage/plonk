@@ -9,9 +9,13 @@ use crate::constraint_system::StandardComposer;
 use ark_ec::models::twisted_edwards_extended::GroupAffine;
 use ark_ec::models::TEModelParameters;
 use ark_ec::{PairingEngine, ProjectiveCurve};
+use num_traits::{One, Zero};
 
-impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
-    StandardComposer<E, T, P>
+impl<
+        E: PairingEngine,
+        T: ProjectiveCurve<BaseField = E::Fr>,
+        P: TEModelParameters<BaseField = E::Fr>,
+    > StandardComposer<E, T, P>
 {
     /// Adds two curve points together using a curve addition gate
     /// Note that since the points are not fixed the generator is not a part of
@@ -19,9 +23,9 @@ impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
     /// width of 4.
     pub fn point_addition_gate(
         &mut self,
-        point_a: Point,
-        point_b: Point,
-    ) -> Point {
+        point_a: Point<E, T, P>,
+        point_b: Point<E, T, P>,
+    ) -> Point<E, T, P> {
         // In order to verify that two points were correctly added
         // without going over a degree 4 polynomial, we will need
         // x_1, y_1, x_2, y_2
@@ -42,10 +46,10 @@ impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
         let p2 = GroupAffine::<P>::new(*x_2_scalar, *y_2_scalar);
 
         let point = p1 + p2;
-        let x_3_scalar = point.get_x();
-        let y_3_scalar = point.get_y();
+        let x_3_scalar = point.x;
+        let y_3_scalar = point.y;
 
-        let x1_scalar_y2_scalar = x_1_scalar * y_2_scalar;
+        let x1_scalar_y2_scalar = *x_1_scalar * y_2_scalar;
 
         // Add the rest of the prepared points into the composer
         let x_1_y_2 = self.add_input(x1_scalar_y2_scalar);
@@ -84,9 +88,11 @@ impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
         );
         self.n += 1;
 
-        Point { x: x_3, y: y_3 }
+        Point::<E, T, P>::new(x_3, y_3)
     }
 }
+
+/*
 
 #[cfg(test)]
 mod variable_base_gate_tests {
@@ -249,3 +255,4 @@ mod variable_base_gate_tests {
         assert!(res.is_ok());
     }
 }
+*/

@@ -7,37 +7,44 @@
 //! Methods to preprocess the constraint system for use in a proof
 
 use crate::constraint_system::StandardComposer;
-use ark_poly_commit::CommitKey;
-
 use crate::error::Error;
+use crate::prelude::CommitKey;
 use crate::proof_system::{widget, ProverKey};
-use arc_ec::PairingEngine;
-use ark_ff::PrimeField;
-use ark_poly::polynomial::univariate::DensePolynomial as Polynomial;
-use ark_poly::{Evaluations, Radix2EvaluationDomain as EvaluationDomain};
-use merlin::Transcript;
+use crate::transcript::TranscriptWrapper;
+use ark_ec::{PairingEngine, ProjectiveCurve, TEModelParameters};
+use ark_ff::{FpParameters, PrimeField};
+use ark_poly::domain::EvaluationDomain;
+use ark_poly::polynomial::univariate::DensePolynomial;
+use ark_poly::{Evaluations, GeneralEvaluationDomain};
+use core::marker::PhantomData;
+use num_traits::{One, Zero};
 
 /// Struct that contains all of the selector and permutation [`Polynomial`]s in
 /// PLONK.
 pub(crate) struct SelectorPolynomials<F: PrimeField> {
-    q_m: Polynomial<F>,
-    q_l: Polynomial<F>,
-    q_r: Polynomial<F>,
-    q_o: Polynomial<F>,
-    q_c: Polynomial<F>,
-    q_4: Polynomial<F>,
-    q_arith: Polynomial<F>,
-    q_range: Polynomial<F>,
-    q_logic: Polynomial<F>,
-    q_fixed_group_add: Polynomial<F>,
-    q_variable_group_add: Polynomial<F>,
-    left_sigma: Polynomial<F>,
-    right_sigma: Polynomial<F>,
-    out_sigma: Polynomial<F>,
-    fourth_sigma: Polynomial<F>,
+    q_m: DensePolynomial<F>,
+    q_l: DensePolynomial<F>,
+    q_r: DensePolynomial<F>,
+    q_o: DensePolynomial<F>,
+    q_c: DensePolynomial<F>,
+    q_4: DensePolynomial<F>,
+    q_arith: DensePolynomial<F>,
+    q_range: DensePolynomial<F>,
+    q_logic: DensePolynomial<F>,
+    q_fixed_group_add: DensePolynomial<F>,
+    q_variable_group_add: DensePolynomial<F>,
+    left_sigma: DensePolynomial<F>,
+    right_sigma: DensePolynomial<F>,
+    out_sigma: DensePolynomial<F>,
+    fourth_sigma: DensePolynomial<F>,
 }
 
-impl<E: PairingEngine> StandardComposer<E> {
+impl<
+        E: PairingEngine,
+        T: ProjectiveCurve<BaseField = E::Fr>,
+        P: TEModelParameters<BaseField = E::Fr>,
+    > StandardComposer<E, T, P>
+{
     /// Pads the circuit to the next power of two.
     ///
     /// # Note
@@ -103,12 +110,13 @@ impl<E: PairingEngine> StandardComposer<E> {
     pub fn preprocess_prover(
         &mut self,
         commit_key: &CommitKey<E>,
-        transcript: &mut Transcript,
-    ) -> Result<ProverKey<E::Fr>, Error> {
+        transcript: &mut TranscriptWrapper<E>,
+    ) -> Result<ProverKey<E::Fr, P>, Error> {
         let (_, selectors, domain) =
             self.preprocess_shared(commit_key, transcript)?;
 
-        let domain_4n = EvaluationDomain::new(4 * domain.size())?;
+        let domain_4n =
+            GeneralEvaluationDomain::new(4 * domain.size()).unwrap();
         let q_m_eval_4n = Evaluations::from_vec_and_domain(
             domain_4n.coset_fft(&selectors.q_m),
             domain_4n,
@@ -207,6 +215,7 @@ impl<E: PairingEngine> StandardComposer<E> {
                 selectors.q_fixed_group_add,
                 q_fixed_group_add_eval_4n,
             ),
+            _marker: PhantomData,
         };
 
         // Prover Key for permutation argument
@@ -225,6 +234,7 @@ impl<E: PairingEngine> StandardComposer<E> {
                     selectors.q_variable_group_add,
                     q_variable_group_add_eval_4n,
                 ),
+                _marker: PhantomData,
             };
 
         let prover_key = ProverKey {
@@ -236,8 +246,10 @@ impl<E: PairingEngine> StandardComposer<E> {
             variable_base: curve_addition_prover_key,
             fixed_base: ecc_prover_key,
             // Compute 4n evaluations for X^n -1
-            v_h_coset_4n: domain_4n
-                .compute_vanishing_poly_over_coset(domain.size() as u64),
+            v_h_coset_4n: compute_vanishing_poly_over_coset(
+                domain_4n,
+                domain_4n.size() as u64,
+            ),
         };
 
         Ok(prover_key)
@@ -249,8 +261,8 @@ impl<E: PairingEngine> StandardComposer<E> {
     pub fn preprocess_verifier(
         &mut self,
         commit_key: &CommitKey<E>,
-        transcript: &mut Transcript,
-    ) -> Result<widget::VerifierKey<E>, Error> {
+        transcript: &mut TranscriptWrapper<E>,
+    ) -> Result<widget::VerifierKey<E, P>, Error> {
         let (verifier_key, _, _) =
             self.preprocess_shared(commit_key, transcript)?;
         Ok(verifier_key)
@@ -263,47 +275,57 @@ impl<E: PairingEngine> StandardComposer<E> {
     fn preprocess_shared(
         &mut self,
         commit_key: &CommitKey<E>,
-        transcript: &mut Transcript,
+        transcript: &mut TranscriptWrapper<E>,
     ) -> Result<
         (
-            widget::VerifierKey<E>,
+            widget::VerifierKey<E, P>,
             SelectorPolynomials<E::Fr>,
-            EvaluationDomain<E::Fr>,
+            GeneralEvaluationDomain<E::Fr>,
         ),
         Error,
     > {
-        let domain = EvaluationDomain::new(self.circuit_size())?;
+        let domain = GeneralEvaluationDomain::new(self.circuit_size()).unwrap();
 
         // Check that the length of the wires is consistent.
         self.check_poly_same_len()?;
 
         // 1. Pad circuit to a power of two
-        self.pad(domain.size as usize - self.n);
+        self.pad(domain.size() as usize - self.n);
 
-        let q_m_poly =
-            Polynomial::from_coefficients_slice(&domain.ifft(&self.q_m));
-        let q_l_poly =
-            Polynomial::from_coefficients_slice(&domain.ifft(&self.q_l));
-        let q_r_poly =
-            Polynomial::from_coefficients_slice(&domain.ifft(&self.q_r));
-        let q_o_poly =
-            Polynomial::from_coefficients_slice(&domain.ifft(&self.q_o));
-        let q_c_poly =
-            Polynomial::from_coefficients_slice(&domain.ifft(&self.q_c));
-        let q_4_poly =
-            Polynomial::from_coefficients_slice(&domain.ifft(&self.q_4));
-        let q_arith_poly =
-            Polynomial::from_coefficients_slice(&domain.ifft(&self.q_arith));
-        let q_range_poly =
-            Polynomial::from_coefficients_slice(&domain.ifft(&self.q_range));
-        let q_logic_poly =
-            Polynomial::from_coefficients_slice(&domain.ifft(&self.q_logic));
-        let q_fixed_group_add_poly = Polynomial::from_coefficients_slice(
-            &domain.ifft(&self.q_fixed_group_add),
-        );
-        let q_variable_group_add_poly = Polynomial::from_coefficients_slice(
-            &domain.ifft(&self.q_variable_group_add),
-        );
+        let q_m_poly: DensePolynomial<E::Fr> = DensePolynomial {
+            coeffs: domain.ifft(&self.q_m),
+        };
+        let q_r_poly: DensePolynomial<E::Fr> = DensePolynomial {
+            coeffs: domain.ifft(&self.q_r),
+        };
+        let q_l_poly: DensePolynomial<E::Fr> = DensePolynomial {
+            coeffs: domain.ifft(&self.q_l),
+        };
+        let q_o_poly: DensePolynomial<E::Fr> = DensePolynomial {
+            coeffs: domain.ifft(&self.q_o),
+        };
+        let q_c_poly: DensePolynomial<E::Fr> = DensePolynomial {
+            coeffs: domain.ifft(&self.q_c),
+        };
+        let q_4_poly: DensePolynomial<E::Fr> = DensePolynomial {
+            coeffs: domain.ifft(&self.q_4),
+        };
+        let q_arith_poly: DensePolynomial<E::Fr> = DensePolynomial {
+            coeffs: domain.ifft(&self.q_arith),
+        };
+        let q_range_poly: DensePolynomial<E::Fr> = DensePolynomial {
+            coeffs: domain.ifft(&self.q_range),
+        };
+        let q_logic_poly: DensePolynomial<E::Fr> = DensePolynomial {
+            coeffs: domain.ifft(&self.q_logic),
+        };
+        let q_fixed_group_add_poly: DensePolynomial<E::Fr> = DensePolynomial {
+            coeffs: domain.ifft(&self.q_fixed_group_add),
+        };
+        let q_variable_group_add_poly: DensePolynomial<E::Fr> =
+            DensePolynomial {
+                coeffs: domain.ifft(&self.q_variable_group_add),
+            };
 
         // 2. Compute the sigma polynomials
         let (
@@ -362,11 +384,13 @@ impl<E: PairingEngine> StandardComposer<E> {
                 q_l: q_l_poly_commit,
                 q_r: q_r_poly_commit,
                 q_fixed_group_add: q_fixed_group_add_poly_commit,
+                _marker: PhantomData,
             };
         // Verifier Key for curve addition circuits
         let curve_addition_verifier_key =
             widget::ecc::curve_addition::VerifierKey {
                 q_variable_group_add: q_variable_group_add_poly_commit,
+                _marker: PhantomData,
             };
         // Verifier Key for permutation argument
         let permutation_verifier_key = widget::permutation::VerifierKey {
@@ -411,7 +435,39 @@ impl<E: PairingEngine> StandardComposer<E> {
     }
 }
 
-#[cfg(feature = "std")]
+/// Given that the domain size is `D`
+/// This function computes the `D` evaluation points for
+/// the vanishing polynomial of degree `n` over a coset
+pub(crate) fn compute_vanishing_poly_over_coset<
+    F: PrimeField,
+    D: EvaluationDomain<F>,
+>(
+    domain: D,        // domain to evaluate over
+    poly_degree: u64, // degree of the vanishing polynomial
+) -> Evaluations<F, D> {
+    assert!((domain.size() as u64) > poly_degree);
+    let coset_gen = F::from_repr(<F::Params>::GENERATOR).unwrap().pow(&[
+        poly_degree,
+        0,
+        0,
+        0,
+    ]);
+    let v_h: Vec<_> = (0..domain.size())
+        .map(|i| {
+            (coset_gen
+                * F::from_repr(<F::Params>::GENERATOR).unwrap().pow(&[
+                    poly_degree * i as u64,
+                    0,
+                    0,
+                    0,
+                ]))
+                - F::one()
+        })
+        .collect();
+    Evaluations::from_vec_and_domain(v_h, domain)
+}
+
+/*
 #[cfg(test)]
 mod test {
     use super::*;
@@ -444,3 +500,4 @@ mod test {
         assert!(composer.w_o.len() == size);
     }
 }
+*/

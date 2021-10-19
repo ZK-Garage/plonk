@@ -22,7 +22,7 @@ use crate::constraint_system::Variable;
 use crate::permutation::Permutation;
 use ark_ec::models::TEModelParameters;
 use ark_ec::PairingEngine;
-use ark_ec::{AffineCurve, ProjectiveCurve};
+use ark_ec::ProjectiveCurve;
 use core::marker::PhantomData;
 use hashbrown::HashMap;
 use num_traits::{One, Zero};
@@ -57,8 +57,8 @@ use std::collections::BTreeMap;
 #[derive(Debug)]
 pub struct StandardComposer<
     E: PairingEngine,
-    T: ProjectiveCurve,
-    P: TEModelParameters,
+    T: ProjectiveCurve<BaseField = E::Fr>,
+    P: TEModelParameters<BaseField = E::Fr>,
 > {
     /// Number of arithmetic gates in the circuit
     pub(crate) n: usize,
@@ -118,8 +118,11 @@ pub struct StandardComposer<
     _marker2: PhantomData<T>,
 }
 
-impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
-    StandardComposer<E, T, P>
+impl<
+        E: PairingEngine,
+        T: ProjectiveCurve<BaseField = E::Fr>,
+        P: TEModelParameters<BaseField = E::Fr>,
+    > StandardComposer<E, T, P>
 {
     /// Returns the number of gates in the circuit
     pub fn circuit_size(&self) -> usize {
@@ -150,16 +153,22 @@ impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
     }
 }
 
-impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters> Default
-    for StandardComposer<E, T, P>
+impl<
+        E: PairingEngine,
+        T: ProjectiveCurve<BaseField = E::Fr>,
+        P: TEModelParameters<BaseField = E::Fr>,
+    > Default for StandardComposer<E, T, P>
 {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
-    StandardComposer<E, T, P>
+impl<
+        E: PairingEngine,
+        T: ProjectiveCurve<BaseField = E::Fr>,
+        P: TEModelParameters<BaseField = E::Fr>,
+    > StandardComposer<E, T, P>
 {
     /// Generates a new empty `StandardComposer` with all of it's fields
     /// set to hold an initial capacity of 0.
@@ -169,7 +178,7 @@ impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
     /// The usage of this may cause lots of re-allocations since the `Composer`
     /// holds `Vec` for every polynomial, and these will need to be re-allocated
     /// each time the circuit grows considerably.
-    pub fn new() -> Self {
+    pub fn new() -> StandardComposer<E, T, P> {
         StandardComposer::with_expected_size(0)
     }
 
@@ -231,7 +240,7 @@ impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
     }
 
     /// Witness representation of zero of the first variable of any circuit
-    pub const fn zero_var(&self) -> Variable {
+    pub fn zero_var(&self) -> Variable {
         self.zero_var
     }
 
@@ -420,7 +429,7 @@ impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
         let bit_scalar = self.variables.get(&bit).unwrap();
 
         let f_x_scalar =
-            E::Fr::one() - bit_scalar + (bit_scalar * value_scalar);
+            E::Fr::one() - bit_scalar + (*bit_scalar * value_scalar);
         let f_x = self.add_input(f_x_scalar);
 
         self.poly_gate(
@@ -453,10 +462,10 @@ impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
         self.q_logic.push(E::Fr::zero());
         self.q_fixed_group_add.push(E::Fr::zero());
         self.q_variable_group_add.push(E::Fr::zero());
-        let var_six = self.add_input(E::Fr::from(6));
-        let var_one = self.add_input(E::Fr::from(1));
-        let var_seven = self.add_input(E::Fr::from(7));
-        let var_min_twenty = self.add_input(-E::Fr::from(20));
+        let var_six = self.add_input(E::Fr::from(6u64));
+        let var_one = self.add_input(E::Fr::from(1u64));
+        let var_seven = self.add_input(E::Fr::from(7u64));
+        let var_min_twenty = self.add_input(-E::Fr::from(20u64));
         self.w_l.push(var_six);
         self.w_r.push(var_seven);
         self.w_o.push(var_min_twenty);
@@ -633,7 +642,7 @@ impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
     }
 }
 
-#[cfg(feature = "std")]
+/*
 #[cfg(test)]
 mod general_composer_tests {
     use super::*;
@@ -752,3 +761,4 @@ mod general_composer_tests {
         }
     }
 }
+*/

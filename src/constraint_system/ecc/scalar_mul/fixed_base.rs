@@ -4,16 +4,18 @@
 //
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
-use crate::constraint_system::ecc::curve_addition::fixed_base_gate::WnafRound;
 use crate::constraint_system::ecc::Point;
 use crate::constraint_system::{variable::Variable, StandardComposer};
 use ark_ec::models::twisted_edwards_extended::{GroupAffine, GroupProjective};
 use ark_ec::models::TEModelParameters;
-use ark_ec::{PairingEngine, ProjectiveCurve};
-use ark_ff::{BigInteger, PrimeField};
+use ark_ec::{ModelParameters, PairingEngine, ProjectiveCurve};
+use ark_ff::{BigInteger, FpParameters, PrimeField};
 use num_traits::{One, Zero};
 
-fn compute_wnaf_point_multiples<P: TEModelParameters>() -> Vec<GroupAffine<P>> {
+fn compute_wnaf_point_multiples<P: TEModelParameters>() -> Vec<GroupAffine<P>>
+where
+    <P as ModelParameters>::BaseField: PrimeField,
+{
     let mut multiples = vec![
         GroupProjective::<P>::default();
         <P::BaseField as PrimeField>::Params::MODULUS_BITS
@@ -28,8 +30,11 @@ fn compute_wnaf_point_multiples<P: TEModelParameters>() -> Vec<GroupAffine<P>> {
     ProjectiveCurve::batch_normalization_into_affine(&mut multiples)
 }
 
-impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
-    StandardComposer<E, T, P>
+impl<
+        E: PairingEngine,
+        T: ProjectiveCurve<BaseField = E::Fr>,
+        P: TEModelParameters<BaseField = E::Fr>,
+    > StandardComposer<E, T, P>
 {
     /// Adds an elliptic curve Scalar multiplication gate to the circuit
     /// description.
@@ -39,7 +44,10 @@ impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
     /// the **ONLY** `generator` inputs that should be passed to this
     /// function as inputs are [`dusk_jubjub::GENERATOR`] or
     /// [`dusk_jubjub::GENERATOR_NUMS`].
-    pub fn fixed_base_scalar_mul(&mut self, jubjub_scalar: Variable) -> Point {
+    pub fn fixed_base_scalar_mul(
+        &mut self,
+        jubjub_scalar: Variable,
+    ) -> Point<E, T, P> {
         let num_bits =
             <P::BaseField as PrimeField>::Params::MODULUS_BITS as usize;
         // compute 2^iG
@@ -52,17 +60,19 @@ impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
         let raw_bls_scalar = self.variables.get(&jubjub_scalar).unwrap();
         let raw_jubjub_scalar =
             <P::BaseField as PrimeField>::from_le_bytes_mod_order(
-                &raw_bls_scalar.to_bytes_le(),
-            )
-            .unwrap();
+                &raw_bls_scalar.into_repr().to_bytes_le(),
+            );
 
         // Convert scalar to wnaf_2(k)
-        let wnaf_entries = raw_jubjub_scalar.compute_windowed_naf(2);
+        let wnaf_entries = raw_jubjub_scalar
+            .into_repr()
+            .find_wnaf(2)
+            .unwrap_or_else(|| panic!("Fix this!"));
         assert_eq!(wnaf_entries.len(), num_bits);
 
         // Initialise the accumulators
         let mut scalar_acc = vec![E::Fr::zero()];
-        let mut point_acc = vec![GroupAffine::<P>::identity()];
+        let mut point_acc = vec![GroupAffine::<P>::zero()];
 
         // Auxillary point to help with checks on the backend
         let mut xy_alphas = Vec::new();
@@ -71,8 +81,8 @@ impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
         for (i, entry) in wnaf_entries.iter().rev().enumerate() {
             // Based on the WNAF, we decide what scalar and point to add
             let (scalar_to_add, point_to_add) = match entry {
-            0 => { (E::Fr::zero(), GroupAffine::<P>::identity())},
-            -1 => {(E::Fr::one().neg(), -point_multiples[i])},
+            0 => { (E::Fr::zero(), GroupAffine::<P>::zero())},
+            -1 => {(-E::Fr::one(), -point_multiples[i])},
             1 => {(E::Fr::one(), point_multiples[i])},
             _ => unreachable!("Currently WNAF_2(k) is supported. The possible values are 1, -1 and 0. Current entry is {}", entry),
         };
@@ -85,15 +95,15 @@ impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
                 .into(),
             );
 
-            let x_alpha = point_to_add.get_x();
-            let y_alpha = point_to_add.get_y();
+            let x_alpha = point_to_add.x;
+            let y_alpha = point_to_add.y;
 
             xy_alphas.push(x_alpha * y_alpha);
         }
 
         for i in 0..num_bits {
-            let acc_x = self.add_input(point_acc[i].get_x());
-            let acc_y = self.add_input(point_acc[i].get_y());
+            let acc_x = self.add_input(point_acc[i].x);
+            let acc_y = self.add_input(point_acc[i].y);
 
             let accumulated_bit = self.add_input(scalar_acc[i]);
 
@@ -109,14 +119,14 @@ impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
                 );
             }
 
-            let x_beta = point_multiples[i].get_x();
-            let y_beta = point_multiples[i].get_y();
+            let x_beta = point_multiples[i].x;
+            let y_beta = point_multiples[i].y;
 
             let xy_alpha = self.add_input(xy_alphas[i]);
 
             let xy_beta = x_beta * y_beta;
 
-            let wnaf_round = WnafRound {
+            let wnaf_round = StandardComposer::<E, T, P>::new_wnaf(
                 acc_x,
                 acc_y,
                 accumulated_bit,
@@ -124,15 +134,15 @@ impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
                 x_beta,
                 y_beta,
                 xy_beta,
-            };
+            );
 
             self.fixed_group_add(wnaf_round);
         }
 
         // Add last gate, but do not activate it for ECC
         // It is for use with the previous gate
-        let acc_x = self.add_input(point_acc[num_bits].get_x());
-        let acc_y = self.add_input(point_acc[num_bits].get_y());
+        let acc_x = self.add_input(point_acc[num_bits].x);
+        let acc_y = self.add_input(point_acc[num_bits].y);
         let xy_alpha = self.zero_var;
         let last_accumulated_bit = self.add_input(scalar_acc[num_bits]);
 
@@ -153,10 +163,11 @@ impl<E: PairingEngine, T: ProjectiveCurve, P: TEModelParameters>
         // input jubjub scalar
         self.assert_equal(last_accumulated_bit, jubjub_scalar);
 
-        Point { x: acc_x, y: acc_y }
+        Point::<E, T, P>::new(acc_x, acc_y)
     }
 }
 
+/*
 #[cfg(feature = "std")]
 #[cfg(test)]
 mod tests {
@@ -268,16 +279,12 @@ mod tests {
 
                 let var_point_a_x = composer.add_input(affine_point_a.get_x());
                 let var_point_a_y = composer.add_input(affine_point_a.get_y());
-                let point_a = Point {
-                    x: var_point_a_x,
-                    y: var_point_a_y,
-                };
+                let point_a =
+                    Point::<E, T, P>::new(var_point_a_x, var_point_a_y);
                 let var_point_b_x = composer.add_input(affine_point_b.get_x());
                 let var_point_b_y = composer.add_input(affine_point_b.get_y());
-                let point_b = Point {
-                    x: var_point_b_x,
-                    y: var_point_b_y,
-                };
+                let point_b =
+                    Point::<E, T, P>::new(var_point_b_x, var_point_b_y);
                 let new_point = composer.point_addition_gate(point_a, point_b);
 
                 composer.assert_equal_public_point(
@@ -402,3 +409,5 @@ mod tests {
         assert!(res.is_ok());
     }
 }
+
+*/
