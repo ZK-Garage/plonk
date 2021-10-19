@@ -8,13 +8,14 @@
 
 use crate::constraint_system::StandardComposer;
 use crate::error::Error;
+use crate::prelude::CommitKey;
 use crate::proof_system::{widget, ProverKey};
 use ark_ec::{PairingEngine, ProjectiveCurve, TEModelParameters};
 use ark_ff::{FftField, FpParameters, PrimeField};
 use ark_poly::domain::EvaluationDomain;
 use ark_poly::polynomial::univariate::DensePolynomial;
 use ark_poly::{Evaluations, GeneralEvaluationDomain};
-use ark_poly_commit::kzg10::Powers;
+use ark_poly_commit::kzg10::Commitment;
 use core::marker::PhantomData;
 use merlin::Transcript;
 use num_traits::{One, Zero};
@@ -109,7 +110,7 @@ impl<
     /// prover and verifier to have the same view
     pub fn preprocess_prover(
         &mut self,
-        commit_key: &Powers<E>,
+        commit_key: &CommitKey<E>,
         transcript: &mut Transcript,
     ) -> Result<ProverKey<E::Fr, P>, Error> {
         let (_, selectors, domain) =
@@ -435,7 +436,7 @@ impl<
     }
 }
 
-/// Given that the domain size is `D`  
+/// Given that the domain size is `D`
 /// This function computes the `D` evaluation points for
 /// the vanishing polynomial of degree `n` over a coset
 pub(crate) fn compute_vanishing_poly_over_coset<

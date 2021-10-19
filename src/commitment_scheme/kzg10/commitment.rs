@@ -9,41 +9,41 @@
 
 use ark_ec::PairingEngine;
 use ark_poly_commit::kzg10::Commitment;
-// use dusk_bytes::{DeserializableSlice, Serializable};
 use num_traits::Zero;
 
+/*
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 /// Holds a commitment to a polynomial in a form of a [`G1Affine`]-bls12_381
 /// point.
-// pub(crate) struct Commitment<E: PairingEngine>(
-//     /// The commitment is a group element.
-//     pub(crate) E::G1Affine,
-// );
+pub(crate) struct Commitment<E: PairingEngine>(
+    /// The commitment is a group element.
+    pub(crate) E::G1Affine,
+);
 
-// impl<E: PairingEngine> From<E::G1Affine> for Commitment<E> {
-//     fn from(point: E::G1Affine) -> Commitment<E> {
-//         Commitment(point)
-//     }
-// }
+impl<E: PairingEngine> From<E::G1Affine> for Commitment<E> {
+    fn from(point: E::G1Affine) -> Commitment<E> {
+        Commitment(point)
+    }
+}
 
-// impl<E: PairingEngine> From<E::G1Projective> for Commitment<E> {
-//     fn from(point: E::G1Projective) -> Commitment<E> {
-//         Commitment(point.into())
-//     }
-// }
+impl<E: PairingEngine> From<E::G1Projective> for Commitment<E> {
+    fn from(point: E::G1Projective) -> Commitment<E> {
+        Commitment(point.into())
+    }
+}
 
-// impl<E: PairingEngine> Serializable<{ E::G1Affine::SIZE }> for Commitment<E>
-// {     type Error = dusk_bytes::Error;
+impl<E: PairingEngine> Serializable<{ E::G1Affine::SIZE }> for Commitment<E>
+{     type Error = dusk_bytes::Error;
 
-//     fn to_bytes(&self) -> [u8; Self::SIZE] {
-//         self.0.to_bytes()
-//     }
+    fn to_bytes(&self) -> [u8; Self::SIZE] {
+        self.0.to_bytes()
+    }
 
-//     fn from_bytes(buf: &[u8; Self::SIZE]) -> Result<Self, Self::Error> {
-//         let g1 = G1Affine::from_slice(buf)?;
-//         Ok(Self(g1))
-//     }
-// }
+    fn from_bytes(buf: &[u8; Self::SIZE]) -> Result<Self, Self::Error> {
+        let g1 = G1Affine::from_slice(buf)?;
+        Ok(Self(g1))
+    }
+}
 
 impl<E: PairingEngine> Commitment<E> {
     /// Builds an identity [`Commitment`] which is equivalent to the
@@ -58,7 +58,7 @@ impl<E: PairingEngine> Default for Commitment<E> {
         Commitment::zero()
     }
 }
-
+*/
 /*
 #[cfg(test)]
 mod commitment_tests {

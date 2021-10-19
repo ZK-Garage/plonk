@@ -4,12 +4,13 @@
 //
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
+use crate::commitment_scheme::kzg10::OpeningKey;
 use crate::constraint_system::StandardComposer;
 use crate::error::Error;
 use crate::proof_system::widget::VerifierKey;
 use crate::proof_system::Proof;
 use ark_ec::{PairingEngine, ProjectiveCurve, TEModelParameters};
-use ark_poly_commit::kzg10::{Powers, PreparedVerifierKey as PCVerifierKey};
+use ark_poly_commit::kzg10::Powers;
 use merlin::Transcript;
 
 /// Abstraction structure designed verify [`Proof`]s.
@@ -102,7 +103,7 @@ impl<
     pub fn verify(
         &self,
         proof: &Proof<E, P>,
-        pc_verifier_key: &PCVerifierKey<E>,
+        pc_verifier_key: &OpeningKey<E>,
         public_inputs: &[E::Fr],
     ) -> Result<(), Error> {
         let mut cloned_transcript = self.preprocessed_transcript.clone();

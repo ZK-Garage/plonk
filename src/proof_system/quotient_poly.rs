@@ -81,7 +81,7 @@ pub(crate) fn compute<F: PrimeField, P: TEModelParameters<BaseField = F>>(
         prover_key,
         (&wl_eval_4n, &wr_eval_4n, &wo_eval_4n, &w4_eval_4n),
         &z_eval_4n,
-        (alpha, beta, gamma),
+        (*alpha, *beta, *gamma),
     );
     let range = (0..domain_4n.size()).into_iter();
 

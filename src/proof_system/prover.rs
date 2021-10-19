@@ -9,6 +9,7 @@ use std::marker::PhantomData;
 use crate::{
     constraint_system::{StandardComposer, Variable},
     error::Error,
+    prelude::CommitKey,
     proof_system::{
         linearisation_poly, proof::Proof, quotient_poly, ProverKey,
     },
@@ -185,7 +186,7 @@ impl<
     /// This is automatically done when [`Prover::prove`] is called.
     pub fn prove_with_preprocessed(
         &self,
-        commit_key: &Powers<E>,
+        commit_key: &CommitKey<E>,
         prover_key: &ProverKey<E::Fr, P>,
     ) -> Result<Proof<E, P>, Error> {
         let domain =
