@@ -1,12 +1,14 @@
 [package]
-name = "dusk-plonk"
+name = "ark-plonk"
 version = "0.8.2"
 authors = ["Kevaundray Wedderburn <kevtheappdev@gmail.com>",
-           "Luke Pearson <luke@dusk.network>", 
-           "CPerezz <carlos@dusk.network>",
-           "Jules de Smit <jules@aleo.org>"] 
+           "Luke Pearson <luke@polychain.capital>",
+           "Jules De Smit <jules@aleo.org>", 
+           "Joshua Fitzgerald <joshua@heliax.dev>",
+           "Carlos Perez <carlos.perezbaro@iohk.io>",
+           "David Nevado <david.nevado@iohk.io>"] 
 readme = "README.md"
-repository = "https://github.com/dusk-network/plonk"
+repository = "https://github.com/rust-zkp/ark-plonk"
 keywords = ["cryptography", "plonk", "zk-snarks", "zero-knowledge", "crypto"]
 categories =["algorithms", "cryptography", "science"]
 description = "A pure-Rust implementation of the PLONK ZK-Proof algorithm"
