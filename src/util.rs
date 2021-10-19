@@ -4,9 +4,11 @@
 //
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
-use ark_ec::{AffineCurve, PairingEngine};
-use ark_ff::PrimeField;
-use ark_poly::{univariate::DensePolynomial, Polynomial, UVPolynomial};
+use ark_ff::{FftField, PrimeField};
+use ark_poly::{
+    univariate::DensePolynomial, GeneralEvaluationDomain, Polynomial,
+    UVPolynomial,
+};
 
 /// Returns a vector of scalars of increasing powers of x from x^0 to x^d.
 pub(crate) fn powers_of<F: PrimeField>(
@@ -20,21 +22,6 @@ pub(crate) fn powers_of<F: PrimeField>(
     }
     powers
 }
-
-/// This function is only used to generate the SRS.
-/// The intention is just to compute the resulting points
-/// of the operation `a*P, b*P, c*P ... (n-1)*P` into a `Vec`.
-pub(crate) fn slow_multiscalar_mul_single_base<E: PairingEngine>(
-    scalars: &[E::Fr],
-    base: E::G1Projective,
-) -> Vec<E::G1Projective> {
-    scalars
-        .iter()
-        .map(|s| base.into().mul(s.into_repr()))
-        .collect()
-}
-
-// while we do not have batch inversion for scalars
 
 pub fn ruffini<F: PrimeField>(
     poly: DensePolynomial<F>,
@@ -61,4 +48,29 @@ pub fn ruffini<F: PrimeField>(
     // Reverse the results for storage in the Polynomial struct
     quotient.reverse();
     DensePolynomial::from_coefficients_vec(quotient)
+}
+
+pub fn get_domain_attrs<F: FftField>(
+    domain: &GeneralEvaluationDomain<F>,
+    attr: &'static str,
+) -> F {
+    match domain {
+        GeneralEvaluationDomain::MixedRadix(domain) => match attr {
+            "group_gen" => domain.group_gen,
+            "group_gen_inv" => domain.group_gen_inv,
+            "generator_inv" => domain.generator_inv,
+            "size_as_fe" => domain.size_as_field_element,
+            "size_inv" => domain.size_inv,
+            _ => unreachable!(),
+        },
+        GeneralEvaluationDomain::Radix2(domain) => match attr {
+            "group_gen" => domain.group_gen,
+            "group_gen_inv" => domain.group_gen_inv,
+            "generator_inv" => domain.generator_inv,
+            "size_as_fe" => domain.size_as_field_element,
+            "size_inv" => domain.size_inv,
+            _ => unreachable!(),
+        },
+        _ => unreachable!(),
+    }
 }

@@ -4,8 +4,7 @@
 //
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
-use std::marker::PhantomData;
-
+use crate::util::*;
 use crate::{
     constraint_system::{StandardComposer, Variable},
     error::Error,
@@ -22,8 +21,9 @@ use ark_poly::{
     UVPolynomial,
 };
 use ark_poly_commit::kzg10::Powers;
+use core::marker::PhantomData;
 use merlin::Transcript;
-use num_traits::{One, Zero};
+use num_traits::Zero;
 
 /// Abstraction structure designed to construct a circuit and generate
 /// [`Proof`]s for it.
@@ -54,7 +54,10 @@ impl<
     }
 
     /// Preprocesses the underlying constraint system.
-    pub fn preprocess(&mut self, commit_key: &Powers<E>) -> Result<(), Error> {
+    pub fn preprocess(
+        &mut self,
+        commit_key: &CommitKey<E>,
+    ) -> Result<(), Error> {
         if self.prover_key.is_some() {
             return Err(Error::CircuitAlreadyPreprocessed);
         }
@@ -238,7 +241,7 @@ impl<
         transcript.append_scalar(b"beta", &beta);
         let gamma = transcript.challenge_scalar(b"gamma");
 
-        let z_poly = &self.cs.perm.compute_permutation_poly(
+        let z_poly = self.cs.perm.compute_permutation_poly(
             &domain,
             (&w_l_scalar, &w_r_scalar, &w_o_scalar, &w_4_scalar),
             beta,
@@ -401,7 +404,7 @@ impl<
         // evaluation challenge
         let shifted_aggregate_witness = commit_key.compute_aggregate_witness(
             &[z_poly, w_l_poly, w_r_poly, w_4_poly],
-            &(z_challenge * domain.group_gen),
+            &(z_challenge * get_domain_attrs(&domain, "group_gen")),
             &mut transcript,
         );
         let w_zx_comm = commit_key.commit(&shifted_aggregate_witness)?;
@@ -433,9 +436,9 @@ impl<
     /// also be computed.
     pub fn prove(
         &mut self,
-        commit_key: &Powers<E>,
+        commit_key: &CommitKey<E>,
     ) -> Result<Proof<E, P>, Error> {
-        let prover_key: &ProverKey<E::Fr>;
+        let prover_key: &ProverKey<E::Fr, P>;
 
         if self.prover_key.is_none() {
             // Preprocess circuit

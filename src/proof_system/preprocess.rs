@@ -261,7 +261,7 @@ impl<
     /// verifier by skipping the FFTs needed to compute the 4n evaluations.
     pub fn preprocess_verifier(
         &mut self,
-        commit_key: &Powers<E>,
+        commit_key: &CommitKey<E>,
         transcript: &mut Transcript,
     ) -> Result<widget::VerifierKey<E, P>, Error> {
         let (verifier_key, _, _) =
@@ -275,7 +275,7 @@ impl<
     /// view.
     fn preprocess_shared(
         &mut self,
-        commit_key: &Powers<E>,
+        commit_key: &CommitKey<E>,
         transcript: &mut Transcript,
     ) -> Result<
         (

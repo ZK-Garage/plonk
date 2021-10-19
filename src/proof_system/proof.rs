@@ -10,8 +10,8 @@
 //! This module contains the implementation of the `StandardComposer`s
 //! `Proof` structure and it's methods.
 
-use super::{linearisation_poly::ProofEvaluations, PCAggregateProof};
-use crate::commitment_scheme::kzg10::OpeningKey;
+use super::linearisation_poly::ProofEvaluations;
+use crate::commitment_scheme::kzg10::{KZGAggregateProof, OpeningKey};
 use crate::proof_system::VerifierKey;
 use crate::{error::Error, transcript::TranscriptProtocol};
 use ark_ec::{msm::VariableBaseMSM, AffineCurve, TEModelParameters};
@@ -21,7 +21,6 @@ use ark_poly::{EvaluationDomain, GeneralEvaluationDomain};
 use ark_poly_commit::kzg10::Commitment;
 use core::marker::PhantomData;
 use merlin::Transcript;
-use num_traits::{One, Zero};
 use rayon::prelude::*;
 
 /// A Proof is a composition of `Commitment`s to the Witness, Permutation,
@@ -200,7 +199,7 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Proof<E, P> {
         // Compose the Aggregated Proof
         //
         let mut aggregate_proof =
-            PCAggregateProof::<E, P>::with_witness(self.w_z_comm);
+            KZGAggregateProof::<E, P>::with_witness(self.w_z_comm);
         aggregate_proof.add_part((t_eval, t_comm));
         aggregate_proof.add_part((self.evaluations.lin_poly_eval, r_comm));
         aggregate_proof.add_part((self.evaluations.a_eval, self.a_comm));
@@ -224,7 +223,7 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Proof<E, P> {
 
         // Compose the shifted aggregate proof
         let mut shifted_aggregate_proof =
-            PCAggregateProof::<E, P>::with_witness(self.w_zw_comm);
+            KZGAggregateProof::<E, P>::with_witness(self.w_zw_comm);
         shifted_aggregate_proof
             .add_part((self.evaluations.perm_eval, self.z_comm));
         shifted_aggregate_proof
