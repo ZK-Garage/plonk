@@ -385,14 +385,6 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Proof<E, P> {
         Commitment(
             VariableBaseMSM::multi_scalar_mul(&points, &scalars_repr).into(),
         )
-
-        // Commitment::from_projective(VariableBaseMSM::multi_scalar_mul(
-        //     &points,
-        //     &scalars
-        //         .into_iter()
-        //         .map(|s| s.into_repr())
-        //         .collect::<Vec<_>>(),
-        // ))
     }
 }
 

@@ -335,29 +335,39 @@ impl<
             fourth_sigma_poly,
         ) = self.perm.compute_sigma_polynomials(self.n, &domain);
 
-        let q_m_poly_commit = commit_key.commit(&q_m_poly).unwrap_or_default();
-        let q_l_poly_commit = commit_key.commit(&q_l_poly).unwrap_or_default();
-        let q_r_poly_commit = commit_key.commit(&q_r_poly).unwrap_or_default();
-        let q_o_poly_commit = commit_key.commit(&q_o_poly).unwrap_or_default();
-        let q_c_poly_commit = commit_key.commit(&q_c_poly).unwrap_or_default();
-        let q_4_poly_commit = commit_key.commit(&q_4_poly).unwrap_or_default();
+        let q_m_poly_commit =
+            commit_key.commit(q_m_poly.clone()).unwrap_or_default();
+        let q_l_poly_commit =
+            commit_key.commit(q_l_poly.clone()).unwrap_or_default();
+        let q_r_poly_commit =
+            commit_key.commit(q_r_poly.clone()).unwrap_or_default();
+        let q_o_poly_commit =
+            commit_key.commit(q_o_poly.clone()).unwrap_or_default();
+        let q_c_poly_commit =
+            commit_key.commit(q_c_poly.clone()).unwrap_or_default();
+        let q_4_poly_commit =
+            commit_key.commit(q_4_poly.clone()).unwrap_or_default();
         let q_arith_poly_commit =
-            commit_key.commit(&q_arith_poly).unwrap_or_default();
+            commit_key.commit(q_arith_poly.clone()).unwrap_or_default();
         let q_range_poly_commit =
-            commit_key.commit(&q_range_poly).unwrap_or_default();
+            commit_key.commit(q_range_poly.clone()).unwrap_or_default();
         let q_logic_poly_commit =
-            commit_key.commit(&q_logic_poly).unwrap_or_default();
+            commit_key.commit(q_logic_poly.clone()).unwrap_or_default();
         let q_fixed_group_add_poly_commit = commit_key
-            .commit(&q_fixed_group_add_poly)
+            .commit(q_fixed_group_add_poly.clone())
             .unwrap_or_default();
         let q_variable_group_add_poly_commit = commit_key
-            .commit(&q_variable_group_add_poly)
+            .commit(q_variable_group_add_poly.clone())
             .unwrap_or_default();
 
-        let left_sigma_poly_commit = commit_key.commit(&left_sigma_poly)?;
-        let right_sigma_poly_commit = commit_key.commit(&right_sigma_poly)?;
-        let out_sigma_poly_commit = commit_key.commit(&out_sigma_poly)?;
-        let fourth_sigma_poly_commit = commit_key.commit(&fourth_sigma_poly)?;
+        let left_sigma_poly_commit =
+            commit_key.commit(left_sigma_poly.clone())?;
+        let right_sigma_poly_commit =
+            commit_key.commit(right_sigma_poly.clone())?;
+        let out_sigma_poly_commit =
+            commit_key.commit(out_sigma_poly.clone())?;
+        let fourth_sigma_poly_commit =
+            commit_key.commit(fourth_sigma_poly.clone())?;
 
         // Verifier Key for arithmetic circuits
         let arithmetic_verifier_key = widget::arithmetic::VerifierKey {

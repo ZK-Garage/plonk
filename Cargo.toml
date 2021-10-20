@@ -41,6 +41,7 @@ num-traits = "0.2.14"
 tempdir = "0.3"
 ark-bls12-381 = "0.3"
 ark-ed-on-bls12-381 = "0.3"
+rand = "0.8.0"
 
 [features]
 default = ["std"]
