@@ -642,17 +642,20 @@ impl<
     }
 }
 
-/*
 #[cfg(test)]
 mod general_composer_tests {
-    use super::*;
     use crate::constraint_system::helper::*;
-    use crate::proof_system::{Prover, Verifier};
-    use ark_bls12_381::Bls12_381;
-    use ark_bls12_381::Fr as BlsScalar;
+    use crate::constraint_system::StandardComposer;
+
+    use super::*;
+    use ark_bls12_381::{Bls12_381, Fr as BlsScalar};
+    use ark_ed_on_bls12_381::{
+        EdwardsParameters as JubjubParameters,
+        EdwardsProjective as JubjubProjective,
+    };
     use ark_ed_on_bls12_381::{EdwardsParameters, EdwardsProjective};
-    use ark_poly_commit::kzg10::UniversalParams;
-    use rand_core::OsRng;
+    // use ark_poly_commit::kzg10::UniversalParams;
+    // use rand_core::OsRng;
 
     #[test]
     /// Tests that a circuit initially has 3 gates
@@ -677,12 +680,12 @@ mod general_composer_tests {
     #[ignore]
     /// Tests that an empty circuit proof passes
     fn test_prove_verify() {
-        let res: StandardComposer<
-            Bls12_381,
-            EdwardsProjective,
-            EdwardsParameters,
-        > = gadget_tester(
-            |composer| {
+        let res = gadget_tester(
+            |composer: &mut StandardComposer<
+                Bls12_381,
+                JubjubProjective,
+                JubjubParameters,
+            >| {
                 // do nothing except add the dummy constraints
             },
             200,
@@ -693,7 +696,11 @@ mod general_composer_tests {
     #[test]
     fn test_conditional_select() {
         let res = gadget_tester(
-            |composer| {
+            |composer: &mut StandardComposer<
+                Bls12_381,
+                JubjubProjective,
+                JubjubParameters,
+            >| {
                 let bit_1 = composer.add_input(BlsScalar::one());
                 let bit_0 = composer.zero_var();
 
@@ -713,6 +720,7 @@ mod general_composer_tests {
         assert!(res.is_ok());
     }
 
+    /*
     #[test]
     // XXX: Move this to integration tests
     fn test_multiple_proofs() {
@@ -760,5 +768,5 @@ mod general_composer_tests {
             assert!(verifier.verify(&proof, &vk, &public_inputs).is_ok());
         }
     }
+    */
 }
-*/

@@ -19,7 +19,7 @@ mod boolean;
 pub mod ecc;
 
 //#[cfg(test)]
-//pub(crate) mod helper; // TODO: Uncomment and figure out if needed
+pub(crate) mod helper; // TODO: Uncomment and figure out if needed
 /// XOR and AND gates
 pub mod logic;
 /// Range gate

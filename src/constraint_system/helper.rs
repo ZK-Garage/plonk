@@ -9,9 +9,29 @@ use super::StandardComposer;
 use crate::error::Error;
 use crate::proof_system::{Prover, Verifier};
 use crate::util;
-use ark_ec::{PairingEngine, ProjectiveCurve, TEModelParameters};
+use ark_ec::{AffineCurve, PairingEngine, ProjectiveCurve, TEModelParameters};
+use ark_ff::{Field, PrimeField, UniformRand};
 use ark_poly_commit::kzg10::UniversalParams;
 use rand_core::{CryptoRng, OsRng, RngCore};
+
+/// This function is only used to generate the SRS.
+/// The intention is just to compute the resulting points
+/// of the operation `a*P, b*P, c*P ... (n-1)*P` into a `Vec`.
+pub(crate) fn slow_multiscalar_mul_single_base<E: PairingEngine>(
+    scalars: &[E::Fr],
+    base: E::G1Projective,
+) -> Vec<E::G1Projective> {
+    scalars.iter().map(|&s| base.mul(s.into_repr())).collect()
+}
+
+/// This function is only used to generate the SRS.
+pub(crate) fn slow_multibase_mul_single_scalar<E: PairingEngine>(
+    scalar: E::Fr,
+    bases: &[E::G1Projective],
+) -> Vec<E::G1Projective> {
+    let scalar_repr = scalar.into_repr();
+    bases.iter().map(|&b| b.mul(scalar_repr)).collect()
+}
 
 /// Setup generates the public parameters using a random number generator.
 /// This method will in most cases be used for testing and exploration.
@@ -28,55 +48,51 @@ pub fn setup<R: RngCore + CryptoRng, E: PairingEngine>(
     }
 
     // Generate the secret scalar beta
-    let beta = util::random_scalar(&mut rng);
+    let beta = E::Fr::rand(&mut rng);
 
     // Compute powers of beta up to and including beta^max_degree
     let powers_of_beta = util::powers_of(&beta, max_degree);
 
     // Powers of G1 that will be used to commit to a specified polynomial
-    let g = util::random_g1_point(&mut rng);
-    let powers_of_g: Vec<E::G1Projective> =
-        util::slow_multiscalar_mul_single_base(&powers_of_beta, g);
+    let g = E::G1Projective::rand(&mut rng);
+    let powers_of_g: Vec<E::G1Affine> =
+        slow_multiscalar_mul_single_base(&powers_of_beta, g);
     assert_eq!(powers_of_g.len(), max_degree + 1);
 
     // Generate the secret scalar gamma
-    let gamma = util::random_scalar(&mut rng);
+    let gamma = E::Fr::rand(&mut rng);
 
     // Generate powers of gamma g
-    let powers_of_gamma_g: Vec<E::G1Projective> =
-        util::slow_multibase_mul_single_scalar(gamma, &powers_of_g);
-
-    // Normalise all projective points
-    let mut normalised_g = vec![E::G1Affine::identity(); max_degree + 1];
-    E::G1Projective::batch_normalize(&powers_of_g, &mut normalised_g);
-
-    let mut normalised_gamma_g = vec![E::G1Affine::identity(); max_degree + 1];
-    E::G1Projective::batch_normalize(
-        &powers_of_gamma_g,
-        &mut normalised_gamma_g,
-    );
+    let powers_of_gamma_g_proj: Vec<E::G1Projective> =
+        slow_multibase_mul_single_scalar(gamma, &powers_of_g);
 
     // Compute beta*G2 element and stored cached elements for verifying
     // multiple proofs.
-    let h: E::G2Affine = util::random_g2_point(&mut rng).into();
-    let beta_h: E::G2Affine = (h * beta).into();
+    let h_proj: E::G2Projective = E::G2Projective::rand(&mut rng);
+    let h: E::G2Affine = h_proj.into();
+    let beta_h: E::G2Affine = (h_proj.mul(beta.into_repr())).into();
 
     // Compute group elements of the form { \beta^i G2 }
-    let powers_of_h: Vec<E::G1Projective> =
-        util::slow_multiscalar_mul_single_base(&powers_of_beta, h);
+    let neg_powers_of_h: Vec<E::G1Projective> =
+        slow_multiscalar_mul_single_base(&powers_of_beta, -h);
 
-    let mut normalised_h = vec![E::G1Affine::identity(); max_degree + 1];
-    E::G1Projective::batch_normalize(&powers_of_h, &mut normalised_h);
+    E::G1Projective::batch_normalization(&mut powers_of_gamma_g_proj);
+    E::G1Projective::batch_normalization(&mut neg_powers_of_h);
+
+    let powers_of_gamma_g: Vec<E::G1Affine> = powers_of_gamma_g_proj
+        .iter()
+        .map(|point| point.into_affine())
+        .collect();
 
     let prepared_h: E::G2Prepared = h.into();
     let prepared_beta_h: E::G2Prepared = beta_h.into();
 
     Ok(UniversalParams {
-        powers_of_g: normalised_g,
-        powers_of_gamma_g: normalised_gamma_g,
+        powers_of_g: powers_of_g.into(),
+        powers_of_gamma_g: powers_of_gamma_g.into(),
         h,
         beta_h,
-        neg_powers_of_h: powers_of_h,
+        neg_powers_of_h: neg_powers_of_h.into(),
         prepared_h,
         prepared_beta_h,
     })

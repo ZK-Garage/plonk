@@ -50,15 +50,25 @@ impl<
     }
 }
 
-/*
 #[cfg(test)]
 mod boolean_gates_tests {
-    use super::super::helper::*;
-    use ark_bls12_381::Fr as BlsScalar;
+    use crate::constraint_system::helper::*;
+    use crate::constraint_system::StandardComposer;
+
+    use ark_bls12_381::{Bls12_381, Fr as BlsScalar};
+    use ark_ed_on_bls12_381::{
+        EdwardsParameters as JubjubParameters,
+        EdwardsProjective as JubjubProjective,
+    };
+    use num_traits::One;
     #[test]
     fn test_correct_bool_gate() {
         let res = gadget_tester(
-            |composer| {
+            |composer: &mut StandardComposer<
+                Bls12_381,
+                JubjubProjective,
+                JubjubParameters,
+            >| {
                 let zero = composer.zero_var();
                 let one = composer.add_input(BlsScalar::one());
 
@@ -73,7 +83,11 @@ mod boolean_gates_tests {
     #[test]
     fn test_incorrect_bool_gate() {
         let res = gadget_tester(
-            |composer| {
+            |composer: &mut StandardComposer<
+                Bls12_381,
+                JubjubProjective,
+                JubjubParameters,
+            >| {
                 let zero = composer.add_input(BlsScalar::from(5));
                 let one = composer.add_input(BlsScalar::one());
 
@@ -85,5 +99,3 @@ mod boolean_gates_tests {
         assert!(res.is_err())
     }
 }
-
- */
