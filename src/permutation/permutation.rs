@@ -751,33 +751,59 @@ impl<F: PrimeField> Permutation<F> {
     }
 }
 
-/*
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::constraint_system::StandardComposer;
-    use ark_ec::bls12::{Bls12, Bls12Parameters};
+    use crate::{constraint_system::StandardComposer, util};
+    use ark_bls12_381::{Bls12_381, Fr as BlsScalar, FrParameters};
+    use ark_ed_on_bls12_381::{
+        EdwardsParameters as JubjubParameters,
+        EdwardsProjective as JubjubProjective,
+    };
+    use ark_ff::fields::FftParameters;
+    use ark_ff::Field;
+    use ark_ff::UniformRand;
+    use ark_poly::univariate::DensePolynomial;
+    use ark_poly::Polynomial;
+    use num_traits::{One, Zero};
+    // use rand::{rngs::StdRng, SeedableRng};
     use rand_core::OsRng;
 
     #[test]
     fn test_multizip_permutation_poly() {
-        let mut cs = StandardComposer::with_expected_size(4);
-        let x1 = cs.add_input(Bls12::<dyn Bls12Parameters>::Fr::from_raw([
-            4, 0, 0, 0,
-        ]));
-        let x2 = cs.add_input(Bls12::<dyn Bls12Parameters>::Fr::from_raw([
-            12, 0, 0, 0,
-        ]));
-        let x3 = cs.add_input(Bls12::<dyn Bls12Parameters>::Fr::from_raw([
-            8, 0, 0, 0,
-        ]));
-        let x4 = cs.add_input(Bls12::<dyn Bls12Parameters>::Fr::from_raw([
-            3, 0, 0, 0,
-        ]));
+        let mut cs: StandardComposer<
+            Bls12_381,
+            JubjubProjective,
+            JubjubParameters,
+        > = StandardComposer::with_expected_size(4);
+        let x1 = cs.add_input(BlsScalar::new(
+            <ark_bls12_381::FrParameters as FftParameters>::BigInt::new([
+                4, 0, 0, 0,
+            ]),
+        ));
+        let x2 = cs.add_input(BlsScalar::new(
+            <ark_bls12_381::FrParameters as FftParameters>::BigInt::new([
+                12, 0, 0, 0,
+            ]),
+        ));
+        let x3 = cs.add_input(BlsScalar::new(
+            <ark_bls12_381::FrParameters as FftParameters>::BigInt::new([
+                8, 0, 0, 0,
+            ]),
+        ));
+        let x4 = cs.add_input(BlsScalar::new(
+            <ark_bls12_381::FrParameters as FftParameters>::BigInt::new([
+                3, 0, 0, 0,
+            ]),
+        ));
 
-        let zero = Bls12::Fr::zero();
-        let one = Bls12::Fr::one();
-        let two = Bls12::Fr::from_raw([2, 0, 0, 0]);
+        let zero = BlsScalar::zero();
+        let one = BlsScalar::one();
+        let two = BlsScalar::new(
+            <ark_bls12_381::FrParameters as FftParameters>::BigInt::new([
+                2, 0, 0, 0,
+            ]),
+        );
 
         // x1 * x4 = x2
         cs.poly_gate(x1, x4, x2, one, zero, zero, -one, zero, None);
@@ -791,18 +817,17 @@ mod test {
         // x3 * x4 = 2*x2
         cs.poly_gate(x3, x4, x2, one, zero, zero, -two, zero, None);
 
-        let domain = GeneralEvaluationDomain::<Bls12Parameters::Fp>::new(
-            cs.circuit_size(),
-        )
-        .unwrap();
-        let pad = vec![Bls12::Fr::zero(); domain.size() - cs.w_l.len()];
-        let mut w_l_scalar: Vec<Bls12<dyn Bls12Parameters>::Fr> =
+        let domain =
+            GeneralEvaluationDomain::<BlsScalar>::new(cs.circuit_size())
+                .unwrap();
+        let pad = vec![BlsScalar::zero(); domain.size() - cs.w_l.len()];
+        let mut w_l_scalar: Vec<BlsScalar> =
             cs.w_l.iter().map(|v| cs.variables[v]).collect();
-        let mut w_r_scalar: Vec<Bls12<dyn Bls12Parameters>::Fr> =
+        let mut w_r_scalar: Vec<BlsScalar> =
             cs.w_r.iter().map(|v| cs.variables[v]).collect();
-        let mut w_o_scalar: Vec<Bls12<dyn Bls12Parameters>::Fr> =
+        let mut w_o_scalar: Vec<BlsScalar> =
             cs.w_o.iter().map(|v| cs.variables[v]).collect();
-        let mut w_4_scalar: Vec<Bls12<dyn Bls12Parameters>::Fr> =
+        let mut w_4_scalar: Vec<BlsScalar> =
             cs.w_4.iter().map(|v| cs.variables[v]).collect();
 
         w_l_scalar.extend(&pad);
@@ -810,26 +835,26 @@ mod test {
         w_o_scalar.extend(&pad);
         w_4_scalar.extend(&pad);
 
-        let sigmas: Vec<Vec<Bls12::Fr>> = cs
+        let sigmas: Vec<Vec<BlsScalar>> = cs
             .perm
             .compute_sigma_permutations(7)
             .iter()
             .map(|wd| cs.perm.compute_permutation_lagrange(wd, &domain))
             .collect();
 
-        let beta = Bls12::<dyn Bls12Parameters>::Fr::random(&mut OsRng);
-        let gamma = Bls12::<dyn Bls12Parameters>::Fr::random(&mut OsRng);
+        let beta = BlsScalar::rand(&mut OsRng);
+        let gamma = BlsScalar::rand(&mut OsRng);
 
-        let sigma_polys: Vec<Polynomial<Bls12::<dyn Bls12Parameters>::Fr>> = sigmas
+        let sigma_polys: Vec<DensePolynomial<BlsScalar>> = sigmas
             .iter()
-            .map(|v| DensePolynomial::Bls12::<dyn Bls12Parameters>::Fr::from_coefficients_vec(domain.ifft(&v)))
+            .map(|v| DensePolynomial::from_coefficients_vec(domain.ifft(&v)))
             .collect();
 
         let mz = cs.perm.compute_permutation_poly(
             &domain,
             (&w_l_scalar, &w_r_scalar, &w_o_scalar, &w_4_scalar),
-            &beta,
-            &gamma,
+            beta,
+            gamma,
             (
                 &sigma_polys[0],
                 &sigma_polys[1],
@@ -838,31 +863,30 @@ mod test {
             ),
         );
 
-        let old_z =
-            DensePolynomial::Bls12::<dyn Bls12Parameters>::Fr::from_coefficients_vec(
-                domain.ifft(&cs.perm.compute_fast_permutation_poly(
-                    &domain,
-                    &w_l_scalar,
-                    &w_r_scalar,
-                    &w_o_scalar,
-                    &w_4_scalar,
-                    &beta,
-                    &gamma,
-                    (
-                        &sigma_polys[0],
-                        &sigma_polys[1],
-                        &sigma_polys[2],
-                        &sigma_polys[3],
-                    ),
-                )),
-            );
+        let old_z = DensePolynomial::from_coefficients_vec(domain.ifft(
+            &cs.perm.compute_fast_permutation_poly(
+                &domain,
+                &w_l_scalar,
+                &w_r_scalar,
+                &w_o_scalar,
+                &w_4_scalar,
+                beta,
+                gamma,
+                (
+                    &sigma_polys[0],
+                    &sigma_polys[1],
+                    &sigma_polys[2],
+                    &sigma_polys[3],
+                ),
+            ),
+        ));
 
         assert!(mz == old_z);
     }
 
     #[test]
     fn test_permutation_format() {
-        let mut perm: Permutation = Permutation::new();
+        let mut perm: Permutation<BlsScalar> = Permutation::new();
 
         let num_variables = 10u8;
         for i in 0..num_variables {
@@ -895,7 +919,7 @@ mod test {
 
     #[test]
     fn test_permutation_compute_sigmas_only_left_wires() {
-        let mut perm = Permutation::<Bls12Parameters::Fp>::new();
+        let mut perm = Permutation::<BlsScalar>::new();
 
         let var_zero = perm.new_variable();
         let var_two = perm.new_variable();
@@ -960,11 +984,10 @@ mod test {
         assert_eq!(fourth_sigma[2], WireData::Fourth(3));
         assert_eq!(fourth_sigma[3], WireData::Fourth(0));
 
-        let domain = GeneralEvaluationDomain::<Bls12Parameters::Fp>::new(
-            num_wire_mappings,
-        )
-        .unwrap();
-        let w = domain.group_gen;
+        let domain =
+            GeneralEvaluationDomain::<BlsScalar>::new(num_wire_mappings)
+                .unwrap();
+        let w = util::get_domain_attrs(&domain, "group_gen");
         let w_squared = w.pow(&[2, 0, 0, 0]);
         let w_cubed = w.pow(&[3, 0, 0, 0]);
 
@@ -973,16 +996,10 @@ mod test {
         // Should turn into {1 * K1, w^2, w^3, 1}
         let encoded_left_sigma =
             perm.compute_permutation_lagrange(left_sigma, &domain);
-        assert_eq!(
-            encoded_left_sigma[0],
-            Bls12::<dyn Bls12Parameters>::Fr::one() * &K1
-        );
+        assert_eq!(encoded_left_sigma[0], BlsScalar::one() * &K1());
         assert_eq!(encoded_left_sigma[1], w_squared);
         assert_eq!(encoded_left_sigma[2], w_cubed);
-        assert_eq!(
-            encoded_left_sigma[3],
-            Bls12::<dyn Bls12Parameters>::Fr::one()
-        );
+        assert_eq!(encoded_left_sigma[3], BlsScalar::one());
 
         // Check the right sigmas have been encoded properly
         // Right_sigma = {L1, R1, R2, R3}
@@ -990,9 +1007,9 @@ mod test {
         let encoded_right_sigma =
             perm.compute_permutation_lagrange(right_sigma, &domain);
         assert_eq!(encoded_right_sigma[0], w);
-        assert_eq!(encoded_right_sigma[1], w * &K1);
-        assert_eq!(encoded_right_sigma[2], w_squared * &K1);
-        assert_eq!(encoded_right_sigma[3], w_cubed * &K1);
+        assert_eq!(encoded_right_sigma[1], w * &K1());
+        assert_eq!(encoded_right_sigma[2], w_squared * &K1());
+        assert_eq!(encoded_right_sigma[3], w_cubed * &K1());
 
         // Check the output sigmas have been encoded properly
         // Out_sigma = {O0, O1, O2, O3}
@@ -1000,47 +1017,44 @@ mod test {
 
         let encoded_output_sigma =
             perm.compute_permutation_lagrange(out_sigma, &domain);
-        assert_eq!(
-            encoded_output_sigma[0],
-            Bls12::<dyn Bls12Parameters>::Fr::one() * &K2
-        );
-        assert_eq!(encoded_output_sigma[1], w * &K2);
-        assert_eq!(encoded_output_sigma[2], w_squared * &K2);
-        assert_eq!(encoded_output_sigma[3], w_cubed * &K2);
+        assert_eq!(encoded_output_sigma[0], BlsScalar::one() * &K2());
+        assert_eq!(encoded_output_sigma[1], w * &K2());
+        assert_eq!(encoded_output_sigma[2], w_squared * &K2());
+        assert_eq!(encoded_output_sigma[3], w_cubed * &K2());
 
         // Check the fourth sigmas have been encoded properly
         // Out_sigma = {F1, F2, F3, F0}
         // Should turn into {w * K3, w^2 * K3, w^3 * K3, 1 * K3}
         let encoded_fourth_sigma =
             perm.compute_permutation_lagrange(fourth_sigma, &domain);
-        assert_eq!(encoded_fourth_sigma[0], w * &K3);
-        assert_eq!(encoded_fourth_sigma[1], w_squared * &K3);
-        assert_eq!(encoded_fourth_sigma[2], w_cubed * &K3);
-        assert_eq!(encoded_fourth_sigma[3], K3);
+        assert_eq!(encoded_fourth_sigma[0], w * &K3());
+        assert_eq!(encoded_fourth_sigma[1], w_squared * &K3());
+        assert_eq!(encoded_fourth_sigma[2], w_cubed * &K3());
+        assert_eq!(encoded_fourth_sigma[3], K3());
 
         let w_l = vec![
-            Bls12::<dyn Bls12Parameters>::Fr::from(2),
-            Bls12::<dyn Bls12Parameters>::Fr::from(2),
-            Bls12::<dyn Bls12Parameters>::Fr::from(2),
-            Bls12::<dyn Bls12Parameters>::Fr::from(2),
+            BlsScalar::from(2),
+            BlsScalar::from(2),
+            BlsScalar::from(2),
+            BlsScalar::from(2),
         ];
         let w_r = vec![
-            Bls12::<dyn Bls12Parameters>::Fr::from(2),
-            Bls12::<dyn Bls12Parameters>::Fr::one(),
-            Bls12::<dyn Bls12Parameters>::Fr::one(),
-            Bls12::<dyn Bls12Parameters>::Fr::one(),
+            BlsScalar::from(2),
+            BlsScalar::one(),
+            BlsScalar::one(),
+            BlsScalar::one(),
         ];
         let w_o = vec![
-            Bls12::<dyn Bls12Parameters>::Fr::one(),
-            Bls12::<dyn Bls12Parameters>::Fr::one(),
-            Bls12::<dyn Bls12Parameters>::Fr::one(),
-            Bls12::<dyn Bls12Parameters>::Fr::one(),
+            BlsScalar::one(),
+            BlsScalar::one(),
+            BlsScalar::one(),
+            BlsScalar::one(),
         ];
         let w_4 = vec![
-            Bls12::<dyn Bls12Parameters>::Fr::one(),
-            Bls12::<dyn Bls12Parameters>::Fr::one(),
-            Bls12::<dyn Bls12Parameters>::Fr::one(),
-            Bls12::<dyn Bls12Parameters>::Fr::one(),
+            BlsScalar::one(),
+            BlsScalar::one(),
+            BlsScalar::one(),
+            BlsScalar::one(),
         ];
 
         test_correct_permutation_poly(
@@ -1055,7 +1069,7 @@ mod test {
     }
     #[test]
     fn test_permutation_compute_sigmas() {
-        let mut perm: Permutation = Permutation::new();
+        let mut perm: Permutation<BlsScalar> = Permutation::new();
 
         let var_one = perm.new_variable();
         let var_two = perm.new_variable();
@@ -1122,60 +1136,52 @@ mod test {
         Fourth_Sigma : {0,1,2,3} -> {F1, F2, F3, F0}
             When encoded using w, K1, K2,K3 we have {w * K3, w^2 * K3, w^3 * K3, 1 * K3}
         */
-        let domain = GeneralEvaluationDomain::<Bls12Parameters::Fp>::new(
-            num_wire_mappings,
-        )
-        .unwrap();
-        let w = domain.group_gen;
+        let domain =
+            GeneralEvaluationDomain::<BlsScalar>::new(num_wire_mappings)
+                .unwrap();
+        let w = util::get_domain_attrs(&domain, "group_gen");
         let w_squared = w.pow(&[2, 0, 0, 0]);
         let w_cubed = w.pow(&[3, 0, 0, 0]);
         // check the left sigmas have been encoded properly
         let encoded_left_sigma =
             perm.compute_permutation_lagrange(left_sigma, &domain);
-        assert_eq!(encoded_left_sigma[0], K1);
-        assert_eq!(encoded_left_sigma[1], w * &K2);
-        assert_eq!(encoded_left_sigma[2], w_squared * &K1);
-        assert_eq!(
-            encoded_left_sigma[3],
-            Bls12::<dyn Bls12Parameters>::Fr::one() * &K2
-        );
+        assert_eq!(encoded_left_sigma[0], K1());
+        assert_eq!(encoded_left_sigma[1], w * &K2());
+        assert_eq!(encoded_left_sigma[2], w_squared * &K1());
+        assert_eq!(encoded_left_sigma[3], BlsScalar::one() * &K2());
 
         // check the right sigmas have been encoded properly
         let encoded_right_sigma =
             perm.compute_permutation_lagrange(right_sigma, &domain);
-        assert_eq!(encoded_right_sigma[0], w * &K1);
-        assert_eq!(encoded_right_sigma[1], w_squared * &K2);
-        assert_eq!(encoded_right_sigma[2], w_cubed * &K2);
-        assert_eq!(
-            encoded_right_sigma[3],
-            Bls12::<dyn Bls12Parameters>::Fr::one()
-        );
+        assert_eq!(encoded_right_sigma[0], w * &K1());
+        assert_eq!(encoded_right_sigma[1], w_squared * &K2());
+        assert_eq!(encoded_right_sigma[2], w_cubed * &K2());
+        assert_eq!(encoded_right_sigma[3], BlsScalar::one());
 
         // check the output sigmas have been encoded properly
         let encoded_output_sigma =
             perm.compute_permutation_lagrange(out_sigma, &domain);
         assert_eq!(encoded_output_sigma[0], w);
         assert_eq!(encoded_output_sigma[1], w_cubed);
-        assert_eq!(encoded_output_sigma[2], w_cubed * &K1);
+        assert_eq!(encoded_output_sigma[2], w_cubed * &K1());
         assert_eq!(encoded_output_sigma[3], w_squared);
 
         // check the fourth sigmas have been encoded properly
         let encoded_fourth_sigma =
             perm.compute_permutation_lagrange(fourth_sigma, &domain);
-        assert_eq!(encoded_fourth_sigma[0], w * &K3);
-        assert_eq!(encoded_fourth_sigma[1], w_squared * &K3);
-        assert_eq!(encoded_fourth_sigma[2], w_cubed * &K3);
-        assert_eq!(encoded_fourth_sigma[3], K3);
+        assert_eq!(encoded_fourth_sigma[0], w * &K3());
+        assert_eq!(encoded_fourth_sigma[1], w_squared * &K3());
+        assert_eq!(encoded_fourth_sigma[2], w_cubed * &K3());
+        assert_eq!(encoded_fourth_sigma[3], K3());
     }
 
     #[test]
     fn test_basic_slow_permutation_poly() {
         let num_wire_mappings = 2;
         let mut perm = Permutation::new();
-        let domain = GeneralEvaluationDomain::<Bls12Parameters::Fp>::new(
-            num_wire_mappings,
-        )
-        .unwrap();
+        let domain =
+            GeneralEvaluationDomain::<BlsScalar>::new(num_wire_mappings)
+                .unwrap();
 
         let var_one = perm.new_variable();
         let var_two = perm.new_variable();
@@ -1185,22 +1191,10 @@ mod test {
         perm.add_variables_to_map(var_one, var_two, var_three, var_four, 0);
         perm.add_variables_to_map(var_three, var_two, var_one, var_four, 1);
 
-        let w_l: Vec<_> = vec![
-            Bls12::<dyn Bls12Parameters>::Fr::one(),
-            Bls12::<dyn Bls12Parameters>::Fr::from(3),
-        ];
-        let w_r: Vec<_> = vec![
-            Bls12::<dyn Bls12Parameters>::Fr::from(2),
-            Bls12::<dyn Bls12Parameters>::Fr::from(2),
-        ];
-        let w_o: Vec<_> = vec![
-            Bls12::<dyn Bls12Parameters>::Fr::from(3),
-            Bls12::<dyn Bls12Parameters>::Fr::one(),
-        ];
-        let w_4: Vec<_> = vec![
-            Bls12::<dyn Bls12Parameters>::Fr::one(),
-            Bls12::<dyn Bls12Parameters>::Fr::one(),
-        ];
+        let w_l: Vec<_> = vec![BlsScalar::one(), BlsScalar::from(3)];
+        let w_r: Vec<_> = vec![BlsScalar::from(2), BlsScalar::from(2)];
+        let w_o: Vec<_> = vec![BlsScalar::from(3), BlsScalar::one()];
+        let w_4: Vec<_> = vec![BlsScalar::one(), BlsScalar::one()];
 
         test_correct_permutation_poly(
             num_wire_mappings,
@@ -1232,8 +1226,8 @@ mod test {
     ) {
         // 0. Generate beta and gamma challenges
         //
-        let beta = random_scalar(&mut OsRng);
-        let gamma = random_scalar(&mut OsRng);
+        let beta = F::rand(&mut OsRng);
+        let gamma = F::rand(&mut OsRng);
         assert_ne!(gamma, beta);
 
         //1. Compute the permutation polynomial using both methods
@@ -1267,8 +1261,8 @@ mod test {
             &w_r,
             &w_o,
             &w_4,
-            &beta,
-            &gamma,
+            beta,
+            gamma,
             (
                 &left_sigma_poly,
                 &right_sigma_poly,
@@ -1305,7 +1299,8 @@ mod test {
         // Check that z(w^{n+1}) == z(1) == 1
         // This is the first check in the protocol
         assert_eq!(z_poly.evaluate(&F::one()), F::one());
-        let n_plus_one = domain.elements().last().unwrap() * &domain.group_gen;
+        let n_plus_one = domain.elements().last().unwrap()
+            * &util::get_domain_attrs(&domain, "group_gen");
         assert_eq!(z_poly.evaluate(&n_plus_one), F::one());
         //
         // Check that when z is unblinded, it has the correct degree
@@ -1317,7 +1312,8 @@ mod test {
 
         for i in 1..roots.len() {
             let current_root = roots[i];
-            let next_root = current_root * &domain.group_gen;
+            let next_root =
+                current_root * &util::get_domain_attrs(&domain, "group_gen");
 
             let current_identity_perm_product = &numerator_components[i];
             assert_ne!(current_identity_perm_product, &F::zero());
@@ -1353,7 +1349,9 @@ mod test {
             domain.ifft(&shifted_z),
         );
         for element in domain.elements() {
-            let z_eval = z_poly.evaluate(&(element * domain.group_gen));
+            let z_eval = z_poly.evaluate(
+                &(element * util::get_domain_attrs(&domain, "group_gen")),
+            );
             let shifted_z_eval = shifted_z_poly.evaluate(&element);
 
             assert_eq!(z_eval, shifted_z_eval)
@@ -1368,4 +1366,3 @@ use rand_core::RngCore;
 pub(crate) fn random_scalar<F: PrimeField, R: RngCore>(rng: &mut R) -> F {
     F::rand(rng)
 }
-*/
