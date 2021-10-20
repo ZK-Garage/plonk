@@ -330,16 +330,7 @@ mod test {
     use ark_ec::{PairingEngine, TEModelParameters};
     use ark_ff::Fp256;
     use ark_poly::Polynomial;
-    use rand::{rngs::StdRng, SeedableRng};
-
-    fn gen_rand() -> StdRng {
-        // arbitrary seed
-        let seed = [
-            1, 0, 0, 0, 23, 0, 0, 0, 200, 1, 0, 0, 210, 30, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        ];
-        StdRng::from_seed(seed)
-    }
+    use rand_core::OsRng;
 
     // Checks that a polynomial `p` was evaluated at a point `z` and returned
     // the value specified `v`. ie. v = p(z).
@@ -448,7 +439,7 @@ mod test {
         let (ck, opening_key) = setup_test::<Bls12_381>(degree)?;
         let point = BlsScalar::from(10u64);
 
-        let poly = DensePolynomial::rand(degree, &mut gen_rand());
+        let poly = DensePolynomial::rand(degree, &mut OsRng);
         let value = poly.evaluate(&point);
 
         let proof = open_single(&ck, poly, &value, &point)?;
@@ -466,13 +457,13 @@ mod test {
         let point_b = BlsScalar::from(11u64);
 
         // Compute secret polynomial a
-        let poly_a = DensePolynomial::rand(degree, &mut gen_rand());
+        let poly_a = DensePolynomial::rand(degree, &mut OsRng);
         let value_a = poly_a.evaluate(&point_a);
         let proof_a = open_single(&ck, poly_a, &value_a, &point_a)?;
         assert!(check(&vk, point_a, proof_a));
 
         // Compute secret polynomial b
-        let poly_b = DensePolynomial::rand(degree, &mut gen_rand());
+        let poly_b = DensePolynomial::rand(degree, &mut OsRng);
         let value_b = poly_b.evaluate(&point_b);
         let proof_b = open_single(&ck, poly_b, &value_b, &point_b)?;
         assert!(check(&vk, point_b, proof_b));
@@ -495,13 +486,13 @@ mod test {
             ark_ed_on_bls12_381::EdwardsParameters,
         > = {
             // Compute secret polynomials and their evaluations
-            let poly_a = DensePolynomial::rand(25, &mut gen_rand());
+            let poly_a = DensePolynomial::rand(25, &mut OsRng);
             let poly_a_eval = poly_a.evaluate(&point);
 
-            let poly_b = DensePolynomial::rand(26 + 1, &mut gen_rand());
+            let poly_b = DensePolynomial::rand(26 + 1, &mut OsRng);
             let poly_b_eval = poly_b.evaluate(&point);
 
-            let poly_c = DensePolynomial::rand(27, &mut gen_rand());
+            let poly_c = DensePolynomial::rand(27, &mut OsRng);
             let poly_c_eval = poly_c.evaluate(&point);
 
             open_multiple(
@@ -534,16 +525,16 @@ mod test {
         // Committer's View
         let (aggregated_proof, single_proof) = {
             // Compute secret polynomial and their evaluations
-            let poly_a = DensePolynomial::rand(25, &mut gen_rand());
+            let poly_a = DensePolynomial::rand(25, &mut OsRng);
             let poly_a_eval = poly_a.evaluate(&point_a);
 
-            let poly_b = DensePolynomial::rand(26, &mut gen_rand());
+            let poly_b = DensePolynomial::rand(26, &mut OsRng);
             let poly_b_eval = poly_b.evaluate(&point_a);
 
-            let poly_c = DensePolynomial::rand(27, &mut gen_rand());
+            let poly_c = DensePolynomial::rand(27, &mut OsRng);
             let poly_c_eval = poly_c.evaluate(&point_a);
 
-            let poly_d = DensePolynomial::rand(28, &mut gen_rand());
+            let poly_d = DensePolynomial::rand(28, &mut OsRng);
             let poly_d_eval = poly_d.evaluate(&point_b);
 
             let aggregated_proof: KZGAggregateProof<
