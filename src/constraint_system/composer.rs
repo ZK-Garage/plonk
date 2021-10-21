@@ -452,10 +452,11 @@ impl<
     /// description which are guaranteed to always satisfy the gate equation.
     pub fn add_dummy_constraints(&mut self) {
         // Add a dummy constraint so that we do not have zero polynomials
-        self.q_m.push(E::Fr::from(1u32));
-        self.q_l.push(E::Fr::from(2u32));
-        self.q_r.push(E::Fr::from(3u32));
-        self.q_o.push(E::Fr::from(4u32));
+        self.q_m.push(E::Fr::from(1u64));
+        self.q_l.push(E::Fr::from(2u64));
+        self.q_r.push(E::Fr::from(3u64));
+        self.q_o.push(E::Fr::from(4u64));
+        self.q_c.push(E::Fr::from(4u64));
         self.q_4.push(E::Fr::one());
         self.q_arith.push(E::Fr::one());
         self.q_range.push(E::Fr::zero());
@@ -480,11 +481,11 @@ impl<
         self.n += 1;
         //Add another dummy constraint so that we do not get the identity
         // permutation
-        self.q_m.push(E::Fr::from(1u32));
-        self.q_l.push(E::Fr::from(1u32));
-        self.q_r.push(E::Fr::from(1u32));
-        self.q_o.push(E::Fr::from(1u32));
-        self.q_c.push(E::Fr::from(127u32));
+        self.q_m.push(E::Fr::from(1u64));
+        self.q_l.push(E::Fr::from(1u64));
+        self.q_r.push(E::Fr::from(1u64));
+        self.q_o.push(E::Fr::from(1u64));
+        self.q_c.push(E::Fr::from(127u64));
         self.q_4.push(E::Fr::zero());
         self.q_arith.push(E::Fr::one());
         self.q_range.push(E::Fr::zero());
@@ -541,12 +542,12 @@ impl<
         // Computes f(f-1)(f-2)(f-3)
         let delta = |f: E::Fr| -> E::Fr {
             let f_1 = f - E::Fr::one();
-            let f_2 = f - E::Fr::from(2u32);
-            let f_3 = f - E::Fr::from(3u32);
+            let f_2 = f - E::Fr::from(2u64);
+            let f_3 = f - E::Fr::from(3u64);
             f * f_1 * f_2 * f_3
         };
         let pi_vec = self.construct_dense_pi_vec();
-        let four = E::Fr::from(4u32);
+        let four = E::Fr::from(4u64);
         for i in 0..self.n {
             let qm = self.q_m[i];
             let ql = self.q_l[i];
