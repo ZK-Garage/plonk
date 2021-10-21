@@ -248,7 +248,7 @@ impl<
             // Compute 4n evaluations for X^n -1
             v_h_coset_4n: compute_vanishing_poly_over_coset(
                 domain_4n,
-                domain_4n.size() as u64,
+                domain.size() as u64,
             ),
         };
 
@@ -455,7 +455,12 @@ pub(crate) fn compute_vanishing_poly_over_coset<
     domain: D,        // domain to evaluate over
     poly_degree: u64, // degree of the vanishing polynomial
 ) -> Evaluations<F, D> {
-    assert!((domain.size() as u64) > poly_degree);
+    assert!(
+        (domain.size() as u64) > poly_degree,
+        "domain_size = {}, poly_degree = {}",
+        domain.size() as u64,
+        poly_degree
+    );
     let coset_gen = F::from_repr(<F::Params>::GENERATOR).unwrap().pow(&[
         poly_degree,
         0,
