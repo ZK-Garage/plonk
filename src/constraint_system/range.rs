@@ -196,17 +196,26 @@ impl<
     }
 }
 
-/*
 #[cfg(test)]
 mod range_gate_tests {
+    use crate::constraint_system::StandardComposer;
+
     use super::super::helper::*;
-    use ark_bls12_381::Fr as BlsScalar;
+    use ark_bls12_381::{Bls12_381, Fr as BlsScalar};
+    use ark_ed_on_bls12_381::{
+        EdwardsParameters as JubjubParameters,
+        EdwardsProjective as JubjubProjective,
+    };
 
     #[test]
     fn test_range_constraint() {
         // Should fail as the number is not 32 bits
         let res = gadget_tester(
-            |composer| {
+            |composer: &mut StandardComposer<
+                Bls12_381,
+                JubjubProjective,
+                JubjubParameters,
+            >| {
                 let witness = composer
                     .add_input(BlsScalar::from((u32::max_value() as u64) + 1));
                 composer.range_gate(witness, 32);
@@ -217,7 +226,11 @@ mod range_gate_tests {
 
         // Should fail as number is greater than 32 bits
         let res = gadget_tester(
-            |composer| {
+            |composer: &mut StandardComposer<
+                Bls12_381,
+                JubjubProjective,
+                JubjubParameters,
+            >| {
                 let witness =
                     composer.add_input(BlsScalar::from(u64::max_value()));
                 composer.range_gate(witness, 32);
@@ -228,7 +241,11 @@ mod range_gate_tests {
 
         // Should pass as the number is within 34 bits
         let res = gadget_tester(
-            |composer| {
+            |composer: &mut StandardComposer<
+                Bls12_381,
+                JubjubProjective,
+                JubjubParameters,
+            >| {
                 let witness =
                     composer.add_input(BlsScalar::from(2u64.pow(34) - 1));
                 composer.range_gate(witness, 34);
@@ -243,7 +260,11 @@ mod range_gate_tests {
     fn test_odd_bit_range() {
         // Should fail as the number we we need a even number of bits
         let _ok = gadget_tester(
-            |composer| {
+            |composer: &mut StandardComposer<
+                Bls12_381,
+                JubjubProjective,
+                JubjubParameters,
+            >| {
                 let witness = composer
                     .add_input(BlsScalar::from(u32::max_value() as u64));
                 composer.range_gate(witness, 33);
@@ -252,4 +273,3 @@ mod range_gate_tests {
         );
     }
 }
-*/

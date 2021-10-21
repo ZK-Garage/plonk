@@ -96,34 +96,40 @@ impl<
     }
 }
 
-/*
 #[cfg(feature = "std")]
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::constraint_system::helper::*;
-    use ark_bls12_381::Fr as BlsScalar;
-    use ark_ed_on_bls12_381::{EdwardsAffine, EdwardsParameters, Fr};
+    use ark_bls12_381::{Bls12_381, Fr as BlsScalar};
+    use ark_ec::AffineCurve;
+    use ark_ed_on_bls12_381::{
+        EdwardsAffine as JubjubAffine, EdwardsParameters as JubjubParameters,
+        EdwardsProjective as JubjubProjective,
+    };
+    use ark_ff::PrimeField;
     #[test]
     fn test_var_base_scalar_mul() {
         let res = gadget_tester(
-            |composer| {
-                let scalar = Fr::from_le_bytes_mod_order(&[
+            |composer: &mut StandardComposer<
+                Bls12_381,
+                JubjubProjective,
+                JubjubParameters,
+            >| {
+                let scalar = BlsScalar::from_le_bytes_mod_order(&[
                     182, 44, 247, 214, 94, 14, 151, 208, 130, 16, 200, 204,
                     147, 32, 104, 166, 0, 59, 52, 1, 1, 59, 103, 6, 169, 175,
                     51, 101, 234, 180, 125, 14, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                     0, 0,
                 ]);
-                let bls_scalar =
-                    BlsScalar::from_le_bytes_mod_order(&scalar.to_bytes())
-                        .unwrap();
-                let secret_scalar = composer.add_input(bls_scalar);
+                let secret_scalar = composer.add_input(scalar);
 
-                let (x, y) = EdwardsParameters::AFFINE_GENERATOR_COEFFS;
-                let generator = ark_ed_on_bls12_381::EdwardsAffine::new(x, y);
+                let (x, y) = JubjubParameters::AFFINE_GENERATOR_COEFFS;
+                let generator = JubjubAffine::new(x, y);
 
-                let expected_point: EdwardsAffine = (generator * scalar).into();
+                let expected_point: JubjubAffine =
+                    AffineCurve::mul(&generator, scalar).into();
 
                 let point = composer.add_affine(generator);
 
@@ -138,4 +144,3 @@ mod tests {
         assert!(res.is_ok());
     }
 }
-*/

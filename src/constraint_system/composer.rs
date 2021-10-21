@@ -646,6 +646,9 @@ impl<
 mod general_composer_tests {
     use crate::constraint_system::helper::*;
     use crate::constraint_system::StandardComposer;
+    use crate::prelude::Prover;
+    use crate::prelude::PublicParameters;
+    use crate::prelude::Verifier;
 
     use super::*;
     use ark_bls12_381::{Bls12_381, Fr as BlsScalar};
@@ -654,6 +657,7 @@ mod general_composer_tests {
         EdwardsProjective as JubjubProjective,
     };
     use ark_ed_on_bls12_381::{EdwardsParameters, EdwardsProjective};
+    use rand_core::OsRng;
     // use ark_poly_commit::kzg10::UniversalParams;
     // use rand_core::OsRng;
 
@@ -720,15 +724,15 @@ mod general_composer_tests {
         assert!(res.is_ok());
     }
 
-    /*
     #[test]
     // XXX: Move this to integration tests
     fn test_multiple_proofs() {
-        let public_parameters =
-            UniversalParams::setup(2 * 30, &mut OsRng).unwrap();
+        let public_parameters: PublicParameters<Bls12_381> =
+            PublicParameters::setup(2 * 30, &mut OsRng).unwrap();
 
         // Create a prover struct
-        let mut prover = Prover::new(b"demo");
+        let mut prover: Prover<Bls12_381, JubjubProjective, JubjubParameters> =
+            Prover::new(b"demo");
 
         // Add gadgets
         dummy_gadget(10, prover.mut_cs());
@@ -753,7 +757,11 @@ mod general_composer_tests {
 
         // Verifier
         //
-        let mut verifier = Verifier::new(b"demo");
+        let mut verifier: Verifier<
+            Bls12_381,
+            JubjubProjective,
+            JubjubParameters,
+        > = Verifier::new(b"demo");
 
         // Add gadgets
         dummy_gadget(10, verifier.mut_cs());
@@ -768,5 +776,4 @@ mod general_composer_tests {
             assert!(verifier.verify(&proof, &vk, &public_inputs).is_ok());
         }
     }
-    */
 }
