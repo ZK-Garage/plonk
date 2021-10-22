@@ -107,18 +107,7 @@ pub(crate) fn compute<
     let q_l_eval = prover_key.fixed_base.q_l.0.evaluate(z_challenge);
     let q_r_eval = prover_key.fixed_base.q_r.0.evaluate(z_challenge);
 
-    let log_size_of_group = match domain {
-        GeneralEvaluationDomain::MixedRadix(domain) => domain.log_size_of_group,
-        GeneralEvaluationDomain::Radix2(domain) => domain.log_size_of_group,
-    };
-    let two_adicity = <E::Fr as FftField>::FftParams::TWO_ADICITY;
-    let group_gen2 = get_domain_attrs(domain, "group_gen");
-    let mut group_gen = E::Fr::two_adic_root_of_unity();
-    for _ in log_size_of_group..two_adicity {
-        group_gen = group_gen.square();
-    }
-
-    assert_eq!(group_gen, group_gen2, "F");
+    let group_gen = get_domain_attrs(domain, "group_gen");
     let a_next_eval = w_l_poly.evaluate(&(*z_challenge * group_gen));
     let b_next_eval = w_r_poly.evaluate(&(*z_challenge * group_gen));
     let d_next_eval = w_4_poly.evaluate(&(*z_challenge * group_gen));
