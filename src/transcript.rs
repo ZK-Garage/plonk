@@ -63,10 +63,10 @@ impl<E: PairingEngine> TranscriptProtocol<E> for TranscriptWrapper<E> {
 
     fn challenge_scalar(&mut self, label: &'static [u8]) -> E::Fr {
         // XXX: review this
-        let size = E::Fr::size_in_bits() / 8 - 1;
-        let mut buf = vec![0; size];
+        let size = E::Fr::size_in_bits() / 8;
+        let mut buf = vec![0u8; size];
         self.transcript.challenge_bytes(label, &mut buf);
-
+        // XXX: This may fail
         E::Fr::from_random_bytes(&buf).unwrap()
     }
 
