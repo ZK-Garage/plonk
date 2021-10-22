@@ -11,11 +11,11 @@ use crate::error::Error;
 use crate::prelude::CommitKey;
 use crate::proof_system::{widget, ProverKey};
 use crate::transcript::TranscriptWrapper;
+use crate::util;
 use ark_ec::{PairingEngine, ProjectiveCurve, TEModelParameters};
 use ark_ff::{FpParameters, PrimeField};
-use ark_poly::domain::EvaluationDomain;
 use ark_poly::polynomial::univariate::DensePolynomial;
-use ark_poly::{Evaluations, GeneralEvaluationDomain};
+use ark_poly::{EvaluationDomain, Evaluations, GeneralEvaluationDomain};
 use core::marker::PhantomData;
 use num_traits::{One, Zero};
 
@@ -461,37 +461,37 @@ pub(crate) fn compute_vanishing_poly_over_coset<
         domain.size() as u64,
         poly_degree
     );
-    let coset_gen = F::from_repr(<F::Params>::GENERATOR).unwrap().pow(&[
-        poly_degree,
-        0,
-        0,
-        0,
-    ]);
+    // group_gen = 7 (for bls).
+    // This is GENERATOR used in dusk-plonk
+    let group_gen = domain.element(1);
+    let coset_gen = F::multiplicative_generator().pow(&[poly_degree, 0, 0, 0]);
     let v_h: Vec<_> = (0..domain.size())
         .map(|i| {
-            (coset_gen
-                * F::from_repr(<F::Params>::GENERATOR).unwrap().pow(&[
-                    poly_degree * i as u64,
-                    0,
-                    0,
-                    0,
-                ]))
+            (coset_gen * group_gen.pow(&[poly_degree * i as u64, 0, 0, 0]))
                 - F::one()
         })
         .collect();
     Evaluations::from_vec_and_domain(v_h, domain)
 }
 
-/*
 #[cfg(test)]
 mod test {
     use super::*;
     use crate::constraint_system::helper::*;
+    use ark_bls12_381::Bls12_381;
+    use ark_ed_on_bls12_381::{
+        EdwardsParameters as JubjubParameters,
+        EdwardsProjective as JubjubProjective,
+    };
     #[test]
     /// Tests that the circuit gets padded to the correct length
     /// XXX: We can do this test without dummy_gadget method
     fn test_pad() {
-        let mut composer: StandardComposer = StandardComposer::new();
+        let mut composer: StandardComposer<
+            Bls12_381,
+            JubjubProjective,
+            JubjubParameters,
+        > = StandardComposer::new();
         dummy_gadget(100, &mut composer);
 
         // Pad the circuit to next power of two
@@ -515,4 +515,3 @@ mod test {
         assert!(composer.w_o.len() == size);
     }
 }
-*/
