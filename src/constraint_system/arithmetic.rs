@@ -357,7 +357,7 @@ mod arithmetic_gates_tests {
             },
             200,
         );
-        assert!(res.is_ok());
+        assert!(res.is_ok(), "{:?}", res.err().unwrap());
     }
 
     #[test]
@@ -412,7 +412,7 @@ mod arithmetic_gates_tests {
             },
             200,
         );
-        assert!(res.is_ok());
+        assert!(res.is_ok(), "{:?}", res.err().unwrap());
     }
 
     #[test]
@@ -436,7 +436,7 @@ mod arithmetic_gates_tests {
             },
             32,
         );
-        assert!(res.is_ok())
+        assert!(res.is_ok(), "{:?}", res.err().unwrap());
     }
 
     #[test]

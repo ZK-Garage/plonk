@@ -722,7 +722,7 @@ mod general_composer_tests {
             },
             32,
         );
-        assert!(res.is_ok());
+        assert!(res.is_ok(), "{:?}", res.err().unwrap());
     }
 
     #[test]
