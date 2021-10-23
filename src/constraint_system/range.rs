@@ -64,8 +64,7 @@ impl<
         assert!(num_bits % 2 == 0);
 
         // Convert witness to bit representation and reverse
-        let mut bits = self.variables[&witness].into_repr().to_bits_le();
-        bits.reverse();
+        let bits = self.variables[&witness].into_repr().to_bits_le();
 
         // For a width-4 program, one gate will contain 4 accumulators
         // Each accumulator proves that a single quad is a base-4 digit.

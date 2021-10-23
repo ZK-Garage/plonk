@@ -53,14 +53,14 @@ impl<
         // Get vars as bits and reverse them to get the Little Endian repr.
         let a_bits: Vec<_> = self.variables[&a]
             .into_repr()
-            .to_bits_le()
+            .to_bits_be()
             .iter()
             .skip(256 - num_bits)
             .map(|bit| *bit as u8)
             .collect();
         let b_bits: Vec<_> = self.variables[&b]
             .into_repr()
-            .to_bits_le()
+            .to_bits_be()
             .iter()
             .skip(256 - num_bits)
             .map(|bit| *bit as u8)
