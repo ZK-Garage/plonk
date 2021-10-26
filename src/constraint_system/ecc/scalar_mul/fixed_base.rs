@@ -64,10 +64,12 @@ impl<
             );
 
         // Convert scalar to wnaf_2(k)
-        let wnaf_entries = raw_jubjub_scalar
+        // XXX: It may be possible to eliminate trailing zeros for speed up
+        let mut wnaf_entries = raw_jubjub_scalar
             .into_repr()
             .find_wnaf(2)
             .unwrap_or_else(|| panic!("Fix this!"));
+        wnaf_entries.extend(vec![0i64; num_bits - wnaf_entries.len()]);
         assert_eq!(wnaf_entries.len(), num_bits);
 
         // Initialise the accumulators
