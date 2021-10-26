@@ -12,7 +12,9 @@ use ark_ec::{ModelParameters, PairingEngine, ProjectiveCurve};
 use ark_ff::{BigInteger, FpParameters, PrimeField};
 use num_traits::{One, Zero};
 
-fn compute_wnaf_point_multiples<P: TEModelParameters>() -> Vec<GroupAffine<P>>
+fn compute_wnaf_point_multiples<P: TEModelParameters>(
+    base_point: GroupProjective<P>,
+) -> Vec<GroupAffine<P>>
 where
     <P as ModelParameters>::BaseField: PrimeField,
 {
@@ -21,8 +23,7 @@ where
         <P::BaseField as PrimeField>::Params::MODULUS_BITS
             as usize
     ];
-    let (x, y) = P::AFFINE_GENERATOR_COEFFS;
-    multiples[0] = GroupAffine::new(x, y).into();
+    multiples[0] = base_point;
     for i in 1..<P::BaseField as PrimeField>::Params::MODULUS_BITS as usize {
         multiples[i] = multiples[i - 1].double();
     }
@@ -47,11 +48,13 @@ impl<
     pub fn fixed_base_scalar_mul(
         &mut self,
         jubjub_scalar: Variable,
+        base_point: GroupAffine<P>,
     ) -> Point<E, T, P> {
         let num_bits =
             <P::BaseField as PrimeField>::Params::MODULUS_BITS as usize;
         // compute 2^iG
-        let mut point_multiples = compute_wnaf_point_multiples();
+        let mut point_multiples =
+            compute_wnaf_point_multiples(base_point.into());
         point_multiples.reverse();
 
         // Fetch the raw scalar value as bls scalar, then convert to a jubjub
@@ -208,7 +211,7 @@ mod tests {
                     AffineCurve::mul(&generator, bls_scalar).into();
 
                 let point_scalar =
-                    composer.fixed_base_scalar_mul(secret_scalar);
+                    composer.fixed_base_scalar_mul(secret_scalar, generator);
 
                 composer
                     .assert_equal_public_point(point_scalar, expected_point);
@@ -235,7 +238,7 @@ mod tests {
                     AffineCurve::mul(&generator, bls_scalar).into();
 
                 let point_scalar =
-                    composer.fixed_base_scalar_mul(secret_scalar);
+                    composer.fixed_base_scalar_mul(secret_scalar, generator);
 
                 composer
                     .assert_equal_public_point(point_scalar, expected_point);
@@ -265,7 +268,7 @@ mod tests {
                         .into();
 
                 let point_scalar =
-                    composer.fixed_base_scalar_mul(secret_scalar);
+                    composer.fixed_base_scalar_mul(secret_scalar, generator);
 
                 composer
                     .assert_equal_public_point(point_scalar, expected_point);
@@ -363,8 +366,10 @@ mod tests {
                 // - One curve addition
                 //
                 // Scalar multiplications
-                let aG = composer.fixed_base_scalar_mul(secret_scalar_a);
-                let bH = composer.fixed_base_scalar_mul(secret_scalar_b);
+                let aG =
+                    composer.fixed_base_scalar_mul(secret_scalar_a, point_a);
+                let bH =
+                    composer.fixed_base_scalar_mul(secret_scalar_b, point_b);
 
                 // Depending on the context, one can check if the resulting aG
                 // and bH are as expected
@@ -392,6 +397,9 @@ mod tests {
                 JubjubProjective,
                 JubjubParameters,
             >| {
+                let (x, y) = JubjubParameters::AFFINE_GENERATOR_COEFFS;
+                let generator = JubjubAffine::new(x, y);
+
                 // First component
                 let scalar_a = BlsScalar::from(25u64);
                 let secret_scalar_a = composer.add_input(scalar_a);
@@ -413,10 +421,14 @@ mod tests {
                 let expected_rhs: GroupAffine<JubjubParameters> =
                     AffineCurve::mul(&gen, scalar_c + scalar_d).into();
 
-                let P1 = composer.fixed_base_scalar_mul(secret_scalar_a);
-                let P2 = composer.fixed_base_scalar_mul(secret_scalar_b);
-                let P3 = composer.fixed_base_scalar_mul(secret_scalar_c);
-                let P4 = composer.fixed_base_scalar_mul(secret_scalar_d);
+                let P1 =
+                    composer.fixed_base_scalar_mul(secret_scalar_a, generator);
+                let P2 =
+                    composer.fixed_base_scalar_mul(secret_scalar_b, generator);
+                let P3 =
+                    composer.fixed_base_scalar_mul(secret_scalar_c, generator);
+                let P4 =
+                    composer.fixed_base_scalar_mul(secret_scalar_d, generator);
 
                 let commitment_a = composer.point_addition_gate(P1, P2);
                 let commitment_b = composer.point_addition_gate(P3, P4);
