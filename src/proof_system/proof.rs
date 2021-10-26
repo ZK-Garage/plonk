@@ -402,9 +402,10 @@ fn compute_barycentric_eval<F: PrimeField>(
     point: F,
     domain: &GeneralEvaluationDomain<F>,
 ) -> F {
+    // XXX: This looks like evaluating the vanishing polynomial at point * generator^-1
     let numerator = (point.pow(&[domain.size() as u64, 0, 0, 0]) - F::one())
-        * F::from(domain.size() as u64).inverse().unwrap();
-    let range = (0..evaluations.len()).into_par_iter();
+        * util::get_domain_attrs(&domain, "size_inv");
+    let range = (0..evaluations.len()).into_iter();
 
     let non_zero_evaluations: Vec<usize> = range
         .filter(|&i| {
@@ -414,9 +415,11 @@ fn compute_barycentric_eval<F: PrimeField>(
         .collect();
 
     // Only compute the denominators with non-zero evaluations
-    let range = (0..non_zero_evaluations.len()).into_par_iter();
+    let range = (0..non_zero_evaluations.len()).into_iter();
 
-    let group_gen_inv = util::get_domain_attrs(&domain, "generator_inv");
+    let group_gen_inv = util::get_domain_attrs(&domain, "group_gen")
+        .inverse()
+        .unwrap();
     let mut denominators: Vec<F> = range
         .clone()
         .map(|i| {
