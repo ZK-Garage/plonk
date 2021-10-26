@@ -60,15 +60,11 @@ impl<
         // Fetch the raw scalar value as bls scalar, then convert to a jubjub
         // scalar
         // XXX: Not very Tidy, impl From function in JubJub
-        let raw_bls_scalar = self.variables.get(&jubjub_scalar).unwrap();
-        let raw_jubjub_scalar =
-            <P::BaseField as PrimeField>::from_le_bytes_mod_order(
-                &raw_bls_scalar.into_repr().to_bytes_le(),
-            );
+        let jubjub_scalar_value = self.variables.get(&jubjub_scalar).unwrap();
 
         // Convert scalar to wnaf_2(k)
         // XXX: It may be possible to eliminate trailing zeros for speed up
-        let mut wnaf_entries = raw_jubjub_scalar
+        let mut wnaf_entries = jubjub_scalar_value
             .into_repr()
             .find_wnaf(2)
             .unwrap_or_else(|| panic!("Fix this!"));
