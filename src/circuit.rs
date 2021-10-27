@@ -6,64 +6,91 @@
 
 //! Tools & traits for PLONK circuits
 
+use core::marker::PhantomData;
+
+use crate::commitment_scheme::kzg10::PublicParameters;
 use crate::constraint_system::StandardComposer;
 use crate::error::Error;
 use crate::proof_system::{Proof, Prover, ProverKey, Verifier, VerifierKey};
+use ark_ec::models::twisted_edwards_extended::{GroupAffine, GroupProjective};
 use ark_ec::models::TEModelParameters;
-use ark_ec::PairingEngine;
-use ark_ec::ProjectiveCurve;
-use ark_poly_commit::kzg10::UniversalParams;
+use ark_ec::{PairingEngine, ProjectiveCurve};
+use ark_ff::{BigInteger, PrimeField};
 
 #[derive(Default, Debug, Clone)]
 /// Structure that represents a PLONK Circuit Public Input converted into its
 /// scalar representation.
-pub struct PublicInputValue<E: PairingEngine>(pub(crate) Vec<E::Fr>);
+pub struct PublicInputValue<F: PrimeField, P: TEModelParameters<BaseField = F>>
+{
+    pub(crate) values: Vec<F>,
+    _marker: PhantomData<P>,
+}
 
-impl<E: PairingEngine> From<E::Fr> for PublicInputValue<E> {
-    fn from(scalar: E::Fr) -> Self {
-        Self(vec![scalar])
+impl<F: PrimeField, P: TEModelParameters<BaseField = F>> From<F>
+    for PublicInputValue<F, P>
+{
+    fn from(scalar: F) -> Self {
+        Self {
+            values: vec![scalar],
+            _marker: PhantomData,
+        }
     }
 }
 
-impl<E: PairingEngine> From<E::Fq> for PublicInputValue<E> {
-    fn from(scalar: E::Fq) -> Self {
-        Self(vec![scalar.into()])
-    }
-}
+// XXX: Find a way to introduce points into public input values
 
-impl<E: PairingEngine> From<E::G2Affine> for PublicInputValue<E> {
-    fn from(point: E::G2Affine) -> Self {
-        Self(vec![point.get_x(), point.get_y()])
-    }
-}
+// impl<F: PrimeField, P: TEModelParameters<BaseField = F>> From<GroupAffine<P>>
+//     for PublicInputValue<F, P>
+// {
+//     fn from(point: GroupAffine<P>) -> Self {
+//         Self {
+//             values: vec![point.x, point.y],
+//             _marker: PhantomData,
+//         }
+//     }
+// }
+
+// impl<F: PrimeField, P: TEModelParameters<BaseField = F>>
+//     From<GroupProjective<P>> for PublicInputValue<F, P>
+// {
+//     fn from(point: GroupProjective<P>) -> Self {
+//         point.into_affine().into()
+//     }
+// }
 
 #[derive(Debug, Clone)]
 /// Collection of structs/objects that the Verifier will use in order to
 /// de/serialize data needed for Circuit proof verification.
 /// This structure can be seen as a link between the [`Circuit`] public input
 /// positions and the [`VerifierKey`] that the Verifier needs to use.
-pub struct VerifierData {
-    key: VerifierKey,
+pub struct VerifierData<
+    E: PairingEngine,
+    P: TEModelParameters<BaseField = E::Fr>,
+> {
+    key: VerifierKey<E, P>,
     pi_pos: Vec<usize>,
 }
 
-impl VerifierData {
+impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
+    VerifierData<E, P>
+{
     /// Creates a new `VerifierData` from a [`VerifierKey`] and the public
     /// input positions of the circuit that it represents.
-    pub const fn new(key: VerifierKey, pi_pos: Vec<usize>) -> Self {
+    pub fn new(key: VerifierKey<E, P>, pi_pos: Vec<usize>) -> Self {
         Self { key, pi_pos }
     }
 
     /// Returns a reference to the contained [`VerifierKey`].
-    pub const fn key(&self) -> &VerifierKey {
+    pub fn key(&self) -> &VerifierKey<E, P> {
         &self.key
     }
 
     /// Returns a reference to the contained Public Input positions.
-    pub const fn pi_pos(&self) -> &Vec<usize> {
+    pub fn pi_pos(&self) -> &Vec<usize> {
         &self.pi_pos
     }
 
+    /*
     /// Deserializes the `VerifierData` into a vector of bytes.
     #[allow(unused_must_use)]
     pub fn to_var_bytes(&self) -> Vec<u8> {
@@ -97,6 +124,7 @@ impl VerifierData {
 
         Ok(Self { key, pi_pos })
     }
+    */
 }
 
 /// Trait that should be implemented for any circuit function to provide to it
@@ -220,7 +248,7 @@ impl VerifierData {
 ///     b"Test",
 /// )
 /// }
-pub trait Circuit<E, T, PT>
+pub trait Circuit<E, T, P>
 where
     E: PairingEngine,
     T: ProjectiveCurve<BaseField = E::Fr>,
@@ -232,14 +260,14 @@ where
     /// Gadget implementation used to fill the composer.
     fn gadget(
         &mut self,
-        composer: &mut StandardComposer<E, T, PT>,
+        composer: &mut StandardComposer<E, T, P>,
     ) -> Result<(), Error>;
     /// Compiles the circuit by using a function that returns a `Result`
     /// with the `ProverKey`, `VerifierKey` and the circuit size.
     fn compile(
         &mut self,
-        pub_params: &PublicParameters,
-    ) -> Result<(ProverKey, VerifierData), Error> {
+        pub_params: &PublicParameters<E>,
+    ) -> Result<(ProverKey<E::Fr, P>, VerifierData<E, P>), Error> {
         // Setup PublicParams
         let (ck, _) = pub_params.trim(self.padded_circuit_size())?;
         // Generate & save `ProverKey` with some random values.
@@ -269,17 +297,17 @@ where
     /// instances.
     fn gen_proof(
         &mut self,
-        pub_params: &PublicParameters,
-        prover_key: &ProverKey,
+        pub_params: &PublicParameters<E>,
+        prover_key: ProverKey<E::Fr, P>,
         transcript_init: &'static [u8],
-    ) -> Result<Proof, Error> {
+    ) -> Result<Proof<E, P>, Error> {
         let (ck, _) = pub_params.trim(self.padded_circuit_size())?;
         // New Prover instance
         let mut prover = Prover::new(transcript_init);
         // Fill witnesses for Prover
         self.gadget(prover.mut_cs())?;
         // Add ProverKey to Prover
-        prover.prover_key = Some(prover_key.clone());
+        prover.prover_key = Some(prover_key);
         prover.prove(&ck)
     }
 
@@ -289,38 +317,40 @@ where
 
 /// Verifies a proof using the provided `CircuitInputs` & `VerifierKey`
 /// instances.
-pub fn verify_proof(
-    pub_params: &PublicParameters,
-    verifier_key: &VerifierKey,
-    proof: &Proof<E>,
-    pub_inputs_values: &[PublicInputValue],
+pub fn verify_proof<
+    E: PairingEngine,
+    T: ProjectiveCurve<BaseField = E::Fr>,
+    P: TEModelParameters<BaseField = E::Fr>,
+>(
+    pub_params: &PublicParameters<E>,
+    verifier_key: VerifierKey<E, P>,
+    proof: &Proof<E, P>,
+    pub_inputs_values: &[PublicInputValue<E::Fr, P>],
     pub_inputs_positions: &[usize],
     transcript_init: &'static [u8],
 ) -> Result<(), Error> {
-    let mut verifier = Verifier::new(transcript_init);
-    verifier.verifier_key = Some(*verifier_key);
+    let mut verifier: Verifier<E, T, P> = Verifier::new(transcript_init);
+    let padded_circuit_size = verifier_key.padded_circuit_size();
+    verifier.verifier_key = Some(verifier_key);
+
     verifier.verify(
         proof,
         pub_params.opening_key(),
-        build_pi(
-            pub_inputs_values,
-            pub_inputs_positions,
-            verifier_key.padded_circuit_size(),
-        )
-        .as_slice(),
+        build_pi(pub_inputs_values, pub_inputs_positions, padded_circuit_size)
+            .as_slice(),
     )
 }
 
 /// Build PI vector for Proof verifications.
-fn build_pi(
-    pub_input_values: &[PublicInputValue],
+fn build_pi<F: PrimeField, P: TEModelParameters<BaseField = F>>(
+    pub_input_values: &[PublicInputValue<F, P>],
     pub_input_pos: &[usize],
     trim_size: usize,
-) -> Vec<E::Fr> {
-    let mut pi = vec![E::Fr::zero(); trim_size];
+) -> Vec<F> {
+    let mut pi = vec![F::zero(); trim_size];
     pub_input_values
         .iter()
-        .map(|pub_input| pub_input.0.clone())
+        .map(|pub_input| pub_input.values.clone())
         .flatten()
         .zip(pub_input_pos.iter().copied())
         .for_each(|(value, pos)| {
@@ -329,12 +359,17 @@ fn build_pi(
     pi
 }
 
-#[cfg(feature = "std")]
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::constraint_system::StandardComposer;
     use crate::proof_system::ProverKey;
+    use ark_bls12_381::{Bls12_381, Fr as BlsScalar};
+    use ark_ed_on_bls12_381::{
+        EdwardsAffine as JubjubAffine, EdwardsParameters as JubjubParameters,
+        EdwardsProjective as JubjubProjective, Fr as JubjubScalar,
+    };
+    use num_traits::{One, Zero};
 
     // Implements a circuit that checks:
     // 1) a + b = c where C is a PI
@@ -343,20 +378,30 @@ mod tests {
     // 4) a * b = d where D is a PI
     // 5) JubJub::GENERATOR * e(JubJubScalar) = f where F is a PI
     #[derive(Debug, Default)]
-    pub struct TestCircuit {
+    pub struct TestCircuit<
+        E: PairingEngine,
+        T: ProjectiveCurve<BaseField = E::Fr>,
+        P: TEModelParameters<BaseField = E::Fr>,
+    > {
         a: E::Fr,
         b: E::Fr,
         c: E::Fr,
         d: E::Fr,
-        e: JubJubScalar,
-        f: JubJubAffine,
+        e: P::ScalarField,
+        f: GroupAffine<P>,
+        _marker: PhantomData<T>,
     }
 
-    impl Circuit for TestCircuit {
+    impl<
+            E: PairingEngine,
+            T: ProjectiveCurve<BaseField = E::Fr>,
+            P: TEModelParameters<BaseField = E::Fr>,
+        > Circuit<E, T, P> for TestCircuit<E, T, P>
+    {
         const CIRCUIT_ID: [u8; 32] = [0xff; 32];
         fn gadget(
             &mut self,
-            composer: &mut StandardComposer,
+            composer: &mut StandardComposer<E, T, P>,
         ) -> Result<(), Error> {
             let a = composer.add_input(self.a);
             let b = composer.add_input(self.b);
@@ -388,9 +433,12 @@ mod tests {
                 Some(-self.d),
             );
 
-            let e = composer.add_input(self.e.into());
-            let scalar_mul_result = composer
-                .fixed_base_scalar_mul(e, dusk_jubjub::GENERATOR_EXTENDED);
+            let e_repr = self.e.into_repr().to_bytes_le();
+            let e = composer.add_input(E::Fr::from_le_bytes_mod_order(&e_repr));
+            let (x, y) = P::AFFINE_GENERATOR_COEFFS;
+            let generator = GroupAffine::new(x, y);
+            let scalar_mul_result =
+                composer.fixed_base_scalar_mul(e, generator);
             // Apply the constrain
             composer.assert_equal_public_point(scalar_mul_result, self.f);
             Ok(())
@@ -400,6 +448,8 @@ mod tests {
         }
     }
 
+    /*
+    // TODO: Complete serialization first
     #[test]
     fn test_full() -> Result<(), Error> {
         use rand_core::OsRng;
@@ -489,4 +539,5 @@ mod tests {
             b"Test",
         )
     }
+    */
 }
