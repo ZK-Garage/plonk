@@ -6,80 +6,31 @@
 
 use super::StandardComposer;
 // use ark_poly_commit::PublicParameters;
+use crate::commitment_scheme::kzg10::PublicParameters;
 use crate::error::Error;
 use crate::proof_system::{Prover, Verifier};
-use crate::util;
 use ark_ec::{PairingEngine, ProjectiveCurve, TEModelParameters};
-use ark_poly_commit::kzg10::UniversalParams;
-use rand_core::{CryptoRng, OsRng, RngCore};
+use ark_ff::PrimeField;
+use num_traits::{One, Zero};
+use rand_core::OsRng;
 
-/// Setup generates the public parameters using a random number generator.
-/// This method will in most cases be used for testing and exploration.
-/// In reality, a `Trusted party` or a `Multiparty Computation` will be used
-/// to generate the SRS. Returns an error if the configured degree is less
-/// than one.
-pub fn setup<R: RngCore + CryptoRng, E: PairingEngine>(
-    max_degree: usize,
-    mut rng: &mut R,
-) -> Result<UniversalParams<E>, Error> {
-    // Cannot commit to constants
-    if max_degree < 1 {
-        return Err(Error::DegreeIsZero);
-    }
+/// This function is only used to generate the SRS.
+/// The intention is just to compute the resulting points
+/// of the operation `a*P, b*P, c*P ... (n-1)*P` into a `Vec`.
+pub(crate) fn slow_multiscalar_mul_single_base<E: PairingEngine>(
+    scalars: &[E::Fr],
+    base: E::G1Projective,
+) -> Vec<E::G1Projective> {
+    scalars.iter().map(|&s| base.mul(s.into_repr())).collect()
+}
 
-    // Generate the secret scalar beta
-    let beta = util::random_scalar(&mut rng);
-
-    // Compute powers of beta up to and including beta^max_degree
-    let powers_of_beta = util::powers_of(&beta, max_degree);
-
-    // Powers of G1 that will be used to commit to a specified polynomial
-    let g = util::random_g1_point(&mut rng);
-    let powers_of_g: Vec<E::G1Projective> =
-        util::slow_multiscalar_mul_single_base(&powers_of_beta, g);
-    assert_eq!(powers_of_g.len(), max_degree + 1);
-
-    // Generate the secret scalar gamma
-    let gamma = util::random_scalar(&mut rng);
-
-    // Generate powers of gamma g
-    let powers_of_gamma_g: Vec<E::G1Projective> =
-        util::slow_multibase_mul_single_scalar(gamma, &powers_of_g);
-
-    // Normalise all projective points
-    let mut normalised_g = vec![E::G1Affine::identity(); max_degree + 1];
-    E::G1Projective::batch_normalize(&powers_of_g, &mut normalised_g);
-
-    let mut normalised_gamma_g = vec![E::G1Affine::identity(); max_degree + 1];
-    E::G1Projective::batch_normalize(
-        &powers_of_gamma_g,
-        &mut normalised_gamma_g,
-    );
-
-    // Compute beta*G2 element and stored cached elements for verifying
-    // multiple proofs.
-    let h: E::G2Affine = util::random_g2_point(&mut rng).into();
-    let beta_h: E::G2Affine = (h * beta).into();
-
-    // Compute group elements of the form { \beta^i G2 }
-    let powers_of_h: Vec<E::G1Projective> =
-        util::slow_multiscalar_mul_single_base(&powers_of_beta, h);
-
-    let mut normalised_h = vec![E::G1Affine::identity(); max_degree + 1];
-    E::G1Projective::batch_normalize(&powers_of_h, &mut normalised_h);
-
-    let prepared_h: E::G2Prepared = h.into();
-    let prepared_beta_h: E::G2Prepared = beta_h.into();
-
-    Ok(UniversalParams {
-        powers_of_g: normalised_g,
-        powers_of_gamma_g: normalised_gamma_g,
-        h,
-        beta_h,
-        neg_powers_of_h: powers_of_h,
-        prepared_h,
-        prepared_beta_h,
-    })
+/// This function is only used to generate the SRS.
+pub(crate) fn slow_multibase_mul_single_scalar<E: PairingEngine>(
+    scalar: E::Fr,
+    bases: &[E::G1Projective],
+) -> Vec<E::G1Projective> {
+    let scalar_repr = scalar.into_repr();
+    bases.iter().map(|&b| b.mul(scalar_repr)).collect()
 }
 
 /// Adds dummy constraints using arithmetic gates
@@ -117,7 +68,7 @@ pub(crate) fn gadget_tester<
     n: usize,
 ) -> Result<(), Error> {
     // Common View
-    let unviersal_params = UniversalParams::setup(2 * n, &mut OsRng)?;
+    let unviersal_params = PublicParameters::setup(2 * n, &mut OsRng)?;
     // Provers View
     let (proof, public_inputs) = {
         // Create a prover struct

@@ -39,7 +39,7 @@ pub(crate) struct KZGAggregateProof<
     pub(crate) evaluated_points: Vec<E::Fr>,
     /// These are the commitments to the p_i polynomials.
     pub(crate) commitments_to_polynomials: Vec<Commitment<E>>,
-    _marker: PhantomData<P>,
+    pub(crate) _marker: PhantomData<P>,
 }
 
 impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>

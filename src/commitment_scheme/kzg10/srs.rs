@@ -42,7 +42,7 @@ impl<E: PairingEngine> PublicParameters<E> {
     /// In reality, a `Trusted party` or a `Multiparty Computation` will be used
     /// to generate the SRS. Returns an error if the configured degree is less
     /// than one.
-    pub fn setup<R: RngCore + CryptoRng + UniformRand>(
+    pub fn setup<R: RngCore + CryptoRng>(
         max_degree: usize,
         mut rng: &mut R,
     ) -> Result<PublicParameters<E>, Error> {
@@ -186,27 +186,27 @@ impl<E: PairingEngine> PublicParameters<E> {
     }
 }
 
-// #[cfg(feature = "std")]
-// #[cfg(test)]
-// mod test {
-//     use super::*;
-//     // use dusk_bls12_381::BlsScalar;
-//     use rand_core::OsRng;
+#[cfg(test)]
+mod test {
+    use super::*;
+    use ark_bls12_381::Fr as BlsScalar;
+    use ark_ff::Field;
 
-//     #[test]
-//     fn test_powers_of() {
-//         let x = BlsScalar::from(10u64);
-//         let degree = 100u64;
+    #[test]
+    fn test_powers_of() {
+        let x = BlsScalar::from(10u64);
+        let degree = 100u64;
 
-//         let powers_of_x = util::powers_of(&x, degree as usize);
+        let powers_of_x = util::powers_of(&x, degree as usize);
 
-//         for (i, x_i) in powers_of_x.iter().enumerate() {
-//             assert_eq!(*x_i, x.pow(&[i as u64, 0, 0, 0]))
-//         }
+        for (i, x_i) in powers_of_x.iter().enumerate() {
+            assert_eq!(*x_i, x.pow(&[i as u64, 0, 0, 0]))
+        }
 
-//         let last_element = powers_of_x.last().unwrap();
-//         assert_eq!(*last_element, x.pow(&[degree, 0, 0, 0]))
-//     }
+        let last_element = powers_of_x.last().unwrap();
+        assert_eq!(*last_element, x.pow(&[degree, 0, 0, 0]))
+    }
+}
 
 //     #[test]
 //     fn test_serialise_deserialise_public_parameter() {

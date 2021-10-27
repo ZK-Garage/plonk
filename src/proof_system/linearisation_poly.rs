@@ -103,14 +103,11 @@ pub(crate) fn compute<
     let q_l_eval = prover_key.fixed_base.q_l.0.evaluate(z_challenge);
     let q_r_eval = prover_key.fixed_base.q_r.0.evaluate(z_challenge);
 
-    let a_next_eval = w_l_poly
-        .evaluate(&(*z_challenge * get_domain_attrs(domain, "group_gen")));
-    let b_next_eval = w_r_poly
-        .evaluate(&(*z_challenge * get_domain_attrs(domain, "group_gen")));
-    let d_next_eval = w_4_poly
-        .evaluate(&(*z_challenge * get_domain_attrs(domain, "group_gen")));
-    let perm_eval = z_poly
-        .evaluate(&(*z_challenge * get_domain_attrs(domain, "group_gen")));
+    let group_gen = get_domain_attrs(domain, "group_gen");
+    let a_next_eval = w_l_poly.evaluate(&(*z_challenge * group_gen));
+    let b_next_eval = w_r_poly.evaluate(&(*z_challenge * group_gen));
+    let d_next_eval = w_4_poly.evaluate(&(*z_challenge * group_gen));
+    let perm_eval = z_poly.evaluate(&(*z_challenge * group_gen));
 
     let f_1 = compute_circuit_satisfiability::<E, P>(
         (

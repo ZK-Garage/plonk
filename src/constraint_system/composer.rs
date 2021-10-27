@@ -452,10 +452,11 @@ impl<
     /// description which are guaranteed to always satisfy the gate equation.
     pub fn add_dummy_constraints(&mut self) {
         // Add a dummy constraint so that we do not have zero polynomials
-        self.q_m.push(E::Fr::from(1u32));
-        self.q_l.push(E::Fr::from(2u32));
-        self.q_r.push(E::Fr::from(3u32));
-        self.q_o.push(E::Fr::from(4u32));
+        self.q_m.push(E::Fr::from(1u64));
+        self.q_l.push(E::Fr::from(2u64));
+        self.q_r.push(E::Fr::from(3u64));
+        self.q_o.push(E::Fr::from(4u64));
+        self.q_c.push(E::Fr::from(4u64));
         self.q_4.push(E::Fr::one());
         self.q_arith.push(E::Fr::one());
         self.q_range.push(E::Fr::zero());
@@ -480,11 +481,11 @@ impl<
         self.n += 1;
         //Add another dummy constraint so that we do not get the identity
         // permutation
-        self.q_m.push(E::Fr::from(1u32));
-        self.q_l.push(E::Fr::from(1u32));
-        self.q_r.push(E::Fr::from(1u32));
-        self.q_o.push(E::Fr::from(1u32));
-        self.q_c.push(E::Fr::from(127u32));
+        self.q_m.push(E::Fr::from(1u64));
+        self.q_l.push(E::Fr::from(1u64));
+        self.q_r.push(E::Fr::from(1u64));
+        self.q_o.push(E::Fr::from(1u64));
+        self.q_c.push(E::Fr::from(127u64));
         self.q_4.push(E::Fr::zero());
         self.q_arith.push(E::Fr::one());
         self.q_range.push(E::Fr::zero());
@@ -541,12 +542,12 @@ impl<
         // Computes f(f-1)(f-2)(f-3)
         let delta = |f: E::Fr| -> E::Fr {
             let f_1 = f - E::Fr::one();
-            let f_2 = f - E::Fr::from(2u32);
-            let f_3 = f - E::Fr::from(3u32);
+            let f_2 = f - E::Fr::from(2u64);
+            let f_3 = f - E::Fr::from(3u64);
             f * f_1 * f_2 * f_3
         };
         let pi_vec = self.construct_dense_pi_vec();
-        let four = E::Fr::from(4u32);
+        let four = E::Fr::from(4u64);
         for i in 0..self.n {
             let qm = self.q_m[i];
             let ql = self.q_l[i];
@@ -642,17 +643,24 @@ impl<
     }
 }
 
-/*
 #[cfg(test)]
 mod general_composer_tests {
-    use super::*;
     use crate::constraint_system::helper::*;
-    use crate::proof_system::{Prover, Verifier};
-    use ark_bls12_381::Bls12_381;
-    use ark_bls12_381::Fr as BlsScalar;
+    use crate::constraint_system::StandardComposer;
+    use crate::prelude::Prover;
+    use crate::prelude::PublicParameters;
+    use crate::prelude::Verifier;
+
+    use super::*;
+    use ark_bls12_381::{Bls12_381, Fr as BlsScalar};
+    use ark_ed_on_bls12_381::{
+        EdwardsParameters as JubjubParameters,
+        EdwardsProjective as JubjubProjective,
+    };
     use ark_ed_on_bls12_381::{EdwardsParameters, EdwardsProjective};
-    use ark_poly_commit::kzg10::UniversalParams;
     use rand_core::OsRng;
+    // use ark_poly_commit::kzg10::UniversalParams;
+    // use rand_core::OsRng;
 
     #[test]
     /// Tests that a circuit initially has 3 gates
@@ -677,12 +685,12 @@ mod general_composer_tests {
     #[ignore]
     /// Tests that an empty circuit proof passes
     fn test_prove_verify() {
-        let res: StandardComposer<
-            Bls12_381,
-            EdwardsProjective,
-            EdwardsParameters,
-        > = gadget_tester(
-            |composer| {
+        let res = gadget_tester(
+            |composer: &mut StandardComposer<
+                Bls12_381,
+                JubjubProjective,
+                JubjubParameters,
+            >| {
                 // do nothing except add the dummy constraints
             },
             200,
@@ -693,7 +701,11 @@ mod general_composer_tests {
     #[test]
     fn test_conditional_select() {
         let res = gadget_tester(
-            |composer| {
+            |composer: &mut StandardComposer<
+                Bls12_381,
+                JubjubProjective,
+                JubjubParameters,
+            >| {
                 let bit_1 = composer.add_input(BlsScalar::one());
                 let bit_0 = composer.zero_var();
 
@@ -710,17 +722,18 @@ mod general_composer_tests {
             },
             32,
         );
-        assert!(res.is_ok());
+        assert!(res.is_ok(), "{:?}", res.err().unwrap());
     }
 
     #[test]
     // XXX: Move this to integration tests
     fn test_multiple_proofs() {
-        let public_parameters =
-            UniversalParams::setup(2 * 30, &mut OsRng).unwrap();
+        let public_parameters: PublicParameters<Bls12_381> =
+            PublicParameters::setup(2 * 30, &mut OsRng).unwrap();
 
         // Create a prover struct
-        let mut prover = Prover::new(b"demo");
+        let mut prover: Prover<Bls12_381, JubjubProjective, JubjubParameters> =
+            Prover::new(b"demo");
 
         // Add gadgets
         dummy_gadget(10, prover.mut_cs());
@@ -745,7 +758,11 @@ mod general_composer_tests {
 
         // Verifier
         //
-        let mut verifier = Verifier::new(b"demo");
+        let mut verifier: Verifier<
+            Bls12_381,
+            JubjubProjective,
+            JubjubParameters,
+        > = Verifier::new(b"demo");
 
         // Add gadgets
         dummy_gadget(10, verifier.mut_cs());
@@ -761,4 +778,3 @@ mod general_composer_tests {
         }
     }
 }
-*/

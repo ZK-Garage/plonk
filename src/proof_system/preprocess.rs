@@ -12,10 +12,9 @@ use crate::prelude::CommitKey;
 use crate::proof_system::{widget, ProverKey};
 use crate::transcript::TranscriptWrapper;
 use ark_ec::{PairingEngine, ProjectiveCurve, TEModelParameters};
-use ark_ff::{FpParameters, PrimeField};
-use ark_poly::domain::EvaluationDomain;
+use ark_ff::PrimeField;
 use ark_poly::polynomial::univariate::DensePolynomial;
-use ark_poly::{Evaluations, GeneralEvaluationDomain};
+use ark_poly::{EvaluationDomain, Evaluations, GeneralEvaluationDomain};
 use core::marker::PhantomData;
 use num_traits::{One, Zero};
 
@@ -248,7 +247,7 @@ impl<
             // Compute 4n evaluations for X^n -1
             v_h_coset_4n: compute_vanishing_poly_over_coset(
                 domain_4n,
-                domain_4n.size() as u64,
+                domain.size() as u64,
             ),
         };
 
@@ -335,29 +334,39 @@ impl<
             fourth_sigma_poly,
         ) = self.perm.compute_sigma_polynomials(self.n, &domain);
 
-        let q_m_poly_commit = commit_key.commit(&q_m_poly).unwrap_or_default();
-        let q_l_poly_commit = commit_key.commit(&q_l_poly).unwrap_or_default();
-        let q_r_poly_commit = commit_key.commit(&q_r_poly).unwrap_or_default();
-        let q_o_poly_commit = commit_key.commit(&q_o_poly).unwrap_or_default();
-        let q_c_poly_commit = commit_key.commit(&q_c_poly).unwrap_or_default();
-        let q_4_poly_commit = commit_key.commit(&q_4_poly).unwrap_or_default();
+        let q_m_poly_commit =
+            commit_key.commit(q_m_poly.clone()).unwrap_or_default();
+        let q_l_poly_commit =
+            commit_key.commit(q_l_poly.clone()).unwrap_or_default();
+        let q_r_poly_commit =
+            commit_key.commit(q_r_poly.clone()).unwrap_or_default();
+        let q_o_poly_commit =
+            commit_key.commit(q_o_poly.clone()).unwrap_or_default();
+        let q_c_poly_commit =
+            commit_key.commit(q_c_poly.clone()).unwrap_or_default();
+        let q_4_poly_commit =
+            commit_key.commit(q_4_poly.clone()).unwrap_or_default();
         let q_arith_poly_commit =
-            commit_key.commit(&q_arith_poly).unwrap_or_default();
+            commit_key.commit(q_arith_poly.clone()).unwrap_or_default();
         let q_range_poly_commit =
-            commit_key.commit(&q_range_poly).unwrap_or_default();
+            commit_key.commit(q_range_poly.clone()).unwrap_or_default();
         let q_logic_poly_commit =
-            commit_key.commit(&q_logic_poly).unwrap_or_default();
+            commit_key.commit(q_logic_poly.clone()).unwrap_or_default();
         let q_fixed_group_add_poly_commit = commit_key
-            .commit(&q_fixed_group_add_poly)
+            .commit(q_fixed_group_add_poly.clone())
             .unwrap_or_default();
         let q_variable_group_add_poly_commit = commit_key
-            .commit(&q_variable_group_add_poly)
+            .commit(q_variable_group_add_poly.clone())
             .unwrap_or_default();
 
-        let left_sigma_poly_commit = commit_key.commit(&left_sigma_poly)?;
-        let right_sigma_poly_commit = commit_key.commit(&right_sigma_poly)?;
-        let out_sigma_poly_commit = commit_key.commit(&out_sigma_poly)?;
-        let fourth_sigma_poly_commit = commit_key.commit(&fourth_sigma_poly)?;
+        let left_sigma_poly_commit =
+            commit_key.commit(left_sigma_poly.clone())?;
+        let right_sigma_poly_commit =
+            commit_key.commit(right_sigma_poly.clone())?;
+        let out_sigma_poly_commit =
+            commit_key.commit(out_sigma_poly.clone())?;
+        let fourth_sigma_poly_commit =
+            commit_key.commit(fourth_sigma_poly.clone())?;
 
         // Verifier Key for arithmetic circuits
         let arithmetic_verifier_key = widget::arithmetic::VerifierKey {
@@ -445,38 +454,41 @@ pub(crate) fn compute_vanishing_poly_over_coset<
     domain: D,        // domain to evaluate over
     poly_degree: u64, // degree of the vanishing polynomial
 ) -> Evaluations<F, D> {
-    assert!((domain.size() as u64) > poly_degree);
-    let coset_gen = F::from_repr(<F::Params>::GENERATOR).unwrap().pow(&[
-        poly_degree,
-        0,
-        0,
-        0,
-    ]);
+    assert!(
+        (domain.size() as u64) > poly_degree,
+        "domain_size = {}, poly_degree = {}",
+        domain.size() as u64,
+        poly_degree
+    );
+    let group_gen = domain.element(1);
+    let coset_gen = F::multiplicative_generator().pow(&[poly_degree, 0, 0, 0]);
     let v_h: Vec<_> = (0..domain.size())
         .map(|i| {
-            (coset_gen
-                * F::from_repr(<F::Params>::GENERATOR).unwrap().pow(&[
-                    poly_degree * i as u64,
-                    0,
-                    0,
-                    0,
-                ]))
+            (coset_gen * group_gen.pow(&[poly_degree * i as u64, 0, 0, 0]))
                 - F::one()
         })
         .collect();
     Evaluations::from_vec_and_domain(v_h, domain)
 }
 
-/*
 #[cfg(test)]
 mod test {
     use super::*;
     use crate::constraint_system::helper::*;
+    use ark_bls12_381::Bls12_381;
+    use ark_ed_on_bls12_381::{
+        EdwardsParameters as JubjubParameters,
+        EdwardsProjective as JubjubProjective,
+    };
     #[test]
     /// Tests that the circuit gets padded to the correct length
     /// XXX: We can do this test without dummy_gadget method
     fn test_pad() {
-        let mut composer: StandardComposer = StandardComposer::new();
+        let mut composer: StandardComposer<
+            Bls12_381,
+            JubjubProjective,
+            JubjubParameters,
+        > = StandardComposer::new();
         dummy_gadget(100, &mut composer);
 
         // Pad the circuit to next power of two
@@ -500,4 +512,3 @@ mod test {
         assert!(composer.w_o.len() == size);
     }
 }
-*/

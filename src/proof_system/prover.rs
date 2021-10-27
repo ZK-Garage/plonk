@@ -222,10 +222,10 @@ impl<
             DensePolynomial::from_coefficients_vec(domain.ifft(w_4_scalar));
 
         // Commit to witness polynomials
-        let w_l_poly_commit = commit_key.commit(&w_l_poly)?;
-        let w_r_poly_commit = commit_key.commit(&w_r_poly)?;
-        let w_o_poly_commit = commit_key.commit(&w_o_poly)?;
-        let w_4_poly_commit = commit_key.commit(&w_4_poly)?;
+        let w_l_poly_commit = commit_key.commit(w_l_poly.clone())?;
+        let w_r_poly_commit = commit_key.commit(w_r_poly.clone())?;
+        let w_o_poly_commit = commit_key.commit(w_o_poly.clone())?;
+        let w_4_poly_commit = commit_key.commit(w_4_poly.clone())?;
 
         // Add witness polynomial commitments to transcript
         transcript.append_commitment(b"w_l", &w_l_poly_commit);
@@ -241,22 +241,26 @@ impl<
         transcript.append_scalar(b"beta", &beta);
         let gamma = transcript.challenge_scalar(b"gamma");
 
-        let z_poly = self.cs.perm.compute_permutation_poly(
-            &domain,
-            (&w_l_scalar, &w_r_scalar, &w_o_scalar, &w_4_scalar),
-            beta,
-            gamma,
-            (
-                &prover_key.permutation.left_sigma.0,
-                &prover_key.permutation.right_sigma.0,
-                &prover_key.permutation.out_sigma.0,
-                &prover_key.permutation.fourth_sigma.0,
+        assert!(beta != gamma, "challenges must be different");
+
+        let z_poly = DensePolynomial::from_coefficients_slice(
+            &self.cs.perm.compute_permutation_poly(
+                &domain,
+                (&w_l_scalar, &w_r_scalar, &w_o_scalar, &w_4_scalar),
+                beta,
+                gamma,
+                (
+                    &prover_key.permutation.left_sigma.0,
+                    &prover_key.permutation.right_sigma.0,
+                    &prover_key.permutation.out_sigma.0,
+                    &prover_key.permutation.fourth_sigma.0,
+                ),
             ),
         );
 
         // Commit to permutation polynomial
         //
-        let z_poly_commit = commit_key.commit(&z_poly)?;
+        let z_poly_commit = commit_key.commit(z_poly.clone())?;
 
         // Add permutation polynomial commitment to transcript
         transcript.append_commitment(b"z", &z_poly_commit);
@@ -301,10 +305,10 @@ impl<
             self.split_tx_poly(domain.size(), &t_poly);
 
         // Commit to splitted quotient polynomial
-        let t_1_commit = commit_key.commit(&t_1_poly)?;
-        let t_2_commit = commit_key.commit(&t_2_poly)?;
-        let t_3_commit = commit_key.commit(&t_3_poly)?;
-        let t_4_commit = commit_key.commit(&t_4_poly)?;
+        let t_1_commit = commit_key.commit(t_1_poly.clone())?;
+        let t_2_commit = commit_key.commit(t_2_poly.clone())?;
+        let t_3_commit = commit_key.commit(t_3_poly.clone())?;
+        let t_4_commit = commit_key.commit(t_4_poly.clone())?;
 
         // Add quotient polynomial commitments to transcript
         transcript.append_commitment(b"t_1", &t_1_commit);
@@ -398,7 +402,7 @@ impl<
             &z_challenge,
             &mut transcript,
         );
-        let w_z_comm = commit_key.commit(&aggregate_witness)?;
+        let w_z_comm = commit_key.commit(aggregate_witness)?;
 
         // Compute aggregate witness to polynomials evaluated at the shifted
         // evaluation challenge
@@ -407,7 +411,7 @@ impl<
             &(z_challenge * get_domain_attrs(&domain, "group_gen")),
             &mut transcript,
         );
-        let w_zx_comm = commit_key.commit(&shifted_aggregate_witness)?;
+        let w_zx_comm = commit_key.commit(shifted_aggregate_witness)?;
 
         // Create Proof
         Ok(Proof {

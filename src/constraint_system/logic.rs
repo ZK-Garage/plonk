@@ -53,14 +53,14 @@ impl<
         // Get vars as bits and reverse them to get the Little Endian repr.
         let a_bits: Vec<_> = self.variables[&a]
             .into_repr()
-            .to_bits_le()
+            .to_bits_be()
             .iter()
             .skip(256 - num_bits)
             .map(|bit| *bit as u8)
             .collect();
         let b_bits: Vec<_> = self.variables[&b]
             .into_repr()
-            .to_bits_le()
+            .to_bits_be()
             .iter()
             .skip(256 - num_bits)
             .map(|bit| *bit as u8)
@@ -341,17 +341,26 @@ impl<
     }
 }
 
-/*
 #[cfg(test)]
 mod logic_gate_tests {
+    use crate::constraint_system::StandardComposer;
+
     use super::super::helper::*;
-    use ark_bls12_381::Fr as BlsScalar;
+    use ark_bls12_381::{Bls12_381, Fr as BlsScalar};
+    use ark_ed_on_bls12_381::{
+        EdwardsParameters as JubjubParameters,
+        EdwardsProjective as JubjubProjective,
+    };
 
     #[test]
     fn test_logic_xor_and_constraint() {
         // Should pass since the XOR result is correct and the bit-num is even.
         let res = gadget_tester(
-            |composer| {
+            |composer: &mut StandardComposer<
+                Bls12_381,
+                JubjubProjective,
+                JubjubParameters,
+            >| {
                 let witness_a = composer.add_input(BlsScalar::from(500u64));
                 let witness_b = composer.add_input(BlsScalar::from(357u64));
                 let xor_res = composer.xor_gate(witness_a, witness_b, 10);
@@ -368,7 +377,11 @@ mod logic_gate_tests {
 
         // Should pass since the AND result is correct even the bit-num is even.
         let res = gadget_tester(
-            |composer| {
+            |composer: &mut StandardComposer<
+                Bls12_381,
+                JubjubProjective,
+                JubjubParameters,
+            >| {
                 let witness_a = composer.add_input(BlsScalar::from(469u64));
                 let witness_b = composer.add_input(BlsScalar::from(321u64));
                 let xor_res = composer.and_gate(witness_a, witness_b, 10);
@@ -386,7 +399,11 @@ mod logic_gate_tests {
         // Should not pass since the XOR result is not correct even the bit-num
         // is even.
         let res = gadget_tester(
-            |composer| {
+            |composer: &mut StandardComposer<
+                Bls12_381,
+                JubjubProjective,
+                JubjubParameters,
+            >| {
                 let witness_a = composer.add_input(BlsScalar::from(139u64));
                 let witness_b = composer.add_input(BlsScalar::from(33u64));
                 let xor_res = composer.xor_gate(witness_a, witness_b, 10);
@@ -403,7 +420,11 @@ mod logic_gate_tests {
 
         // Should pass even the bitnum is less than the number bit-size
         let res = gadget_tester(
-            |composer| {
+            |composer: &mut StandardComposer<
+                Bls12_381,
+                JubjubProjective,
+                JubjubParameters,
+            >| {
                 let witness_a = composer.add_input(BlsScalar::from(256u64));
                 let witness_b = composer.add_input(BlsScalar::from(235u64));
                 let xor_res = composer.xor_gate(witness_a, witness_b, 2);
@@ -424,7 +445,11 @@ mod logic_gate_tests {
     fn test_logical_gate_odd_bit_num() {
         // Should fail since the bit-num is odd.
         let _ = gadget_tester(
-            |composer| {
+            |composer: &mut StandardComposer<
+                Bls12_381,
+                JubjubProjective,
+                JubjubParameters,
+            >| {
                 let witness_a = composer.add_input(BlsScalar::from(500u64));
                 let witness_b = composer.add_input(BlsScalar::from(499u64));
                 let xor_res = composer.xor_gate(witness_a, witness_b, 9);
@@ -439,4 +464,3 @@ mod logic_gate_tests {
         );
     }
 }
-*/

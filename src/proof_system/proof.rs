@@ -14,14 +14,14 @@ use super::linearisation_poly::ProofEvaluations;
 use crate::commitment_scheme::kzg10::{KZGAggregateProof, OpeningKey};
 use crate::proof_system::VerifierKey;
 use crate::transcript::TranscriptProtocol;
+use crate::util;
 use crate::{error::Error, transcript::TranscriptWrapper};
 use ark_ec::{msm::VariableBaseMSM, AffineCurve, TEModelParameters};
 use ark_ec::{PairingEngine, ProjectiveCurve};
-use ark_ff::{fields::batch_inversion, Field, FpParameters, PrimeField};
+use ark_ff::{fields::batch_inversion, Field, PrimeField};
 use ark_poly::{EvaluationDomain, GeneralEvaluationDomain};
 use ark_poly_commit::kzg10::Commitment;
 use core::marker::PhantomData;
-use rayon::prelude::*;
 
 /// A Proof is a composition of `Commitment`s to the Witness, Permutation,
 /// Quotient, Shifted and Opening polynomials as well as the
@@ -167,6 +167,7 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Proof<E, P> {
         transcript.append_scalar(b"q_l_eval", &self.evaluations.q_l_eval);
         transcript.append_scalar(b"q_r_eval", &self.evaluations.q_r_eval);
         transcript.append_scalar(b"perm_eval", &self.evaluations.perm_eval);
+        assert!(beta != gamma);
         transcript.append_scalar(b"t_eval", &t_eval);
         transcript.append_scalar(b"r_eval", &self.evaluations.lin_poly_eval);
 
@@ -238,11 +239,7 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Proof<E, P> {
         transcript.append_commitment(b"w_z", &self.w_z_comm);
         transcript.append_commitment(b"w_z_w", &self.w_zw_comm);
 
-        // XXX: Move this to a constants file with the K1...
-        let group_gen = E::Fr::from_repr(
-            <<E as PairingEngine>::Fr as PrimeField>::Params::GENERATOR,
-        )
-        .unwrap();
+        let group_gen = util::get_domain_attrs(&domain, "group_gen");
 
         // Batch check
         if opening_key
@@ -385,14 +382,6 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Proof<E, P> {
         Commitment(
             VariableBaseMSM::multi_scalar_mul(&points, &scalars_repr).into(),
         )
-
-        // Commitment::from_projective(VariableBaseMSM::multi_scalar_mul(
-        //     &points,
-        //     &scalars
-        //         .into_iter()
-        //         .map(|s| s.into_repr())
-        //         .collect::<Vec<_>>(),
-        // ))
     }
 }
 
@@ -412,9 +401,10 @@ fn compute_barycentric_eval<F: PrimeField>(
     point: F,
     domain: &GeneralEvaluationDomain<F>,
 ) -> F {
+    // XXX: This looks like evaluating the vanishing polynomial at point * generator^-1
     let numerator = (point.pow(&[domain.size() as u64, 0, 0, 0]) - F::one())
-        * F::from(domain.size() as u64).inverse().unwrap();
-    let range = (0..evaluations.len()).into_par_iter();
+        * util::get_domain_attrs(&domain, "size_inv");
+    let range = (0..evaluations.len()).into_iter();
 
     let non_zero_evaluations: Vec<usize> = range
         .filter(|&i| {
@@ -424,23 +414,17 @@ fn compute_barycentric_eval<F: PrimeField>(
         .collect();
 
     // Only compute the denominators with non-zero evaluations
-    let range = (0..non_zero_evaluations.len()).into_par_iter();
+    let range = (0..non_zero_evaluations.len()).into_iter();
 
+    let group_gen_inv = util::get_domain_attrs(&domain, "group_gen")
+        .inverse()
+        .unwrap();
     let mut denominators: Vec<F> = range
         .clone()
         .map(|i| {
             // index of non-zero evaluation
             let index = non_zero_evaluations[i];
-
-            // XXX: Move this to ctants file like K1...
-
-            (F::from_repr(<F::Params>::GENERATOR)
-                .unwrap()
-                .inverse()
-                .unwrap()
-                .pow(&[index as u64, 0, 0, 0])
-                * point)
-                - F::one()
+            (group_gen_inv.pow(&[index as u64, 0, 0, 0]) * point) - F::one()
         })
         .collect();
     batch_inversion(&mut denominators);
@@ -462,6 +446,7 @@ fn compute_barycentric_eval<F: PrimeField>(
 mod proof_tests {
     use super::*;
     use ark_bls12_381::{Bls12_381, Fr as BlsScalar};
+    use ark_ff::UniformRand;
     use ark_poly_commit::kzg10::Commitment;
     use rand_core::OsRng;
 
@@ -480,24 +465,24 @@ mod proof_tests {
             w_z_comm: Commitment::<Bls12_381>::default(),
             w_zw_comm: Commitment::<Bls12_381>::default(),
             evaluations: ProofEvaluations {
-                a_eval: BlsScalar::random(&mut OsRng),
-                b_eval: BlsScalar::random(&mut OsRng),
-                c_eval: BlsScalar::random(&mut OsRng),
-                d_eval: BlsScalar::random(&mut OsRng),
-                a_next_eval: BlsScalar::random(&mut OsRng),
-                b_next_eval: BlsScalar::random(&mut OsRng),
-                d_next_eval: BlsScalar::random(&mut OsRng),
-                q_arith_eval: BlsScalar::random(&mut OsRng),
-                q_c_eval: BlsScalar::random(&mut OsRng),
-                q_l_eval: BlsScalar::random(&mut OsRng),
-                q_r_eval: BlsScalar::random(&mut OsRng),
-                left_sigma_eval: BlsScalar::random(&mut OsRng),
-                right_sigma_eval: BlsScalar::random(&mut OsRng),
-                out_sigma_eval: BlsScalar::random(&mut OsRng),
-                lin_poly_eval: BlsScalar::random(&mut OsRng),
-                perm_eval: BlsScalar::random(&mut OsRng),
+                a_eval: BlsScalar::rand(&mut OsRng),
+                b_eval: BlsScalar::rand(&mut OsRng),
+                c_eval: BlsScalar::rand(&mut OsRng),
+                d_eval: BlsScalar::rand(&mut OsRng),
+                a_next_eval: BlsScalar::rand(&mut OsRng),
+                b_next_eval: BlsScalar::rand(&mut OsRng),
+                d_next_eval: BlsScalar::rand(&mut OsRng),
+                q_arith_eval: BlsScalar::rand(&mut OsRng),
+                q_c_eval: BlsScalar::rand(&mut OsRng),
+                q_l_eval: BlsScalar::rand(&mut OsRng),
+                q_r_eval: BlsScalar::rand(&mut OsRng),
+                left_sigma_eval: BlsScalar::rand(&mut OsRng),
+                right_sigma_eval: BlsScalar::rand(&mut OsRng),
+                out_sigma_eval: BlsScalar::rand(&mut OsRng),
+                lin_poly_eval: BlsScalar::rand(&mut OsRng),
+                perm_eval: BlsScalar::rand(&mut OsRng),
             },
-            _marker: PhantomData::new(),
+            _marker: PhantomData,
         };
 
         let proof_bytes = proof.to_bytes();

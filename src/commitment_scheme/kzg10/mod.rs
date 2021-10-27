@@ -26,4 +26,4 @@ pub use key::{CommitKey, OpeningKey};
 pub(crate) use proof::KZGAggregateProof;
 pub use srs::PublicParameters;
 pub(crate) mod proof;
-pub(crate) use proof::KZGProof;
+// pub(crate) use proof::KZGProof;

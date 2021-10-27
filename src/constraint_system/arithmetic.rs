@@ -308,71 +308,85 @@ impl<
     }
 }
 
-/*
 #[cfg(test)]
 mod arithmetic_gates_tests {
     use crate::constraint_system::helper::*;
-    use ark_ec::bls12::Bls12;
+    use crate::constraint_system::StandardComposer;
+
+    use ark_bls12_381::{Bls12_381, Fr as BlsScalar};
+    use ark_ed_on_bls12_381::{
+        EdwardsParameters as JubjubParameters,
+        EdwardsProjective as JubjubProjective,
+    };
+    use num_traits::{One, Zero};
 
     #[test]
     fn test_public_inputs() {
         let res = gadget_tester(
-            |composer| {
-                let var_one = composer.add_input(Bls12::Fr::one());
+            |composer: &mut StandardComposer<
+                Bls12_381,
+                JubjubProjective,
+                JubjubParameters,
+            >| {
+                let var_one = composer.add_input(BlsScalar::one());
 
                 let should_be_three = composer.big_add(
-                    (Bls12::Fr::one(), var_one),
-                    (Bls12::Fr::one(), var_one),
+                    (BlsScalar::one(), var_one),
+                    (BlsScalar::one(), var_one),
                     None,
-                    Bls12::Fr::zero(),
-                    Some(Bls12::Fr::one()),
+                    BlsScalar::zero(),
+                    Some(BlsScalar::one()),
                 );
                 composer.constrain_to_constant(
                     should_be_three,
-                    Bls12::Fr::from(3),
+                    BlsScalar::from(3),
                     None,
                 );
                 let should_be_four = composer.big_add(
-                    (Bls12::Fr::one(), var_one),
-                    (Bls12::Fr::one(), var_one),
+                    (BlsScalar::one(), var_one),
+                    (BlsScalar::one(), var_one),
                     None,
-                    Bls12::Fr::zero(),
-                    Some(Bls12::Fr::from(2)),
+                    BlsScalar::zero(),
+                    Some(BlsScalar::from(2)),
                 );
                 composer.constrain_to_constant(
                     should_be_four,
-                    Bls12::Fr::from(4),
+                    BlsScalar::from(4),
                     None,
                 );
             },
             200,
         );
-        assert!(res.is_ok());
+        assert!(res.is_ok(), "{:?}", res.err().unwrap());
     }
 
     #[test]
     fn test_correct_add_mul_gate() {
         let res = gadget_tester(
-            |composer| {
+            |composer: &mut StandardComposer<
+                Bls12_381,
+                JubjubProjective,
+                JubjubParameters,
+            >| {
                 // Verify that (4+5+5) * (6+7+7) = 280
-                let four = composer.add_input(Bls12::Fr::from(4));
-                let five = composer.add_input(Bls12::Fr::from(5));
-                let six = composer.add_input(Bls12::Fr::from(6));
-                let seven = composer.add_input(Bls12::Fr::from(7));
+                let four = composer.add_input(BlsScalar::from(4));
+                let five = composer.add_input(BlsScalar::from(5));
+                let six = composer.add_input(BlsScalar::from(6));
+                let seven = composer.add_input(BlsScalar::from(7));
 
                 let fourteen = composer.big_add(
-                    (Bls12::Fr::one(), four),
-                    (Bls12::Fr::one(), five),
-                    Some((Bls12::Fr::one(), five)),
-                    Bls12::Fr::zero(),
+                    (BlsScalar::one(), four),
+                    (BlsScalar::one(), five),
+                    Some((BlsScalar::one(), five)),
+                    BlsScalar::zero(),
                     None,
                 );
 
                 let twenty = composer.big_add(
-                    (Bls12::Fr::one(), six),
-                    (Bls12::Fr::one(), seven),
-                    Some((Bls12::Fr::one(), seven)),
-                    Bls12::Fr::zero(),
+                    (BlsScalar::one(), six),
+                    (BlsScalar::one(), seven),
+                    Some((BlsScalar::one(), seven)),
+                    BlsScalar::zero(),
                     None,
                 );
 
@@ -384,81 +398,89 @@ mod arithmetic_gates_tests {
                 // is public, we can also constrain the output wire of the mul
                 // gate to it. This is what this test does
                 let output = composer.mul(
-                    Bls12::Fr::one(),
+                    BlsScalar::one(),
                     fourteen,
                     twenty,
-                    Bls12::Fr::zero(),
+                    BlsScalar::zero(),
                     None,
                 );
                 composer.constrain_to_constant(
                     output,
-                    Bls12::Fr::from(280),
+                    BlsScalar::from(280),
                     None,
                 );
             },
             200,
         );
-        assert!(res.is_ok());
+        assert!(res.is_ok(), "{:?}", res.err().unwrap());
     }
 
     #[test]
     fn test_correct_add_gate() {
         let res = gadget_tester(
-            |composer| {
+            |composer: &mut StandardComposer<
+                Bls12_381,
+                JubjubProjective,
+                JubjubParameters,
+            >| {
                 let zero = composer.zero_var();
-                let one = composer.add_input(Bls12::Fr::one());
+                let one = composer.add_input(BlsScalar::one());
 
                 let c = composer.add(
-                    (Bls12::Fr::one(), one),
-                    (Bls12::Fr::zero(), zero),
-                    Bls12::Fr::from(2u64),
+                    (BlsScalar::one(), one),
+                    (BlsScalar::zero(), zero),
+                    BlsScalar::from(2u64),
                     None,
                 );
-                composer.constrain_to_constant(c, Bls12::Fr::from(3), None);
+                composer.constrain_to_constant(c, BlsScalar::from(3), None);
             },
             32,
         );
-        assert!(res.is_ok())
+        assert!(res.is_ok(), "{:?}", res.err().unwrap());
     }
 
     #[test]
     fn test_correct_big_add_mul_gate() {
         let res = gadget_tester(
-            |composer| {
+            |composer: &mut StandardComposer<
+                Bls12_381,
+                JubjubProjective,
+                JubjubParameters,
+            >| {
                 // Verify that (4+5+5) * (6+7+7) + (8*9) = 352
-                let four = composer.add_input(Bls12::Fr::from(4));
-                let five = composer.add_input(Bls12::Fr::from(5));
-                let six = composer.add_input(Bls12::Fr::from(6));
-                let seven = composer.add_input(Bls12::Fr::from(7));
-                let nine = composer.add_input(Bls12::Fr::from(9));
+                let four = composer.add_input(BlsScalar::from(4));
+                let five = composer.add_input(BlsScalar::from(5));
+                let six = composer.add_input(BlsScalar::from(6));
+                let seven = composer.add_input(BlsScalar::from(7));
+                let nine = composer.add_input(BlsScalar::from(9));
 
                 let fourteen = composer.big_add(
-                    (Bls12::Fr::one(), four),
-                    (Bls12::Fr::one(), five),
-                    Some((Bls12::Fr::one(), five)),
-                    Bls12::Fr::zero(),
+                    (BlsScalar::one(), four),
+                    (BlsScalar::one(), five),
+                    Some((BlsScalar::one(), five)),
+                    BlsScalar::zero(),
                     None,
                 );
 
                 let twenty = composer.big_add(
-                    (Bls12::Fr::one(), six),
-                    (Bls12::Fr::one(), seven),
-                    Some((Bls12::Fr::one(), seven)),
-                    Bls12::Fr::zero(),
+                    (BlsScalar::one(), six),
+                    (BlsScalar::one(), seven),
+                    Some((BlsScalar::one(), seven)),
+                    BlsScalar::zero(),
                     None,
                 );
 
                 let output = composer.big_mul(
-                    Bls12::Fr::one(),
+                    BlsScalar::one(),
                     fourteen,
                     twenty,
-                    Some((Bls12::Fr::from(8), nine)),
-                    Bls12::Fr::zero(),
+                    Some((BlsScalar::from(8), nine)),
+                    BlsScalar::zero(),
                     None,
                 );
                 composer.constrain_to_constant(
                     output,
-                    Bls12::Fr::from(352),
+                    BlsScalar::from(352),
                     None,
                 );
             },
@@ -470,38 +492,42 @@ mod arithmetic_gates_tests {
     #[test]
     fn test_incorrect_add_mul_gate() {
         let res = gadget_tester(
-            |composer| {
+            |composer: &mut StandardComposer<
+                Bls12_381,
+                JubjubProjective,
+                JubjubParameters,
+            >| {
                 // Verify that (5+5) * (6+7) != 117
-                let five = composer.add_input(Bls12::Fr::from(5));
-                let six = composer.add_input(Bls12::Fr::from(6));
-                let seven = composer.add_input(Bls12::Fr::from(7));
+                let five = composer.add_input(BlsScalar::from(5));
+                let six = composer.add_input(BlsScalar::from(6));
+                let seven = composer.add_input(BlsScalar::from(7));
 
                 let five_plus_five = composer.big_add(
-                    (Bls12::Fr::one(), five),
-                    (Bls12::Fr::one(), five),
+                    (BlsScalar::one(), five),
+                    (BlsScalar::one(), five),
                     None,
-                    Bls12::Fr::zero(),
+                    BlsScalar::zero(),
                     None,
                 );
 
                 let six_plus_seven = composer.big_add(
-                    (Bls12::Fr::one(), six),
-                    (Bls12::Fr::one(), seven),
+                    (BlsScalar::one(), six),
+                    (BlsScalar::one(), seven),
                     None,
-                    Bls12::Fr::zero(),
+                    BlsScalar::zero(),
                     None,
                 );
 
                 let output = composer.mul(
-                    Bls12::Fr::one(),
+                    BlsScalar::one(),
                     five_plus_five,
                     six_plus_seven,
-                    Bls12::Fr::zero(),
+                    BlsScalar::zero(),
                     None,
                 );
                 composer.constrain_to_constant(
                     output,
-                    Bls12::Fr::from(117),
+                    BlsScalar::from(117),
                     None,
                 );
             },
@@ -510,4 +536,3 @@ mod arithmetic_gates_tests {
         assert!(res.is_err());
     }
 }
-*/
