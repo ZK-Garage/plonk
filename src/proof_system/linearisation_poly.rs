@@ -7,13 +7,9 @@
 use super::ProverKey;
 use crate::util::*;
 use ark_ec::{PairingEngine, TEModelParameters};
-use ark_ff::FftField;
-use ark_ff::FftParameters;
-use ark_ff::Field;
 use ark_ff::PrimeField;
 use ark_poly::{
-    univariate::DensePolynomial, EvaluationDomain, GeneralEvaluationDomain,
-    Polynomial,
+    univariate::DensePolynomial, GeneralEvaluationDomain, Polynomial,
 };
 
 #[allow(dead_code)]

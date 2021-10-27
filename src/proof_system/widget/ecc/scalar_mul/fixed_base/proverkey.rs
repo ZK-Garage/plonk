@@ -9,7 +9,6 @@ use ark_ff::PrimeField;
 use ark_poly::polynomial::univariate::DensePolynomial;
 use ark_poly::Evaluations;
 use core::marker::PhantomData;
-use num_traits::One;
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub(crate) struct ProverKey<F: PrimeField, P: TEModelParameters<BaseField = F>>

@@ -11,9 +11,8 @@ use crate::error::Error;
 use crate::prelude::CommitKey;
 use crate::proof_system::{widget, ProverKey};
 use crate::transcript::TranscriptWrapper;
-use crate::util;
 use ark_ec::{PairingEngine, ProjectiveCurve, TEModelParameters};
-use ark_ff::{FpParameters, PrimeField};
+use ark_ff::PrimeField;
 use ark_poly::polynomial::univariate::DensePolynomial;
 use ark_poly::{EvaluationDomain, Evaluations, GeneralEvaluationDomain};
 use core::marker::PhantomData;
@@ -461,8 +460,6 @@ pub(crate) fn compute_vanishing_poly_over_coset<
         domain.size() as u64,
         poly_degree
     );
-    // group_gen = 7 (for bls).
-    // This is GENERATOR used in dusk-plonk
     let group_gen = domain.element(1);
     let coset_gen = F::multiplicative_generator().pow(&[poly_degree, 0, 0, 0]);
     let v_h: Vec<_> = (0..domain.size())

@@ -197,8 +197,6 @@ mod tests {
                     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                     0, 0,
                 ]);
-                // let bls_scalar =
-                //     BlsScalar::from_bytes(&scalar.to_bytes()).unwrap();
                 let secret_scalar = composer.add_input(bls_scalar);
 
                 let (x, y) = JubjubParameters::AFFINE_GENERATOR_COEFFS;

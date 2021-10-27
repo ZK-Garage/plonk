@@ -9,10 +9,10 @@ use super::StandardComposer;
 use crate::commitment_scheme::kzg10::PublicParameters;
 use crate::error::Error;
 use crate::proof_system::{Prover, Verifier};
-use ark_ec::{AffineCurve, PairingEngine, ProjectiveCurve, TEModelParameters};
-use ark_ff::{Field, PrimeField, UniformRand};
+use ark_ec::{PairingEngine, ProjectiveCurve, TEModelParameters};
+use ark_ff::PrimeField;
 use num_traits::{One, Zero};
-use rand_core::{CryptoRng, OsRng, RngCore};
+use rand_core::OsRng;
 
 /// This function is only used to generate the SRS.
 /// The intention is just to compute the resulting points

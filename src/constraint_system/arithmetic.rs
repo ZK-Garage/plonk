@@ -311,9 +311,9 @@ impl<
 #[cfg(test)]
 mod arithmetic_gates_tests {
     use crate::constraint_system::helper::*;
-    use crate::{constraint_system::StandardComposer, util};
+    use crate::constraint_system::StandardComposer;
 
-    use ark_bls12_381::{Bls12_381, Fr as BlsScalar, FrParameters};
+    use ark_bls12_381::{Bls12_381, Fr as BlsScalar};
     use ark_ed_on_bls12_381::{
         EdwardsParameters as JubjubParameters,
         EdwardsProjective as JubjubProjective,

@@ -18,11 +18,10 @@ use crate::util;
 use crate::{error::Error, transcript::TranscriptWrapper};
 use ark_ec::{msm::VariableBaseMSM, AffineCurve, TEModelParameters};
 use ark_ec::{PairingEngine, ProjectiveCurve};
-use ark_ff::{fields::batch_inversion, Field, FpParameters, PrimeField};
+use ark_ff::{fields::batch_inversion, Field, PrimeField};
 use ark_poly::{EvaluationDomain, GeneralEvaluationDomain};
 use ark_poly_commit::kzg10::Commitment;
 use core::marker::PhantomData;
-use rayon::prelude::*;
 
 /// A Proof is a composition of `Commitment`s to the Witness, Permutation,
 /// Quotient, Shifted and Opening polynomials as well as the
