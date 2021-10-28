@@ -154,21 +154,25 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
 ///     f: JubJubAffine,
 /// }
 ///
-/// impl Circuit for TestCircuit {
+/// impl<
+///         E: PairingEngine,
+///         T: ProjectiveCurve<BaseField = E::Fr>,
+///         P: TEModelParameters<BaseField = E::Fr>,
+///     > Circuit<E, T, P> for TestCircuit<E, T, P>
+/// {
 ///     const CIRCUIT_ID: [u8; 32] = [0xff; 32];
 ///     fn gadget(
 ///         &mut self,
-///         composer: &mut StandardComposer,
+///         composer: &mut StandardComposer<E, T, P>,
 ///     ) -> Result<(), Error> {
 ///         // Add fixed witness zero
-///         let zero = composer.add_witness_to_circuit_description(E::Fr::zero());
 ///         let a = composer.add_input(self.a);
 ///         let b = composer.add_input(self.b);
 ///         // Make first constraint a + b = c
 ///         composer.poly_gate(
 ///             a,
 ///             b,
-///             zero,
+///             composer.zero_var,
 ///             E::Fr::zero(),
 ///             E::Fr::one(),
 ///             E::Fr::one(),
@@ -183,7 +187,7 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
 ///         composer.poly_gate(
 ///             a,
 ///             b,
-///             zero,
+///             composer.zero,
 ///             E::Fr::one(),
 ///             E::Fr::zero(),
 ///             E::Fr::zero(),
@@ -192,11 +196,12 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
 ///             Some(-self.d),
 ///         );
 ///
-///         let e = composer.add_input(self.e.into());
+///         let e_repr = self.e.into_repr().to_bytes_le();
+///         let e = composer.add_input(E::Fr::from_le_bytes_mod_order(&e_repr));
+///         let (x, y) = P::AFFINE_GENERATOR_COEFFS;
+///         let generator = GroupAffine::new(x, y);
 ///         let scalar_mul_result =
-///             composer.fixed_base_scalar_mul(
-///                 e, dusk_jubjub::GENERATOR_EXTENDED,
-///             );
+///             composer.fixed_base_scalar_mul(e, generator);
 ///         // Apply the constrain
 ///         composer
 ///             .assert_equal_public_point(scalar_mul_result, self.f);
@@ -214,6 +219,8 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
 /// let (pk, vd) = circuit.compile(&pp)?;
 ///
 /// // Prover POV
+/// let (x, y) = P::AFFINE_GENERATOR_COEFFS;
+/// let generator = GroupAffine::new(x, y);
 /// let proof = {
 ///     let mut circuit = TestCircuit {
 ///         a: E::Fr::from(20u64),
@@ -222,8 +229,9 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
 ///         d: E::Fr::from(100u64),
 ///         e: JubJubScalar::from(2u64),
 ///         f: JubJubAffine::from(
-///             dusk_jubjub::GENERATOR_EXTENDED * JubJubScalar::from(2u64),
+///             generator * JubJubScalar::from(2u64),
 ///         ),
+///         _marker: PhantomData,
 ///     };
 ///
 ///     circuit.gen_proof(&pp, &pk, b"Test")
@@ -234,7 +242,7 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
 ///     E::Fr::from(25u64).into(),
 ///     E::Fr::from(100u64).into(),
 ///     JubJubAffine::from(
-///         dusk_jubjub::GENERATOR_EXTENDED * JubJubScalar::from(2u64),
+///         generator * JubJubScalar::from(2u64),
 ///     )
 ///     .into(),
 /// ];
@@ -449,95 +457,95 @@ mod tests {
     }
 
     /*
-    // TODO: Complete serialization first
-    #[test]
-    fn test_full() -> Result<(), Error> {
-        use rand_core::OsRng;
-        use std::fs::{self, File};
-        use std::io::Write;
-        use tempdir::TempDir;
+        // TODO: Complete serialization first
+        #[test]
+        fn test_full() -> Result<(), Error> {
+            use rand_core::OsRng;
+            use std::fs::{self, File};
+            use std::io::Write;
+            use tempdir::TempDir;
 
-        let tmp = TempDir::new("plonk-keys-test-full")
-            .expect("IO error")
-            .into_path();
-        let pp_path = tmp.clone().join("pp_testcirc");
-        let pk_path = tmp.clone().join("pk_testcirc");
-        let vd_path = tmp.clone().join("vd_testcirc");
+            let tmp = TempDir::new("plonk-keys-test-full")
+                .expect("IO error")
+                .into_path();
+            let pp_path = tmp.clone().join("pp_testcirc");
+            let pk_path = tmp.clone().join("pk_testcirc");
+            let vd_path = tmp.clone().join("vd_testcirc");
 
-        // Generate CRS
-        let pp_p = PublicParameters::setup(1 << 12, &mut OsRng)?;
-        File::create(&pp_path)
-            .and_then(|mut f| f.write(pp_p.to_raw_var_bytes().as_slice()))
-            .expect("IO error");
+            // Generate CRS
+            let pp_p = PublicParameters::setup(1 << 12, &mut OsRng)?;
+            File::create(&pp_path)
+                .and_then(|mut f| f.write(pp_p.to_raw_var_bytes().as_slice()))
+                .expect("IO error");
 
-        // Read PublicParameters
-        let pp = fs::read(pp_path).expect("IO error");
-        let pp =
-            unsafe { PublicParameters::from_slice_unchecked(pp.as_slice()) };
+            // Read PublicParameters
+            let pp = fs::read(pp_path).expect("IO error");
+            let pp =
+                unsafe { PublicParameters::from_slice_unchecked(pp.as_slice()) };
 
-        // Initialize the circuit
-        let mut circuit = TestCircuit::default();
+            // Initialize the circuit
+            let mut circuit = TestCircuit::default();
 
-        // Compile the circuit
-        let (pk_p, og_verifier_data) = circuit.compile(&pp)?;
+            // Compile the circuit
+            let (pk_p, og_verifier_data) = circuit.compile(&pp)?;
 
-        // Write the keys
-        File::create(&pk_path)
-            .and_then(|mut f| f.write(pk_p.to_var_bytes().as_slice()))
-            .expect("IO error");
+            // Write the keys
+            File::create(&pk_path)
+                .and_then(|mut f| f.write(pk_p.to_var_bytes().as_slice()))
+                .expect("IO error");
 
-        // Read ProverKey
-        let pk = fs::read(pk_path).expect("IO error");
-        let pk = ProverKey::from_slice(pk.as_slice())?;
+            // Read ProverKey
+            let pk = fs::read(pk_path).expect("IO error");
+            let pk = ProverKey::from_slice(pk.as_slice())?;
 
-        assert_eq!(pk, pk_p);
+            assert_eq!(pk, pk_p);
 
-        // Store the VerifierData just for the verifier side:
-        // (You could also store pi_pos and VerifierKey sepparatedly).
-        File::create(&vd_path)
-            .and_then(|mut f| {
-                f.write(og_verifier_data.to_var_bytes().as_slice())
-            })
-            .expect("IO error");
-        let vd = fs::read(vd_path).expect("IO error");
-        let verif_data = VerifierData::from_slice(vd.as_slice())?;
-        assert_eq!(og_verifier_data.key(), verif_data.key());
-        assert_eq!(og_verifier_data.pi_pos(), verif_data.pi_pos());
+            // Store the VerifierData just for the verifier side:
+            // (You could also store pi_pos and VerifierKey sepparatedly).
+            File::create(&vd_path)
+                .and_then(|mut f| {
+                    f.write(og_verifier_data.to_var_bytes().as_slice())
+                })
+                .expect("IO error");
+            let vd = fs::read(vd_path).expect("IO error");
+            let verif_data = VerifierData::from_slice(vd.as_slice())?;
+            assert_eq!(og_verifier_data.key(), verif_data.key());
+            assert_eq!(og_verifier_data.pi_pos(), verif_data.pi_pos());
 
-        // Prover POV
-        let proof = {
-            let mut circuit = TestCircuit {
-                a: E::Fr::from(20u64),
-                b: E::Fr::from(5u64),
-                c: E::Fr::from(25u64),
-                d: E::Fr::from(100u64),
-                e: JubJubScalar::from(2u64),
-                f: JubJubAffine::from(
-                    dusk_jubjub::GENERATOR_EXTENDED * JubJubScalar::from(2u64),
-                ),
-            };
+            // Prover POV
+            let proof = {
+                let mut circuit: TestCircuit<
+                    Bls12_381,
+                    JubjubProjective,
+                    JubjubParameters,
+                > = TestCircuit {
+                    a: E::Fr::from(20u64),
+                    b: E::Fr::from(5u64),
+                    c: E::Fr::from(25u64),
+                    d: E::Fr::from(100u64),
+                    e: JubJubScalar::from(2u64),
+                    f: JubJubAffine::from(generator * JubJubScalar::from(2u64)),
+                    _marker: PhantomData,
+                };
 
-            circuit.gen_proof(&pp, &pk, b"Test")
-        }?;
+                circuit.gen_proof(&pp, pk, b"Test")
+            }?;
 
-        // Verifier POV
-        let public_inputs: Vec<PublicInputValue> = vec![
-            E::Fr::from(25u64).into(),
-            E::Fr::from(100u64).into(),
-            JubJubAffine::from(
-                dusk_jubjub::GENERATOR_EXTENDED * JubJubScalar::from(2u64),
+            // Verifier POV
+            let public_inputs: Vec<PublicInputValue> = vec![
+                E::Fr::from(25u64).into(),
+                E::Fr::from(100u64).into(),
+                JubJubAffine::from(generator * JubJubScalar::from(2u64)).into(),
+            ];
+
+            verify_proof(
+                &pp,
+                &verif_data.key(),
+                &proof,
+                &public_inputs,
+                &verif_data.pi_pos(),
+                b"Test",
             )
-            .into(),
-        ];
-
-        verify_proof(
-            &pp,
-            &verif_data.key(),
-            &proof,
-            &public_inputs,
-            &verif_data.pi_pos(),
-            b"Test",
-        )
-    }
+        }
     */
 }
