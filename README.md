@@ -50,7 +50,6 @@ impl<
         P: TEModelParameters<BaseField = E::Fr>,
     > Circuit<E, T, P> for TestCircuit<E, T, P>
 {
-    ///XXX: TODO: Swap out JubJub for arkworks embedded curves
     const CIRCUIT_ID: [u8; 32] = [0xff; 32];
     fn gadget(
         &mut self,
