@@ -63,38 +63,44 @@ impl<
         let jubjub_scalar_value = self.variables.get(&jubjub_scalar).unwrap();
 
         // Convert scalar to wnaf_2(k)
-        // XXX: It may be possible to eliminate trailing zeros for speed up
-        let mut wnaf_entries = jubjub_scalar_value
+        let wnaf_entries = jubjub_scalar_value
             .into_repr()
             .find_wnaf(2)
             .unwrap_or_else(|| panic!("Fix this!"));
-        wnaf_entries.extend(vec![0i64; num_bits - wnaf_entries.len()]);
-        assert_eq!(wnaf_entries.len(), num_bits);
+        // wnaf_entries.extend(vec![0i64; num_bits - wnaf_entries.len()]);
+        assert!(wnaf_entries.len() <= num_bits);
 
         // Initialise the accumulators
-        let mut scalar_acc = vec![E::Fr::zero()];
-        let mut point_acc = vec![GroupAffine::<P>::zero()];
+        let mut scalar_acc: Vec<E::Fr> = Vec::with_capacity(num_bits);
+        scalar_acc.push(E::Fr::zero());
+        let mut point_acc: Vec<GroupAffine<P>> = Vec::with_capacity(num_bits);
+        point_acc.push(GroupAffine::<P>::zero());
 
         // Auxillary point to help with checks on the backend
-        let mut xy_alphas = Vec::new();
+        let mut xy_alphas = Vec::with_capacity(num_bits);
+
+        let n_trailing_zeros = num_bits - wnaf_entries.len();
+        scalar_acc.extend(vec![E::Fr::zero(); n_trailing_zeros]);
+        point_acc.extend(vec![GroupAffine::<P>::zero(); n_trailing_zeros]);
+        xy_alphas.extend(vec![E::Fr::zero(); n_trailing_zeros]);
 
         // Load values into accumulators based on wnaf entries
         for (i, entry) in wnaf_entries.iter().rev().enumerate() {
+            // Offset the index by the number of trailing zeros
+            let index = i + n_trailing_zeros;
             // Based on the WNAF, we decide what scalar and point to add
-            let (scalar_to_add, point_to_add) = match entry {
-            0 => { (E::Fr::zero(), GroupAffine::<P>::zero())},
-            -1 => {(-E::Fr::one(), -point_multiples[i])},
-            1 => {(E::Fr::one(), point_multiples[i])},
-            _ => unreachable!("Currently WNAF_2(k) is supported. The possible values are 1, -1 and 0. Current entry is {}", entry),
-        };
+            let (scalar_to_add, point_to_add) =
+                match entry {
+                    0 => { (E::Fr::zero(), GroupAffine::<P>::zero())},
+                    -1 => {(-E::Fr::one(), -point_multiples[index])},
+                    1 => {(E::Fr::one(), point_multiples[index])},
+                    _ => unreachable!("Currently WNAF_2(k) is supported.
+                        The possible values are 1, -1 and 0. Current entry is {}", entry),
+                };
 
-            let prev_accumulator = E::Fr::from(2u64) * scalar_acc[i];
+            let prev_accumulator = E::Fr::from(2u64) * scalar_acc[index];
             scalar_acc.push(prev_accumulator + scalar_to_add);
-            point_acc.push(
-                (GroupProjective::<P>::from(point_acc[i])
-                    + GroupProjective::<P>::from(point_to_add))
-                .into(),
-            );
+            point_acc.push((point_acc[index] + point_to_add).into());
 
             let x_alpha = point_to_add.x;
             let y_alpha = point_to_add.y;
