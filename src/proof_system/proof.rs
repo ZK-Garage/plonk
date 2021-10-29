@@ -408,8 +408,7 @@ fn compute_barycentric_eval<F: PrimeField>(
     point: F,
     domain: &GeneralEvaluationDomain<F>,
 ) -> F {
-    // XXX: This looks like evaluating the vanishing polynomial at point * generator^-1
-    let numerator = (point.pow(&[domain.size() as u64, 0, 0, 0]) - F::one())
+    let numerator = domain.evaluate_vanishing_polynomial(point)
         * util::get_domain_attrs(&domain, "size_inv");
     let range = (0..evaluations.len()).into_iter();
 
