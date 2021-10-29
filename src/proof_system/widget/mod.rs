@@ -87,25 +87,21 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
         };
         let logic = logic::VerifierKey { q_c, q_logic };
         let range = range::VerifierKey { q_range };
-        let fixed_base = ecc::scalar_mul::fixed_base::VerifierKey {
+        let fixed_base = ecc::scalar_mul::fixed_base::VerifierKey::new(
             q_l,
             q_r,
             q_fixed_group_add,
-            //XXX: Add constructor that abstracts over the marker declaration
-            _marker: core::marker::PhantomData,
-        };
+        );
 
-        let variable_base = ecc::curve_addition::VerifierKey {
-            q_variable_group_add,
-            _marker: core::marker::PhantomData,
-        };
+        let variable_base =
+            ecc::curve_addition::VerifierKey::new(q_variable_group_add);
 
-        let permutation = permutation::VerifierKey {
+        let permutation = permutation::VerifierKey::new(
             left_sigma,
             right_sigma,
             out_sigma,
             fourth_sigma,
-        };
+        );
 
         VerifierKey {
             n,

@@ -19,6 +19,19 @@ pub(crate) struct VerifierKey<E: PairingEngine> {
 }
 
 impl<E: PairingEngine> VerifierKey<E> {
+    pub(crate) fn new(
+        left_sigma: Commitment<E>,
+        right_sigma: Commitment<E>,
+        out_sigma: Commitment<E>,
+        fourth_sigma: Commitment<E>,
+    ) -> VerifierKey<E> {
+        VerifierKey {
+            left_sigma,
+            right_sigma,
+            out_sigma,
+            fourth_sigma,
+        }
+    }
     pub(crate) fn compute_linearisation_commitment(
         &self,
         scalars: &mut Vec<E::Fr>,
