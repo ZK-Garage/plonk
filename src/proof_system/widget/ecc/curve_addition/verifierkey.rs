@@ -10,13 +10,26 @@ use ark_ff::Field;
 use ark_poly_commit::kzg10::Commitment;
 use core::marker::PhantomData;
 
-#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+#[derive(Debug, PartialEq, Eq)]
 pub(crate) struct VerifierKey<
     E: PairingEngine,
     P: TEModelParameters<BaseField = E::Fr>,
 > {
     pub(crate) q_variable_group_add: Commitment<E>,
     pub(crate) _marker: PhantomData<P>,
+}
+
+impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Copy
+    for VerifierKey<E, P>
+{
+}
+
+impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Clone
+    for VerifierKey<E, P>
+{
+    fn clone(&self) -> VerifierKey<E, P> {
+        *self
+    }
 }
 
 impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>

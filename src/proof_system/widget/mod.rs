@@ -26,7 +26,7 @@ use ark_poly_commit::sonic_pc::Commitment;
 ///
 /// This structure is used by the Verifier in order to verify a
 /// [`Proof`](super::Proof).
-#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct VerifierKey<
     E: PairingEngine,
     P: TEModelParameters<BaseField = E::Fr>,
@@ -45,6 +45,19 @@ pub struct VerifierKey<
     pub(crate) variable_base: ecc::curve_addition::VerifierKey<E, P>,
     /// VerifierKey for permutation checks
     pub(crate) permutation: permutation::VerifierKey<E>,
+}
+
+impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Copy
+    for VerifierKey<E, P>
+{
+}
+
+impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Clone
+    for VerifierKey<E, P>
+{
+    fn clone(&self) -> VerifierKey<E, P> {
+        *self
+    }
 }
 
 impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
