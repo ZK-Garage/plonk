@@ -22,6 +22,14 @@ pub(crate) struct VerifierKey<
 impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
     VerifierKey<E, P>
 {
+    pub(crate) fn new(
+        q_variable_group_add: Commitment<E>,
+    ) -> VerifierKey<E, P> {
+        VerifierKey {
+            q_variable_group_add,
+            _marker: PhantomData,
+        }
+    }
     pub(crate) fn compute_linearisation_commitment(
         &self,
         curve_add_separation_challenge: E::Fr,

@@ -28,6 +28,19 @@ pub(crate) struct VerifierKey<
 impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
     VerifierKey<E, P>
 {
+    pub(crate) fn new(
+        q_l: Commitment<E>,
+        q_r: Commitment<E>,
+        q_fixed_group_add: Commitment<E>,
+    ) -> VerifierKey<E, P> {
+        VerifierKey {
+            q_l,
+            q_r,
+            q_fixed_group_add,
+            _marker: PhantomData,
+        }
+    }
+
     pub(crate) fn compute_linearisation_commitment(
         &self,
         ecc_separation_challenge: E::Fr,

@@ -385,7 +385,14 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Proof<E, P> {
     }
 }
 
-// TODO: Document this with the Lagrange formula if possible.
+// The first lagrange polynomial has the expression
+// L_0(X) = mul_from_1_to_(n-1) [(X - g^i) / (1 - g^i)]
+// with g being the generator of the domain (the nth root of unity)
+// We use two equalities:
+//   1. mul_from_2_to_(n-1)[ 1 / (1 - g^i)]  =  1 / n
+//   2. mul_from_2_to_(n-1)[ (X - g^i)] = (X^n -1) / (X - 1)
+// to obtain the expression:
+// L_0(X) = (X^n -1) / n * (X -1)
 fn compute_first_lagrange_evaluation<F: PrimeField>(
     domain: &GeneralEvaluationDomain<F>,
     z_h_eval: &F,
@@ -401,8 +408,7 @@ fn compute_barycentric_eval<F: PrimeField>(
     point: F,
     domain: &GeneralEvaluationDomain<F>,
 ) -> F {
-    // XXX: This looks like evaluating the vanishing polynomial at point * generator^-1
-    let numerator = (point.pow(&[domain.size() as u64, 0, 0, 0]) - F::one())
+    let numerator = domain.evaluate_vanishing_polynomial(point)
         * util::get_domain_attrs(&domain, "size_inv");
     let range = (0..evaluations.len()).into_iter();
 

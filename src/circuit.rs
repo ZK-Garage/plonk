@@ -196,8 +196,8 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
 ///             Some(-self.d),
 ///         );
 ///
-///         let e_repr = self.e.into_repr().to_bytes_le();
-///         let e = composer.add_input(E::Fr::from_le_bytes_mod_order(&e_repr));
+///         let e = composer
+///             .add_input(util::from_embedded_curve_scalar::<E, P>(self.e));
 ///         let (x, y) = P::AFFINE_GENERATOR_COEFFS;
 ///         let generator = GroupAffine::new(x, y);
 ///         let scalar_mul_result =
@@ -370,8 +370,8 @@ fn build_pi<F: PrimeField, P: TEModelParameters<BaseField = F>>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::constraint_system::StandardComposer;
     use crate::proof_system::ProverKey;
+    use crate::{constraint_system::StandardComposer, util};
     use ark_bls12_381::{Bls12_381, Fr as BlsScalar};
     use ark_ed_on_bls12_381::{
         EdwardsAffine as JubjubAffine, EdwardsParameters as JubjubParameters,
@@ -441,8 +441,8 @@ mod tests {
                 Some(-self.d),
             );
 
-            let e_repr = self.e.into_repr().to_bytes_le();
-            let e = composer.add_input(E::Fr::from_le_bytes_mod_order(&e_repr));
+            let e = composer
+                .add_input(util::from_embedded_curve_scalar::<E, P>(self.e));
             let (x, y) = P::AFFINE_GENERATOR_COEFFS;
             let generator = GroupAffine::new(x, y);
             let scalar_mul_result =

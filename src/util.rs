@@ -4,7 +4,8 @@
 //
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
-use ark_ff::{FftField, PrimeField};
+use ark_ec::{ModelParameters, PairingEngine, TEModelParameters};
+use ark_ff::{BigInteger, FftField, PrimeField};
 use ark_poly::{
     univariate::DensePolynomial, GeneralEvaluationDomain, Polynomial,
     UVPolynomial,
@@ -73,4 +74,15 @@ pub fn get_domain_attrs<F: FftField>(
         },
         _ => unreachable!(),
     }
+}
+
+// Get a representation of an embedded curve scalar as a scalar of the pairing friendly curve
+pub fn from_embedded_curve_scalar<
+    E: PairingEngine,
+    P: TEModelParameters<BaseField = E::Fr>,
+>(
+    embedded_scalar: <P as ModelParameters>::ScalarField,
+) -> E::Fr {
+    let scalar_repr = embedded_scalar.into_repr();
+    E::Fr::from_le_bytes_mod_order(&scalar_repr.to_bytes_le())
 }
