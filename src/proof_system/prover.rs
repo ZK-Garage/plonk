@@ -8,7 +8,6 @@ use crate::util::*;
 use crate::{
     constraint_system::{StandardComposer, Variable},
     error::Error,
-    prelude::CommitKey,
     proof_system::{
         linearisation_poly, proof::Proof, quotient_poly, ProverKey,
     },
@@ -20,6 +19,7 @@ use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, GeneralEvaluationDomain,
     UVPolynomial,
 };
+use ark_poly_commit::kzg10::Powers;
 use core::marker::PhantomData;
 use num_traits::Zero;
 
@@ -52,10 +52,7 @@ impl<
     }
 
     /// Preprocesses the underlying constraint system.
-    pub fn preprocess(
-        &mut self,
-        commit_key: &CommitKey<E>,
-    ) -> Result<(), Error> {
+    pub fn preprocess(&mut self, commit_key: &Powers<E>) -> Result<(), Error> {
         if self.prover_key.is_some() {
             return Err(Error::CircuitAlreadyPreprocessed);
         }
@@ -189,7 +186,7 @@ impl<
     /// This is automatically done when [`Prover::prove`] is called.
     pub fn prove_with_preprocessed(
         &self,
-        commit_key: &CommitKey<E>,
+        commit_key: &Powers<E>,
         prover_key: &ProverKey<E::Fr, P>,
     ) -> Result<Proof<E, P>, Error> {
         let domain =
@@ -440,7 +437,7 @@ impl<
     /// also be computed.
     pub fn prove(
         &mut self,
-        commit_key: &CommitKey<E>,
+        commit_key: &Powers<E>,
     ) -> Result<Proof<E, P>, Error> {
         let prover_key: &ProverKey<E::Fr, P>;
 

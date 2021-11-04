@@ -8,13 +8,13 @@
 
 use crate::constraint_system::StandardComposer;
 use crate::error::Error;
-use crate::prelude::CommitKey;
 use crate::proof_system::{widget, ProverKey};
 use crate::transcript::TranscriptWrapper;
 use ark_ec::{PairingEngine, ProjectiveCurve, TEModelParameters};
 use ark_ff::PrimeField;
 use ark_poly::polynomial::univariate::DensePolynomial;
 use ark_poly::{EvaluationDomain, Evaluations, GeneralEvaluationDomain};
+use ark_poly_commit::kzg10::{Powers, KZG10};
 use core::marker::PhantomData;
 use num_traits::{One, Zero};
 
@@ -108,7 +108,7 @@ impl<
     /// prover and verifier to have the same view
     pub fn preprocess_prover(
         &mut self,
-        commit_key: &CommitKey<E>,
+        commit_key: &Powers<E>,
         transcript: &mut TranscriptWrapper<E>,
     ) -> Result<ProverKey<E::Fr, P>, Error> {
         let (_, selectors, domain) =
@@ -259,7 +259,7 @@ impl<
     /// verifier by skipping the FFTs needed to compute the 4n evaluations.
     pub fn preprocess_verifier(
         &mut self,
-        commit_key: &CommitKey<E>,
+        commit_key: &Powers<E>,
         transcript: &mut TranscriptWrapper<E>,
     ) -> Result<widget::VerifierKey<E, P>, Error> {
         let (verifier_key, _, _) =
@@ -273,7 +273,7 @@ impl<
     /// view.
     fn preprocess_shared(
         &mut self,
-        commit_key: &CommitKey<E>,
+        commit_key: &Powers<E>,
         transcript: &mut TranscriptWrapper<E>,
     ) -> Result<
         (
@@ -334,79 +334,139 @@ impl<
             fourth_sigma_poly,
         ) = self.perm.compute_sigma_polynomials(self.n, &domain);
 
-        let q_m_poly_commit =
-            commit_key.commit(q_m_poly.clone()).unwrap_or_default();
-        let q_l_poly_commit =
-            commit_key.commit(q_l_poly.clone()).unwrap_or_default();
-        let q_r_poly_commit =
-            commit_key.commit(q_r_poly.clone()).unwrap_or_default();
-        let q_o_poly_commit =
-            commit_key.commit(q_o_poly.clone()).unwrap_or_default();
-        let q_c_poly_commit =
-            commit_key.commit(q_c_poly.clone()).unwrap_or_default();
-        let q_4_poly_commit =
-            commit_key.commit(q_4_poly.clone()).unwrap_or_default();
-        let q_arith_poly_commit =
-            commit_key.commit(q_arith_poly.clone()).unwrap_or_default();
-        let q_range_poly_commit =
-            commit_key.commit(q_range_poly.clone()).unwrap_or_default();
-        let q_logic_poly_commit =
-            commit_key.commit(q_logic_poly.clone()).unwrap_or_default();
-        let q_fixed_group_add_poly_commit = commit_key
-            .commit(q_fixed_group_add_poly.clone())
-            .unwrap_or_default();
-        let q_variable_group_add_poly_commit = commit_key
-            .commit(q_variable_group_add_poly.clone())
-            .unwrap_or_default();
+        let q_m_poly_commit = KZG10::<E, DensePolynomial<E::Fr>>::commit(
+            commit_key, &q_m_poly, None, None,
+        )
+        .unwrap();
+        let q_l_poly_commit = KZG10::<E, DensePolynomial<E::Fr>>::commit(
+            commit_key, &q_l_poly, None, None,
+        )
+        .unwrap();
+        let q_r_poly_commit = KZG10::<E, DensePolynomial<E::Fr>>::commit(
+            commit_key, &q_r_poly, None, None,
+        )
+        .unwrap();
+        let q_o_poly_commit = KZG10::<E, DensePolynomial<E::Fr>>::commit(
+            commit_key, &q_o_poly, None, None,
+        )
+        .unwrap();
+        let q_c_poly_commit = KZG10::<E, DensePolynomial<E::Fr>>::commit(
+            commit_key, &q_c_poly, None, None,
+        )
+        .unwrap();
+        let q_4_poly_commit = KZG10::<E, DensePolynomial<E::Fr>>::commit(
+            commit_key, &q_4_poly, None, None,
+        )
+        .unwrap();
+        let q_arith_poly_commit = KZG10::<E, DensePolynomial<E::Fr>>::commit(
+            commit_key,
+            &q_arith_poly,
+            None,
+            None,
+        )
+        .unwrap();
+        let q_range_poly_commit = KZG10::<E, DensePolynomial<E::Fr>>::commit(
+            commit_key,
+            &q_range_poly,
+            None,
+            None,
+        )
+        .unwrap();
+        let q_logic_poly_commit = KZG10::<E, DensePolynomial<E::Fr>>::commit(
+            commit_key,
+            &q_logic_poly,
+            None,
+            None,
+        )
+        .unwrap();
+        let q_fixed_group_add_poly_commit =
+            KZG10::<E, DensePolynomial<E::Fr>>::commit(
+                commit_key,
+                &q_fixed_group_add_poly,
+                None,
+                None,
+            )
+            .unwrap();
+        let q_variable_group_add_poly_commit =
+            KZG10::<E, DensePolynomial<E::Fr>>::commit(
+                commit_key,
+                &q_variable_group_add_poly,
+                None,
+                None,
+            )
+            .unwrap();
 
         let left_sigma_poly_commit =
-            commit_key.commit(left_sigma_poly.clone())?;
+            KZG10::<E, DensePolynomial<E::Fr>>::commit(
+                commit_key,
+                &left_sigma_poly,
+                None,
+                None,
+            )
+            .unwrap();
         let right_sigma_poly_commit =
-            commit_key.commit(right_sigma_poly.clone())?;
-        let out_sigma_poly_commit =
-            commit_key.commit(out_sigma_poly.clone())?;
+            KZG10::<E, DensePolynomial<E::Fr>>::commit(
+                commit_key,
+                &right_sigma_poly,
+                None,
+                None,
+            )
+            .unwrap();
+        let out_sigma_poly_commit = KZG10::<E, DensePolynomial<E::Fr>>::commit(
+            commit_key,
+            &out_sigma_poly,
+            None,
+            None,
+        )
+        .unwrap();
         let fourth_sigma_poly_commit =
-            commit_key.commit(fourth_sigma_poly.clone())?;
+            KZG10::<E, DensePolynomial<E::Fr>>::commit(
+                commit_key,
+                &fourth_sigma_poly,
+                None,
+                None,
+            )
+            .unwrap();
 
         // Verifier Key for arithmetic circuits
         let arithmetic_verifier_key = widget::arithmetic::VerifierKey {
-            q_m: q_m_poly_commit,
-            q_l: q_l_poly_commit,
-            q_r: q_r_poly_commit,
-            q_o: q_o_poly_commit,
-            q_c: q_c_poly_commit,
-            q_4: q_4_poly_commit,
-            q_arith: q_arith_poly_commit,
+            q_m: q_m_poly_commit.0,
+            q_l: q_l_poly_commit.0,
+            q_r: q_r_poly_commit.0,
+            q_o: q_o_poly_commit.0,
+            q_c: q_c_poly_commit.0,
+            q_4: q_4_poly_commit.0,
+            q_arith: q_arith_poly_commit.0,
         };
         // Verifier Key for range circuits
         let range_verifier_key = widget::range::VerifierKey {
-            q_range: q_range_poly_commit,
+            q_range: q_range_poly_commit.0,
         };
         // Verifier Key for logic circuits
         let logic_verifier_key = widget::logic::VerifierKey {
-            q_c: q_c_poly_commit,
-            q_logic: q_logic_poly_commit,
+            q_c: q_c_poly_commit.0,
+            q_logic: q_logic_poly_commit.0,
         };
         // Verifier Key for ecc circuits
         let ecc_verifier_key =
             widget::ecc::scalar_mul::fixed_base::VerifierKey {
-                q_l: q_l_poly_commit,
-                q_r: q_r_poly_commit,
-                q_fixed_group_add: q_fixed_group_add_poly_commit,
+                q_l: q_l_poly_commit.0,
+                q_r: q_r_poly_commit.0,
+                q_fixed_group_add: q_fixed_group_add_poly_commit.0,
                 _marker: PhantomData,
             };
         // Verifier Key for curve addition circuits
         let curve_addition_verifier_key =
             widget::ecc::curve_addition::VerifierKey {
-                q_variable_group_add: q_variable_group_add_poly_commit,
+                q_variable_group_add: q_variable_group_add_poly_commit.0,
                 _marker: PhantomData,
             };
         // Verifier Key for permutation argument
         let permutation_verifier_key = widget::permutation::VerifierKey {
-            left_sigma: left_sigma_poly_commit,
-            right_sigma: right_sigma_poly_commit,
-            out_sigma: out_sigma_poly_commit,
-            fourth_sigma: fourth_sigma_poly_commit,
+            left_sigma: left_sigma_poly_commit.0,
+            right_sigma: right_sigma_poly_commit.0,
+            out_sigma: out_sigma_poly_commit.0,
+            fourth_sigma: fourth_sigma_poly_commit.0,
         };
 
         let verifier_key = widget::VerifierKey {
