@@ -4,12 +4,13 @@
 //
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
-use ark_ec::{ModelParameters, PairingEngine, TEModelParameters};
+use ark_ec::{AffineCurve, ModelParameters, PairingEngine, TEModelParameters};
 use ark_ff::{BigInteger, FftField, PrimeField};
 use ark_poly::{
     univariate::DensePolynomial, GeneralEvaluationDomain, Polynomial,
     UVPolynomial,
 };
+use ark_poly_commit::kzg10::{self, Commitment};
 
 /// Returns a vector of scalars of increasing powers of x from x^0 to x^d.
 pub(crate) fn powers_of<F: PrimeField>(
@@ -85,4 +86,33 @@ pub fn from_embedded_curve_scalar<
 ) -> E::Fr {
     let scalar_repr = embedded_scalar.into_repr();
     E::Fr::from_le_bytes_mod_order(&scalar_repr.to_bytes_le())
+}
+
+// Computes a linear combination of the polynomial evaluations and polynomial
+// commitments provided a challenge.
+// TODO complete doc
+pub fn linear_combination<E: PairingEngine>(
+    evals: &[E::Fr],
+    commitments: &[Commitment<E>],
+    challenge: E::Fr,
+) -> (Commitment<E>, E::Fr) {
+    assert_eq!(evals.len(), commitments.len());
+    // Generate a challenge to generate a linear combination of the proofs
+    let powers: Vec<E::Fr> =
+        crate::util::powers_of(&challenge, evals.len() - 1);
+    let combined_eval: E::Fr = evals
+        .iter()
+        .zip(powers.iter())
+        .map(|(&eval, power)| eval * power)
+        .sum();
+
+    let combined_commitment: Commitment<E> = Commitment(
+        commitments
+            .iter()
+            .zip(powers.iter())
+            .map(|(commit, &power)| commit.0.mul(power))
+            .sum::<E::G1Projective>()
+            .into(),
+    );
+    (combined_commitment, combined_eval)
 }
