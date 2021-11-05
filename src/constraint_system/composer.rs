@@ -648,7 +648,6 @@ mod general_composer_tests {
     use crate::constraint_system::helper::*;
     use crate::constraint_system::StandardComposer;
     use crate::prelude::Prover;
-    use crate::prelude::PublicParameters;
     use crate::prelude::Verifier;
 
     use super::*;
@@ -658,8 +657,14 @@ mod general_composer_tests {
         EdwardsProjective as JubjubProjective,
     };
     use ark_ed_on_bls12_381::{EdwardsParameters, EdwardsProjective};
+    use ark_poly::univariate::DensePolynomial;
+    use ark_poly_commit::kzg10;
+    use ark_poly_commit::kzg10::Powers;
+    use ark_poly_commit::kzg10::UniversalParams;
+    use ark_poly_commit::kzg10::KZG10;
+    use ark_poly_commit::sonic_pc::SonicKZG10;
+    use ark_poly_commit::PolynomialCommitment;
     use rand_core::OsRng;
-    // use ark_poly_commit::kzg10::UniversalParams;
     // use rand_core::OsRng;
 
     #[test]
@@ -728,8 +733,13 @@ mod general_composer_tests {
     #[test]
     // XXX: Move this to integration tests
     fn test_multiple_proofs() {
-        let public_parameters: PublicParameters<Bls12_381> =
-            PublicParameters::setup(2 * 30, &mut OsRng).unwrap();
+        let u_params: UniversalParams<Bls12_381> = KZG10::<
+            Bls12_381,
+            DensePolynomial<BlsScalar>,
+        >::setup(
+            2 * 30, false, &mut OsRng
+        )
+        .unwrap();
 
         // Create a prover struct
         let mut prover: Prover<Bls12_381, JubjubProjective, JubjubParameters> =
@@ -739,10 +749,21 @@ mod general_composer_tests {
         dummy_gadget(10, prover.mut_cs());
 
         // Commit Key
-        let (ck, _) = public_parameters.trim(2 * 20).unwrap();
+        let (ck, _) =
+            SonicKZG10::<Bls12_381, DensePolynomial<BlsScalar>>::trim(
+                &u_params,
+                2 * 20,
+                0,
+                None,
+            )
+            .unwrap();
+        let powers = Powers {
+            powers_of_g: ck.powers_of_g.into(),
+            powers_of_gamma_g: ck.powers_of_gamma_g.into(),
+        };
 
         // Preprocess circuit
-        prover.preprocess(&ck).unwrap();
+        prover.preprocess(&powers).unwrap();
 
         let public_inputs = prover.cs.construct_dense_pi_vec();
 
@@ -750,7 +771,7 @@ mod general_composer_tests {
 
         // Compute multiple proofs
         for _ in 0..3 {
-            proofs.push(prover.prove(&ck).unwrap());
+            proofs.push(prover.prove(&powers).unwrap());
 
             // Add another witness instance
             dummy_gadget(10, prover.mut_cs());
@@ -768,10 +789,27 @@ mod general_composer_tests {
         dummy_gadget(10, verifier.mut_cs());
 
         // Commit and Verifier Key
-        let (ck, vk) = public_parameters.trim(2 * 20).unwrap();
+        let (sonic_ck, sonic_vk) = SonicKZG10::<
+            Bls12_381,
+            DensePolynomial<BlsScalar>,
+        >::trim(&u_params, 2 * 20, 0, None)
+        .unwrap();
+        let powers = Powers {
+            powers_of_g: sonic_ck.powers_of_g.into(),
+            powers_of_gamma_g: sonic_ck.powers_of_gamma_g.into(),
+        };
+
+        let vk = kzg10::VerifierKey {
+            g: sonic_vk.g,
+            gamma_g: sonic_vk.gamma_g,
+            h: sonic_vk.h,
+            beta_h: sonic_vk.beta_h,
+            prepared_h: sonic_vk.prepared_h,
+            prepared_beta_h: sonic_vk.prepared_beta_h,
+        };
 
         // Preprocess
-        verifier.preprocess(&ck).unwrap();
+        verifier.preprocess(&powers).unwrap();
 
         for proof in proofs {
             assert!(verifier.verify(&proof, &vk, &public_inputs).is_ok());
