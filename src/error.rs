@@ -39,7 +39,13 @@ pub enum Error {
     /// stage.
     MismatchedPolyLen,
 
+    // Polynomial Commitment errors
+    PCError {
+        error: ark_poly_commit::error::Error,
+    },
+
     // KZG10 errors
+    // XXX: Are these errors still used?
     /// This error occurs when the user tries to create PublicParameters
     /// and supplies the max degree as zero.
     DegreeIsZero,
@@ -69,6 +75,12 @@ pub enum Error {
     ScalarMalformed,
 }
 
+impl From<ark_poly_commit::error::Error> for Error {
+    fn from(error: ark_poly_commit::error::Error) -> Self {
+        Self::PCError { error }
+    }
+}
+
 #[cfg(feature = "std")]
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -96,6 +108,9 @@ impl std::fmt::Display for Error {
             }
             Self::MismatchedPolyLen => {
                 write!(f, "the length of the wires is not the same")
+            }
+            Self::PCError { error } => {
+                write!(f, "{:?}", error)
             }
             Self::CircuitAlreadyPreprocessed => {
                 write!(f, "circuit has already been preprocessed")
