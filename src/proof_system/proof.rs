@@ -256,7 +256,7 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Proof<E, P> {
         t_comm: Commitment<E>,
         r_comm: Commitment<E>,
         plonk_verifier_key: &PlonkVerifierKey<E, P>,
-        transcript: &TranscriptWrapper<E>,
+        transcript: &mut TranscriptWrapper<E>,
     ) -> (Commitment<E>, E::Fr) {
         let challenge: E::Fr =
             transcript.challenge_scalar(b"aggregate_witness");
@@ -291,7 +291,7 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Proof<E, P> {
     //TODO: Doc this
     fn gen_shift_aggregate_proof(
         &self,
-        transcript: &TranscriptWrapper<E>,
+        transcript: &mut TranscriptWrapper<E>,
     ) -> (Commitment<E>, E::Fr) {
         let challenge: E::Fr =
             transcript.challenge_scalar(b"aggregate_witness");

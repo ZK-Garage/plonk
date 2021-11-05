@@ -39,8 +39,9 @@ pub enum Error {
     /// stage.
     MismatchedPolyLen,
 
-    // Polynomial Commitment errors
+    /// Polynomial Commitment errors
     PCError {
+        /// Polynomial Commitment errors
         error: ark_poly_commit::error::Error,
     },
 

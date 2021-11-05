@@ -137,8 +137,6 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
 /// # Example
 ///
 /// ```
-/// use dusk_plonk::prelude::*;
-/// use dusk_plonk::constraint_system::ecc::scalar_mul;
 /// use rand_core::OsRng;
 ///
 /// fn main() -> Result<(), Error> {
@@ -285,7 +283,7 @@ where
         // then do a transformation between sonic CommiterKey to KZG10
         // powers
         let circuit_size = self.padded_circuit_size();
-        let (ck, vk) = SonicKZG10::<E, DensePolynomial<E::Fr>>::trim(
+        let (ck, _) = SonicKZG10::<E, DensePolynomial<E::Fr>>::trim(
             u_params,
             circuit_size,
             0,
@@ -331,7 +329,7 @@ where
         // then do a transformation between sonic CommiterKey to KZG10
         // powers
         let circuit_size = self.padded_circuit_size();
-        let (ck, vk) = SonicKZG10::<E, DensePolynomial<E::Fr>>::trim(
+        let (ck, _) = SonicKZG10::<E, DensePolynomial<E::Fr>>::trim(
             u_params,
             circuit_size,
             0,
@@ -418,13 +416,8 @@ fn build_pi<F: PrimeField, P: TEModelParameters<BaseField = F>>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::proof_system::ProverKey;
     use crate::{constraint_system::StandardComposer, util};
-    use ark_bls12_381::{Bls12_381, Fr as BlsScalar};
-    use ark_ed_on_bls12_381::{
-        EdwardsAffine as JubjubAffine, EdwardsParameters as JubjubParameters,
-        EdwardsProjective as JubjubProjective, Fr as JubjubScalar,
-    };
+    use ark_ec::twisted_edwards_extended::GroupAffine;
     use num_traits::{One, Zero};
 
     // Implements a circuit that checks:
