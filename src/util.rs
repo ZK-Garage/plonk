@@ -10,7 +10,7 @@ use ark_poly::{
     univariate::DensePolynomial, GeneralEvaluationDomain, Polynomial,
     UVPolynomial,
 };
-use ark_poly_commit::kzg10::{self, Commitment};
+use ark_poly_commit::kzg10::Commitment;
 
 /// Returns a vector of scalars of increasing powers of x from x^0 to x^d.
 pub(crate) fn powers_of<F: PrimeField>(

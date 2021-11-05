@@ -20,12 +20,10 @@ use ark_ec::{msm::VariableBaseMSM, AffineCurve, TEModelParameters};
 use ark_ec::{PairingEngine, ProjectiveCurve};
 use ark_ff::{fields::batch_inversion, Field, PrimeField};
 use ark_poly::univariate::DensePolynomial;
-use ark_poly::{EvaluationDomain, GeneralEvaluationDomain, UVPolynomial};
+use ark_poly::{EvaluationDomain, GeneralEvaluationDomain};
+use ark_poly_commit::kzg10;
 use ark_poly_commit::kzg10::{Commitment, VerifierKey, KZG10};
-use ark_poly_commit::optional_rng::OptionalRng;
-use ark_poly_commit::{kzg10, PolynomialCommitment};
 use core::marker::PhantomData;
-use rand::RngCore;
 use rand_core::OsRng;
 
 /// A Proof is a composition of `Commitment`s to the Witness, Permutation,
