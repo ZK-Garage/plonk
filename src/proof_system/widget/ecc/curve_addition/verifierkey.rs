@@ -8,9 +8,11 @@ use crate::proof_system::linearisation_poly::ProofEvaluations;
 use ark_ec::{PairingEngine, TEModelParameters};
 use ark_ff::Field;
 use ark_poly_commit::kzg10::Commitment;
+use ark_serialize::*;
 use core::marker::PhantomData;
-
-#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+#[derive(
+    Debug, PartialEq, Eq, Copy, Clone, CanonicalDeserialize, CanonicalSerialize,
+)]
 pub(crate) struct VerifierKey<
     E: PairingEngine,
     P: TEModelParameters<BaseField = E::Fr>,

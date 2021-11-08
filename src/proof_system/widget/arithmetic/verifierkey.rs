@@ -6,8 +6,10 @@
 
 use ark_ec::PairingEngine;
 use ark_poly_commit::sonic_pc::Commitment;
-
-#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+use ark_serialize::*;
+#[derive(
+    Debug, PartialEq, Eq, Copy, Clone, CanonicalDeserialize, CanonicalSerialize,
+)]
 pub(crate) struct VerifierKey<E: PairingEngine> {
     pub q_m: Commitment<E>,
     pub q_l: Commitment<E>,
