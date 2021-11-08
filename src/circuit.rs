@@ -20,8 +20,9 @@ use ark_poly::univariate::DensePolynomial;
 use ark_poly_commit::kzg10::{self, Powers, UniversalParams};
 use ark_poly_commit::sonic_pc::SonicKZG10;
 use ark_poly_commit::PolynomialCommitment;
+use ark_serialize::*;
 
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Clone, CanonicalDeserialize, CanonicalSerialize)]
 /// Structure that represents a PLONK Circuit Public Input converted into its
 /// scalar representation.
 pub struct PublicInputValue<F: PrimeField, P: TEModelParameters<BaseField = F>>
@@ -62,7 +63,7 @@ impl<F: PrimeField, P: TEModelParameters<BaseField = F>> From<F>
 //     }
 // }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, CanonicalDeserialize, CanonicalSerialize)]
 /// Collection of structs/objects that the Verifier will use in order to
 /// de/serialize data needed for Circuit proof verification.
 /// This structure can be seen as a link between the [`Circuit`] public input
@@ -93,42 +94,6 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
     pub fn pi_pos(&self) -> &Vec<usize> {
         &self.pi_pos
     }
-
-    /*
-    /// Deserializes the `VerifierData` into a vector of bytes.
-    #[allow(unused_must_use)]
-    pub fn to_var_bytes(&self) -> Vec<u8> {
-        let mut buff =
-            vec![
-                0u8;
-                VerifierKey::SIZE + u32::SIZE + self.pi_pos.len() * u32::SIZE
-            ];
-        let mut writer = &mut buff[..];
-
-        writer.write(&self.key.to_bytes());
-        writer.write(&(self.pi_pos.len() as u32).to_bytes());
-        self.pi_pos.iter().copied().for_each(|pos| {
-            // Omit the result since disk_bytes write can't fail here
-            // due to the fact that we're writing into a vector basically.
-            let _ = writer.write(&(pos as u32).to_bytes());
-        });
-
-        buff
-    }
-
-    /// Serializes `VerifierData` from a slice of bytes.
-    pub fn from_slice(mut buf: &[u8]) -> Result<Self, Error> {
-        let key = VerifierKey::from_reader(&mut buf)?;
-        let pos_num = u32::from_reader(&mut buf)? as usize;
-
-        let mut pi_pos = vec![];
-        for _ in 0..pos_num {
-            pi_pos.push(u32::from_reader(&mut buf)? as usize);
-        }
-
-        Ok(Self { key, pi_pos })
-    }
-    */
 }
 
 /// Trait that should be implemented for any circuit function to provide to it
