@@ -518,12 +518,12 @@ fn compute_barycentric_eval<F: PrimeField>(
     result * numerator
 }
 
-/*
 #[cfg(test)]
 mod proof_tests {
     use super::*;
     use ark_bls12_381::{Bls12_381, Fr as BlsScalar};
-    use ark_ff::UniformRand;
+    use ark_ed_on_bls12_381::EdwardsParameters as JubJubParams;
+    use ark_ff::{FromBytes, ToBytes, UniformRand};
     use ark_poly_commit::kzg10::Commitment;
     use rand_core::OsRng;
 
@@ -561,10 +561,10 @@ mod proof_tests {
             },
             _marker: PhantomData,
         };
-
-        let proof_bytes = proof.to_bytes();
-        let got_proof = Proof::from_bytes(&proof_bytes).unwrap();
+        let mut proof_bytes = vec![];
+        let proof_bytes = proof_bytes.write(proof).unwrap();
+        let got_proof: Proof<Bls12_381, JubJubParams> =
+            Proof::serialize(&mut proof_bytes).unwrap();
         assert_eq!(got_proof, proof);
     }
 }
-*/

@@ -755,7 +755,7 @@ impl<F: PrimeField> Permutation<F> {
 mod test {
     use super::*;
     use crate::{constraint_system::StandardComposer, util};
-    use ark_bls12_381::{Bls12_381, Fr as BlsScalar, FrParameters};
+    use ark_bls12_381::{Bls12_381, Fr as BlsScalar};
     use ark_ed_on_bls12_381::{
         EdwardsParameters as JubjubParameters,
         EdwardsProjective as JubjubProjective,

@@ -19,7 +19,7 @@ pub mod range;
 use crate::transcript::TranscriptProtocol;
 use ark_ec::{PairingEngine, TEModelParameters};
 use ark_ff::PrimeField;
-use ark_poly::Evaluations;
+use ark_poly::{univariate::DensePolynomial, Evaluations};
 use ark_poly_commit::sonic_pc::Commitment;
 use ark_serialize::*;
 
@@ -201,24 +201,92 @@ impl<F: PrimeField, P: TEModelParameters<BaseField = F>> ProverKey<F, P> {
     pub(crate) fn v_h_coset_4n(&self) -> &Evaluations<F> {
         &self.v_h_coset_4n
     }
+
+    /// Constructs a [`ProverKey`] from the widget ProverKey's that are
+    /// constructed based on the selector polynomial commitments and the
+    /// sigma polynomial commitments.
+    pub(crate) fn from_polynomial_commitments(
+        n: usize,
+        q_m: (DensePolynomial<F>, Evaluations<F>),
+        q_l: (DensePolynomial<F>, Evaluations<F>),
+        q_r: (DensePolynomial<F>, Evaluations<F>),
+        q_o: (DensePolynomial<F>, Evaluations<F>),
+        q_4: (DensePolynomial<F>, Evaluations<F>),
+        q_c: (DensePolynomial<F>, Evaluations<F>),
+        q_arith: (DensePolynomial<F>, Evaluations<F>),
+        q_logic: (DensePolynomial<F>, Evaluations<F>),
+        q_range: (DensePolynomial<F>, Evaluations<F>),
+        q_fixed_group_add: (DensePolynomial<F>, Evaluations<F>),
+        q_variable_group_add: (DensePolynomial<F>, Evaluations<F>),
+        left_sigma: (DensePolynomial<F>, Evaluations<F>),
+        right_sigma: (DensePolynomial<F>, Evaluations<F>),
+        out_sigma: (DensePolynomial<F>, Evaluations<F>),
+        fourth_sigma: (DensePolynomial<F>, Evaluations<F>),
+        linear_evaluations: Evaluations<F>,
+    ) -> ProverKey<F, P> {
+        let arithmetic = arithmetic::ProverKey {
+            q_m,
+            q_l,
+            q_r,
+            q_o,
+            q_4,
+            q_c,
+            q_arith,
+        };
+        let logic = logic::ProverKey { q_c, q_logic };
+        let range = range::ProverKey { q_range };
+        let fixed_base = ecc::scalar_mul::fixed_base::ProverKey::new(
+            q_l,
+            q_r,
+            q_c,
+            q_fixed_group_add,
+        );
+
+        let variable_base = ecc::curve_addition::ProverKey::new(
+            q_variable_group_add.0,
+            q_variable_group_add.1,
+        );
+
+        let permutation = permutation::ProverKey {
+            left_sigma,
+            right_sigma,
+            out_sigma,
+            fourth_sigma,
+            linear_evaluations,
+        };
+
+        ProverKey {
+            n,
+            arithmetic,
+            logic,
+            range,
+            fixed_base,
+            variable_base,
+            permutation,
+        }
+    }
 }
 
-/*#[cfg(test)]
+#[cfg(test)]
 mod test {
     use super::*;
-    use crate::fft::{GeneralEvaluationDomain, Evaluations, Polynomial};
-    use dusk_bls12_381::BlsScalar;
+    use ark_bls12_381::Fr as BlsScalar;
+    use ark_ff::UniformRand;
+    use ark_poly::polynomial::univariate::DensePolynomial;
+    use ark_poly::{EvaluationDomain, GeneralEvaluationDomain, UVPolynomial};
     use rand_core::OsRng;
 
-    fn rand_poly_eval(n: usize) -> (Polynomial, Evaluations) {
-        let polynomial = Polynomial::rand(n, &mut OsRng);
+    fn rand_poly_eval<F: PrimeField>(
+        n: usize,
+    ) -> (DensePolynomial<F>, Evaluations<F>) {
+        let polynomial = DensePolynomial::rand(n, &mut OsRng);
         (polynomial, rand_evaluations(n))
     }
 
-    fn rand_evaluations(n: usize) -> Evaluations {
+    fn rand_evaluations<F: PrimeField>(n: usize) -> Evaluations<F> {
         let domain = GeneralEvaluationDomain::new(4 * n).unwrap();
         let values: Vec<_> =
-            (0..4 * n).map(|_| BlsScalar::random(&mut OsRng)).collect();
+            (0..4 * n).map(|_| BlsScalar::rand(&mut OsRng)).collect();
         let evaluations = Evaluations::from_vec_and_domain(values, domain);
         evaluations
     }
@@ -378,4 +446,3 @@ mod test {
         assert_eq!(got, verifier_key);
     }
 }
-*/
