@@ -28,7 +28,7 @@ ark-ec = "0.3"
 ark-ff = "0.3"
 ark-poly = "0.3"
 ark-poly-commit = "0.3"
-ark-serialize = "0.3"
+ark-serialize = { version = "0.3", features = ["derive"] }
 merlin = {version = "3.0", default-features = false}
 rand_core = {version="0.6", default-features=false}
 itertools = {version = "0.10.1", default-features = false}
