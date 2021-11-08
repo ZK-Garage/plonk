@@ -10,7 +10,7 @@
 //! with the principal data structures of the plonk library.
 
 pub use crate::{
-    //circuit::{self, Circuit, PublicInputValue, VerifierData},
+    circuit::{self, Circuit, PublicInputValue, VerifierData},
     constraint_system::{Point, StandardComposer, Variable},
     proof_system::{Prover, ProverKey, Verifier},
 };
