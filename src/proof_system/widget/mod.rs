@@ -21,12 +21,15 @@ use ark_ec::{PairingEngine, TEModelParameters};
 use ark_ff::PrimeField;
 use ark_poly::Evaluations;
 use ark_poly_commit::sonic_pc::Commitment;
+use ark_serialize::*;
 
 /// PLONK circuit Verification Key.
 ///
 /// This structure is used by the Verifier in order to verify a
 /// [`Proof`](super::Proof).
-#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+#[derive(
+    Debug, PartialEq, Eq, Copy, Clone, CanonicalDeserialize, CanonicalSerialize,
+)]
 pub struct VerifierKey<
     E: PairingEngine,
     P: TEModelParameters<BaseField = E::Fr>,
@@ -158,7 +161,9 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
 ///
 /// This structure is used by the Prover in order to construct a
 /// [`Proof`](crate::proof_system::Proof).
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(
+    Debug, PartialEq, Eq, Clone, CanonicalSerialize, CanonicalDeserialize,
+)]
 pub struct ProverKey<F: PrimeField, P: TEModelParameters<BaseField = F>> {
     /// Circuit size
     pub(crate) n: usize,
