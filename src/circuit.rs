@@ -8,14 +8,18 @@
 
 use core::marker::PhantomData;
 
-use crate::commitment_scheme::kzg10::PublicParameters;
 use crate::constraint_system::StandardComposer;
 use crate::error::Error;
-use crate::proof_system::{Proof, Prover, ProverKey, Verifier, VerifierKey};
-use ark_ec::models::twisted_edwards_extended::{GroupAffine, GroupProjective};
+use crate::proof_system::{
+    Proof, Prover, ProverKey, Verifier, VerifierKey as PlonkVerifierKey,
+};
 use ark_ec::models::TEModelParameters;
 use ark_ec::{PairingEngine, ProjectiveCurve};
-use ark_ff::{BigInteger, PrimeField};
+use ark_ff::PrimeField;
+use ark_poly::univariate::DensePolynomial;
+use ark_poly_commit::kzg10::{self, Powers, UniversalParams};
+use ark_poly_commit::sonic_pc::SonicKZG10;
+use ark_poly_commit::PolynomialCommitment;
 
 #[derive(Default, Debug, Clone)]
 /// Structure that represents a PLONK Circuit Public Input converted into its
@@ -67,7 +71,7 @@ pub struct VerifierData<
     E: PairingEngine,
     P: TEModelParameters<BaseField = E::Fr>,
 > {
-    key: VerifierKey<E, P>,
+    key: PlonkVerifierKey<E, P>,
     pi_pos: Vec<usize>,
 }
 
@@ -76,12 +80,12 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
 {
     /// Creates a new `VerifierData` from a [`VerifierKey`] and the public
     /// input positions of the circuit that it represents.
-    pub fn new(key: VerifierKey<E, P>, pi_pos: Vec<usize>) -> Self {
+    pub fn new(key: PlonkVerifierKey<E, P>, pi_pos: Vec<usize>) -> Self {
         Self { key, pi_pos }
     }
 
     /// Returns a reference to the contained [`VerifierKey`].
-    pub fn key(&self) -> &VerifierKey<E, P> {
+    pub fn key(&self) -> &PlonkVerifierKey<E, P> {
         &self.key
     }
 
@@ -133,8 +137,6 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
 /// # Example
 ///
 /// ```
-/// use dusk_plonk::prelude::*;
-/// use dusk_plonk::constraint_system::ecc::scalar_mul;
 /// use rand_core::OsRng;
 ///
 /// fn main() -> Result<(), Error> {
@@ -274,20 +276,34 @@ where
     /// with the `ProverKey`, `VerifierKey` and the circuit size.
     fn compile(
         &mut self,
-        pub_params: &PublicParameters<E>,
+        u_params: &UniversalParams<E>,
     ) -> Result<(ProverKey<E::Fr, P>, VerifierData<E, P>), Error> {
         // Setup PublicParams
-        let (ck, _) = pub_params.trim(self.padded_circuit_size())?;
-        // Generate & save `ProverKey` with some random values.
+        // XXX: KZG10 does not have a trim function so we use sonics and
+        // then do a transformation between sonic CommiterKey to KZG10
+        // powers
+        let circuit_size = self.padded_circuit_size();
+        let (ck, _) = SonicKZG10::<E, DensePolynomial<E::Fr>>::trim(
+            u_params,
+            circuit_size,
+            0,
+            None,
+        )
+        .unwrap();
+        let powers = Powers {
+            powers_of_g: ck.powers_of_g.into(),
+            powers_of_gamma_g: ck.powers_of_gamma_g.into(),
+        };
+        //Generate & save `ProverKey` with some random values.
         let mut prover = Prover::new(b"CircuitCompilation");
         self.gadget(prover.mut_cs())?;
         let pi_pos = prover.mut_cs().pi_positions();
-        prover.preprocess(&ck)?;
+        prover.preprocess(&powers)?;
 
         // Generate & save `VerifierKey` with some random values.
         let mut verifier = Verifier::new(b"CircuitCompilation");
         self.gadget(verifier.mut_cs())?;
-        verifier.preprocess(&ck)?;
+        verifier.preprocess(&powers)?;
         Ok((
             prover
                 .prover_key
@@ -305,18 +321,32 @@ where
     /// instances.
     fn gen_proof(
         &mut self,
-        pub_params: &PublicParameters<E>,
+        u_params: &UniversalParams<E>,
         prover_key: ProverKey<E::Fr, P>,
         transcript_init: &'static [u8],
     ) -> Result<Proof<E, P>, Error> {
-        let (ck, _) = pub_params.trim(self.padded_circuit_size())?;
+        // XXX: KZG10 does not have a trim function so we use sonics and
+        // then do a transformation between sonic CommiterKey to KZG10
+        // powers
+        let circuit_size = self.padded_circuit_size();
+        let (ck, _) = SonicKZG10::<E, DensePolynomial<E::Fr>>::trim(
+            u_params,
+            circuit_size,
+            0,
+            None,
+        )
+        .unwrap();
+        let powers = Powers {
+            powers_of_g: ck.powers_of_g.into(),
+            powers_of_gamma_g: ck.powers_of_gamma_g.into(),
+        };
         // New Prover instance
         let mut prover = Prover::new(transcript_init);
         // Fill witnesses for Prover
         self.gadget(prover.mut_cs())?;
         // Add ProverKey to Prover
         prover.prover_key = Some(prover_key);
-        prover.prove(&ck)
+        prover.prove(&powers)
     }
 
     /// Returns the Circuit size padded to the next power of two.
@@ -330,20 +360,36 @@ pub fn verify_proof<
     T: ProjectiveCurve<BaseField = E::Fr>,
     P: TEModelParameters<BaseField = E::Fr>,
 >(
-    pub_params: &PublicParameters<E>,
-    verifier_key: VerifierKey<E, P>,
+    u_params: &UniversalParams<E>,
+    plonk_verifier_key: PlonkVerifierKey<E, P>,
     proof: &Proof<E, P>,
     pub_inputs_values: &[PublicInputValue<E::Fr, P>],
     pub_inputs_positions: &[usize],
     transcript_init: &'static [u8],
 ) -> Result<(), Error> {
     let mut verifier: Verifier<E, T, P> = Verifier::new(transcript_init);
-    let padded_circuit_size = verifier_key.padded_circuit_size();
-    verifier.verifier_key = Some(verifier_key);
+    let padded_circuit_size = plonk_verifier_key.padded_circuit_size();
+    verifier.verifier_key = Some(plonk_verifier_key);
+    let (_, sonic_vk) = SonicKZG10::<E, DensePolynomial<E::Fr>>::trim(
+        u_params,
+        padded_circuit_size,
+        0,
+        None,
+    )
+    .unwrap();
+
+    let vk = kzg10::VerifierKey {
+        g: sonic_vk.g,
+        gamma_g: sonic_vk.gamma_g,
+        h: sonic_vk.h,
+        beta_h: sonic_vk.beta_h,
+        prepared_h: sonic_vk.prepared_h,
+        prepared_beta_h: sonic_vk.prepared_beta_h,
+    };
 
     verifier.verify(
         proof,
-        pub_params.opening_key(),
+        &vk,
         build_pi(pub_inputs_values, pub_inputs_positions, padded_circuit_size)
             .as_slice(),
     )
@@ -370,13 +416,8 @@ fn build_pi<F: PrimeField, P: TEModelParameters<BaseField = F>>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::proof_system::ProverKey;
     use crate::{constraint_system::StandardComposer, util};
-    use ark_bls12_381::{Bls12_381, Fr as BlsScalar};
-    use ark_ed_on_bls12_381::{
-        EdwardsAffine as JubjubAffine, EdwardsParameters as JubjubParameters,
-        EdwardsProjective as JubjubProjective, Fr as JubjubScalar,
-    };
+    use ark_ec::twisted_edwards_extended::GroupAffine;
     use num_traits::{One, Zero};
 
     // Implements a circuit that checks:

@@ -6,11 +6,11 @@
 
 use crate::constraint_system::StandardComposer;
 use crate::error::Error;
-use crate::proof_system::widget::VerifierKey;
+use crate::proof_system::widget::VerifierKey as PlonkVerifierKey;
 use crate::proof_system::Proof;
 use crate::transcript::TranscriptWrapper;
-use crate::{commitment_scheme::kzg10::OpeningKey, prelude::CommitKey};
 use ark_ec::{PairingEngine, ProjectiveCurve, TEModelParameters};
+use ark_poly_commit::kzg10::{Powers, VerifierKey};
 
 /// Abstraction structure designed verify [`Proof`]s.
 #[allow(missing_debug_implementations)]
@@ -20,7 +20,7 @@ pub struct Verifier<
     P: TEModelParameters<BaseField = E::Fr>,
 > {
     /// VerificationKey which is used to verify a specific PLONK circuit
-    pub verifier_key: Option<VerifierKey<E, P>>,
+    pub verifier_key: Option<PlonkVerifierKey<E, P>>,
 
     pub(crate) cs: StandardComposer<E, T, P>,
     /// Store the messages exchanged during the preprocessing stage
@@ -79,13 +79,10 @@ impl<
         &mut self.cs
     }
 
-    /// Preprocess a circuit to obtain a [`VerifierKey`] and a circuit
+    /// Preprocess a circuit to obtain a [`PlonkVerifierKey`] and a circuit
     /// descriptor so that the `Verifier` instance can verify [`Proof`]s
     /// for this circuit descriptor instance.
-    pub fn preprocess(
-        &mut self,
-        commit_key: &CommitKey<E>,
-    ) -> Result<(), Error> {
+    pub fn preprocess(&mut self, commit_key: &Powers<E>) -> Result<(), Error> {
         let vk = self.cs.preprocess_verifier(
             commit_key,
             &mut self.preprocessed_transcript,
@@ -107,14 +104,14 @@ impl<
     pub fn verify(
         &self,
         proof: &Proof<E, P>,
-        pc_verifier_key: &OpeningKey<E>,
+        pc_verifier_key: &VerifierKey<E>,
         public_inputs: &[E::Fr],
     ) -> Result<(), Error> {
         let mut cloned_transcript = self.preprocessed_transcript.clone();
-        let verifier_key = self.verifier_key.as_ref().unwrap();
+        let plonk_verifier_key = self.verifier_key.as_ref().unwrap();
 
         proof.verify(
-            verifier_key,
+            plonk_verifier_key,
             &mut cloned_transcript,
             pc_verifier_key,
             public_inputs,

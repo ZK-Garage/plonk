@@ -5,12 +5,14 @@
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
 use super::StandardComposer;
-// use ark_poly_commit::PublicParameters;
-use crate::commitment_scheme::kzg10::PublicParameters;
 use crate::error::Error;
 use crate::proof_system::{Prover, Verifier};
 use ark_ec::{PairingEngine, ProjectiveCurve, TEModelParameters};
 use ark_ff::PrimeField;
+use ark_poly::univariate::DensePolynomial;
+use ark_poly_commit::kzg10::{self, Powers, KZG10};
+use ark_poly_commit::sonic_pc::SonicKZG10;
+use ark_poly_commit::PolynomialCommitment;
 use num_traits::{One, Zero};
 use rand_core::OsRng;
 
@@ -68,7 +70,8 @@ pub(crate) fn gadget_tester<
     n: usize,
 ) -> Result<(), Error> {
     // Common View
-    let unviersal_params = PublicParameters::setup(2 * n, &mut OsRng)?;
+    let universal_params =
+        KZG10::<E, DensePolynomial<E::Fr>>::setup(2 * n, false, &mut OsRng)?;
     // Provers View
     let (proof, public_inputs) = {
         // Create a prover struct
@@ -81,18 +84,26 @@ pub(crate) fn gadget_tester<
         gadget(&mut prover.mut_cs());
 
         // Commit Key
-        let (ck, _) = unviersal_params
-            .trim(2 * prover.cs.circuit_size().next_power_of_two())?;
-
+        let (ck, _) = SonicKZG10::<E, DensePolynomial<E::Fr>>::trim(
+            &universal_params,
+            prover.cs.circuit_size().next_power_of_two(),
+            0,
+            None,
+        )
+        .unwrap();
+        let powers = Powers {
+            powers_of_g: ck.powers_of_g.into(),
+            powers_of_gamma_g: ck.powers_of_gamma_g.into(),
+        };
         // Preprocess circuit
-        prover.preprocess(&ck)?;
+        prover.preprocess(&powers)?;
 
         // Once the prove method is called, the public inputs are cleared
         // So pre-fetch these before calling Prove
         let public_inputs = prover.cs.construct_dense_pi_vec();
 
         // Compute Proof
-        (prover.prove(&ck)?, public_inputs)
+        (prover.prove(&powers)?, public_inputs)
     };
     // Verifiers view
     //
@@ -106,11 +117,28 @@ pub(crate) fn gadget_tester<
     gadget(&mut verifier.mut_cs());
 
     // Compute Commit and Verifier Key
-    let (ck, vk) = unviersal_params
-        .trim(verifier.cs.circuit_size().next_power_of_two())?;
+    let (sonic_ck, sonic_vk) = SonicKZG10::<E, DensePolynomial<E::Fr>>::trim(
+        &universal_params,
+        verifier.cs.circuit_size().next_power_of_two(),
+        0,
+        None,
+    )
+    .unwrap();
+    let powers = Powers {
+        powers_of_g: sonic_ck.powers_of_g.into(),
+        powers_of_gamma_g: sonic_ck.powers_of_gamma_g.into(),
+    };
 
+    let vk = kzg10::VerifierKey {
+        g: sonic_vk.g,
+        gamma_g: sonic_vk.gamma_g,
+        h: sonic_vk.h,
+        beta_h: sonic_vk.beta_h,
+        prepared_h: sonic_vk.prepared_h,
+        prepared_beta_h: sonic_vk.prepared_beta_h,
+    };
     // Preprocess circuit
-    verifier.preprocess(&ck)?;
+    verifier.preprocess(&powers)?;
 
     // Verify proof
     verifier.verify(&proof, &vk, &public_inputs)

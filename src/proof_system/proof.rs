@@ -11,17 +11,20 @@
 //! `Proof` structure and it's methods.
 
 use super::linearisation_poly::ProofEvaluations;
-use crate::commitment_scheme::kzg10::{KZGAggregateProof, OpeningKey};
-use crate::proof_system::VerifierKey;
+// use crate::commitment_scheme::kzg10::{KZGAggregateProof, OpeningKey};
+use crate::proof_system::VerifierKey as PlonkVerifierKey;
 use crate::transcript::TranscriptProtocol;
 use crate::util;
 use crate::{error::Error, transcript::TranscriptWrapper};
 use ark_ec::{msm::VariableBaseMSM, AffineCurve, TEModelParameters};
 use ark_ec::{PairingEngine, ProjectiveCurve};
 use ark_ff::{fields::batch_inversion, Field, PrimeField};
+use ark_poly::univariate::DensePolynomial;
 use ark_poly::{EvaluationDomain, GeneralEvaluationDomain};
-use ark_poly_commit::kzg10::Commitment;
+use ark_poly_commit::kzg10;
+use ark_poly_commit::kzg10::{Commitment, VerifierKey, KZG10};
 use core::marker::PhantomData;
+use rand_core::OsRng;
 
 /// A Proof is a composition of `Commitment`s to the Witness, Permutation,
 /// Quotient, Shifted and Opening polynomials as well as the
@@ -56,9 +59,9 @@ pub struct Proof<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> {
     /// Commitment to the quotient polynomial.
     pub(crate) t_4_comm: Commitment<E>,
 
-    /// Commitment to the opening polynomial.
+    /// Commitment to the opening proof polynomial.
     pub(crate) w_z_comm: Commitment<E>,
-    /// Commitment to the shifted opening polynomial.
+    /// Commitment to the shifted opening proof polynomial.
     pub(crate) w_zw_comm: Commitment<E>,
     /// Subset of all of the evaluations added to the proof.
     pub(crate) evaluations: ProofEvaluations<E::Fr>,
@@ -69,13 +72,14 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Proof<E, P> {
     /// Performs the verification of a [`Proof`] returning a boolean result.
     pub(crate) fn verify(
         &self,
-        verifier_key: &VerifierKey<E, P>,
+        plonk_verifier_key: &PlonkVerifierKey<E, P>,
         transcript: &mut TranscriptWrapper<E>,
-        opening_key: &OpeningKey<E>,
+        verifier_key: &VerifierKey<E>,
         pub_inputs: &[E::Fr],
     ) -> Result<(), Error> {
         let domain =
-            GeneralEvaluationDomain::<E::Fr>::new(verifier_key.n).unwrap();
+            GeneralEvaluationDomain::<E::Fr>::new(plonk_verifier_key.n)
+                .unwrap();
 
         // Subgroup checks are done when the proof is deserialised.
 
@@ -116,7 +120,7 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Proof<E, P> {
         transcript.append_commitment(b"t_3", &self.t_3_comm);
         transcript.append_commitment(b"t_4", &self.t_4_comm);
 
-        // Compute evaluation challenge
+        // Compute evaluation point challenge
         let z_challenge = transcript.challenge_scalar(b"z");
 
         // Compute zero polynomial evaluated at `z_challenge`
@@ -184,7 +188,7 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Proof<E, P> {
             ),
             z_challenge,
             l1_eval,
-            &verifier_key,
+            &plonk_verifier_key,
         );
 
         // Commitment Scheme
@@ -197,64 +201,113 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Proof<E, P> {
         // permutation polynomial evaluated at the shifted root of unity is
         // correct
 
-        // Compose the Aggregated Proof
-        //
-        let mut aggregate_proof =
-            KZGAggregateProof::<E, P>::with_witness(self.w_z_comm);
-        aggregate_proof.add_part((t_eval, t_comm));
-        aggregate_proof.add_part((self.evaluations.lin_poly_eval, r_comm));
-        aggregate_proof.add_part((self.evaluations.a_eval, self.a_comm));
-        aggregate_proof.add_part((self.evaluations.b_eval, self.b_comm));
-        aggregate_proof.add_part((self.evaluations.c_eval, self.c_comm));
-        aggregate_proof.add_part((self.evaluations.d_eval, self.d_comm));
-        aggregate_proof.add_part((
-            self.evaluations.left_sigma_eval,
-            verifier_key.permutation.left_sigma,
-        ));
-        aggregate_proof.add_part((
-            self.evaluations.right_sigma_eval,
-            verifier_key.permutation.right_sigma,
-        ));
-        aggregate_proof.add_part((
-            self.evaluations.out_sigma_eval,
-            verifier_key.permutation.out_sigma,
-        ));
-        // Flatten proof with opening challenge
-        let flattened_proof_a = aggregate_proof.flatten(transcript);
+        // Generation of the first aggregated proof: It ensures that the polynomials
+        // evaluated at `z_challenge` are correct.
 
-        // Compose the shifted aggregate proof
-        let mut shifted_aggregate_proof =
-            KZGAggregateProof::<E, P>::with_witness(self.w_zw_comm);
-        shifted_aggregate_proof
-            .add_part((self.evaluations.perm_eval, self.z_comm));
-        shifted_aggregate_proof
-            .add_part((self.evaluations.a_next_eval, self.a_comm));
-        shifted_aggregate_proof
-            .add_part((self.evaluations.b_next_eval, self.b_comm));
-        shifted_aggregate_proof
-            .add_part((self.evaluations.d_next_eval, self.d_comm));
-        let flattened_proof_b = shifted_aggregate_proof.flatten(transcript);
+        // Reconstruct the Aggregated Proof commitments and evals
+        // The proof consists of the witness commitment with no blinder
+        let (aggregate_proof_commitment, aggregate_proof_eval) = self
+            .gen_aggregate_proof(
+                t_eval,
+                t_comm,
+                r_comm,
+                plonk_verifier_key,
+                transcript,
+            );
+        let aggregate_proof = kzg10::Proof {
+            w: self.w_z_comm.0,
+            random_v: None,
+        };
+
+        // Reconstruct the Aggregated Shift Proof commitments and evals
+        // The proof consists of the witness commitment with no blinder
+        let (aggregate_shift_proof_commitment, aggregate_shift_proof_eval) =
+            self.gen_shift_aggregate_proof(transcript);
+
+        let aggregate_shift_proof = kzg10::Proof {
+            w: self.w_zw_comm.0,
+            random_v: None,
+        };
 
         // Add commitment to openings to transcript
         transcript.append_commitment(b"w_z", &self.w_z_comm);
         transcript.append_commitment(b"w_z_w", &self.w_zw_comm);
 
-        let group_gen = util::get_domain_attrs(&domain, "group_gen");
+        let group_gen = domain.element(1);
 
-        // Batch check
-        if opening_key
-            .batch_check(
-                &[z_challenge, (z_challenge * group_gen)],
-                &[flattened_proof_a, flattened_proof_b],
-                transcript,
-            )
-            .is_err()
-        {
-            return Err(Error::ProofVerificationError);
+        match KZG10::<E, DensePolynomial<E::Fr>>::batch_check::<OsRng>(
+            verifier_key,
+            &[aggregate_proof_commitment, aggregate_shift_proof_commitment],
+            &[z_challenge, (z_challenge * group_gen)],
+            &[aggregate_proof_eval, aggregate_shift_proof_eval],
+            &[aggregate_proof, aggregate_shift_proof],
+            &mut OsRng,
+        ) {
+            Ok(true) => Ok(()),
+            Ok(false) => Err(Error::ProofVerificationError),
+            Err(e) => panic!("{:?}", e),
         }
-        Ok(())
     }
 
+    // TODO: Doc this
+    fn gen_aggregate_proof(
+        &self,
+        t_eval: E::Fr,
+        t_comm: Commitment<E>,
+        r_comm: Commitment<E>,
+        plonk_verifier_key: &PlonkVerifierKey<E, P>,
+        transcript: &mut TranscriptWrapper<E>,
+    ) -> (Commitment<E>, E::Fr) {
+        let challenge: E::Fr =
+            transcript.challenge_scalar(b"aggregate_witness");
+
+        util::linear_combination(
+            &[
+                t_eval,
+                self.evaluations.lin_poly_eval,
+                self.evaluations.a_eval,
+                self.evaluations.b_eval,
+                self.evaluations.c_eval,
+                self.evaluations.d_eval,
+                self.evaluations.left_sigma_eval,
+                self.evaluations.right_sigma_eval,
+                self.evaluations.out_sigma_eval,
+            ],
+            &[
+                t_comm,
+                r_comm,
+                self.a_comm,
+                self.b_comm,
+                self.c_comm,
+                self.d_comm,
+                plonk_verifier_key.permutation.left_sigma,
+                plonk_verifier_key.permutation.right_sigma,
+                plonk_verifier_key.permutation.out_sigma,
+            ],
+            challenge,
+        )
+    }
+
+    //TODO: Doc this
+    fn gen_shift_aggregate_proof(
+        &self,
+        transcript: &mut TranscriptWrapper<E>,
+    ) -> (Commitment<E>, E::Fr) {
+        let challenge: E::Fr =
+            transcript.challenge_scalar(b"aggregate_witness");
+        util::linear_combination(
+            &[
+                self.evaluations.perm_eval,
+                self.evaluations.a_next_eval,
+                self.evaluations.b_next_eval,
+                self.evaluations.d_next_eval,
+            ],
+            &[self.z_comm, self.a_comm, self.b_comm, self.d_comm],
+            challenge,
+        )
+    }
+
+    // TODO: Doc this
     fn compute_quotient_evaluation(
         &self,
         domain: &GeneralEvaluationDomain<E::Fr>,
@@ -327,54 +380,62 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Proof<E, P> {
         ): (E::Fr, E::Fr, E::Fr, E::Fr),
         z_challenge: E::Fr,
         l1_eval: E::Fr,
-        verifier_key: &VerifierKey<E, P>,
+        plonk_verifier_key: &PlonkVerifierKey<E, P>,
     ) -> Commitment<E> {
         let mut scalars: Vec<_> = Vec::with_capacity(6);
         let mut points: Vec<E::G1Affine> = Vec::with_capacity(6);
 
-        verifier_key.arithmetic.compute_linearisation_commitment(
-            &mut scalars,
-            &mut points,
-            &self.evaluations,
-        );
+        plonk_verifier_key
+            .arithmetic
+            .compute_linearisation_commitment(
+                &mut scalars,
+                &mut points,
+                &self.evaluations,
+            );
 
-        verifier_key.range.compute_linearisation_commitment(
+        plonk_verifier_key.range.compute_linearisation_commitment(
             range_sep_challenge,
             &mut scalars,
             &mut points,
             &self.evaluations,
         );
 
-        verifier_key.logic.compute_linearisation_commitment(
+        plonk_verifier_key.logic.compute_linearisation_commitment(
             logic_sep_challenge,
             &mut scalars,
             &mut points,
             &self.evaluations,
         );
 
-        verifier_key.fixed_base.compute_linearisation_commitment(
-            fixed_base_sep_challenge,
-            &mut scalars,
-            &mut points,
-            &self.evaluations,
-        );
+        plonk_verifier_key
+            .fixed_base
+            .compute_linearisation_commitment(
+                fixed_base_sep_challenge,
+                &mut scalars,
+                &mut points,
+                &self.evaluations,
+            );
 
-        verifier_key.variable_base.compute_linearisation_commitment(
-            var_base_sep_challenge,
-            &mut scalars,
-            &mut points,
-            &self.evaluations,
-        );
+        plonk_verifier_key
+            .variable_base
+            .compute_linearisation_commitment(
+                var_base_sep_challenge,
+                &mut scalars,
+                &mut points,
+                &self.evaluations,
+            );
 
-        verifier_key.permutation.compute_linearisation_commitment(
-            &mut scalars,
-            &mut points,
-            &self.evaluations,
-            z_challenge,
-            (alpha, beta, gamma),
-            l1_eval,
-            self.z_comm.0,
-        );
+        plonk_verifier_key
+            .permutation
+            .compute_linearisation_commitment(
+                &mut scalars,
+                &mut points,
+                &self.evaluations,
+                z_challenge,
+                (alpha, beta, gamma),
+                l1_eval,
+                self.z_comm.0,
+            );
 
         let scalars_repr: Vec<<E::Fr as PrimeField>::BigInt> =
             scalars.iter().map(|s| s.into_repr()).collect();

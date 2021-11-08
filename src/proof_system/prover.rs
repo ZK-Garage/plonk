@@ -4,15 +4,14 @@
 //
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
-use crate::util::*;
 use crate::{
     constraint_system::{StandardComposer, Variable},
     error::Error,
-    prelude::CommitKey,
     proof_system::{
         linearisation_poly, proof::Proof, quotient_poly, ProverKey,
     },
     transcript::{TranscriptProtocol, TranscriptWrapper},
+    util,
 };
 use ark_ec::{PairingEngine, ProjectiveCurve, TEModelParameters};
 use ark_ff::Field;
@@ -20,6 +19,7 @@ use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, GeneralEvaluationDomain,
     UVPolynomial,
 };
+use ark_poly_commit::kzg10::{Powers, KZG10};
 use core::marker::PhantomData;
 use num_traits::Zero;
 
@@ -52,10 +52,7 @@ impl<
     }
 
     /// Preprocesses the underlying constraint system.
-    pub fn preprocess(
-        &mut self,
-        commit_key: &CommitKey<E>,
-    ) -> Result<(), Error> {
+    pub fn preprocess(&mut self, commit_key: &Powers<E>) -> Result<(), Error> {
         if self.prover_key.is_some() {
             return Err(Error::CircuitAlreadyPreprocessed);
         }
@@ -181,6 +178,30 @@ impl<
             .append_message(label, message);
     }
 
+    /// Computes a single witness for multiple polynomials at the same point, by
+    /// taking a random linear combination of the individual witnesses.
+    /// The result does not depend on z, thus we can remove the term f(z).
+    pub(crate) fn compute_aggregate_witness(
+        polynomials: &[DensePolynomial<E::Fr>],
+        point: &E::Fr,
+        challenge: E::Fr,
+    ) -> DensePolynomial<E::Fr> {
+        let powers = util::powers_of(&challenge, polynomials.len() - 1);
+        assert_eq!(powers.len(), polynomials.len());
+
+        let numerator_terms: Vec<DensePolynomial<E::Fr>> = polynomials
+            .iter()
+            .zip(powers.iter())
+            .map(|(poly, challenge_power)| poly * *challenge_power)
+            .collect();
+
+        let mut numerator = DensePolynomial::zero();
+        for term in numerator_terms.iter() {
+            numerator += term;
+        }
+        util::ruffini(numerator, *point)
+    }
+
     /// Creates a [`Proof]` that demonstrates that a circuit is satisfied.
     /// # Note
     /// If you intend to construct multiple [`Proof`]s with different witnesses,
@@ -189,7 +210,7 @@ impl<
     /// This is automatically done when [`Prover::prove`] is called.
     pub fn prove_with_preprocessed(
         &self,
-        commit_key: &CommitKey<E>,
+        commit_key: &Powers<E>,
         prover_key: &ProverKey<E::Fr, P>,
     ) -> Result<Proof<E, P>, Error> {
         let domain =
@@ -222,16 +243,26 @@ impl<
             DensePolynomial::from_coefficients_vec(domain.ifft(w_4_scalar));
 
         // Commit to witness polynomials
-        let w_l_poly_commit = commit_key.commit(w_l_poly.clone())?;
-        let w_r_poly_commit = commit_key.commit(w_r_poly.clone())?;
-        let w_o_poly_commit = commit_key.commit(w_o_poly.clone())?;
-        let w_4_poly_commit = commit_key.commit(w_4_poly.clone())?;
+        let w_l_poly_commit = KZG10::<E, DensePolynomial<E::Fr>>::commit(
+            commit_key, &w_l_poly, None, None,
+        )?;
+        let w_r_poly_commit = KZG10::<E, DensePolynomial<E::Fr>>::commit(
+            commit_key, &w_r_poly, None, None,
+        )?;
+
+        let w_o_poly_commit = KZG10::<E, DensePolynomial<E::Fr>>::commit(
+            commit_key, &w_o_poly, None, None,
+        )?;
+
+        let w_4_poly_commit = KZG10::<E, DensePolynomial<E::Fr>>::commit(
+            commit_key, &w_4_poly, None, None,
+        )?;
 
         // Add witness polynomial commitments to transcript
-        transcript.append_commitment(b"w_l", &w_l_poly_commit);
-        transcript.append_commitment(b"w_r", &w_r_poly_commit);
-        transcript.append_commitment(b"w_o", &w_o_poly_commit);
-        transcript.append_commitment(b"w_4", &w_4_poly_commit);
+        transcript.append_commitment(b"w_l", &w_l_poly_commit.0);
+        transcript.append_commitment(b"w_r", &w_r_poly_commit.0);
+        transcript.append_commitment(b"w_o", &w_o_poly_commit.0);
+        transcript.append_commitment(b"w_4", &w_4_poly_commit.0);
 
         // 2. Compute permutation polynomial
         //
@@ -260,10 +291,12 @@ impl<
 
         // Commit to permutation polynomial
         //
-        let z_poly_commit = commit_key.commit(z_poly.clone())?;
+        let z_poly_commit = KZG10::<E, DensePolynomial<E::Fr>>::commit(
+            commit_key, &z_poly, None, None,
+        )?;
 
         // Add permutation polynomial commitment to transcript
-        transcript.append_commitment(b"z", &z_poly_commit);
+        transcript.append_commitment(b"z", &z_poly_commit.0);
 
         // 3. Compute public inputs polynomial
         let pi_poly = DensePolynomial::from_coefficients_vec(
@@ -305,16 +338,24 @@ impl<
             self.split_tx_poly(domain.size(), &t_poly);
 
         // Commit to splitted quotient polynomial
-        let t_1_commit = commit_key.commit(t_1_poly.clone())?;
-        let t_2_commit = commit_key.commit(t_2_poly.clone())?;
-        let t_3_commit = commit_key.commit(t_3_poly.clone())?;
-        let t_4_commit = commit_key.commit(t_4_poly.clone())?;
+        let t_1_commit = KZG10::<E, DensePolynomial<E::Fr>>::commit(
+            commit_key, &t_1_poly, None, None,
+        )?;
+        let t_2_commit = KZG10::<E, DensePolynomial<E::Fr>>::commit(
+            commit_key, &t_2_poly, None, None,
+        )?;
+        let t_3_commit = KZG10::<E, DensePolynomial<E::Fr>>::commit(
+            commit_key, &t_3_poly, None, None,
+        )?;
+        let t_4_commit = KZG10::<E, DensePolynomial<E::Fr>>::commit(
+            commit_key, &t_4_poly, None, None,
+        )?;
 
         // Add quotient polynomial commitments to transcript
-        transcript.append_commitment(b"t_1", &t_1_commit);
-        transcript.append_commitment(b"t_2", &t_2_commit);
-        transcript.append_commitment(b"t_3", &t_3_commit);
-        transcript.append_commitment(b"t_4", &t_4_commit);
+        transcript.append_commitment(b"t_1", &t_1_commit.0);
+        transcript.append_commitment(b"t_2", &t_2_commit.0);
+        transcript.append_commitment(b"t_3", &t_3_commit.0);
+        transcript.append_commitment(b"t_4", &t_4_commit.0);
 
         // 4. Compute linearisation polynomial
         //
@@ -387,7 +428,9 @@ impl<
 
         // Compute aggregate witness to polynomials evaluated at the evaluation
         // challenge `z`
-        let aggregate_witness = commit_key.compute_aggregate_witness(
+        let aw_challenge: E::Fr =
+            transcript.challenge_scalar(b"aggregate_witness");
+        let aggregate_witness = Self::compute_aggregate_witness(
             &[
                 quot,
                 lin_poly,
@@ -400,35 +443,47 @@ impl<
                 prover_key.permutation.out_sigma.0.clone(),
             ],
             &z_challenge,
-            &mut transcript,
+            aw_challenge,
         );
-        let w_z_comm = commit_key.commit(aggregate_witness)?;
+        let w_z_comm = KZG10::<E, DensePolynomial<E::Fr>>::commit(
+            commit_key,
+            &aggregate_witness,
+            None,
+            None,
+        )?;
 
         // Compute aggregate witness to polynomials evaluated at the shifted
         // evaluation challenge
-        let shifted_aggregate_witness = commit_key.compute_aggregate_witness(
+        let saw_challenge: E::Fr =
+            transcript.challenge_scalar(b"aggregate_witness");
+        let shifted_aggregate_witness = Self::compute_aggregate_witness(
             &[z_poly, w_l_poly, w_r_poly, w_4_poly],
-            &(z_challenge * get_domain_attrs(&domain, "group_gen")),
-            &mut transcript,
+            &(z_challenge * domain.element(1)),
+            saw_challenge,
         );
-        let w_zx_comm = commit_key.commit(shifted_aggregate_witness)?;
+        let w_zx_comm = KZG10::<E, DensePolynomial<E::Fr>>::commit(
+            commit_key,
+            &shifted_aggregate_witness,
+            None,
+            None,
+        )?;
 
         // Create Proof
         Ok(Proof {
-            a_comm: w_l_poly_commit,
-            b_comm: w_r_poly_commit,
-            c_comm: w_o_poly_commit,
-            d_comm: w_4_poly_commit,
+            a_comm: w_l_poly_commit.0,
+            b_comm: w_r_poly_commit.0,
+            c_comm: w_o_poly_commit.0,
+            d_comm: w_4_poly_commit.0,
 
-            z_comm: z_poly_commit,
+            z_comm: z_poly_commit.0,
 
-            t_1_comm: t_1_commit,
-            t_2_comm: t_2_commit,
-            t_3_comm: t_3_commit,
-            t_4_comm: t_4_commit,
+            t_1_comm: t_1_commit.0,
+            t_2_comm: t_2_commit.0,
+            t_3_comm: t_3_commit.0,
+            t_4_comm: t_4_commit.0,
 
-            w_z_comm,
-            w_zw_comm: w_zx_comm,
+            w_z_comm: w_z_comm.0,
+            w_zw_comm: w_zx_comm.0,
 
             evaluations: evaluations.proof,
             _marker: PhantomData,
@@ -440,7 +495,7 @@ impl<
     /// also be computed.
     pub fn prove(
         &mut self,
-        commit_key: &CommitKey<E>,
+        commit_key: &Powers<E>,
     ) -> Result<Proof<E, P>, Error> {
         let prover_key: &ProverKey<E::Fr, P>;
 
