@@ -11,7 +11,6 @@
 //! `Proof` structure and it's methods.
 
 use super::linearisation_poly::ProofEvaluations;
-// use crate::commitment_scheme::kzg10::{KZGAggregateProof, OpeningKey};
 use crate::proof_system::VerifierKey as PlonkVerifierKey;
 use crate::transcript::TranscriptProtocol;
 use crate::util;
@@ -23,6 +22,9 @@ use ark_poly::univariate::DensePolynomial;
 use ark_poly::{EvaluationDomain, GeneralEvaluationDomain};
 use ark_poly_commit::kzg10;
 use ark_poly_commit::kzg10::{Commitment, VerifierKey, KZG10};
+use ark_serialize::{
+    CanonicalDeserialize, CanonicalSerialize, Read, SerializationError, Write,
+};
 use core::marker::PhantomData;
 use rand_core::OsRng;
 
@@ -36,7 +38,15 @@ use rand_core::OsRng;
 /// [`Verifier`](super::Verifier) have in common succintly and without any
 /// capabilities of adquiring any kind of knowledge about the witness used to
 /// construct the Proof.
-#[derive(Debug, Eq, PartialEq, Clone, Default)]
+#[derive(
+    Debug,
+    Eq,
+    PartialEq,
+    Clone,
+    Default,
+    CanonicalDeserialize,
+    CanonicalSerialize,
+)]
 pub struct Proof<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> {
     /// Commitment to the witness polynomial for the left wires.
     pub(crate) a_comm: Commitment<E>,
@@ -201,8 +211,8 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Proof<E, P> {
         // permutation polynomial evaluated at the shifted root of unity is
         // correct
 
-        // Generation of the first aggregated proof: It ensures that the polynomials
-        // evaluated at `z_challenge` are correct.
+        // Generation of the first aggregated proof: It ensures that the
+        // polynomials evaluated at `z_challenge` are correct.
 
         // Reconstruct the Aggregated Proof commitments and evals
         // The proof consists of the witness commitment with no blinder
