@@ -183,72 +183,30 @@ impl<
             domain_4n,
         );
 
-        // Prover Key for arithmetic circuits
-        let arithmetic_prover_key = widget::arithmetic::ProverKey {
-            q_m: (selectors.q_m, q_m_eval_4n),
-            q_l: (selectors.q_l.clone(), q_l_eval_4n.clone()),
-            q_r: (selectors.q_r.clone(), q_r_eval_4n.clone()),
-            q_o: (selectors.q_o, q_o_eval_4n),
-            q_c: (selectors.q_c.clone(), q_c_eval_4n.clone()),
-            q_4: (selectors.q_4, q_4_eval_4n),
-            q_arith: (selectors.q_arith, q_arith_eval_4n),
-        };
+        // Compute 4n evaluations for X^n -1
+        let v_h_coset_4n =
+            compute_vanishing_poly_over_coset(domain_4n, domain.size() as u64);
 
-        // Prover Key for range circuits
-        let range_prover_key = widget::range::ProverKey {
-            q_range: (selectors.q_range, q_range_eval_4n),
-        };
-
-        // Prover Key for logic circuits
-        let logic_prover_key = widget::logic::ProverKey {
-            q_c: (selectors.q_c.clone(), q_c_eval_4n.clone()),
-            q_logic: (selectors.q_logic, q_logic_eval_4n),
-        };
-
-        // Prover Key for ecc circuits
-        let ecc_prover_key = widget::ecc::scalar_mul::fixed_base::ProverKey {
-            q_l: (selectors.q_l, q_l_eval_4n),
-            q_r: (selectors.q_r, q_r_eval_4n),
-            q_c: (selectors.q_c, q_c_eval_4n),
-            q_fixed_group_add: (
-                selectors.q_fixed_group_add,
-                q_fixed_group_add_eval_4n,
-            ),
-            _marker: PhantomData,
-        };
-
-        // Prover Key for permutation argument
-        let permutation_prover_key = widget::permutation::ProverKey {
-            left_sigma: (selectors.left_sigma, left_sigma_eval_4n),
-            right_sigma: (selectors.right_sigma, right_sigma_eval_4n),
-            out_sigma: (selectors.out_sigma, out_sigma_eval_4n),
-            fourth_sigma: (selectors.fourth_sigma, fourth_sigma_eval_4n),
-            linear_evaluations: linear_eval_4n,
-        };
-
-        // Prover Key for curve addition
-        let curve_addition_prover_key =
-            widget::ecc::curve_addition::ProverKey::new(
-                selectors.q_variable_group_add,
-                q_variable_group_add_eval_4n,
-            );
-
-        let prover_key = ProverKey {
-            n: domain.size(),
-            arithmetic: arithmetic_prover_key,
-            logic: logic_prover_key,
-            range: range_prover_key,
-            permutation: permutation_prover_key,
-            variable_base: curve_addition_prover_key,
-            fixed_base: ecc_prover_key,
-            // Compute 4n evaluations for X^n -1
-            v_h_coset_4n: compute_vanishing_poly_over_coset(
-                domain_4n,
-                domain.size() as u64,
-            ),
-        };
-
-        Ok(prover_key)
+        Ok(ProverKey::from_polynomials_and_evals(
+            domain.size(),
+            (selectors.q_m, q_m_eval_4n),
+            (selectors.q_l, q_l_eval_4n),
+            (selectors.q_r, q_r_eval_4n),
+            (selectors.q_o, q_o_eval_4n),
+            (selectors.q_4, q_4_eval_4n),
+            (selectors.q_c, q_c_eval_4n),
+            (selectors.q_arith, q_arith_eval_4n),
+            (selectors.q_logic, q_logic_eval_4n),
+            (selectors.q_range, q_range_eval_4n),
+            (selectors.q_fixed_group_add, q_fixed_group_add_eval_4n),
+            (selectors.q_variable_group_add, q_variable_group_add_eval_4n),
+            (selectors.left_sigma, left_sigma_eval_4n),
+            (selectors.right_sigma, right_sigma_eval_4n),
+            (selectors.out_sigma, out_sigma_eval_4n),
+            (selectors.fourth_sigma, fourth_sigma_eval_4n),
+            linear_eval_4n,
+            v_h_coset_4n,
+        ))
     }
 
     /// The verifier only requires the commitments in order to verify a

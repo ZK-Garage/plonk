@@ -203,9 +203,9 @@ impl<F: PrimeField, P: TEModelParameters<BaseField = F>> ProverKey<F, P> {
     }
 
     /// Constructs a [`ProverKey`] from the widget ProverKey's that are
-    /// constructed based on the selector polynomial commitments and the
-    /// sigma polynomial commitments.
-    pub(crate) fn from_polynomial_commitments(
+    /// constructed based on the selector polynomials and the
+    /// sigma polynomials and it's evaluations.
+    pub(crate) fn from_polynomials_and_evals(
         n: usize,
         q_m: (DensePolynomial<F>, Evaluations<F>),
         q_l: (DensePolynomial<F>, Evaluations<F>),
@@ -223,17 +223,21 @@ impl<F: PrimeField, P: TEModelParameters<BaseField = F>> ProverKey<F, P> {
         out_sigma: (DensePolynomial<F>, Evaluations<F>),
         fourth_sigma: (DensePolynomial<F>, Evaluations<F>),
         linear_evaluations: Evaluations<F>,
+        v_h_coset_4n: Evaluations<F>,
     ) -> ProverKey<F, P> {
         let arithmetic = arithmetic::ProverKey {
             q_m,
-            q_l,
-            q_r,
+            q_l: q_l.clone(),
+            q_r: q_r.clone(),
             q_o,
             q_4,
-            q_c,
+            q_c: q_c.clone(),
             q_arith,
         };
-        let logic = logic::ProverKey { q_c, q_logic };
+        let logic = logic::ProverKey {
+            q_c: q_c.clone(),
+            q_logic,
+        };
         let range = range::ProverKey { q_range };
         let fixed_base = ecc::scalar_mul::fixed_base::ProverKey::new(
             q_l,
@@ -263,6 +267,7 @@ impl<F: PrimeField, P: TEModelParameters<BaseField = F>> ProverKey<F, P> {
             fixed_base,
             variable_base,
             permutation,
+            v_h_coset_4n,
         }
     }
 }
