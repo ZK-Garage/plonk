@@ -188,16 +188,6 @@ pub struct ProverKey<F: PrimeField, P: TEModelParameters<BaseField = F>> {
 }
 
 impl<F: PrimeField, P: TEModelParameters<BaseField = F>> ProverKey<F, P> {
-    /// Returns the number of [`Polynomial`]s contained in a ProverKey.
-    fn num_polys() -> usize {
-        15
-    }
-
-    /// Returns the number of [`Evaluations`] contained in a ProverKey.
-    fn num_evals() -> usize {
-        17
-    }
-
     pub(crate) fn v_h_coset_4n(&self) -> &Evaluations<F> {
         &self.v_h_coset_4n
     }
@@ -276,20 +266,27 @@ impl<F: PrimeField, P: TEModelParameters<BaseField = F>> ProverKey<F, P> {
 mod test {
     use super::*;
     use ark_bls12_381::Fr as BlsScalar;
-    use ark_ff::UniformRand;
+    use ark_ff::{Fp256, UniformRand};
     use ark_poly::polynomial::univariate::DensePolynomial;
     use ark_poly::{EvaluationDomain, GeneralEvaluationDomain, UVPolynomial};
     use rand_core::OsRng;
 
-    fn rand_poly_eval<F: PrimeField>(
+    fn rand_poly_eval(
         n: usize,
-    ) -> (DensePolynomial<F>, Evaluations<F>) {
+    ) -> (
+        DensePolynomial<Fp256<ark_bls12_381::FrParameters>>,
+        Evaluations<Fp256<ark_bls12_381::FrParameters>>,
+    ) {
         let polynomial = DensePolynomial::rand(n, &mut OsRng);
         (polynomial, rand_evaluations(n))
     }
 
-    fn rand_evaluations<F: PrimeField>(n: usize) -> Evaluations<F> {
-        let domain = GeneralEvaluationDomain::new(4 * n).unwrap();
+    fn rand_evaluations(
+        n: usize,
+    ) -> Evaluations<Fp256<ark_bls12_381::FrParameters>> {
+        let domain: GeneralEvaluationDomain<
+            Fp256<ark_bls12_381::FrParameters>,
+        > = GeneralEvaluationDomain::new(4 * n).unwrap();
         let values: Vec<_> =
             (0..4 * n).map(|_| BlsScalar::rand(&mut OsRng)).collect();
         let evaluations = Evaluations::from_vec_and_domain(values, domain);
@@ -341,12 +338,10 @@ mod test {
 
         let range = range::ProverKey { q_range };
 
-        let fixed_base = ecc::scalar_mul::fixed_base::ProverKey {
-            q_fixed_group_add,
-            q_l,
-            q_r,
-            q_c,
-        };
+        let fixed_base = ecc::scalar_mul::fixed_base::ProverKey::<
+            Fp256<ark_bls12_381::FrParameters>,
+            ark_ed_on_bls12_381::EdwardsParameters,
+        >::new(q_l, q_r, q_c, q_fixed_group_add);
 
         let permutation = permutation::ProverKey {
             left_sigma,
@@ -356,9 +351,10 @@ mod test {
             linear_evaluations,
         };
 
-        let variable_base = ecc::curve_addition::ProverKey {
-            q_variable_group_add,
-        };
+        let variable_base = ecc::curve_addition::ProverKey::new(
+            q_variable_group_add.0,
+            q_variable_group_add.1,
+        );
 
         let prover_key = ProverKey {
             n,
@@ -371,39 +367,49 @@ mod test {
             v_h_coset_4n,
         };
 
-        let prover_key_bytes = prover_key.to_var_bytes();
-        let pk = ProverKey::from_slice(&prover_key_bytes).unwrap();
+        let mut prover_key_bytes = vec![];
+        prover_key
+            .serialize_unchecked(&mut prover_key_bytes)
+            .unwrap();
 
-        assert_eq!(pk, prover_key);
-        assert_eq!(pk.to_var_bytes(), prover_key.to_var_bytes());
+        let obtained_pk: ProverKey<
+            Fp256<ark_bls12_381::FrParameters>,
+            ark_ed_on_bls12_381::EdwardsParameters,
+        > = ProverKey::deserialize_unchecked(prover_key_bytes.as_slice())
+            .unwrap();
+
+        assert!(prover_key == obtained_pk);
     }
 
     #[test]
     fn test_serialise_deserialise_verifier_key() {
-        use ark_poly_commit::Commitment;
-        use dusk_bls12_381::G1Affine;
+        use super::*;
+        use ark_bls12_381::Bls12_381;
+        use ark_bls12_381::G1Affine;
+        use ark_ed_on_bls12_381::EdwardsParameters;
+        use ark_poly_commit::kzg10::Commitment;
 
         let n = 2usize.pow(5);
 
-        let q_m = Commitment(G1Affine::generator());
-        let q_l = Commitment(G1Affine::generator());
-        let q_r = Commitment(G1Affine::generator());
-        let q_o = Commitment(G1Affine::generator());
-        let q_c = Commitment(G1Affine::generator());
-        let q_4 = Commitment(G1Affine::generator());
-        let q_arith = Commitment(G1Affine::generator());
+        let q_m = Commitment::<Bls12_381>(G1Affine::default());
+        let q_l = Commitment(G1Affine::default());
+        let q_r = Commitment(G1Affine::default());
+        let q_o = Commitment(G1Affine::default());
+        let q_c = Commitment(G1Affine::default());
+        let q_4 = Commitment(G1Affine::default());
+        let q_arith = Commitment(G1Affine::default());
 
-        let q_range = Commitment(G1Affine::generator());
+        let q_range = Commitment(G1Affine::default());
 
-        let q_fixed_group_add = Commitment(G1Affine::generator());
-        let q_variable_group_add = Commitment(G1Affine::generator());
+        let q_fixed_group_add = Commitment(G1Affine::default());
+        let q_variable_group_add = Commitment(G1Affine::default());
 
-        let q_logic = Commitment(G1Affine::generator());
+        let q_logic = Commitment(G1Affine::default());
 
-        let left_sigma = Commitment(G1Affine::generator());
-        let right_sigma = Commitment(G1Affine::generator());
-        let out_sigma = Commitment(G1Affine::generator());
-        let fourth_sigma = Commitment(G1Affine::generator());
+        let left_sigma = Commitment(G1Affine::default());
+        let right_sigma = Commitment(G1Affine::default());
+        let out_sigma = Commitment(G1Affine::default());
+        let fourth_sigma = Commitment(G1Affine::default());
 
         let arithmetic = arithmetic::VerifierKey {
             q_m,
@@ -419,14 +425,12 @@ mod test {
 
         let range = range::VerifierKey { q_range };
 
-        let fixed_base = ecc::scalar_mul::fixed_base::VerifierKey {
-            q_fixed_group_add,
-            q_l,
-            q_r,
-        };
-        let variable_base = ecc::curve_addition::VerifierKey {
-            q_variable_group_add,
-        };
+        let fixed_base = ecc::scalar_mul::fixed_base::VerifierKey::<
+            Bls12_381,
+            EdwardsParameters,
+        >::new(q_fixed_group_add, q_l, q_r);
+        let variable_base =
+            ecc::curve_addition::VerifierKey::new(q_variable_group_add);
 
         let permutation = permutation::VerifierKey {
             left_sigma,
@@ -445,9 +449,15 @@ mod test {
             permutation,
         };
 
-        let verifier_key_bytes = verifier_key.to_bytes();
-        let got = VerifierKey::from_bytes(&verifier_key_bytes).unwrap();
+        let mut verifier_key_bytes = vec![];
+        verifier_key
+            .serialize_unchecked(&mut verifier_key_bytes)
+            .unwrap();
 
-        assert_eq!(got, verifier_key);
+        let obtained_vk: VerifierKey<Bls12_381, EdwardsParameters> =
+            VerifierKey::deserialize_unchecked(verifier_key_bytes.as_slice())
+                .unwrap();
+
+        assert!(verifier_key == obtained_vk);
     }
 }

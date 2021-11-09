@@ -15,7 +15,6 @@ use ark_ff::PrimeField;
 use ark_poly::polynomial::univariate::DensePolynomial;
 use ark_poly::{EvaluationDomain, Evaluations, GeneralEvaluationDomain};
 use ark_poly_commit::kzg10::{Powers, KZG10};
-use core::marker::PhantomData;
 use num_traits::{One, Zero};
 
 /// Struct that contains all of the selector and permutation [`Polynomial`]s in
