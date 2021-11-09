@@ -522,14 +522,14 @@ fn compute_barycentric_eval<F: PrimeField>(
 mod proof_tests {
     use super::*;
     use ark_bls12_381::{Bls12_381, Fr as BlsScalar};
-    use ark_ed_on_bls12_381::EdwardsParameters as JubJubParams;
-    use ark_ff::{FromBytes, ToBytes, UniformRand};
+    use ark_ed_on_bls12_381::EdwardsParameters;
+    use ark_ff::UniformRand;
     use ark_poly_commit::kzg10::Commitment;
     use rand_core::OsRng;
 
     #[test]
     fn test_dusk_bytes_serde_proof() {
-        let proof = Proof {
+        let proof = Proof::<Bls12_381, EdwardsParameters> {
             a_comm: Commitment::<Bls12_381>::default(),
             b_comm: Commitment::<Bls12_381>::default(),
             c_comm: Commitment::<Bls12_381>::default(),
@@ -561,10 +561,13 @@ mod proof_tests {
             },
             _marker: PhantomData,
         };
+
         let mut proof_bytes = vec![];
-        let proof_bytes = proof_bytes.write(proof).unwrap();
-        let got_proof: Proof<Bls12_381, JubJubParams> =
-            Proof::serialize(&mut proof_bytes).unwrap();
-        assert_eq!(got_proof, proof);
+        proof.serialize(&mut proof_bytes).unwrap();
+
+        let obtained_proof: Proof<Bls12_381, EdwardsParameters> =
+            Proof::deserialize(proof_bytes.as_slice()).unwrap();
+
+        assert!(proof == obtained_proof);
     }
 }
