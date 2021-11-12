@@ -5,7 +5,7 @@
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
 use ark_ec::{AffineCurve, ModelParameters, PairingEngine, TEModelParameters};
-use ark_ff::{BigInteger, FftField, PrimeField};
+use ark_ff::{BigInteger, FftField, FpParameters, PrimeField};
 use ark_poly::{
     univariate::DensePolynomial, GeneralEvaluationDomain, Polynomial,
     UVPolynomial,
@@ -77,15 +77,61 @@ pub fn get_domain_attrs<F: FftField>(
     }
 }
 
-// Get a representation of an embedded curve scalar as a scalar of the pairing friendly curve
-pub fn from_embedded_curve_scalar<
+/// Get a pairing friendly curve scalar `E::Fr` from a scalar of the embedded curve.
+/// Panics if the embedded scalar is greater than the modulus of the pairing firendly
+/// curve scalar field
+pub(crate) fn from_embedded_curve_scalar<
     E: PairingEngine,
     P: TEModelParameters<BaseField = E::Fr>,
 >(
     embedded_scalar: <P as ModelParameters>::ScalarField,
 ) -> E::Fr {
     let scalar_repr = embedded_scalar.into_repr();
+    let modulus = <<E::Fr as PrimeField>::Params as FpParameters>::MODULUS;
+    if modulus.num_bits() >= scalar_repr.num_bits() {
+        let s = <<E::Fr as PrimeField>::BigInt as BigInteger>::from_bits_le(
+            &scalar_repr.to_bits_le(),
+        );
+        assert!( s < modulus,
+            "The embedded scalar exceeds the capacity representation of the outter curve scalar");
+    } else {
+        let m = <<P::ScalarField as PrimeField>::BigInt as BigInteger>::from_bits_le(
+            &modulus.to_bits_le(),
+        );
+        assert!( scalar_repr < m,
+            "The embedded scalar exceeds the capacity representation of the outter curve scalar");
+    }
+
     E::Fr::from_le_bytes_mod_order(&scalar_repr.to_bytes_le())
+}
+
+/// Get a embedded curve scalar `P::ScalarField` from a scalar of the pariring friendly curve.
+/// Panics if the pairing frindly curve scalar is greater than the modulus of the embedded
+/// curve scalar field
+pub(crate) fn to_embedded_curve_scalar<
+    E: PairingEngine,
+    P: TEModelParameters<BaseField = E::Fr>,
+>(
+    pfc_scalar: E::Fr,
+) -> P::ScalarField {
+    let scalar_repr = pfc_scalar.into_repr();
+    let modulus =
+        <<P::ScalarField as PrimeField>::Params as FpParameters>::MODULUS;
+    if modulus.num_bits() >= scalar_repr.num_bits() {
+        let s = <<P::ScalarField as PrimeField>::BigInt as BigInteger>::from_bits_le(
+            &scalar_repr.to_bits_le(),
+        );
+        assert!( s < modulus,
+            "The embedded scalar exceeds the capacity representation of the outter curve scalar");
+    } else {
+        let m = <<E::Fr as PrimeField>::BigInt as BigInteger>::from_bits_le(
+            &modulus.to_bits_le(),
+        );
+        assert!( scalar_repr < m,
+            "The embedded scalar exceeds the capacity representation of the outter curve scalar");
+    }
+
+    P::ScalarField::from_le_bytes_mod_order(&scalar_repr.to_bytes_le())
 }
 
 // Computes a linear combination of the polynomial evaluations and polynomial
