@@ -99,21 +99,19 @@ impl<
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::constraint_system::helper::*;
-    use ark_bls12_381::{Bls12_381, Fr as BlsScalar};
-    use ark_ec::AffineCurve;
-    use ark_ed_on_bls12_381::{
-        EdwardsAffine as JubjubAffine, EdwardsParameters as JubjubParameters,
-    };
-    use ark_ff::PrimeField;
-    #[test]
-    fn test_var_base_scalar_mul() {
+    use crate::{constraint_system::helper::*, util};
+    use ark_bls12_377::Bls12_377;
+    use ark_bls12_381::Bls12_381;
+    use ark_ec::{twisted_edwards_extended::GroupAffine, AffineCurve};
+
+    fn test_var_base_scalar_mul<
+        E: PairingEngine,
+        T: ProjectiveCurve<BaseField = E::Fr>,
+        P: TEModelParameters<BaseField = E::Fr>,
+    >() {
         let res = gadget_tester(
-            |composer: &mut StandardComposer<
-                Bls12_381,
-                JubjubParameters,
-            >| {
-                let scalar = BlsScalar::from_le_bytes_mod_order(&[
+            |composer: &mut StandardComposer<E, T, P>| {
+                let scalar = E::Fr::from_le_bytes_mod_order(&[
                     182, 44, 247, 214, 94, 14, 151, 208, 130, 16, 200, 204,
                     147, 32, 104, 166, 0, 59, 52, 1, 1, 59, 103, 6, 169, 175,
                     51, 101, 234, 180, 125, 14, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -122,11 +120,14 @@ mod tests {
                 ]);
                 let secret_scalar = composer.add_input(scalar);
 
-                let (x, y) = JubjubParameters::AFFINE_GENERATOR_COEFFS;
-                let generator = JubjubAffine::new(x, y);
+                let (x, y) = P::AFFINE_GENERATOR_COEFFS;
+                let generator: GroupAffine<P> = GroupAffine::new(x, y);
 
-                let expected_point: JubjubAffine =
-                    AffineCurve::mul(&generator, scalar).into();
+                let expected_point: GroupAffine<P> = AffineCurve::mul(
+                    &generator,
+                    util::to_embedded_curve_scalar::<E, P>(scalar),
+                )
+                .into();
 
                 let point = composer.add_affine(generator);
 
@@ -139,5 +140,25 @@ mod tests {
             4096,
         );
         assert!(res.is_ok());
+    }
+
+    #[test]
+    fn test_bls12_381_var_base_scalar_mul() {
+        // Test variable base scalar multiplication in Bls12-381 (Jubjub)
+        test_var_base_scalar_mul::<
+            Bls12_381,
+            ark_ed_on_bls12_381::EdwardsProjective,
+            ark_ed_on_bls12_381::EdwardsParameters,
+        >();
+    }
+
+    #[test]
+    fn test_bls12_377_var_base_scalar_mul() {
+        // Test variable base scalar multiplication in Bls12-377
+        test_var_base_scalar_mul::<
+            Bls12_377,
+            ark_ed_on_bls12_377::EdwardsProjective,
+            ark_ed_on_bls12_377::EdwardsParameters,
+        >();
     }
 }
