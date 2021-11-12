@@ -80,7 +80,7 @@ pub fn get_domain_attrs<F: FftField>(
 /// Get a pairing friendly curve scalar `E::Fr` from a scalar of the embedded curve.
 /// Panics if the embedded scalar is greater than the modulus of the pairing firendly
 /// curve scalar field
-pub fn from_embedded_curve_scalar<
+pub(crate) fn from_embedded_curve_scalar<
     E: PairingEngine,
     P: TEModelParameters<BaseField = E::Fr>,
 >(
@@ -108,7 +108,7 @@ pub fn from_embedded_curve_scalar<
 /// Get a embedded curve scalar `P::ScalarField` from a scalar of the pariring friendly curve.
 /// Panics if the pairing frindly curve scalar is greater than the modulus of the embedded
 /// curve scalar field
-pub fn to_embedded_curve_scalar<
+pub(crate) fn to_embedded_curve_scalar<
     E: PairingEngine,
     P: TEModelParameters<BaseField = E::Fr>,
 >(
