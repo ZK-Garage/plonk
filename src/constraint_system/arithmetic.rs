@@ -311,44 +311,46 @@ impl<
 mod arithmetic_gates_tests {
     use crate::constraint_system::helper::*;
     use crate::constraint_system::StandardComposer;
-
-    use ark_bls12_381::{Bls12_381, Fr as BlsScalar};
-    use ark_ed_on_bls12_381::{
-        EdwardsParameters as JubjubParameters,
-    };
+    use ark_bls12_377::Bls12_377;
+    use ark_bls12_381::Bls12_381;
+    use ark_ec::models::twisted_edwards_extended::GroupAffine;
+    use ark_ec::PairingEngine;
+    use ark_ec::ProjectiveCurve;
+    use ark_ec::TEModelParameters;
+    use ark_ff::PrimeField;
     use num_traits::{One, Zero};
 
-    #[test]
-    fn test_public_inputs() {
+    fn test_public_inputs<
+        E: PairingEngine,
+        T: ProjectiveCurve<BaseField = E::Fr>,
+        P: TEModelParameters<BaseField = E::Fr>,
+    >() {
         let res = gadget_tester(
-            |composer: &mut StandardComposer<
-                Bls12_381,
-                JubjubParameters,
-            >| {
-                let var_one = composer.add_input(BlsScalar::one());
+            |composer: &mut StandardComposer<E, T, P>| {
+                let var_one = composer.add_input(E::Fr::one());
 
                 let should_be_three = composer.big_add(
-                    (BlsScalar::one(), var_one),
-                    (BlsScalar::one(), var_one),
+                    (E::Fr::one(), var_one),
+                    (E::Fr::one(), var_one),
                     None,
-                    BlsScalar::zero(),
-                    Some(BlsScalar::one()),
+                    E::Fr::zero(),
+                    Some(E::Fr::one()),
                 );
                 composer.constrain_to_constant(
                     should_be_three,
-                    BlsScalar::from(3),
+                    E::Fr::from(3u64),
                     None,
                 );
                 let should_be_four = composer.big_add(
-                    (BlsScalar::one(), var_one),
-                    (BlsScalar::one(), var_one),
+                    (E::Fr::one(), var_one),
+                    (E::Fr::one(), var_one),
                     None,
-                    BlsScalar::zero(),
-                    Some(BlsScalar::from(2)),
+                    E::Fr::zero(),
+                    Some(E::Fr::from(2u64)),
                 );
                 composer.constrain_to_constant(
                     should_be_four,
-                    BlsScalar::from(4),
+                    E::Fr::from(4u64),
                     None,
                 );
             },
@@ -357,32 +359,32 @@ mod arithmetic_gates_tests {
         assert!(res.is_ok(), "{:?}", res.err().unwrap());
     }
 
-    #[test]
-    fn test_correct_add_mul_gate() {
+    fn test_correct_add_mul_gate<
+        E: PairingEngine,
+        T: ProjectiveCurve<BaseField = E::Fr>,
+        P: TEModelParameters<BaseField = E::Fr>,
+    >() {
         let res = gadget_tester(
-            |composer: &mut StandardComposer<
-                Bls12_381,
-                JubjubParameters,
-            >| {
+            |composer: &mut StandardComposer<E, T, P>| {
                 // Verify that (4+5+5) * (6+7+7) = 280
-                let four = composer.add_input(BlsScalar::from(4));
-                let five = composer.add_input(BlsScalar::from(5));
-                let six = composer.add_input(BlsScalar::from(6));
-                let seven = composer.add_input(BlsScalar::from(7));
+                let four = composer.add_input(E::Fr::from(4u64));
+                let five = composer.add_input(E::Fr::from(5u64));
+                let six = composer.add_input(E::Fr::from(6u64));
+                let seven = composer.add_input(E::Fr::from(7u64));
 
                 let fourteen = composer.big_add(
-                    (BlsScalar::one(), four),
-                    (BlsScalar::one(), five),
-                    Some((BlsScalar::one(), five)),
-                    BlsScalar::zero(),
+                    (E::Fr::one(), four),
+                    (E::Fr::one(), five),
+                    Some((E::Fr::one(), five)),
+                    E::Fr::zero(),
                     None,
                 );
 
                 let twenty = composer.big_add(
-                    (BlsScalar::one(), six),
-                    (BlsScalar::one(), seven),
-                    Some((BlsScalar::one(), seven)),
-                    BlsScalar::zero(),
+                    (E::Fr::one(), six),
+                    (E::Fr::one(), seven),
+                    Some((E::Fr::one(), seven)),
+                    E::Fr::zero(),
                     None,
                 );
 
@@ -394,15 +396,15 @@ mod arithmetic_gates_tests {
                 // is public, we can also constrain the output wire of the mul
                 // gate to it. This is what this test does
                 let output = composer.mul(
-                    BlsScalar::one(),
+                    E::Fr::one(),
                     fourteen,
                     twenty,
-                    BlsScalar::zero(),
+                    E::Fr::zero(),
                     None,
                 );
                 composer.constrain_to_constant(
                     output,
-                    BlsScalar::from(280),
+                    E::Fr::from(280u64),
                     None,
                 );
             },
@@ -411,70 +413,70 @@ mod arithmetic_gates_tests {
         assert!(res.is_ok(), "{:?}", res.err().unwrap());
     }
 
-    #[test]
-    fn test_correct_add_gate() {
+    fn test_correct_add_gate<
+        E: PairingEngine,
+        T: ProjectiveCurve<BaseField = E::Fr>,
+        P: TEModelParameters<BaseField = E::Fr>,
+    >() {
         let res = gadget_tester(
-            |composer: &mut StandardComposer<
-                Bls12_381,
-                JubjubParameters,
-            >| {
+            |composer: &mut StandardComposer<E, T, P>| {
                 let zero = composer.zero_var();
-                let one = composer.add_input(BlsScalar::one());
+                let one = composer.add_input(E::Fr::one());
 
                 let c = composer.add(
-                    (BlsScalar::one(), one),
-                    (BlsScalar::zero(), zero),
-                    BlsScalar::from(2u64),
+                    (E::Fr::one(), one),
+                    (E::Fr::zero(), zero),
+                    E::Fr::from(2u64),
                     None,
                 );
-                composer.constrain_to_constant(c, BlsScalar::from(3), None);
+                composer.constrain_to_constant(c, E::Fr::from(3u64), None);
             },
             32,
         );
         assert!(res.is_ok(), "{:?}", res.err().unwrap());
     }
 
-    #[test]
-    fn test_correct_big_add_mul_gate() {
+    fn test_correct_big_add_mul_gate<
+        E: PairingEngine,
+        T: ProjectiveCurve<BaseField = E::Fr>,
+        P: TEModelParameters<BaseField = E::Fr>,
+    >() {
         let res = gadget_tester(
-            |composer: &mut StandardComposer<
-                Bls12_381,
-                JubjubParameters,
-            >| {
+            |composer: &mut StandardComposer<E, T, P>| {
                 // Verify that (4+5+5) * (6+7+7) + (8*9) = 352
-                let four = composer.add_input(BlsScalar::from(4));
-                let five = composer.add_input(BlsScalar::from(5));
-                let six = composer.add_input(BlsScalar::from(6));
-                let seven = composer.add_input(BlsScalar::from(7));
-                let nine = composer.add_input(BlsScalar::from(9));
+                let four = composer.add_input(E::Fr::from(4u64));
+                let five = composer.add_input(E::Fr::from(5u64));
+                let six = composer.add_input(E::Fr::from(6u64));
+                let seven = composer.add_input(E::Fr::from(7u64));
+                let nine = composer.add_input(E::Fr::from(9u64));
 
                 let fourteen = composer.big_add(
-                    (BlsScalar::one(), four),
-                    (BlsScalar::one(), five),
-                    Some((BlsScalar::one(), five)),
-                    BlsScalar::zero(),
+                    (E::Fr::one(), four),
+                    (E::Fr::one(), five),
+                    Some((E::Fr::one(), five)),
+                    E::Fr::zero(),
                     None,
                 );
 
                 let twenty = composer.big_add(
-                    (BlsScalar::one(), six),
-                    (BlsScalar::one(), seven),
-                    Some((BlsScalar::one(), seven)),
-                    BlsScalar::zero(),
+                    (E::Fr::one(), six),
+                    (E::Fr::one(), seven),
+                    Some((E::Fr::one(), seven)),
+                    E::Fr::zero(),
                     None,
                 );
 
                 let output = composer.big_mul(
-                    BlsScalar::one(),
+                    E::Fr::one(),
                     fourteen,
                     twenty,
-                    Some((BlsScalar::from(8), nine)),
-                    BlsScalar::zero(),
+                    Some((E::Fr::from(8u64), nine)),
+                    E::Fr::zero(),
                     None,
                 );
                 composer.constrain_to_constant(
                     output,
-                    BlsScalar::from(352),
+                    E::Fr::from(352u64),
                     None,
                 );
             },
@@ -483,49 +485,141 @@ mod arithmetic_gates_tests {
         assert!(res.is_ok());
     }
 
-    #[test]
-    fn test_incorrect_add_mul_gate() {
+    fn test_incorrect_add_mul_gate<
+        E: PairingEngine,
+        T: ProjectiveCurve<BaseField = E::Fr>,
+        P: TEModelParameters<BaseField = E::Fr>,
+    >() {
         let res = gadget_tester(
-            |composer: &mut StandardComposer<
-                Bls12_381,
-                JubjubParameters,
-            >| {
+            |composer: &mut StandardComposer<E, T, P>| {
                 // Verify that (5+5) * (6+7) != 117
-                let five = composer.add_input(BlsScalar::from(5));
-                let six = composer.add_input(BlsScalar::from(6));
-                let seven = composer.add_input(BlsScalar::from(7));
+                let five = composer.add_input(E::Fr::from(5u64));
+                let six = composer.add_input(E::Fr::from(6u64));
+                let seven = composer.add_input(E::Fr::from(7u64));
 
                 let five_plus_five = composer.big_add(
-                    (BlsScalar::one(), five),
-                    (BlsScalar::one(), five),
+                    (E::Fr::one(), five),
+                    (E::Fr::one(), five),
                     None,
-                    BlsScalar::zero(),
+                    E::Fr::zero(),
                     None,
                 );
 
                 let six_plus_seven = composer.big_add(
-                    (BlsScalar::one(), six),
-                    (BlsScalar::one(), seven),
+                    (E::Fr::one(), six),
+                    (E::Fr::one(), seven),
                     None,
-                    BlsScalar::zero(),
+                    E::Fr::zero(),
                     None,
                 );
 
                 let output = composer.mul(
-                    BlsScalar::one(),
+                    E::Fr::one(),
                     five_plus_five,
                     six_plus_seven,
-                    BlsScalar::zero(),
+                    E::Fr::zero(),
                     None,
                 );
                 composer.constrain_to_constant(
                     output,
-                    BlsScalar::from(117),
+                    E::Fr::from(117u64),
                     None,
                 );
             },
             200,
         );
         assert!(res.is_err());
+    }
+
+    // Bls12-381 tests
+    #[test]
+    fn test_bls12_381_public_inputs() {
+        test_public_inputs::<
+            Bls12_381,
+            ark_ed_on_bls12_381::EdwardsProjective,
+            ark_ed_on_bls12_381::EdwardsParameters,
+        >();
+    }
+
+    #[test]
+    fn test_bls12_381_correct_add_mul_gate() {
+        test_correct_add_mul_gate::<
+            Bls12_381,
+            ark_ed_on_bls12_381::EdwardsProjective,
+            ark_ed_on_bls12_381::EdwardsParameters,
+        >();
+    }
+
+    #[test]
+    fn test_bls12_381_correct_add_gate() {
+        test_correct_add_gate::<
+            Bls12_381,
+            ark_ed_on_bls12_381::EdwardsProjective,
+            ark_ed_on_bls12_381::EdwardsParameters,
+        >();
+    }
+
+    #[test]
+    fn test_bls12_381_correct_big_add_mul_gate() {
+        test_correct_big_add_mul_gate::<
+            Bls12_381,
+            ark_ed_on_bls12_381::EdwardsProjective,
+            ark_ed_on_bls12_381::EdwardsParameters,
+        >();
+    }
+
+    #[test]
+    fn test_bls12_381_incorrect_add_mul_gate() {
+        test_incorrect_add_mul_gate::<
+            Bls12_381,
+            ark_ed_on_bls12_381::EdwardsProjective,
+            ark_ed_on_bls12_381::EdwardsParameters,
+        >();
+    }
+
+    // Bls12-377 tests
+    #[test]
+    fn test_bls12_377_public_inputs() {
+        test_public_inputs::<
+            Bls12_377,
+            ark_ed_on_bls12_377::EdwardsProjective,
+            ark_ed_on_bls12_377::EdwardsParameters,
+        >();
+    }
+
+    #[test]
+    fn test_bls12_377_correct_add_mul_gate() {
+        test_correct_add_mul_gate::<
+            Bls12_377,
+            ark_ed_on_bls12_377::EdwardsProjective,
+            ark_ed_on_bls12_377::EdwardsParameters,
+        >();
+    }
+
+    #[test]
+    fn test_bls12_377_correct_add_gate() {
+        test_correct_add_gate::<
+            Bls12_377,
+            ark_ed_on_bls12_377::EdwardsProjective,
+            ark_ed_on_bls12_377::EdwardsParameters,
+        >();
+    }
+
+    #[test]
+    fn test_bls12_377_correct_big_add_mul_gate() {
+        test_correct_big_add_mul_gate::<
+            Bls12_377,
+            ark_ed_on_bls12_377::EdwardsProjective,
+            ark_ed_on_bls12_377::EdwardsParameters,
+        >();
+    }
+
+    #[test]
+    fn test_bls12_377_incorrect_add_mul_gate() {
+        test_incorrect_add_mul_gate::<
+            Bls12_377,
+            ark_ed_on_bls12_377::EdwardsProjective,
+            ark_ed_on_bls12_377::EdwardsParameters,
+        >();
     }
 }
