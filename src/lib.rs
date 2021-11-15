@@ -37,6 +37,7 @@
 pub mod circuit;
 pub mod constraint_system;
 mod permutation;
+mod tests;
 mod util;
 
 pub mod error;
