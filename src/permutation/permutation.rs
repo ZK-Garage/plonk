@@ -644,8 +644,7 @@ impl<F: PrimeField> Permutation<F> {
         w + beta * sigma + gamma
     }
 
-    // Uses a rayon multizip to allow more code flexibility while remaining
-    // parallelizable. This can be adapted into a general product argument
+    // This can be adapted into a general product argument
     // for any number of wires, with specific formulas defined
     // in the numerator_irreducible and denominator_irreducible functions
     pub(crate) fn compute_permutation_poly(
@@ -755,7 +754,7 @@ impl<F: PrimeField> Permutation<F> {
 mod test {
     use super::*;
     use crate::{constraint_system::StandardComposer, util};
-    use ark_bls12_381::{Bls12_381, Fr as BlsScalar, FrParameters};
+    use ark_bls12_381::{Bls12_381, Fr as BlsScalar};
     use ark_ed_on_bls12_381::{
         EdwardsParameters as JubjubParameters,
         EdwardsProjective as JubjubProjective,
