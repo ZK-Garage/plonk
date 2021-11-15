@@ -4,7 +4,7 @@
 //
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
-#![doc = include_str!("../README.md")]
+//#![doc = include_str!("../README.md")]
 //! Permutations over Lagrange-bases for Oecumenical Noninteractive
 //! arguments of Knowledge (PLONK) is a zero knowledge proof system.
 //!
