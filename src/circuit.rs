@@ -24,25 +24,24 @@ use ark_poly_commit::kzg10::{self, Powers, UniversalParams};
 use ark_poly_commit::sonic_pc::SonicKZG10;
 use ark_poly_commit::PolynomialCommitment;
 use ark_serialize::*;
+use crate::prelude::VerifierKey;
+
+// The reason for introducing these two traits is to have a workaround for not being able to
+// implement `From<_> for Values` for both `PrimeField` and `GroupAffine`. The reason why this is
+// not possible is because both the trait `PrimeField` and the struct `GroupAffine` are external
+// to the crate, and therefore the compiler cannot be sure that `PrimeField` will never be
+// implemented for `GroupAffine`. In which case, the two implementations of `From` would be
+// inconsistent. To this end, we create to helper traits, `FeIntoValues` and `GeIntoValues`,
+// that stand for "Field Element Into Values" and "Group Element Into Values" respectively.
+trait FeIntoValues<F> {
+    fn fe_into(self) -> F;
+}
+
+trait GeIntoValues<F> {
+    fn ge_into(self) -> F;
+}
 
 struct Values<F: PrimeField>(pub(crate) Vec<F>);
-
-impl<F: PrimeField, P: TEModelParameters<BaseField = F>> From<GroupAffine<P>>
-    for Values<F>
-{
-    fn from(point: GroupAffine<P>) -> Self {
-        Self(vec![point.x, point.y])
-    }
-}
-
-impl<F: PrimeField, P: TEModelParameters<BaseField = F>>
-    From<GroupProjective<P>> for Values<F>
-{
-    fn from(point: GroupProjective<P>) -> Self {
-        let point: GroupAffine<P> = point.into_affine();
-        Self(vec![point.x, point.y])
-    }
-}
 
 #[derive(Default, Debug, Clone, CanonicalDeserialize, CanonicalSerialize)]
 /// Structure that represents a PLONK Circuit Public Input converted into its
@@ -64,16 +63,41 @@ impl<F: PrimeField, P: TEModelParameters<BaseField = F>> From<Values<F>>
     }
 }
 
-impl<F: PrimeField, P: TEModelParameters<BaseField = F>> From<F>
-    for PublicInputValue<F, P>
-{
-    fn from(scalar: F) -> Self {
-        Self {
-            values: vec![scalar],
+impl<F: PrimeField, P: TEModelParameters<BaseField = F>> FeIntoValues<PublicInputValue<F, P>> for F {
+    fn fe_into(self) -> PublicInputValue<F, P> {
+        PublicInputValue {
+            values: vec![self],
             _marker: PhantomData,
         }
     }
 }
+
+impl<F: PrimeField, P: TEModelParameters<BaseField = F>> GeIntoValues<PublicInputValue<F, P>> for GroupAffine<P> {
+    fn ge_into(self) -> PublicInputValue<F, P> {
+        PublicInputValue{
+            values: vec![self.x, self.y],
+            _marker: PhantomData
+        }
+    }
+}
+
+impl<F: PrimeField, P: TEModelParameters<BaseField = F>> GeIntoValues<PublicInputValue<F, P>> for GroupProjective<P> {
+    fn ge_into(self) -> PublicInputValue<F, P> {
+        let point: GroupAffine<P> = self.into_affine();
+        PublicInputValue{
+            values: vec![point.x, point.y],
+            _marker: PhantomData
+        }
+    }
+}
+
+impl<F: PrimeField, P: TEModelParameters<BaseField = F>> GeIntoValues<Values<F>> for GroupProjective<P>
+{
+    fn ge_into(self) -> Values<F> {
+        Values(vec![self.x, self.y])
+    }
+}
+
 
 #[derive(Debug, Clone, CanonicalDeserialize, CanonicalSerialize)]
 /// Collection of structs/objects that the Verifier will use in order to
