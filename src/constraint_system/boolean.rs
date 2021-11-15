@@ -51,23 +51,26 @@ impl<
 
 #[cfg(test)]
 mod boolean_gates_tests {
+    use crate::batch_test;
     use crate::constraint_system::helper::*;
     use crate::constraint_system::StandardComposer;
+    use ark_bls12_377::Bls12_377;
+    use ark_bls12_381::Bls12_381;
 
-    use ark_bls12_381::{Bls12_381, Fr as BlsScalar};
-    use ark_ed_on_bls12_381::{
-        EdwardsParameters as JubjubParameters,
-    };
+    use ark_ec::PairingEngine;
+    use ark_ec::ProjectiveCurve;
+    use ark_ec::TEModelParameters;
     use num_traits::One;
-    #[test]
-    fn test_correct_bool_gate() {
+
+    fn test_correct_bool_gate<
+        E: PairingEngine,
+        T: ProjectiveCurve<BaseField = E::Fr>,
+        P: TEModelParameters<BaseField = E::Fr>,
+    >() {
         let res = gadget_tester(
-            |composer: &mut StandardComposer<
-                Bls12_381,
-                JubjubParameters,
-            >| {
+            |composer: &mut StandardComposer<E, T, P>| {
                 let zero = composer.zero_var();
-                let one = composer.add_input(BlsScalar::one());
+                let one = composer.add_input(E::Fr::one());
 
                 composer.boolean_gate(zero);
                 composer.boolean_gate(one);
@@ -77,15 +80,15 @@ mod boolean_gates_tests {
         assert!(res.is_ok())
     }
 
-    #[test]
-    fn test_incorrect_bool_gate() {
+    fn test_incorrect_bool_gate<
+        E: PairingEngine,
+        T: ProjectiveCurve<BaseField = E::Fr>,
+        P: TEModelParameters<BaseField = E::Fr>,
+    >() {
         let res = gadget_tester(
-            |composer: &mut StandardComposer<
-                Bls12_381,
-                JubjubParameters,
-            >| {
-                let zero = composer.add_input(BlsScalar::from(5));
-                let one = composer.add_input(BlsScalar::one());
+            |composer: &mut StandardComposer<E, T, P>| {
+                let zero = composer.add_input(E::Fr::from(5u64));
+                let one = composer.add_input(E::Fr::one());
 
                 composer.boolean_gate(zero);
                 composer.boolean_gate(one);
@@ -94,4 +97,30 @@ mod boolean_gates_tests {
         );
         assert!(res.is_err())
     }
+
+    // Test for Bls12_381
+    batch_test!(
+        [
+            test_correct_bool_gate,
+            test_incorrect_bool_gate
+        ],
+        [] => (
+            Bls12_381,
+            ark_ed_on_bls12_381::EdwardsProjective,
+            ark_ed_on_bls12_381::EdwardsParameters
+        )
+    );
+
+    // Test for Bls12_377
+    batch_test!(
+        [
+            test_correct_bool_gate,
+            test_incorrect_bool_gate
+        ],
+        [] => (
+            Bls12_377,
+            ark_ed_on_bls12_377::EdwardsProjective,
+            ark_ed_on_bls12_377::EdwardsParameters
+        )
+    );
 }

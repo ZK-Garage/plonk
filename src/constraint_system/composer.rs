@@ -638,17 +638,15 @@ impl<
 
 #[cfg(test)]
 mod general_composer_tests {
+    use crate::batch_test;
     use crate::constraint_system::helper::*;
     use crate::constraint_system::StandardComposer;
     use crate::prelude::Prover;
     use crate::prelude::Verifier;
 
     use super::*;
-    use ark_bls12_381::{Bls12_381, Fr as BlsScalar};
-    use ark_ed_on_bls12_381::{
-        EdwardsParameters as JubjubParameters,
-    };
-    use ark_ed_on_bls12_381::{EdwardsParameters,};
+    use ark_bls12_377::Bls12_377;
+    use ark_bls12_381::Bls12_381;
     use ark_poly::univariate::DensePolynomial;
     use ark_poly_commit::kzg10;
     use ark_poly_commit::kzg10::Powers;
@@ -659,13 +657,13 @@ mod general_composer_tests {
     use rand_core::OsRng;
     // use rand_core::OsRng;
 
-    #[test]
     /// Tests that a circuit initially has 3 gates
-    fn test_initial_circuit_size() {
-        let composer: StandardComposer<
-            Bls12_381,
-            EdwardsParameters,
-        > = StandardComposer::new();
+    fn test_initial_circuit_size<
+        E: PairingEngine,
+        T: ProjectiveCurve<BaseField = E::Fr>,
+        P: TEModelParameters<BaseField = E::Fr>,
+    >() {
+        let composer: StandardComposer<E, T, P> = StandardComposer::new();
         // Circuit size is n+3 because
         // - We have an extra gate which forces the first witness to be zero.
         //   This is used when the advice wire is not being used.
@@ -677,15 +675,15 @@ mod general_composer_tests {
     }
 
     #[allow(unused_variables)]
-    #[test]
     #[ignore]
     /// Tests that an empty circuit proof passes
-    fn test_prove_verify() {
+    fn test_prove_verify<
+        E: PairingEngine,
+        T: ProjectiveCurve<BaseField = E::Fr>,
+        P: TEModelParameters<BaseField = E::Fr>,
+    >() {
         let res = gadget_tester(
-            |composer: &mut StandardComposer<
-                Bls12_381,
-                JubjubParameters,
-            >| {
+            |composer: &mut StandardComposer<E, T, P>| {
                 // do nothing except add the dummy constraints
             },
             200,
@@ -693,18 +691,18 @@ mod general_composer_tests {
         assert!(res.is_ok());
     }
 
-    #[test]
-    fn test_conditional_select() {
+    fn test_conditional_select<
+        E: PairingEngine,
+        T: ProjectiveCurve<BaseField = E::Fr>,
+        P: TEModelParameters<BaseField = E::Fr>,
+    >() {
         let res = gadget_tester(
-            |composer: &mut StandardComposer<
-                Bls12_381,
-                JubjubParameters,
-            >| {
-                let bit_1 = composer.add_input(BlsScalar::one());
+            |composer: &mut StandardComposer<E, T, P>| {
+                let bit_1 = composer.add_input(E::Fr::one());
                 let bit_0 = composer.zero_var();
 
-                let choice_a = composer.add_input(BlsScalar::from(10u64));
-                let choice_b = composer.add_input(BlsScalar::from(20u64));
+                let choice_a = composer.add_input(E::Fr::from(10u64));
+                let choice_b = composer.add_input(E::Fr::from(20u64));
 
                 let choice =
                     composer.conditional_select(bit_1, choice_a, choice_b);
@@ -719,33 +717,34 @@ mod general_composer_tests {
         assert!(res.is_ok(), "{:?}", res.err().unwrap());
     }
 
-    #[test]
     // XXX: Move this to integration tests
-    fn test_multiple_proofs() {
-        let u_params: UniversalParams<Bls12_381> = KZG10::<
-            Bls12_381,
-            DensePolynomial<BlsScalar>,
-        >::setup(
-            2 * 30, false, &mut OsRng
-        )
-        .unwrap();
+    fn test_multiple_proofs<
+        E: PairingEngine,
+        T: ProjectiveCurve<BaseField = E::Fr>,
+        P: TEModelParameters<BaseField = E::Fr>,
+    >() {
+        let u_params: UniversalParams<E> =
+            KZG10::<E, DensePolynomial<E::Fr>>::setup(
+                2 * 30,
+                false,
+                &mut OsRng,
+            )
+            .unwrap();
 
         // Create a prover struct
-        let mut prover: Prover<Bls12_381, JubjubParameters> =
-            Prover::new(b"demo");
+        let mut prover: Prover<E, T, P> = Prover::new(b"demo");
 
         // Add gadgets
         dummy_gadget(10, prover.mut_cs());
 
         // Commit Key
-        let (ck, _) =
-            SonicKZG10::<Bls12_381, DensePolynomial<BlsScalar>>::trim(
-                &u_params,
-                2 * 20,
-                0,
-                None,
-            )
-            .unwrap();
+        let (ck, _) = SonicKZG10::<E, DensePolynomial<E::Fr>>::trim(
+            &u_params,
+            2 * 20,
+            0,
+            None,
+        )
+        .unwrap();
         let powers = Powers {
             powers_of_g: ck.powers_of_g.into(),
             powers_of_gamma_g: ck.powers_of_gamma_g.into(),
@@ -768,20 +767,20 @@ mod general_composer_tests {
 
         // Verifier
         //
-        let mut verifier: Verifier<
-            Bls12_381,
-            JubjubParameters,
-        > = Verifier::new(b"demo");
+        let mut verifier: Verifier<E, T, P> = Verifier::new(b"demo");
 
         // Add gadgets
         dummy_gadget(10, verifier.mut_cs());
 
         // Commit and Verifier Key
-        let (sonic_ck, sonic_vk) = SonicKZG10::<
-            Bls12_381,
-            DensePolynomial<BlsScalar>,
-        >::trim(&u_params, 2 * 20, 0, None)
-        .unwrap();
+        let (sonic_ck, sonic_vk) =
+            SonicKZG10::<E, DensePolynomial<E::Fr>>::trim(
+                &u_params,
+                2 * 20,
+                0,
+                None,
+            )
+            .unwrap();
         let powers = Powers {
             powers_of_g: sonic_ck.powers_of_g.into(),
             powers_of_gamma_g: sonic_ck.powers_of_gamma_g.into(),
@@ -803,4 +802,34 @@ mod general_composer_tests {
             assert!(verifier.verify(&proof, &vk, &public_inputs).is_ok());
         }
     }
+
+    // Tests for Bls12_381
+    batch_test!(
+        [
+            test_initial_circuit_size,
+            test_prove_verify,
+            test_conditional_select,
+            test_multiple_proofs
+        ],
+        [] => (
+            Bls12_381,
+            ark_ed_on_bls12_381::EdwardsProjective,
+            ark_ed_on_bls12_381::EdwardsParameters
+        )
+    );
+
+    // Tests for Bls12_377
+    batch_test!(
+        [
+            test_initial_circuit_size,
+            test_prove_verify,
+            test_conditional_select,
+            test_multiple_proofs
+        ],
+        [] => (
+            Bls12_377,
+            ark_ed_on_bls12_377::EdwardsProjective,
+            ark_ed_on_bls12_377::EdwardsParameters
+        )
+    );
 }
