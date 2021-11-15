@@ -177,8 +177,8 @@ impl<
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::constraint_system::helper::*;
     use crate::util;
+    use crate::{batch_test, constraint_system::helper::*};
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
     use ark_ec::{group::Group, AffineCurve};
@@ -322,7 +322,6 @@ mod tests {
         assert!(res.is_ok());
     }
 
-    #[allow(non_snake_case)]
     fn test_pedersen_hash<
         E: PairingEngine,
         T: ProjectiveCurve<BaseField = E::Fr>,
@@ -390,7 +389,6 @@ mod tests {
         assert!(res.is_ok());
     }
 
-    #[allow(non_snake_case)]
     fn test_pedersen_balance<
         E: PairingEngine,
         T: ProjectiveCurve<BaseField = E::Fr>,
@@ -451,112 +449,34 @@ mod tests {
     }
 
     // Bls12-381 tests
-    #[test]
-    fn test_bls12_381_ecc_constraint() {
-        test_ecc_constraint::<
-            Bls12_381,
-            ark_ed_on_bls12_381::EdwardsProjective,
-            ark_ed_on_bls12_381::EdwardsParameters,
-        >();
-    }
-
-    #[test]
-    fn test_bls12_381_ecc_constraint_zero() {
-        test_ecc_constraint_zero::<
-            Bls12_381,
-            ark_ed_on_bls12_381::EdwardsProjective,
-            ark_ed_on_bls12_381::EdwardsParameters,
-        >();
-    }
-
-    #[test]
-    fn test_bls12_381_ecc_constraint_should_fail() {
-        test_ecc_constraint_should_fail::<
-            Bls12_381,
-            ark_ed_on_bls12_381::EdwardsProjective,
-            ark_ed_on_bls12_381::EdwardsParameters,
-        >();
-    }
-
-    #[test]
-    fn test_bls12_381_test_point_addition() {
-        test_point_addition::<
-            Bls12_381,
-            ark_ed_on_bls12_381::EdwardsProjective,
-            ark_ed_on_bls12_381::EdwardsParameters,
-        >();
-    }
-
-    #[test]
-    fn test_bls12_381_test_pedersen_hash() {
-        test_pedersen_hash::<
-            Bls12_381,
-            ark_ed_on_bls12_381::EdwardsProjective,
-            ark_ed_on_bls12_381::EdwardsParameters,
-        >();
-    }
-
-    #[test]
-    fn test_bls12_381_test_pedersen_balance() {
-        test_pedersen_balance::<
-            Bls12_381,
-            ark_ed_on_bls12_381::EdwardsProjective,
-            ark_ed_on_bls12_381::EdwardsParameters,
-        >();
-    }
+    batch_test!(
+        [
+        test_ecc_constraint,
+        test_ecc_constraint_zero,
+        test_ecc_constraint_should_fail,
+        test_point_addition,
+        test_pedersen_hash,
+        test_pedersen_balance
+        ] => (
+        Bls12_381,
+        ark_ed_on_bls12_381::EdwardsProjective,
+        ark_ed_on_bls12_381::EdwardsParameters
+        )
+    );
 
     // Bls12-377 tests
-    #[test]
-    fn test_bls12_377_ecc_constraint() {
-        test_ecc_constraint::<
-            Bls12_377,
-            ark_ed_on_bls12_377::EdwardsProjective,
-            ark_ed_on_bls12_377::EdwardsParameters,
-        >();
-    }
-
-    #[test]
-    fn test_bls12_377_ecc_constraint_zero() {
-        test_ecc_constraint_zero::<
-            Bls12_377,
-            ark_ed_on_bls12_377::EdwardsProjective,
-            ark_ed_on_bls12_377::EdwardsParameters,
-        >();
-    }
-
-    #[test]
-    fn test_bls12_377_ecc_constraint_should_fail() {
-        test_ecc_constraint_should_fail::<
-            Bls12_377,
-            ark_ed_on_bls12_377::EdwardsProjective,
-            ark_ed_on_bls12_377::EdwardsParameters,
-        >();
-    }
-
-    #[test]
-    fn test_bls12_377_test_point_addition() {
-        test_point_addition::<
-            Bls12_377,
-            ark_ed_on_bls12_377::EdwardsProjective,
-            ark_ed_on_bls12_377::EdwardsParameters,
-        >();
-    }
-
-    #[test]
-    fn test_bls12_377_test_pedersen_hash() {
-        test_pedersen_hash::<
-            Bls12_377,
-            ark_ed_on_bls12_377::EdwardsProjective,
-            ark_ed_on_bls12_377::EdwardsParameters,
-        >();
-    }
-
-    #[test]
-    fn test_bls12_377_test_pedersen_balance() {
-        test_pedersen_balance::<
-            Bls12_377,
-            ark_ed_on_bls12_377::EdwardsProjective,
-            ark_ed_on_bls12_377::EdwardsParameters,
-        >();
-    }
+    batch_test!(
+        [
+        test_ecc_constraint,
+        test_ecc_constraint_zero,
+        test_ecc_constraint_should_fail,
+        test_point_addition,
+        test_pedersen_hash,
+        test_pedersen_balance
+        ] => (
+        Bls12_377,
+        ark_ed_on_bls12_377::EdwardsProjective,
+        ark_ed_on_bls12_377::EdwardsParameters
+        )
+    );
 }

@@ -99,7 +99,7 @@ impl<
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{constraint_system::helper::*, util};
+    use crate::{batch_test, constraint_system::helper::*, util};
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
     use ark_ec::{twisted_edwards_extended::GroupAffine, AffineCurve};
@@ -142,23 +142,21 @@ mod tests {
         assert!(res.is_ok());
     }
 
-    #[test]
-    fn test_bls12_381_var_base_scalar_mul() {
-        // Test variable base scalar multiplication in Bls12-381 (Jubjub)
-        test_var_base_scalar_mul::<
-            Bls12_381,
-            ark_ed_on_bls12_381::EdwardsProjective,
-            ark_ed_on_bls12_381::EdwardsParameters,
-        >();
-    }
+    // Tests for Bls12_381
+    batch_test!(
+    [test_var_base_scalar_mul] => (
+        Bls12_381,
+        ark_ed_on_bls12_381::EdwardsProjective,
+        ark_ed_on_bls12_381::EdwardsParameters
+        )
+    );
 
-    #[test]
-    fn test_bls12_377_var_base_scalar_mul() {
-        // Test variable base scalar multiplication in Bls12-377
-        test_var_base_scalar_mul::<
-            Bls12_377,
-            ark_ed_on_bls12_377::EdwardsProjective,
-            ark_ed_on_bls12_377::EdwardsParameters,
-        >();
-    }
+    // Tests for Bls12_377
+    batch_test!(
+    [test_var_base_scalar_mul] => (
+        Bls12_377,
+        ark_ed_on_bls12_377::EdwardsProjective,
+        ark_ed_on_bls12_377::EdwardsParameters
+        )
+    );
 }

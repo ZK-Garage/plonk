@@ -94,7 +94,7 @@ impl<
 #[cfg(test)]
 mod variable_base_gate_tests {
     use super::*;
-    use crate::constraint_system::helper::*;
+    use crate::{batch_test, constraint_system::helper::*};
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
     use ark_ec::models::twisted_edwards_extended::GroupAffine;
@@ -251,23 +251,19 @@ mod variable_base_gate_tests {
         assert!(res.is_ok());
     }
 
-    #[test]
-    fn test_bls12_381_curve_addition() {
-        // Test embedded curve addition in Bls12-381 (Jubjub)
-        test_curve_addition::<
-            Bls12_381,
-            ark_ed_on_bls12_381::EdwardsProjective,
-            ark_ed_on_bls12_381::EdwardsParameters,
-        >();
-    }
+    batch_test!(
+        [test_curve_addition] => (
+        Bls12_381,
+        ark_ed_on_bls12_381::EdwardsProjective,
+        ark_ed_on_bls12_381::EdwardsParameters
+        )
+    );
 
-    #[test]
-    fn test_bls12_377_curve_addition() {
-        // Test embedded curve addition in Bls12-377
-        test_curve_addition::<
-            Bls12_377,
-            ark_ed_on_bls12_377::EdwardsProjective,
-            ark_ed_on_bls12_377::EdwardsParameters,
-        >()
-    }
+    batch_test!(
+        [test_curve_addition] => (
+        Bls12_377,
+        ark_ed_on_bls12_377::EdwardsProjective,
+        ark_ed_on_bls12_377::EdwardsParameters
+        )
+    );
 }

@@ -309,15 +309,14 @@ impl<
 
 #[cfg(test)]
 mod arithmetic_gates_tests {
+    use crate::batch_test;
     use crate::constraint_system::helper::*;
     use crate::constraint_system::StandardComposer;
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
-    use ark_ec::models::twisted_edwards_extended::GroupAffine;
     use ark_ec::PairingEngine;
     use ark_ec::ProjectiveCurve;
     use ark_ec::TEModelParameters;
-    use ark_ff::PrimeField;
     use num_traits::{One, Zero};
 
     fn test_public_inputs<
@@ -532,94 +531,30 @@ mod arithmetic_gates_tests {
     }
 
     // Bls12-381 tests
-    #[test]
-    fn test_bls12_381_public_inputs() {
-        test_public_inputs::<
-            Bls12_381,
-            ark_ed_on_bls12_381::EdwardsProjective,
-            ark_ed_on_bls12_381::EdwardsParameters,
-        >();
-    }
-
-    #[test]
-    fn test_bls12_381_correct_add_mul_gate() {
-        test_correct_add_mul_gate::<
-            Bls12_381,
-            ark_ed_on_bls12_381::EdwardsProjective,
-            ark_ed_on_bls12_381::EdwardsParameters,
-        >();
-    }
-
-    #[test]
-    fn test_bls12_381_correct_add_gate() {
-        test_correct_add_gate::<
-            Bls12_381,
-            ark_ed_on_bls12_381::EdwardsProjective,
-            ark_ed_on_bls12_381::EdwardsParameters,
-        >();
-    }
-
-    #[test]
-    fn test_bls12_381_correct_big_add_mul_gate() {
-        test_correct_big_add_mul_gate::<
-            Bls12_381,
-            ark_ed_on_bls12_381::EdwardsProjective,
-            ark_ed_on_bls12_381::EdwardsParameters,
-        >();
-    }
-
-    #[test]
-    fn test_bls12_381_incorrect_add_mul_gate() {
-        test_incorrect_add_mul_gate::<
-            Bls12_381,
-            ark_ed_on_bls12_381::EdwardsProjective,
-            ark_ed_on_bls12_381::EdwardsParameters,
-        >();
-    }
+    batch_test!([
+        test_public_inputs,
+        test_correct_add_mul_gate,
+        test_correct_add_gate,
+        test_correct_big_add_mul_gate,
+        test_incorrect_add_mul_gate
+    ] => (
+        Bls12_381,
+        ark_ed_on_bls12_381::EdwardsProjective,
+        ark_ed_on_bls12_381::EdwardsParameters
+        )
+    );
 
     // Bls12-377 tests
-    #[test]
-    fn test_bls12_377_public_inputs() {
-        test_public_inputs::<
-            Bls12_377,
-            ark_ed_on_bls12_377::EdwardsProjective,
-            ark_ed_on_bls12_377::EdwardsParameters,
-        >();
-    }
-
-    #[test]
-    fn test_bls12_377_correct_add_mul_gate() {
-        test_correct_add_mul_gate::<
-            Bls12_377,
-            ark_ed_on_bls12_377::EdwardsProjective,
-            ark_ed_on_bls12_377::EdwardsParameters,
-        >();
-    }
-
-    #[test]
-    fn test_bls12_377_correct_add_gate() {
-        test_correct_add_gate::<
-            Bls12_377,
-            ark_ed_on_bls12_377::EdwardsProjective,
-            ark_ed_on_bls12_377::EdwardsParameters,
-        >();
-    }
-
-    #[test]
-    fn test_bls12_377_correct_big_add_mul_gate() {
-        test_correct_big_add_mul_gate::<
-            Bls12_377,
-            ark_ed_on_bls12_377::EdwardsProjective,
-            ark_ed_on_bls12_377::EdwardsParameters,
-        >();
-    }
-
-    #[test]
-    fn test_bls12_377_incorrect_add_mul_gate() {
-        test_incorrect_add_mul_gate::<
-            Bls12_377,
-            ark_ed_on_bls12_377::EdwardsProjective,
-            ark_ed_on_bls12_377::EdwardsParameters,
-        >();
-    }
+    batch_test!([
+        test_public_inputs,
+        test_correct_add_mul_gate,
+        test_correct_add_gate,
+        test_correct_big_add_mul_gate,
+        test_incorrect_add_mul_gate
+    ] => (
+        Bls12_377,
+        ark_ed_on_bls12_377::EdwardsProjective,
+        ark_ed_on_bls12_377::EdwardsParameters
+        )
+    );
 }
