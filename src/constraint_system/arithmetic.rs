@@ -537,7 +537,8 @@ mod arithmetic_gates_tests {
         test_correct_add_gate,
         test_correct_big_add_mul_gate,
         test_incorrect_add_mul_gate
-    ] => (
+    ],
+        [] => (
         Bls12_381,
         ark_ed_on_bls12_381::EdwardsProjective,
         ark_ed_on_bls12_381::EdwardsParameters
@@ -551,7 +552,8 @@ mod arithmetic_gates_tests {
         test_correct_add_gate,
         test_correct_big_add_mul_gate,
         test_incorrect_add_mul_gate
-    ] => (
+    ],
+        [] => (
         Bls12_377,
         ark_ed_on_bls12_377::EdwardsProjective,
         ark_ed_on_bls12_377::EdwardsParameters

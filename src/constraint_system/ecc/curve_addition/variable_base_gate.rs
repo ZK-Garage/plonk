@@ -252,7 +252,9 @@ mod variable_base_gate_tests {
     }
 
     batch_test!(
-        [test_curve_addition] => (
+        [test_curve_addition],
+        []
+        => (
         Bls12_381,
         ark_ed_on_bls12_381::EdwardsProjective,
         ark_ed_on_bls12_381::EdwardsParameters
@@ -260,7 +262,8 @@ mod variable_base_gate_tests {
     );
 
     batch_test!(
-        [test_curve_addition] => (
+        [test_curve_addition],
+        [] => (
         Bls12_377,
         ark_ed_on_bls12_377::EdwardsProjective,
         ark_ed_on_bls12_377::EdwardsParameters

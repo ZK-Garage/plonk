@@ -173,7 +173,6 @@ impl<
     }
 }
 
-#[cfg(feature = "std")]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -457,7 +456,8 @@ mod tests {
         test_point_addition,
         test_pedersen_hash,
         test_pedersen_balance
-        ] => (
+        ],
+        [] => (
         Bls12_381,
         ark_ed_on_bls12_381::EdwardsProjective,
         ark_ed_on_bls12_381::EdwardsParameters
@@ -473,7 +473,8 @@ mod tests {
         test_point_addition,
         test_pedersen_hash,
         test_pedersen_balance
-        ] => (
+        ],
+        [] => (
         Bls12_377,
         ark_ed_on_bls12_377::EdwardsProjective,
         ark_ed_on_bls12_377::EdwardsParameters

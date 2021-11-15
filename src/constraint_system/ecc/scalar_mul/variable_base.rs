@@ -95,7 +95,6 @@ impl<
     }
 }
 
-#[cfg(feature = "std")]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -144,7 +143,8 @@ mod tests {
 
     // Tests for Bls12_381
     batch_test!(
-    [test_var_base_scalar_mul] => (
+    [test_var_base_scalar_mul],
+        [] => (
         Bls12_381,
         ark_ed_on_bls12_381::EdwardsProjective,
         ark_ed_on_bls12_381::EdwardsParameters
@@ -153,7 +153,8 @@ mod tests {
 
     // Tests for Bls12_377
     batch_test!(
-    [test_var_base_scalar_mul] => (
+    [test_var_base_scalar_mul],
+        [] => (
         Bls12_377,
         ark_ed_on_bls12_377::EdwardsProjective,
         ark_ed_on_bls12_377::EdwardsParameters
