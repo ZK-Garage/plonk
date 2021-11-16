@@ -13,7 +13,7 @@ use core::marker::PhantomData;
 
 use ark_bls12_381::{Bls12_381, Fr as BlsScalar};
 use ark_ec::twisted_edwards_extended::GroupAffine;
-use ark_ec::{AffineCurve, PairingEngine, , TEModelParameters};
+use ark_ec::{AffineCurve, PairingEngine, TEModelParameters};
 use ark_ed_on_bls12_381::{
     EdwardsAffine as JubjubAffine, EdwardsParameters as JubjubParameters,
     EdwardsProjective as JubjubProjective, Fr as JubjubScalar,
@@ -33,7 +33,6 @@ use rand_core::OsRng;
 #[derive(Debug, Default)]
 pub struct TestCircuit<
     E: PairingEngine,
-    T: ProjectiveCurve<BaseField = E::Fr>,
     P: TEModelParameters<BaseField = E::Fr>,
 > {
     a: E::Fr,
@@ -42,48 +41,31 @@ pub struct TestCircuit<
     d: E::Fr,
     e: P::ScalarField,
     f: GroupAffine<P>,
-    _marker: PhantomData<T>,
 }
 impl<
         E: PairingEngine,
-        T: ProjectiveCurve<BaseField = E::Fr>,
         P: TEModelParameters<BaseField = E::Fr>,
-    > Circuit<E, T, P> for TestCircuit<E, T, P>
+    > Circuit<E, P> for TestCircuit<E, P>
 {
     const CIRCUIT_ID: [u8; 32] = [0xff; 32];
     fn gadget(
         &mut self,
-        composer: &mut StandardComposer<E, T, P>,
+        composer: &mut StandardComposer<E, P>,
     ) -> Result<(), Error> {
         let a = composer.add_input(self.a);
         let b = composer.add_input(self.b);
         // Make first constraint a + b = c
-        composer.poly_gate(
-            a,
-            b,
-            composer.zero_var(),
-            E::Fr::zero(),
-            E::Fr::one(),
-            E::Fr::one(),
-            E::Fr::zero(),
-            E::Fr::zero(),
-            Some(-self.c),
+        composer.add(
+          (E::Fr::zero(), a),
+          (E::Fr::zero(), b),
+          E::Fr::zero(),
+          Some(-self.c),
         );
         // Check that a and b are in range
         composer.range_gate(a, 1 << 6);
         composer.range_gate(b, 1 << 5);
         // Make second constraint a * b = d
-        composer.poly_gate(
-            a,
-            b,
-            composer.zero_var(),
-            E::Fr::one(),
-            E::Fr::zero(),
-            E::Fr::zero(),
-            E::Fr::one(),
-            E::Fr::zero(),
-            Some(-self.d),
-        );
+        composer.mul(E::Fr::one(), a, b, E::Fr::zero(), Some(-self.d));
 
         let e_repr = self.e.into_repr().to_bytes_le();
         let e = composer.add_input(E::Fr::from_le_bytes_mod_order(&e_repr));
@@ -100,46 +82,42 @@ impl<
 }
 
 // Now let's use the Circuit we've just implemented!
-fn main() {
-    let pp: PublicParameters<Bls12_381> =
-        PublicParameters::setup(1 << 12, &mut OsRng).unwrap();
+fn main()-> Result<(), Error> {
+    let pp: PublicParameters<Bls12_381> = KZG10::<Bls12_381,DensePolynomial<BlsScalar>,>::setup(
+          1 << 12, false, &mut OsRng
+    )?;
     // Initialize the circuit
-    let mut circuit: TestCircuit<
+    let mut circuit: TestCircuit::<
         Bls12_381,
-        JubjubProjective,
         JubjubParameters,
     > = TestCircuit::default();
     // Compile the circuit
     let (pk, vd) = circuit.compile(&pp).unwrap();
     // Generator
-    let (x, y) = JubjubParameters::AFFINE_GENERATOR_COEFFS;
-    let generator = GroupAffine::new(x, y);
-    // Prover POV
-    let scalar = JubjubScalar::from(2);
+    let (x, y) = JubJubParameters::AFFINE_GENERATOR_COEFFS;
+    let generator = JubJubAffine::new(x, y);
+    let point_f_pi: JubJubAffine = AffineCurve::mul(
+      &generator,
+      JubJubScalar::from(2u64).into_repr(),
+    ).into_affine();
     let proof = {
         let mut circuit = TestCircuit {
             a: BlsScalar::from(20u64),
             b: BlsScalar::from(5u64),
             c: BlsScalar::from(25u64),
             d: BlsScalar::from(100u64),
-            e: JubjubScalar::from(2u64),
-            f: JubjubAffine::from(
-                generator.mul(JubjubScalar::from(2).into_repr()),
-            ),
-            _marker: PhantomData,
+            e: JubJubScalar::from(2u64),
+            f: point_f_pi,
         };
         circuit.gen_proof(&pp, pk, b"Test").unwrap()
     };
 
-    // Verifier POV
-    let point =
-        JubjubAffine::from(generator.mul(JubjubScalar::from(2).into_repr()));
     let public_inputs: Vec<PublicInputValue<BlsScalar, JubjubParameters>> = vec![
-        BlsScalar::from(25u64).into(),
-        BlsScalar::from(100u64).into(),
-        point.x.into(),
-        point.y.into(),
+        BlsScalar::from(25u64).into_pi(),
+        BlsScalar::from(100u64).into_pi(),
+        point_f_pi.into_pi()
     ];
+  
     circuit::verify_proof(
         &pp,
         *vd.key(),
