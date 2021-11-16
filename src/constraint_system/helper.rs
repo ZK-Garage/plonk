@@ -8,32 +8,12 @@ use super::StandardComposer;
 use crate::error::Error;
 use crate::proof_system::{Prover, Verifier};
 use ark_ec::{PairingEngine, ProjectiveCurve, TEModelParameters};
-use ark_ff::PrimeField;
 use ark_poly::univariate::DensePolynomial;
 use ark_poly_commit::kzg10::{self, Powers, KZG10};
 use ark_poly_commit::sonic_pc::SonicKZG10;
 use ark_poly_commit::PolynomialCommitment;
 use num_traits::{One, Zero};
 use rand_core::OsRng;
-
-/// This function is only used to generate the SRS.
-/// The intention is just to compute the resulting points
-/// of the operation `a*P, b*P, c*P ... (n-1)*P` into a `Vec`.
-pub(crate) fn slow_multiscalar_mul_single_base<E: PairingEngine>(
-    scalars: &[E::Fr],
-    base: E::G1Projective,
-) -> Vec<E::G1Projective> {
-    scalars.iter().map(|&s| base.mul(s.into_repr())).collect()
-}
-
-/// This function is only used to generate the SRS.
-pub(crate) fn slow_multibase_mul_single_scalar<E: PairingEngine>(
-    scalar: E::Fr,
-    bases: &[E::G1Projective],
-) -> Vec<E::G1Projective> {
-    let scalar_repr = scalar.into_repr();
-    bases.iter().map(|&b| b.mul(scalar_repr)).collect()
-}
 
 /// Adds dummy constraints using arithmetic gates
 pub(crate) fn dummy_gadget<

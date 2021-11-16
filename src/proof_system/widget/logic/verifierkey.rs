@@ -9,8 +9,10 @@ use crate::proof_system::widget::logic::proverkey::{delta, delta_xor_and};
 use ark_ec::PairingEngine;
 use ark_ff::Field;
 use ark_poly_commit::sonic_pc::Commitment;
-
-#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+use ark_serialize::*;
+#[derive(
+    Debug, PartialEq, Eq, Copy, Clone, CanonicalDeserialize, CanonicalSerialize,
+)]
 pub(crate) struct VerifierKey<E: PairingEngine> {
     pub(crate) q_c: Commitment<E>,
     pub(crate) q_logic: Commitment<E>,
