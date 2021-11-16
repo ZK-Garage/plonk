@@ -24,7 +24,6 @@ use ark_poly_commit::kzg10::{self, Powers, UniversalParams};
 use ark_poly_commit::sonic_pc::SonicKZG10;
 use ark_poly_commit::PolynomialCommitment;
 use ark_serialize::*;
-use crate::prelude::VerifierKey;
 
 // The reason for introducing these two traits is to have a workaround for not being able to
 // implement `From<_> for Values` for both `PrimeField` and `GroupAffine`. The reason why this is
@@ -33,11 +32,11 @@ use crate::prelude::VerifierKey;
 // implemented for `GroupAffine`. In which case, the two implementations of `From` would be
 // inconsistent. To this end, we create to helper traits, `FeIntoValues` and `GeIntoValues`,
 // that stand for "Field Element Into Values" and "Group Element Into Values" respectively.
-trait FeIntoValues<F> {
+trait FeIntoPubInput<F> {
     fn fe_into(self) -> F;
 }
 
-trait GeIntoValues<F> {
+trait GeIntoPubInput<F> {
     fn ge_into(self) -> F;
 }
 
@@ -63,7 +62,7 @@ impl<F: PrimeField, P: TEModelParameters<BaseField = F>> From<Values<F>>
     }
 }
 
-impl<F: PrimeField, P: TEModelParameters<BaseField = F>> FeIntoValues<PublicInputValue<F, P>> for F {
+impl<F: PrimeField, P: TEModelParameters<BaseField = F>> FeIntoPubInput<PublicInputValue<F, P>> for F {
     fn fe_into(self) -> PublicInputValue<F, P> {
         PublicInputValue {
             values: vec![self],
@@ -72,7 +71,7 @@ impl<F: PrimeField, P: TEModelParameters<BaseField = F>> FeIntoValues<PublicInpu
     }
 }
 
-impl<F: PrimeField, P: TEModelParameters<BaseField = F>> GeIntoValues<PublicInputValue<F, P>> for GroupAffine<P> {
+impl<F: PrimeField, P: TEModelParameters<BaseField = F>> GeIntoPubInput<PublicInputValue<F, P>> for GroupAffine<P> {
     fn ge_into(self) -> PublicInputValue<F, P> {
         PublicInputValue{
             values: vec![self.x, self.y],
@@ -81,7 +80,7 @@ impl<F: PrimeField, P: TEModelParameters<BaseField = F>> GeIntoValues<PublicInpu
     }
 }
 
-impl<F: PrimeField, P: TEModelParameters<BaseField = F>> GeIntoValues<PublicInputValue<F, P>> for GroupProjective<P> {
+impl<F: PrimeField, P: TEModelParameters<BaseField = F>> GeIntoPubInput<PublicInputValue<F, P>> for GroupProjective<P> {
     fn ge_into(self) -> PublicInputValue<F, P> {
         let point: GroupAffine<P> = self.into_affine();
         PublicInputValue{
@@ -91,7 +90,7 @@ impl<F: PrimeField, P: TEModelParameters<BaseField = F>> GeIntoValues<PublicInpu
     }
 }
 
-impl<F: PrimeField, P: TEModelParameters<BaseField = F>> GeIntoValues<Values<F>> for GroupProjective<P>
+impl<F: PrimeField, P: TEModelParameters<BaseField = F>> GeIntoPubInput<Values<F>> for GroupProjective<P>
 {
     fn ge_into(self) -> Values<F> {
         Values(vec![self.x, self.y])
@@ -99,7 +98,7 @@ impl<F: PrimeField, P: TEModelParameters<BaseField = F>> GeIntoValues<Values<F>>
 }
 
 
-#[derive(Debug, Clone, CanonicalDeserialize, CanonicalSerialize)]
+#[derive(Debug, Clone, PartialEq, Eq, CanonicalDeserialize, CanonicalSerialize)]
 /// Collection of structs/objects that the Verifier will use in order to
 /// de/serialize data needed for Circuit proof verification.
 /// This structure can be seen as a link between the [`Circuit`] public input
@@ -122,8 +121,8 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
     }
 
     /// Returns a reference to the contained [`VerifierKey`].
-    pub fn key(&self) -> &PlonkVerifierKey<E, P> {
-        &self.key
+    pub fn key(self) -> PlonkVerifierKey<E, P> {
+        self.key
     }
 
     /// Returns a reference to the contained Public Input positions.
@@ -370,6 +369,7 @@ pub fn verify_proof<
 ) -> Result<(), Error> {
     let mut verifier: Verifier<E, T, P> = Verifier::new(transcript_init);
     let padded_circuit_size = plonk_verifier_key.padded_circuit_size();
+    // let key: VerifierKey<E, P> = *plonk_verifier_key;
     verifier.verifier_key = Some(plonk_verifier_key);
     let (_, sonic_vk) = SonicKZG10::<E, DensePolynomial<E::Fr>>::trim(
         u_params,
@@ -418,10 +418,12 @@ fn build_pi<F: PrimeField, P: TEModelParameters<BaseField = F>>(
 mod tests {
     use super::*;
     use crate::{constraint_system::StandardComposer, util};
-    use ark_bls12_381::{Fr as BlsScalar, FrParameters};
+    use ark_bls12_381::{Fr as BlsScalar, Bls12_381};
     use ark_ec::twisted_edwards_extended::GroupAffine;
-    use ark_ed_on_bls12_381::EdwardsParameters;
+    use ark_ed_on_bls12_381::{Fr as EmbeddedScalar, EdwardsParameters, EdwardsProjective, EdwardsAffine};
     use num_traits::{One, Zero};
+    use ark_poly_commit::kzg10::KZG10;
+    use ark_ec::AffineCurve;
 
     // Implements a circuit that checks:
     // 1) a + b = c where C is a PI
@@ -487,98 +489,69 @@ mod tests {
 
     // TODO: Complete serialization first
     #[test]
-    fn test_full() -> Result<(), Error> {
+    fn test_full() {
         use rand_core::OsRng;
-        use std::fs::{self, File};
-        use std::io::Write;
-        use tempdir::TempDir;
-
-        let tmp = TempDir::new("plonk-keys-test-full")
-            .expect("IO error")
-            .into_path();
-        let pp_path = tmp.clone().join("pp_testcirc");
-        let pk_path = tmp.clone().join("pk_testcirc");
-        let vd_path = tmp.clone().join("vd_testcirc");
 
         // Generate CRS
-        let pp_p = PublicParameters::setup(1 << 12, &mut OsRng)?;
-        File::create(&pp_path)
-            .and_then(|mut f| f.write(pp_p.to_raw_var_bytes().as_slice()))
-            .expect("IO error");
+        let pp = KZG10::<Bls12_381,DensePolynomial<BlsScalar>,>::setup(
+            1 << 12, false, &mut OsRng
+        ).unwrap();
 
-        // Read PublicParameters
-        let pp = fs::read(pp_path).expect("IO error");
-        let pp =
-            unsafe { PublicParameters::from_slice_unchecked(pp.as_slice()) };
-
-        // Initialize the circuit
-        let mut circuit = TestCircuit::default();
-
-        // Compile the circuit
-        let (pk_p, og_verifier_data) = circuit.compile(&pp)?;
-
-        // Write the keys
-        File::create(&pk_path)
-            .and_then(|mut f| f.write(pk_p.to_var_bytes().as_slice()))
-            .expect("IO error");
-
-        // Read ProverKey
-        let pk = fs::read(pk_path).expect("IO error");
-        let pk = ProverKey::from_slice(pk.as_slice())?;
-
-        assert_eq!(pk, pk_p);
-
-        // Store the VerifierData just for the verifier side:
-        // (You could also store pi_pos and VerifierKey sepparatedly).
-        File::create(&vd_path)
-            .and_then(|mut f| {
-                f.write(og_verifier_data.to_var_bytes().as_slice())
-            })
-            .expect("IO error");
-        let vd = fs::read(vd_path).expect("IO error");
-        let verif_data = VerifierData::from_slice(vd.as_slice())?;
-        assert_eq!(og_verifier_data.key(), verif_data.key());
-        assert_eq!(og_verifier_data.pi_pos(), verif_data.pi_pos());
+        let (x, y) = EdwardsParameters::AFFINE_GENERATOR_COEFFS;
+        let generator = EdwardsAffine::new(x, y);
+        let point_f_pi: EdwardsAffine = AffineCurve::mul(
+            &generator,
+            EmbeddedScalar::from(2u64).into_repr(),
+        ).into_affine();
 
         // Prover POV
-        let proof = {
+        let (proof, verifier_data) = {
+
             let mut circuit: TestCircuit<
                 Bls12_381,
-                JubjubProjective,
-                JubjubParameters,
+                EdwardsProjective,
+                EdwardsParameters,
             > = TestCircuit {
-                a: E::Fr::from(20u64),
-                b: E::Fr::from(5u64),
-                c: E::Fr::from(25u64),
-                d: E::Fr::from(100u64),
-                e: JubJubScalar::from(2u64),
-                f: JubJubAffine::from(generator * JubJubScalar::from(2u64)),
+                a: BlsScalar::from(20u64),
+                b: BlsScalar::from(5u64),
+                c: BlsScalar::from(25u64),
+                d: BlsScalar::from(100u64),
+                e: EmbeddedScalar::from(2u64),
+                f: point_f_pi,
                 _marker: PhantomData,
             };
 
-            circuit.gen_proof(&pp, pk, b"Test")
-        }?;
+            // Compile the circuit
+            // todo: maybe this can be done out of the prover scope? How should we initialise the circuit then?
+            let (pk_p, og_verifier_data) = circuit.compile(&pp).unwrap();
+
+            (circuit.gen_proof(&pp, pk_p, b"Test").unwrap(), og_verifier_data)
+        };
+
+        // Test serialisation for verifier_data
+        let mut verifier_data_bytes = Vec::new();
+        verifier_data.serialize(&mut verifier_data_bytes).unwrap();
+
+        let verif_data: VerifierData<Bls12_381, EdwardsParameters> = VerifierData::deserialize(verifier_data_bytes.as_slice()).unwrap();
+
+        assert!(verif_data == verifier_data);
 
         // Verifier POV
         let public_inputs: Vec<PublicInputValue<BlsScalar, EdwardsParameters>> = vec![
-        pi_from_scalar()
-        pi_from_point()
-        BlsScalar::from(25u64).into(),
-            BlsScalar::from(100u64).into(),
-            Values::<BlsScalar>::from(GroupAffine::<EdwardsParameters>::zero())
-                .into(),
-            /* JubJubAffine::from(generator *
-             * JubJubScalar::from(2u64)).
-             * into(), */
+            BlsScalar::from(25u64).fe_into(),
+            BlsScalar::from(100u64).fe_into(),
+            point_f_pi.ge_into(),
         ];
 
-        verify_proof(
+        // todo: non-ideal hack for a first functional version.
+        let pi_pos = verifier_data.pi_pos().clone();
+        assert!(verify_proof::<Bls12_381, EdwardsProjective, EdwardsParameters>(
             &pp,
-            &verif_data.key(),
+            verifier_data.key(),
             &proof,
             &public_inputs,
-            &verif_data.pi_pos(),
+            &pi_pos,
             b"Test",
-        )
+        ).is_ok());
     }
 }
