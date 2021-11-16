@@ -10,10 +10,8 @@ use ark_ec::{PairingEngine, TEModelParameters};
 use ark_ff::{BigInteger, PrimeField};
 use num_traits::{One, Zero};
 
-impl<
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
-    > StandardComposer<E, P>
+impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
+    StandardComposer<E, P>
 {
     /// Performs a logical AND or XOR op between the inputs provided for the
     /// specified number of bits.
@@ -347,16 +345,15 @@ mod logic_gate_tests {
     use super::super::helper::*;
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
-    use ark_ec::{PairingEngine, ProjectiveCurve, TEModelParameters};
+    use ark_ec::{PairingEngine, TEModelParameters};
 
     fn test_logic_xor_and_constraint<
         E: PairingEngine,
-        T: ProjectiveCurve<BaseField = E::Fr>,
         P: TEModelParameters<BaseField = E::Fr>,
     >() {
         // Should pass since the XOR result is correct and the bit-num is even.
         let res = gadget_tester(
-            |composer: &mut StandardComposer<E, T, P>| {
+            |composer: &mut StandardComposer<E, P>| {
                 let witness_a = composer.add_input(E::Fr::from(500u64));
                 let witness_b = composer.add_input(E::Fr::from(357u64));
                 let xor_res = composer.xor_gate(witness_a, witness_b, 10);
@@ -373,7 +370,7 @@ mod logic_gate_tests {
 
         // Should pass since the AND result is correct even the bit-num is even.
         let res = gadget_tester(
-            |composer: &mut StandardComposer<E, T, P>| {
+            |composer: &mut StandardComposer<E, P>| {
                 let witness_a = composer.add_input(E::Fr::from(469u64));
                 let witness_b = composer.add_input(E::Fr::from(321u64));
                 let xor_res = composer.and_gate(witness_a, witness_b, 10);
@@ -391,7 +388,7 @@ mod logic_gate_tests {
         // Should not pass since the XOR result is not correct even the bit-num
         // is even.
         let res = gadget_tester(
-            |composer: &mut StandardComposer<E, T, P>| {
+            |composer: &mut StandardComposer<E, P>| {
                 let witness_a = composer.add_input(E::Fr::from(139u64));
                 let witness_b = composer.add_input(E::Fr::from(33u64));
                 let xor_res = composer.xor_gate(witness_a, witness_b, 10);
@@ -408,7 +405,7 @@ mod logic_gate_tests {
 
         // Should pass even the bitnum is less than the number bit-size
         let res = gadget_tester(
-            |composer: &mut StandardComposer<E, T, P>| {
+            |composer: &mut StandardComposer<E, P>| {
                 let witness_a = composer.add_input(E::Fr::from(256u64));
                 let witness_b = composer.add_input(E::Fr::from(235u64));
                 let xor_res = composer.xor_gate(witness_a, witness_b, 2);
@@ -426,12 +423,11 @@ mod logic_gate_tests {
 
     fn test_logical_gate_odd_bit_num<
         E: PairingEngine,
-        T: ProjectiveCurve<BaseField = E::Fr>,
         P: TEModelParameters<BaseField = E::Fr>,
     >() {
         // Should fail since the bit-num is odd.
         let _ = gadget_tester(
-            |composer: &mut StandardComposer<E, T, P>| {
+            |composer: &mut StandardComposer<E, P>| {
                 let witness_a = composer.add_input(E::Fr::from(500u64));
                 let witness_b = composer.add_input(E::Fr::from(499u64));
                 let xor_res = composer.xor_gate(witness_a, witness_b, 9);
@@ -455,7 +451,6 @@ mod logic_gate_tests {
         test_logical_gate_odd_bit_num
         ] => (
         Bls12_381,
-        ark_ed_on_bls12_381::EdwardsProjective,
         ark_ed_on_bls12_381::EdwardsParameters
         )
     );
@@ -469,7 +464,6 @@ mod logic_gate_tests {
         test_logical_gate_odd_bit_num
         ] => (
         Bls12_377,
-        ark_ed_on_bls12_377::EdwardsProjective,
         ark_ed_on_bls12_377::EdwardsParameters
         )
     );

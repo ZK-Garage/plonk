@@ -757,22 +757,20 @@ mod test {
     use crate::{constraint_system::StandardComposer, util};
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
-    use ark_ff::fields::FftParameters;
     use ark_ff::Field;
     use ark_ff::UniformRand;
     use ark_poly::univariate::DensePolynomial;
     use ark_poly::Polynomial;
     use num_traits::{One, Zero};
     // use rand::{rngs::StdRng, SeedableRng};
-    use ark_ec::{PairingEngine, ProjectiveCurve, TEModelParameters};
+    use ark_ec::{PairingEngine, TEModelParameters};
     use rand_core::OsRng;
 
     fn test_multizip_permutation_poly<
         E: PairingEngine,
-        T: ProjectiveCurve<BaseField = E::Fr>,
         P: TEModelParameters<BaseField = E::Fr>,
     >() {
-        let mut cs: StandardComposer<E, T, P> =
+        let mut cs: StandardComposer<E, P> =
             StandardComposer::with_expected_size(4);
 
         let zero = E::Fr::zero();
@@ -864,7 +862,6 @@ mod test {
 
     fn test_permutation_format<
         E: PairingEngine,
-        T: ProjectiveCurve<BaseField = E::Fr>,
         P: TEModelParameters<BaseField = E::Fr>,
     >() {
         let mut perm: Permutation<E::Fr> = Permutation::new();
@@ -900,7 +897,6 @@ mod test {
 
     fn test_permutation_compute_sigmas_only_left_wires<
         E: PairingEngine,
-        T: ProjectiveCurve<BaseField = E::Fr>,
         P: TEModelParameters<BaseField = E::Fr>,
     >() {
         let mut perm = Permutation::<E::Fr>::new();
@@ -1038,7 +1034,6 @@ mod test {
     }
     fn test_permutation_compute_sigmas<
         E: PairingEngine,
-        T: ProjectiveCurve<BaseField = E::Fr>,
         P: TEModelParameters<BaseField = E::Fr>,
     >() {
         let mut perm: Permutation<E::Fr> = Permutation::new();
@@ -1148,7 +1143,6 @@ mod test {
 
     fn test_basic_slow_permutation_poly<
         E: PairingEngine,
-        T: ProjectiveCurve<BaseField = E::Fr>,
         P: TEModelParameters<BaseField = E::Fr>,
     >() {
         let num_wire_mappings = 2;
@@ -1342,7 +1336,6 @@ mod test {
         []
         => (
         Bls12_381,
-        ark_ed_on_bls12_381::EdwardsProjective,
         ark_ed_on_bls12_381::EdwardsParameters
         )
     );
@@ -1358,7 +1351,6 @@ mod test {
         []
         => (
         Bls12_377,
-        ark_ed_on_bls12_377::EdwardsProjective,
         ark_ed_on_bls12_377::EdwardsParameters
         )
     );

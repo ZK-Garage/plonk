@@ -31,10 +31,8 @@ where
     ProjectiveCurve::batch_normalization_into_affine(&mut multiples)
 }
 
-impl<
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
-    > StandardComposer<E, P>
+impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
+    StandardComposer<E, P>
 {
     /// Adds an elliptic curve Scalar multiplication gate to the circuit
     /// description.
@@ -186,11 +184,10 @@ mod tests {
 
     fn test_ecc_constraint<
         E: PairingEngine,
-        T: ProjectiveCurve<BaseField = E::Fr>,
         P: TEModelParameters<BaseField = E::Fr>,
     >() {
         let res = gadget_tester(
-            |composer: &mut StandardComposer<E, T, P>| {
+            |composer: &mut StandardComposer<E, P>| {
                 let scalar = E::Fr::from_le_bytes_mod_order(&[
                     182, 44, 247, 214, 94, 14, 151, 208, 130, 16, 200, 204,
                     147, 32, 104, 166, 0, 59, 52, 1, 1, 59, 103, 6, 169, 175,
@@ -221,11 +218,10 @@ mod tests {
 
     fn test_ecc_constraint_zero<
         E: PairingEngine,
-        T: ProjectiveCurve<BaseField = E::Fr>,
         P: TEModelParameters<BaseField = E::Fr>,
     >() {
         let res = gadget_tester(
-            |composer: &mut StandardComposer<E, T, P>| {
+            |composer: &mut StandardComposer<E, P>| {
                 let scalar = E::Fr::zero();
                 let secret_scalar = composer.add_input(scalar);
 
@@ -250,11 +246,10 @@ mod tests {
 
     fn test_ecc_constraint_should_fail<
         E: PairingEngine,
-        T: ProjectiveCurve<BaseField = E::Fr>,
         P: TEModelParameters<BaseField = E::Fr>,
     >() {
         let res = gadget_tester(
-            |composer: &mut StandardComposer<E, T, P>| {
+            |composer: &mut StandardComposer<E, P>| {
                 let scalar = E::Fr::from(100u64);
                 let secret_scalar = composer.add_input(scalar);
                 // Fails because we are not multiplying by the GENERATOR, it is
@@ -283,11 +278,10 @@ mod tests {
 
     fn test_point_addition<
         E: PairingEngine,
-        T: ProjectiveCurve<BaseField = E::Fr>,
         P: TEModelParameters<BaseField = E::Fr>,
     >() {
         let res = gadget_tester(
-            |composer: &mut StandardComposer<E, T, P>| {
+            |composer: &mut StandardComposer<E, P>| {
                 let (x, y) = P::AFFINE_GENERATOR_COEFFS;
                 let generator: GroupAffine<P> = GroupAffine::new(x, y);
 
@@ -302,12 +296,10 @@ mod tests {
 
                 let var_point_a_x = composer.add_input(affine_point_a.x);
                 let var_point_a_y = composer.add_input(affine_point_a.y);
-                let point_a =
-                    Point::<E, T, P>::new(var_point_a_x, var_point_a_y);
+                let point_a = Point::<E, P>::new(var_point_a_x, var_point_a_y);
                 let var_point_b_x = composer.add_input(affine_point_b.x);
                 let var_point_b_y = composer.add_input(affine_point_b.y);
-                let point_b =
-                    Point::<E, T, P>::new(var_point_b_x, var_point_b_y);
+                let point_b = Point::<E, P>::new(var_point_b_x, var_point_b_y);
                 let new_point = composer.point_addition_gate(point_a, point_b);
 
                 composer.assert_equal_public_point(
@@ -323,11 +315,10 @@ mod tests {
 
     fn test_pedersen_hash<
         E: PairingEngine,
-        T: ProjectiveCurve<BaseField = E::Fr>,
         P: TEModelParameters<BaseField = E::Fr>,
     >() {
         let res = gadget_tester(
-            |composer: &mut StandardComposer<E, T, P>| {
+            |composer: &mut StandardComposer<E, P>| {
                 let (x, y) = P::AFFINE_GENERATOR_COEFFS;
                 let generator: GroupAffine<P> = GroupAffine::new(x, y);
                 // First component
@@ -390,11 +381,10 @@ mod tests {
 
     fn test_pedersen_balance<
         E: PairingEngine,
-        T: ProjectiveCurve<BaseField = E::Fr>,
         P: TEModelParameters<BaseField = E::Fr>,
     >() {
         let res = gadget_tester(
-            |composer: &mut StandardComposer<E, T, P>| {
+            |composer: &mut StandardComposer<E, P>| {
                 let (x, y) = P::AFFINE_GENERATOR_COEFFS;
                 let generator: GroupAffine<P> = GroupAffine::new(x, y);
 
@@ -459,7 +449,6 @@ mod tests {
         ],
         [] => (
         Bls12_381,
-        ark_ed_on_bls12_381::EdwardsProjective,
         ark_ed_on_bls12_381::EdwardsParameters
         )
     );
@@ -476,7 +465,6 @@ mod tests {
         ],
         [] => (
         Bls12_377,
-        ark_ed_on_bls12_377::EdwardsProjective,
         ark_ed_on_bls12_377::EdwardsParameters
         )
     );

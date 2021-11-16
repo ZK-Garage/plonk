@@ -37,10 +37,8 @@ pub(crate) struct SelectorPolynomials<F: PrimeField> {
     fourth_sigma: DensePolynomial<F>,
 }
 
-impl<
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
-    > StandardComposer<E, P>
+impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
+    StandardComposer<E, P>
 {
     /// Pads the circuit to the next power of two.
     ///
@@ -460,12 +458,8 @@ mod test {
 
     /// Tests that the circuit gets padded to the correct length
     /// XXX: We can do this test without dummy_gadget method
-    fn test_pad<
-        E: PairingEngine,
-        T: ProjectiveCurve<BaseField = E::Fr>,
-        P: TEModelParameters<BaseField = E::Fr>,
-    >() {
-        let mut composer: StandardComposer<E, T, P> = StandardComposer::new();
+    fn test_pad<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>() {
+        let mut composer: StandardComposer<E, P> = StandardComposer::new();
         dummy_gadget(100, &mut composer);
 
         // Pad the circuit to next power of two
@@ -496,7 +490,6 @@ mod test {
         ],
         [] => (
         Bls12_381,
-        ark_ed_on_bls12_381::EdwardsProjective,
         ark_ed_on_bls12_381::EdwardsParameters
         )
     );
@@ -508,7 +501,6 @@ mod test {
         ],
         [] => (
         Bls12_377,
-        ark_ed_on_bls12_377::EdwardsProjective,
         ark_ed_on_bls12_377::EdwardsParameters
         )
     );

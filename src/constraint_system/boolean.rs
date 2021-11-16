@@ -9,10 +9,8 @@ use crate::constraint_system::Variable;
 use ark_ec::{PairingEngine, TEModelParameters};
 use num_traits::{One, Zero};
 
-impl<
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
-    > StandardComposer<E, P>
+impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
+    StandardComposer<E, P>
 {
     /// Adds a boolean constraint (also known as binary constraint) where
     /// the gate eq. will enforce that the [`Variable`] received is either `0`
@@ -64,11 +62,10 @@ mod boolean_gates_tests {
 
     fn test_correct_bool_gate<
         E: PairingEngine,
-        T: ProjectiveCurve<BaseField = E::Fr>,
         P: TEModelParameters<BaseField = E::Fr>,
     >() {
         let res = gadget_tester(
-            |composer: &mut StandardComposer<E, T, P>| {
+            |composer: &mut StandardComposer<E, P>| {
                 let zero = composer.zero_var();
                 let one = composer.add_input(E::Fr::one());
 
@@ -82,11 +79,10 @@ mod boolean_gates_tests {
 
     fn test_incorrect_bool_gate<
         E: PairingEngine,
-        T: ProjectiveCurve<BaseField = E::Fr>,
         P: TEModelParameters<BaseField = E::Fr>,
     >() {
         let res = gadget_tester(
-            |composer: &mut StandardComposer<E, T, P>| {
+            |composer: &mut StandardComposer<E, P>| {
                 let zero = composer.add_input(E::Fr::from(5u64));
                 let one = composer.add_input(E::Fr::one());
 
@@ -106,7 +102,6 @@ mod boolean_gates_tests {
         ],
         [] => (
             Bls12_381,
-            ark_ed_on_bls12_381::EdwardsProjective,
             ark_ed_on_bls12_381::EdwardsParameters
         )
     );
@@ -119,7 +114,6 @@ mod boolean_gates_tests {
         ],
         [] => (
             Bls12_377,
-            ark_ed_on_bls12_377::EdwardsProjective,
             ark_ed_on_bls12_377::EdwardsParameters
         )
     );

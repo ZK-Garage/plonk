@@ -115,10 +115,8 @@ pub struct StandardComposer<
     _marker: PhantomData<P>,
 }
 
-impl<
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
-    > StandardComposer<E, P>
+impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
+    StandardComposer<E, P>
 {
     /// Returns the number of gates in the circuit
     pub fn circuit_size(&self) -> usize {
@@ -149,20 +147,16 @@ impl<
     }
 }
 
-impl<
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
-    > Default for StandardComposer<E, P>
+impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Default
+    for StandardComposer<E, P>
 {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
-    > StandardComposer<E, P>
+impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
+    StandardComposer<E, P>
 {
     /// Generates a new empty `StandardComposer` with all of it's fields
     /// set to hold an initial capacity of 0.
@@ -660,10 +654,9 @@ mod general_composer_tests {
     /// Tests that a circuit initially has 3 gates
     fn test_initial_circuit_size<
         E: PairingEngine,
-        T: ProjectiveCurve<BaseField = E::Fr>,
         P: TEModelParameters<BaseField = E::Fr>,
     >() {
-        let composer: StandardComposer<E, T, P> = StandardComposer::new();
+        let composer: StandardComposer<E, P> = StandardComposer::new();
         // Circuit size is n+3 because
         // - We have an extra gate which forces the first witness to be zero.
         //   This is used when the advice wire is not being used.
@@ -679,11 +672,10 @@ mod general_composer_tests {
     /// Tests that an empty circuit proof passes
     fn test_prove_verify<
         E: PairingEngine,
-        T: ProjectiveCurve<BaseField = E::Fr>,
         P: TEModelParameters<BaseField = E::Fr>,
     >() {
         let res = gadget_tester(
-            |composer: &mut StandardComposer<E, T, P>| {
+            |composer: &mut StandardComposer<E, P>| {
                 // do nothing except add the dummy constraints
             },
             200,
@@ -693,11 +685,10 @@ mod general_composer_tests {
 
     fn test_conditional_select<
         E: PairingEngine,
-        T: ProjectiveCurve<BaseField = E::Fr>,
         P: TEModelParameters<BaseField = E::Fr>,
     >() {
         let res = gadget_tester(
-            |composer: &mut StandardComposer<E, T, P>| {
+            |composer: &mut StandardComposer<E, P>| {
                 let bit_1 = composer.add_input(E::Fr::one());
                 let bit_0 = composer.zero_var();
 
@@ -720,7 +711,6 @@ mod general_composer_tests {
     // XXX: Move this to integration tests
     fn test_multiple_proofs<
         E: PairingEngine,
-        T: ProjectiveCurve<BaseField = E::Fr>,
         P: TEModelParameters<BaseField = E::Fr>,
     >() {
         let u_params: UniversalParams<E> =
@@ -732,7 +722,7 @@ mod general_composer_tests {
             .unwrap();
 
         // Create a prover struct
-        let mut prover: Prover<E, T, P> = Prover::new(b"demo");
+        let mut prover: Prover<E, P> = Prover::new(b"demo");
 
         // Add gadgets
         dummy_gadget(10, prover.mut_cs());
@@ -767,7 +757,7 @@ mod general_composer_tests {
 
         // Verifier
         //
-        let mut verifier: Verifier<E, T, P> = Verifier::new(b"demo");
+        let mut verifier: Verifier<E, P> = Verifier::new(b"demo");
 
         // Add gadgets
         dummy_gadget(10, verifier.mut_cs());
@@ -813,7 +803,6 @@ mod general_composer_tests {
         ],
         [] => (
             Bls12_381,
-            ark_ed_on_bls12_381::EdwardsProjective,
             ark_ed_on_bls12_381::EdwardsParameters
         )
     );
@@ -828,7 +817,6 @@ mod general_composer_tests {
         ],
         [] => (
             Bls12_377,
-            ark_ed_on_bls12_377::EdwardsProjective,
             ark_ed_on_bls12_377::EdwardsParameters
         )
     );

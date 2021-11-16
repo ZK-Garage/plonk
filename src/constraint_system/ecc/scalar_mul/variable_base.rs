@@ -7,14 +7,12 @@
 use crate::constraint_system::ecc::Point;
 use crate::constraint_system::{variable::Variable, StandardComposer};
 use ark_ec::models::TEModelParameters;
-use ark_ec::{PairingEngine};
+use ark_ec::PairingEngine;
 use ark_ff::{BigInteger, Field, FpParameters, PrimeField};
 use num_traits::{One, Zero};
 
-impl<
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
-    > StandardComposer<E, P>
+impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
+    StandardComposer<E, P>
 {
     /// Adds a variable-base scalar multiplication to the circuit description.
     ///
@@ -105,11 +103,10 @@ mod tests {
 
     fn test_var_base_scalar_mul<
         E: PairingEngine,
-        T: ProjectiveCurve<BaseField = E::Fr>,
         P: TEModelParameters<BaseField = E::Fr>,
     >() {
         let res = gadget_tester(
-            |composer: &mut StandardComposer<E, T, P>| {
+            |composer: &mut StandardComposer<E, P>| {
                 let scalar = E::Fr::from_le_bytes_mod_order(&[
                     182, 44, 247, 214, 94, 14, 151, 208, 130, 16, 200, 204,
                     147, 32, 104, 166, 0, 59, 52, 1, 1, 59, 103, 6, 169, 175,
@@ -146,7 +143,6 @@ mod tests {
     [test_var_base_scalar_mul],
         [] => (
         Bls12_381,
-        ark_ed_on_bls12_381::EdwardsProjective,
         ark_ed_on_bls12_381::EdwardsParameters
         )
     );
@@ -156,7 +152,6 @@ mod tests {
     [test_var_base_scalar_mul],
         [] => (
         Bls12_377,
-        ark_ed_on_bls12_377::EdwardsProjective,
         ark_ed_on_bls12_377::EdwardsParameters
         )
     );

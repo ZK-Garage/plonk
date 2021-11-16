@@ -531,7 +531,6 @@ mod proof_tests {
 
     fn test_serde_proof<
         E: PairingEngine,
-        T: ProjectiveCurve<BaseField = E::Fr>,
         P: TEModelParameters<BaseField = E::Fr> + PartialEq,
     >() {
         let proof = Proof::<E, P> {
@@ -583,7 +582,6 @@ mod proof_tests {
         ],
         [] => (
         Bls12_381,
-        ark_ed_on_bls12_381::EdwardsProjective,
         ark_ed_on_bls12_381::EdwardsParameters
         )
     );
@@ -595,7 +593,6 @@ mod proof_tests {
         ],
         [] => (
         Bls12_377,
-        ark_ed_on_bls12_377::EdwardsProjective,
         ark_ed_on_bls12_377::EdwardsParameters
         )
     );

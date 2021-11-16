@@ -8,13 +8,11 @@ use crate::constraint_system::ecc::Point;
 use crate::constraint_system::StandardComposer;
 use ark_ec::models::twisted_edwards_extended::GroupAffine;
 use ark_ec::models::TEModelParameters;
-use ark_ec::{PairingEngine};
+use ark_ec::PairingEngine;
 use num_traits::{One, Zero};
 
-impl<
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
-    > StandardComposer<E, P>
+impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
+    StandardComposer<E, P>
 {
     /// Adds two curve points together using a curve addition gate
     /// Note that since the points are not fixed the generator is not a part of
@@ -105,13 +103,12 @@ mod variable_base_gate_tests {
     /// source of truth to test the WNaf method.
     pub fn classical_point_addition<
         E: PairingEngine,
-        T: ProjectiveCurve<BaseField = E::Fr>,
         P: TEModelParameters<BaseField = E::Fr>,
     >(
-        composer: &mut StandardComposer<E, T, P>,
-        point_a: Point<E, T, P>,
-        point_b: Point<E, T, P>,
-    ) -> Point<E, T, P> {
+        composer: &mut StandardComposer<E, P>,
+        point_a: Point<E, P>,
+        point_b: Point<E, P>,
+    ) -> Point<E, P> {
         let x1 = point_a.x;
         let y1 = point_a.y;
 
@@ -223,11 +220,10 @@ mod variable_base_gate_tests {
 
     fn test_curve_addition<
         E: PairingEngine,
-        T: ProjectiveCurve<BaseField = E::Fr>,
         P: TEModelParameters<BaseField = E::Fr>,
     >() {
         let res = gadget_tester(
-            |composer: &mut StandardComposer<E, T, P>| {
+            |composer: &mut StandardComposer<E, P>| {
                 let (x, y) = P::AFFINE_GENERATOR_COEFFS;
                 let generator: GroupAffine<P> = GroupAffine::new(x, y);
                 let x_var = composer.add_input(x);
@@ -256,7 +252,6 @@ mod variable_base_gate_tests {
         []
         => (
         Bls12_381,
-        ark_ed_on_bls12_381::EdwardsProjective,
         ark_ed_on_bls12_381::EdwardsParameters
         )
     );
@@ -265,7 +260,6 @@ mod variable_base_gate_tests {
         [test_curve_addition],
         [] => (
         Bls12_377,
-        ark_ed_on_bls12_377::EdwardsProjective,
         ark_ed_on_bls12_377::EdwardsParameters
         )
     );

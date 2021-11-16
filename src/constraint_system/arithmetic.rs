@@ -9,10 +9,8 @@ use crate::constraint_system::Variable;
 use ark_ec::{PairingEngine, TEModelParameters};
 use num_traits::{One, Zero};
 
-impl<
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
-    > StandardComposer<E, P>
+impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
+    StandardComposer<E, P>
 {
     /// Adds a width-3 add gate to the circuit, linking the addition of the
     /// provided inputs, scaled by the selector coefficients with the output
@@ -321,11 +319,10 @@ mod arithmetic_gates_tests {
 
     fn test_public_inputs<
         E: PairingEngine,
-        T: ProjectiveCurve<BaseField = E::Fr>,
         P: TEModelParameters<BaseField = E::Fr>,
     >() {
         let res = gadget_tester(
-            |composer: &mut StandardComposer<E, T, P>| {
+            |composer: &mut StandardComposer<E, P>| {
                 let var_one = composer.add_input(E::Fr::one());
 
                 let should_be_three = composer.big_add(
@@ -360,11 +357,10 @@ mod arithmetic_gates_tests {
 
     fn test_correct_add_mul_gate<
         E: PairingEngine,
-        T: ProjectiveCurve<BaseField = E::Fr>,
         P: TEModelParameters<BaseField = E::Fr>,
     >() {
         let res = gadget_tester(
-            |composer: &mut StandardComposer<E, T, P>| {
+            |composer: &mut StandardComposer<E, P>| {
                 // Verify that (4+5+5) * (6+7+7) = 280
                 let four = composer.add_input(E::Fr::from(4u64));
                 let five = composer.add_input(E::Fr::from(5u64));
@@ -414,11 +410,10 @@ mod arithmetic_gates_tests {
 
     fn test_correct_add_gate<
         E: PairingEngine,
-        T: ProjectiveCurve<BaseField = E::Fr>,
         P: TEModelParameters<BaseField = E::Fr>,
     >() {
         let res = gadget_tester(
-            |composer: &mut StandardComposer<E, T, P>| {
+            |composer: &mut StandardComposer<E, P>| {
                 let zero = composer.zero_var();
                 let one = composer.add_input(E::Fr::one());
 
@@ -437,11 +432,10 @@ mod arithmetic_gates_tests {
 
     fn test_correct_big_add_mul_gate<
         E: PairingEngine,
-        T: ProjectiveCurve<BaseField = E::Fr>,
         P: TEModelParameters<BaseField = E::Fr>,
     >() {
         let res = gadget_tester(
-            |composer: &mut StandardComposer<E, T, P>| {
+            |composer: &mut StandardComposer<E, P>| {
                 // Verify that (4+5+5) * (6+7+7) + (8*9) = 352
                 let four = composer.add_input(E::Fr::from(4u64));
                 let five = composer.add_input(E::Fr::from(5u64));
@@ -486,11 +480,10 @@ mod arithmetic_gates_tests {
 
     fn test_incorrect_add_mul_gate<
         E: PairingEngine,
-        T: ProjectiveCurve<BaseField = E::Fr>,
         P: TEModelParameters<BaseField = E::Fr>,
     >() {
         let res = gadget_tester(
-            |composer: &mut StandardComposer<E, T, P>| {
+            |composer: &mut StandardComposer<E, P>| {
                 // Verify that (5+5) * (6+7) != 117
                 let five = composer.add_input(E::Fr::from(5u64));
                 let six = composer.add_input(E::Fr::from(6u64));
@@ -540,7 +533,6 @@ mod arithmetic_gates_tests {
     ],
         [] => (
         Bls12_381,
-        ark_ed_on_bls12_381::EdwardsProjective,
         ark_ed_on_bls12_381::EdwardsParameters
         )
     );
@@ -555,7 +547,6 @@ mod arithmetic_gates_tests {
     ],
         [] => (
         Bls12_377,
-        ark_ed_on_bls12_377::EdwardsProjective,
         ark_ed_on_bls12_377::EdwardsParameters
         )
     );

@@ -10,10 +10,8 @@ use ark_ec::{PairingEngine, TEModelParameters};
 use ark_ff::{BigInteger, PrimeField};
 use num_traits::{One, Zero};
 
-impl<
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
-    > StandardComposer<E, P>
+impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
+    StandardComposer<E, P>
 {
     /// Adds a range-constraint gate that checks and constrains a
     /// [`Variable`] to be inside of the range \[0,num_bits\].
@@ -200,16 +198,15 @@ mod range_gate_tests {
     use crate::{batch_test, constraint_system::helper::*};
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
-    use ark_ec::{PairingEngine, ProjectiveCurve, TEModelParameters};
+    use ark_ec::{PairingEngine, TEModelParameters};
 
     fn test_range_constraint<
         E: PairingEngine,
-        T: ProjectiveCurve<BaseField = E::Fr>,
         P: TEModelParameters<BaseField = E::Fr>,
     >() {
         // Should fail as the number is not 32 bits
         let res = gadget_tester(
-            |composer: &mut StandardComposer<E, T, P>| {
+            |composer: &mut StandardComposer<E, P>| {
                 let witness = composer
                     .add_input(E::Fr::from((u32::max_value() as u64) + 1));
                 composer.range_gate(witness, 32);
@@ -220,7 +217,7 @@ mod range_gate_tests {
 
         // Should fail as number is greater than 32 bits
         let res = gadget_tester(
-            |composer: &mut StandardComposer<E, T, P>| {
+            |composer: &mut StandardComposer<E, P>| {
                 let witness = composer.add_input(E::Fr::from(u64::max_value()));
                 composer.range_gate(witness, 32);
             },
@@ -230,7 +227,7 @@ mod range_gate_tests {
 
         // Should pass as the number is within 34 bits
         let res = gadget_tester(
-            |composer: &mut StandardComposer<E, T, P>| {
+            |composer: &mut StandardComposer<E, P>| {
                 let witness = composer.add_input(E::Fr::from(2u64.pow(34) - 1));
                 composer.range_gate(witness, 34);
             },
@@ -241,12 +238,11 @@ mod range_gate_tests {
 
     fn test_odd_bit_range<
         E: PairingEngine,
-        T: ProjectiveCurve<BaseField = E::Fr>,
         P: TEModelParameters<BaseField = E::Fr>,
     >() {
         // Should fail as the number we we need a even number of bits
         let _ok = gadget_tester(
-            |composer: &mut StandardComposer<E, T, P>| {
+            |composer: &mut StandardComposer<E, P>| {
                 let witness =
                     composer.add_input(E::Fr::from(u32::max_value() as u64));
                 composer.range_gate(witness, 33);
@@ -261,7 +257,6 @@ mod range_gate_tests {
         [test_odd_bit_range]
         => (
         Bls12_381,
-        ark_ed_on_bls12_381::EdwardsProjective,
         ark_ed_on_bls12_381::EdwardsParameters
         )
     );
@@ -272,7 +267,6 @@ mod range_gate_tests {
         [test_odd_bit_range]
         => (
         Bls12_377,
-        ark_ed_on_bls12_377::EdwardsProjective,
         ark_ed_on_bls12_377::EdwardsParameters
         )
     );
