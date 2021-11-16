@@ -13,7 +13,7 @@ use crate::{
     transcript::{TranscriptProtocol, TranscriptWrapper},
     util,
 };
-use ark_ec::{PairingEngine, ProjectiveCurve, TEModelParameters};
+use ark_ec::{PairingEngine, TEModelParameters};
 use ark_ff::Field;
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, GeneralEvaluationDomain,
@@ -28,13 +28,12 @@ use num_traits::Zero;
 #[allow(missing_debug_implementations)]
 pub struct Prover<
     E: PairingEngine,
-    T: ProjectiveCurve<BaseField = E::Fr>,
     P: TEModelParameters<BaseField = E::Fr>,
 > {
     /// ProverKey which is used to create proofs about a specific PLONK circuit
     pub prover_key: Option<ProverKey<E::Fr, P>>,
 
-    pub(crate) cs: StandardComposer<E, T, P>,
+    pub(crate) cs: StandardComposer<E, P>,
     /// Store the messages exchanged during the preprocessing stage
     /// This is copied each time, we make a proof
     pub preprocessed_transcript: TranscriptWrapper<E>,
@@ -42,12 +41,11 @@ pub struct Prover<
 
 impl<
         E: PairingEngine,
-        T: ProjectiveCurve<BaseField = E::Fr>,
         P: TEModelParameters<BaseField = E::Fr>,
-    > Prover<E, T, P>
+    > Prover<E, P>
 {
     /// Returns a mutable copy of the underlying [`StandardComposer`].
-    pub fn mut_cs(&mut self) -> &mut StandardComposer<E, T, P> {
+    pub fn mut_cs(&mut self) -> &mut StandardComposer<E, P> {
         &mut self.cs
     }
 
@@ -66,23 +64,21 @@ impl<
 
 impl<
         E: PairingEngine,
-        T: ProjectiveCurve<BaseField = E::Fr>,
         P: TEModelParameters<BaseField = E::Fr>,
-    > Default for Prover<E, T, P>
+    > Default for Prover<E, P>
 {
-    fn default() -> Prover<E, T, P> {
+    fn default() -> Prover<E, P> {
         Prover::new(b"plonk")
     }
 }
 
 impl<
         E: PairingEngine,
-        T: ProjectiveCurve<BaseField = E::Fr>,
         P: TEModelParameters<BaseField = E::Fr>,
-    > Prover<E, T, P>
+    > Prover<E, P>
 {
     /// Creates a new `Prover` instance.
-    pub fn new(label: &'static [u8]) -> Prover<E, T, P> {
+    pub fn new(label: &'static [u8]) -> Prover<E, P> {
         Prover {
             prover_key: None,
             cs: StandardComposer::new(),
@@ -94,7 +90,7 @@ impl<
     pub fn with_expected_size(
         label: &'static [u8],
         size: usize,
-    ) -> Prover<E, T, P> {
+    ) -> Prover<E, P> {
         Prover {
             prover_key: None,
             cs: StandardComposer::with_expected_size(size),

@@ -755,10 +755,9 @@ impl<F: PrimeField> Permutation<F> {
 mod test {
     use super::*;
     use crate::{constraint_system::StandardComposer, util};
-    use ark_bls12_381::{Bls12_381, Fr as BlsScalar, FrParameters};
+    use ark_bls12_381::{Bls12_381, Fr as BlsScalar};
     use ark_ed_on_bls12_381::{
         EdwardsParameters as JubjubParameters,
-        EdwardsProjective as JubjubProjective,
     };
     use ark_ff::fields::FftParameters;
     use ark_ff::Field;
@@ -773,7 +772,6 @@ mod test {
     fn test_multizip_permutation_poly() {
         let mut cs: StandardComposer<
             Bls12_381,
-            JubjubProjective,
             JubjubParameters,
         > = StandardComposer::with_expected_size(4);
         let x1 = cs.add_input(BlsScalar::new(

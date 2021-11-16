@@ -14,7 +14,7 @@ use crate::proof_system::{
     Proof, Prover, ProverKey, Verifier, VerifierKey as PlonkVerifierKey,
 };
 use ark_ec::models::TEModelParameters;
-use ark_ec::{PairingEngine, ProjectiveCurve};
+use ark_ec::{PairingEngine, };
 use ark_ff::PrimeField;
 use ark_poly::univariate::DensePolynomial;
 use ark_poly_commit::kzg10::{self, Powers, UniversalParams};
@@ -258,10 +258,9 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
 ///     b"Test",
 /// )
 /// }
-pub trait Circuit<E, T, P>
+pub trait Circuit<E, P>
 where
     E: PairingEngine,
-    T: ProjectiveCurve<BaseField = E::Fr>,
     P: TEModelParameters<BaseField = E::Fr>,
     Self: Sized,
 {
@@ -270,7 +269,7 @@ where
     /// Gadget implementation used to fill the composer.
     fn gadget(
         &mut self,
-        composer: &mut StandardComposer<E, T, P>,
+        composer: &mut StandardComposer<E, P>,
     ) -> Result<(), Error>;
     /// Compiles the circuit by using a function that returns a `Result`
     /// with the `ProverKey`, `VerifierKey` and the circuit size.
@@ -357,7 +356,6 @@ where
 /// instances.
 pub fn verify_proof<
     E: PairingEngine,
-    T: ProjectiveCurve<BaseField = E::Fr>,
     P: TEModelParameters<BaseField = E::Fr>,
 >(
     u_params: &UniversalParams<E>,
@@ -367,7 +365,7 @@ pub fn verify_proof<
     pub_inputs_positions: &[usize],
     transcript_init: &'static [u8],
 ) -> Result<(), Error> {
-    let mut verifier: Verifier<E, T, P> = Verifier::new(transcript_init);
+    let mut verifier: Verifier<E, P> = Verifier::new(transcript_init);
     let padded_circuit_size = plonk_verifier_key.padded_circuit_size();
     verifier.verifier_key = Some(plonk_verifier_key);
     let (_, sonic_vk) = SonicKZG10::<E, DensePolynomial<E::Fr>>::trim(
@@ -429,7 +427,6 @@ mod tests {
     #[derive(Debug, Default)]
     pub struct TestCircuit<
         E: PairingEngine,
-        T: ProjectiveCurve<BaseField = E::Fr>,
         P: TEModelParameters<BaseField = E::Fr>,
     > {
         a: E::Fr,
@@ -438,19 +435,17 @@ mod tests {
         d: E::Fr,
         e: P::ScalarField,
         f: GroupAffine<P>,
-        _marker: PhantomData<T>,
     }
 
     impl<
             E: PairingEngine,
-            T: ProjectiveCurve<BaseField = E::Fr>,
             P: TEModelParameters<BaseField = E::Fr>,
-        > Circuit<E, T, P> for TestCircuit<E, T, P>
+        > Circuit<E, P> for TestCircuit<E, P>
     {
         const CIRCUIT_ID: [u8; 32] = [0xff; 32];
         fn gadget(
             &mut self,
-            composer: &mut StandardComposer<E, T, P>,
+            composer: &mut StandardComposer<E, P>,
         ) -> Result<(), Error> {
             let a = composer.add_input(self.a);
             let b = composer.add_input(self.b);

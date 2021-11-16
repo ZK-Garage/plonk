@@ -10,7 +10,7 @@ use crate::constraint_system::StandardComposer;
 use crate::error::Error;
 use crate::proof_system::{widget, ProverKey};
 use crate::transcript::TranscriptWrapper;
-use ark_ec::{PairingEngine, ProjectiveCurve, TEModelParameters};
+use ark_ec::{PairingEngine, TEModelParameters};
 use ark_ff::PrimeField;
 use ark_poly::polynomial::univariate::DensePolynomial;
 use ark_poly::{EvaluationDomain, Evaluations, GeneralEvaluationDomain};
@@ -40,9 +40,8 @@ pub(crate) struct SelectorPolynomials<F: PrimeField> {
 
 impl<
         E: PairingEngine,
-        T: ProjectiveCurve<BaseField = E::Fr>,
         P: TEModelParameters<BaseField = E::Fr>,
-    > StandardComposer<E, T, P>
+    > StandardComposer<E, P>
 {
     /// Pads the circuit to the next power of two.
     ///
@@ -538,7 +537,6 @@ mod test {
     use ark_bls12_381::Bls12_381;
     use ark_ed_on_bls12_381::{
         EdwardsParameters as JubjubParameters,
-        EdwardsProjective as JubjubProjective,
     };
     #[test]
     /// Tests that the circuit gets padded to the correct length
@@ -546,7 +544,6 @@ mod test {
     fn test_pad() {
         let mut composer: StandardComposer<
             Bls12_381,
-            JubjubProjective,
             JubjubParameters,
         > = StandardComposer::new();
         dummy_gadget(100, &mut composer);

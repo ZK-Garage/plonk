@@ -44,10 +44,10 @@ pub mod prelude;
 pub mod proof_system;
 mod transcript;
 
-use ark_ec::{PairingEngine, ProjectiveCurve, TEModelParameters};
+use ark_ec::{PairingEngine, TEModelParameters};
 // Currently unused
 pub(crate) trait SCParams:
-    TEModelParameters + PairingEngine + ProjectiveCurve
+    TEModelParameters + PairingEngine
 {
 }
 

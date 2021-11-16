@@ -6,14 +6,13 @@
 
 use crate::constraint_system::StandardComposer;
 use crate::constraint_system::Variable;
-use ark_ec::{PairingEngine, ProjectiveCurve, TEModelParameters};
+use ark_ec::{PairingEngine, TEModelParameters};
 use num_traits::{One, Zero};
 
 impl<
         E: PairingEngine,
-        T: ProjectiveCurve<BaseField = E::Fr>,
         P: TEModelParameters<BaseField = E::Fr>,
-    > StandardComposer<E, T, P>
+    > StandardComposer<E, P>
 {
     /// Adds a width-3 add gate to the circuit, linking the addition of the
     /// provided inputs, scaled by the selector coefficients with the output
@@ -316,7 +315,6 @@ mod arithmetic_gates_tests {
     use ark_bls12_381::{Bls12_381, Fr as BlsScalar};
     use ark_ed_on_bls12_381::{
         EdwardsParameters as JubjubParameters,
-        EdwardsProjective as JubjubProjective,
     };
     use num_traits::{One, Zero};
 
@@ -325,7 +323,6 @@ mod arithmetic_gates_tests {
         let res = gadget_tester(
             |composer: &mut StandardComposer<
                 Bls12_381,
-                JubjubProjective,
                 JubjubParameters,
             >| {
                 let var_one = composer.add_input(BlsScalar::one());
@@ -365,7 +362,6 @@ mod arithmetic_gates_tests {
         let res = gadget_tester(
             |composer: &mut StandardComposer<
                 Bls12_381,
-                JubjubProjective,
                 JubjubParameters,
             >| {
                 // Verify that (4+5+5) * (6+7+7) = 280
@@ -420,7 +416,6 @@ mod arithmetic_gates_tests {
         let res = gadget_tester(
             |composer: &mut StandardComposer<
                 Bls12_381,
-                JubjubProjective,
                 JubjubParameters,
             >| {
                 let zero = composer.zero_var();
@@ -444,7 +439,6 @@ mod arithmetic_gates_tests {
         let res = gadget_tester(
             |composer: &mut StandardComposer<
                 Bls12_381,
-                JubjubProjective,
                 JubjubParameters,
             >| {
                 // Verify that (4+5+5) * (6+7+7) + (8*9) = 352
@@ -494,7 +488,6 @@ mod arithmetic_gates_tests {
         let res = gadget_tester(
             |composer: &mut StandardComposer<
                 Bls12_381,
-                JubjubProjective,
                 JubjubParameters,
             >| {
                 // Verify that (5+5) * (6+7) != 117

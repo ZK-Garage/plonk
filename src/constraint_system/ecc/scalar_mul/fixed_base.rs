@@ -33,9 +33,8 @@ where
 
 impl<
         E: PairingEngine,
-        T: ProjectiveCurve<BaseField = E::Fr>,
         P: TEModelParameters<BaseField = E::Fr>,
-    > StandardComposer<E, T, P>
+    > StandardComposer<E, P>
 {
     /// Adds an elliptic curve Scalar multiplication gate to the circuit
     /// description.
@@ -49,7 +48,7 @@ impl<
         &mut self,
         jubjub_scalar: Variable,
         base_point: GroupAffine<P>,
-    ) -> Point<E, T, P> {
+    ) -> Point<E, P> {
         let num_bits =
             <P::BaseField as PrimeField>::Params::MODULUS_BITS as usize;
         // compute 2^iG
@@ -133,7 +132,7 @@ impl<
 
             let xy_beta = x_beta * y_beta;
 
-            let wnaf_round = StandardComposer::<E, T, P>::new_wnaf(
+            let wnaf_round = StandardComposer::<E, P>::new_wnaf(
                 acc_x,
                 acc_y,
                 accumulated_bit,
@@ -170,7 +169,7 @@ impl<
         // input jubjub scalar
         self.assert_equal(last_accumulated_bit, jubjub_scalar);
 
-        Point::<E, T, P>::new(acc_x, acc_y)
+        Point::<E, P>::new(acc_x, acc_y)
     }
 }
 
@@ -183,7 +182,6 @@ mod tests {
     use ark_ec::{group::Group, AffineCurve};
     use ark_ed_on_bls12_381::{
         EdwardsAffine as JubjubAffine, EdwardsParameters as JubjubParameters,
-        EdwardsProjective as JubjubProjective,
     };
     use ark_ff::PrimeField;
     use num_traits::Zero;
@@ -193,7 +191,6 @@ mod tests {
         let res = gadget_tester(
             |composer: &mut StandardComposer<
                 Bls12_381,
-                JubjubProjective,
                 JubjubParameters,
             >| {
                 let bls_scalar = BlsScalar::from_le_bytes_mod_order(&[
@@ -226,7 +223,6 @@ mod tests {
         let res = gadget_tester(
             |composer: &mut StandardComposer<
                 Bls12_381,
-                JubjubProjective,
                 JubjubParameters,
             >| {
                 let bls_scalar = BlsScalar::zero();
@@ -252,7 +248,6 @@ mod tests {
         let res = gadget_tester(
             |composer: &mut StandardComposer<
                 Bls12_381,
-                JubjubProjective,
                 JubjubParameters,
             >| {
                 let bls_scalar = BlsScalar::from(100u64);
@@ -283,7 +278,6 @@ mod tests {
         let res = gadget_tester(
             |composer: &mut StandardComposer<
                 Bls12_381,
-                JubjubProjective,
                 JubjubParameters,
             >| {
                 let (x, y) = JubjubParameters::AFFINE_GENERATOR_COEFFS;
@@ -304,7 +298,6 @@ mod tests {
                 let var_point_a_y = composer.add_input(affine_point_a.y);
                 let point_a = Point::<
                     Bls12_381,
-                    JubjubProjective,
                     JubjubParameters,
                 >::new(
                     var_point_a_x, var_point_a_y
@@ -313,7 +306,6 @@ mod tests {
                 let var_point_b_y = composer.add_input(affine_point_b.y);
                 let point_b = Point::<
                     Bls12_381,
-                    JubjubProjective,
                     JubjubParameters,
                 >::new(
                     var_point_b_x, var_point_b_y
@@ -336,7 +328,6 @@ mod tests {
         let res = gadget_tester(
             |composer: &mut StandardComposer<
                 Bls12_381,
-                JubjubProjective,
                 JubjubParameters,
             >| {
                 let (x, y) = JubjubParameters::AFFINE_GENERATOR_COEFFS;
@@ -394,7 +385,6 @@ mod tests {
         let res = gadget_tester(
             |composer: &mut StandardComposer<
                 Bls12_381,
-                JubjubProjective,
                 JubjubParameters,
             >| {
                 let (x, y) = JubjubParameters::AFFINE_GENERATOR_COEFFS;
