@@ -6,14 +6,13 @@
 
 use crate::constraint_system::StandardComposer;
 use crate::constraint_system::Variable;
-use ark_ec::{PairingEngine, ProjectiveCurve, TEModelParameters};
+use ark_ec::{PairingEngine, TEModelParameters};
 use num_traits::{One, Zero};
 
 impl<
         E: PairingEngine,
-        T: ProjectiveCurve<BaseField = E::Fr>,
         P: TEModelParameters<BaseField = E::Fr>,
-    > StandardComposer<E, T, P>
+    > StandardComposer<E, P>
 {
     /// Adds a boolean constraint (also known as binary constraint) where
     /// the gate eq. will enforce that the [`Variable`] received is either `0`
@@ -58,7 +57,6 @@ mod boolean_gates_tests {
     use ark_bls12_381::{Bls12_381, Fr as BlsScalar};
     use ark_ed_on_bls12_381::{
         EdwardsParameters as JubjubParameters,
-        EdwardsProjective as JubjubProjective,
     };
     use num_traits::One;
     #[test]
@@ -66,7 +64,6 @@ mod boolean_gates_tests {
         let res = gadget_tester(
             |composer: &mut StandardComposer<
                 Bls12_381,
-                JubjubProjective,
                 JubjubParameters,
             >| {
                 let zero = composer.zero_var();
@@ -85,7 +82,6 @@ mod boolean_gates_tests {
         let res = gadget_tester(
             |composer: &mut StandardComposer<
                 Bls12_381,
-                JubjubProjective,
                 JubjubParameters,
             >| {
                 let zero = composer.add_input(BlsScalar::from(5));

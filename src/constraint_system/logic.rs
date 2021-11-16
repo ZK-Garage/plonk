@@ -6,15 +6,14 @@
 
 use crate::constraint_system::StandardComposer;
 use crate::constraint_system::{Variable, WireData};
-use ark_ec::{PairingEngine, ProjectiveCurve, TEModelParameters};
+use ark_ec::{PairingEngine, TEModelParameters};
 use ark_ff::{BigInteger, PrimeField};
 use num_traits::{One, Zero};
 
 impl<
         E: PairingEngine,
-        T: ProjectiveCurve<BaseField = E::Fr>,
         P: TEModelParameters<BaseField = E::Fr>,
-    > StandardComposer<E, T, P>
+    > StandardComposer<E, P>
 {
     /// Performs a logical AND or XOR op between the inputs provided for the
     /// specified number of bits.
@@ -349,7 +348,6 @@ mod logic_gate_tests {
     use ark_bls12_381::{Bls12_381, Fr as BlsScalar};
     use ark_ed_on_bls12_381::{
         EdwardsParameters as JubjubParameters,
-        EdwardsProjective as JubjubProjective,
     };
 
     #[test]
@@ -358,7 +356,6 @@ mod logic_gate_tests {
         let res = gadget_tester(
             |composer: &mut StandardComposer<
                 Bls12_381,
-                JubjubProjective,
                 JubjubParameters,
             >| {
                 let witness_a = composer.add_input(BlsScalar::from(500u64));
@@ -379,7 +376,6 @@ mod logic_gate_tests {
         let res = gadget_tester(
             |composer: &mut StandardComposer<
                 Bls12_381,
-                JubjubProjective,
                 JubjubParameters,
             >| {
                 let witness_a = composer.add_input(BlsScalar::from(469u64));
@@ -401,7 +397,6 @@ mod logic_gate_tests {
         let res = gadget_tester(
             |composer: &mut StandardComposer<
                 Bls12_381,
-                JubjubProjective,
                 JubjubParameters,
             >| {
                 let witness_a = composer.add_input(BlsScalar::from(139u64));
@@ -422,7 +417,6 @@ mod logic_gate_tests {
         let res = gadget_tester(
             |composer: &mut StandardComposer<
                 Bls12_381,
-                JubjubProjective,
                 JubjubParameters,
             >| {
                 let witness_a = composer.add_input(BlsScalar::from(256u64));
@@ -447,7 +441,6 @@ mod logic_gate_tests {
         let _ = gadget_tester(
             |composer: &mut StandardComposer<
                 Bls12_381,
-                JubjubProjective,
                 JubjubParameters,
             >| {
                 let witness_a = composer.add_input(BlsScalar::from(500u64));

@@ -9,20 +9,19 @@ use crate::error::Error;
 use crate::proof_system::widget::VerifierKey as PlonkVerifierKey;
 use crate::proof_system::Proof;
 use crate::transcript::TranscriptWrapper;
-use ark_ec::{PairingEngine, ProjectiveCurve, TEModelParameters};
+use ark_ec::{PairingEngine, TEModelParameters};
 use ark_poly_commit::kzg10::{Powers, VerifierKey};
 
 /// Abstraction structure designed verify [`Proof`]s.
 #[allow(missing_debug_implementations)]
 pub struct Verifier<
     E: PairingEngine,
-    T: ProjectiveCurve<BaseField = E::Fr>,
     P: TEModelParameters<BaseField = E::Fr>,
 > {
     /// VerificationKey which is used to verify a specific PLONK circuit
     pub verifier_key: Option<PlonkVerifierKey<E, P>>,
 
-    pub(crate) cs: StandardComposer<E, T, P>,
+    pub(crate) cs: StandardComposer<E, P>,
     /// Store the messages exchanged during the preprocessing stage
     /// This is copied each time, we make a proof, so that we can use the same
     /// verifier to Verify multiple proofs from the same circuit. If this
@@ -33,23 +32,21 @@ pub struct Verifier<
 
 impl<
         E: PairingEngine,
-        T: ProjectiveCurve<BaseField = E::Fr>,
         P: TEModelParameters<BaseField = E::Fr>,
-    > Default for Verifier<E, T, P>
+    > Default for Verifier<E, P>
 {
-    fn default() -> Verifier<E, T, P> {
+    fn default() -> Verifier<E, P> {
         Verifier::new(b"plonk")
     }
 }
 
 impl<
         E: PairingEngine,
-        T: ProjectiveCurve<BaseField = E::Fr>,
         P: TEModelParameters<BaseField = E::Fr>,
-    > Verifier<E, T, P>
+    > Verifier<E, P>
 {
     /// Creates a new `Verifier` instance.
-    pub fn new(label: &'static [u8]) -> Verifier<E, T, P> {
+    pub fn new(label: &'static [u8]) -> Verifier<E, P> {
         Verifier {
             verifier_key: None,
             cs: StandardComposer::new(),
@@ -61,7 +58,7 @@ impl<
     pub fn with_expected_size(
         label: &'static [u8],
         size: usize,
-    ) -> Verifier<E, T, P> {
+    ) -> Verifier<E, P> {
         Verifier {
             verifier_key: None,
             cs: StandardComposer::with_expected_size(size),
@@ -75,7 +72,7 @@ impl<
     }
 
     /// Returns a mutable copy of the underlying composer.
-    pub fn mut_cs(&mut self) -> &mut StandardComposer<E, T, P> {
+    pub fn mut_cs(&mut self) -> &mut StandardComposer<E, P> {
         &mut self.cs
     }
 

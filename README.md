@@ -13,7 +13,7 @@ use core::marker::PhantomData;
 
 use ark_bls12_381::{Bls12_381, Fr as BlsScalar};
 use ark_ec::twisted_edwards_extended::GroupAffine;
-use ark_ec::{AffineCurve, PairingEngine, ProjectiveCurve, TEModelParameters};
+use ark_ec::{AffineCurve, PairingEngine, , TEModelParameters};
 use ark_ed_on_bls12_381::{
     EdwardsAffine as JubjubAffine, EdwardsParameters as JubjubParameters,
     EdwardsProjective as JubjubProjective, Fr as JubjubScalar,

@@ -18,11 +18,10 @@ use rand_core::OsRng;
 /// Adds dummy constraints using arithmetic gates
 pub(crate) fn dummy_gadget<
     E: PairingEngine,
-    T: ProjectiveCurve<BaseField = E::Fr>,
     P: TEModelParameters<BaseField = E::Fr>,
 >(
     n: usize,
-    composer: &mut StandardComposer<E, T, P>,
+    composer: &mut StandardComposer<E, P>,
 ) {
     let one = E::Fr::one();
 
@@ -43,10 +42,9 @@ pub(crate) fn dummy_gadget<
 /// tests whether it passes an end-to-end test
 pub(crate) fn gadget_tester<
     E: PairingEngine,
-    T: ProjectiveCurve<BaseField = E::Fr>,
     P: TEModelParameters<BaseField = E::Fr>,
 >(
-    gadget: fn(composer: &mut StandardComposer<E, T, P>),
+    gadget: fn(composer: &mut StandardComposer<E, P>),
     n: usize,
 ) -> Result<(), Error> {
     // Common View

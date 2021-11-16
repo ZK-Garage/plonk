@@ -6,15 +6,14 @@
 
 use crate::constraint_system::StandardComposer;
 use crate::constraint_system::{Variable, WireData};
-use ark_ec::{PairingEngine, ProjectiveCurve, TEModelParameters};
+use ark_ec::{PairingEngine, TEModelParameters};
 use ark_ff::{BigInteger, PrimeField};
 use num_traits::{One, Zero};
 
 impl<
         E: PairingEngine,
-        T: ProjectiveCurve<BaseField = E::Fr>,
         P: TEModelParameters<BaseField = E::Fr>,
-    > StandardComposer<E, T, P>
+    > StandardComposer<E, P>
 {
     /// Adds a range-constraint gate that checks and constrains a
     /// [`Variable`] to be inside of the range \[0,num_bits\].
@@ -28,7 +27,7 @@ impl<
     pub fn range_gate(&mut self, witness: Variable, num_bits: usize) {
         // Adds `variable` into the appropriate witness position
         // based on the accumulator number a_i
-        let add_wire = |composer: &mut StandardComposer<E, T, P>,
+        let add_wire = |composer: &mut StandardComposer<E, P>,
                         i: usize,
                         variable: Variable| {
             // Since four quads can fit into one gate, the gate index does
@@ -203,7 +202,6 @@ mod range_gate_tests {
     use ark_bls12_381::{Bls12_381, Fr as BlsScalar};
     use ark_ed_on_bls12_381::{
         EdwardsParameters as JubjubParameters,
-        EdwardsProjective as JubjubProjective,
     };
 
     #[test]
@@ -212,7 +210,6 @@ mod range_gate_tests {
         let res = gadget_tester(
             |composer: &mut StandardComposer<
                 Bls12_381,
-                JubjubProjective,
                 JubjubParameters,
             >| {
                 let witness = composer
@@ -227,7 +224,6 @@ mod range_gate_tests {
         let res = gadget_tester(
             |composer: &mut StandardComposer<
                 Bls12_381,
-                JubjubProjective,
                 JubjubParameters,
             >| {
                 let witness =
@@ -242,7 +238,6 @@ mod range_gate_tests {
         let res = gadget_tester(
             |composer: &mut StandardComposer<
                 Bls12_381,
-                JubjubProjective,
                 JubjubParameters,
             >| {
                 let witness =
@@ -261,7 +256,6 @@ mod range_gate_tests {
         let _ok = gadget_tester(
             |composer: &mut StandardComposer<
                 Bls12_381,
-                JubjubProjective,
                 JubjubParameters,
             >| {
                 let witness = composer

@@ -8,14 +8,13 @@ use crate::constraint_system::ecc::Point;
 use crate::constraint_system::StandardComposer;
 use ark_ec::models::twisted_edwards_extended::GroupAffine;
 use ark_ec::models::TEModelParameters;
-use ark_ec::{PairingEngine, ProjectiveCurve};
+use ark_ec::{PairingEngine};
 use num_traits::{One, Zero};
 
 impl<
         E: PairingEngine,
-        T: ProjectiveCurve<BaseField = E::Fr>,
         P: TEModelParameters<BaseField = E::Fr>,
-    > StandardComposer<E, T, P>
+    > StandardComposer<E, P>
 {
     /// Adds two curve points together using a curve addition gate
     /// Note that since the points are not fixed the generator is not a part of
@@ -23,9 +22,9 @@ impl<
     /// width of 4.
     pub fn point_addition_gate(
         &mut self,
-        point_a: Point<E, T, P>,
-        point_b: Point<E, T, P>,
-    ) -> Point<E, T, P> {
+        point_a: Point<E, P>,
+        point_b: Point<E, P>,
+    ) -> Point<E, P> {
         // In order to verify that two points were correctly added
         // without going over a degree 4 polynomial, we will need
         // x_1, y_1, x_2, y_2
@@ -88,7 +87,7 @@ impl<
         );
         self.n += 1;
 
-        Point::<E, T, P>::new(x_3, y_3)
+        Point::<E, P>::new(x_3, y_3)
     }
 }
 
@@ -99,7 +98,6 @@ mod variable_base_gate_tests {
     use ark_bls12_381::{Bls12_381, Fr as BlsScalar};
     use ark_ed_on_bls12_381::{
         EdwardsAffine as JubjubAffine, EdwardsParameters as JubjubParameters,
-        EdwardsProjective as JubjubProjective,
     };
     use ark_ff::Field;
     use num_traits::{One, Zero};
@@ -109,12 +107,11 @@ mod variable_base_gate_tests {
     pub fn classical_point_addition(
         composer: &mut StandardComposer<
             Bls12_381,
-            JubjubProjective,
             JubjubParameters,
         >,
-        point_a: Point<Bls12_381, JubjubProjective, JubjubParameters>,
-        point_b: Point<Bls12_381, JubjubProjective, JubjubParameters>,
-    ) -> Point<Bls12_381, JubjubProjective, JubjubParameters> {
+        point_a: Point<Bls12_381, JubjubParameters>,
+        point_b: Point<Bls12_381, JubjubParameters>,
+    ) -> Point<Bls12_381, JubjubParameters> {
         let x1 = point_a.x;
         let y1 = point_a.y;
 

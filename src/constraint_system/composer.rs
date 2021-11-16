@@ -22,7 +22,6 @@ use crate::constraint_system::Variable;
 use crate::permutation::Permutation;
 use ark_ec::models::TEModelParameters;
 use ark_ec::PairingEngine;
-use ark_ec::ProjectiveCurve;
 use core::marker::PhantomData;
 use hashbrown::HashMap;
 use num_traits::{One, Zero};
@@ -57,7 +56,6 @@ use std::collections::BTreeMap;
 #[derive(Debug)]
 pub struct StandardComposer<
     E: PairingEngine,
-    T: ProjectiveCurve<BaseField = E::Fr>,
     P: TEModelParameters<BaseField = E::Fr>,
 > {
     /// Number of arithmetic gates in the circuit
@@ -115,14 +113,12 @@ pub struct StandardComposer<
 
     // Markers
     _marker: PhantomData<P>,
-    _marker2: PhantomData<T>,
 }
 
 impl<
         E: PairingEngine,
-        T: ProjectiveCurve<BaseField = E::Fr>,
         P: TEModelParameters<BaseField = E::Fr>,
-    > StandardComposer<E, T, P>
+    > StandardComposer<E, P>
 {
     /// Returns the number of gates in the circuit
     pub fn circuit_size(&self) -> usize {
@@ -155,9 +151,8 @@ impl<
 
 impl<
         E: PairingEngine,
-        T: ProjectiveCurve<BaseField = E::Fr>,
         P: TEModelParameters<BaseField = E::Fr>,
-    > Default for StandardComposer<E, T, P>
+    > Default for StandardComposer<E, P>
 {
     fn default() -> Self {
         Self::new()
@@ -166,9 +161,8 @@ impl<
 
 impl<
         E: PairingEngine,
-        T: ProjectiveCurve<BaseField = E::Fr>,
         P: TEModelParameters<BaseField = E::Fr>,
-    > StandardComposer<E, T, P>
+    > StandardComposer<E, P>
 {
     /// Generates a new empty `StandardComposer` with all of it's fields
     /// set to hold an initial capacity of 0.
@@ -178,7 +172,7 @@ impl<
     /// The usage of this may cause lots of re-allocations since the `Composer`
     /// holds `Vec` for every polynomial, and these will need to be re-allocated
     /// each time the circuit grows considerably.
-    pub fn new() -> StandardComposer<E, T, P> {
+    pub fn new() -> StandardComposer<E, P> {
         StandardComposer::with_expected_size(0)
     }
 
@@ -226,7 +220,6 @@ impl<
             perm: Permutation::new(),
 
             _marker: PhantomData,
-            _marker2: PhantomData,
         };
 
         // Reserve the first variable to be zero
@@ -654,9 +647,8 @@ mod general_composer_tests {
     use ark_bls12_381::{Bls12_381, Fr as BlsScalar};
     use ark_ed_on_bls12_381::{
         EdwardsParameters as JubjubParameters,
-        EdwardsProjective as JubjubProjective,
     };
-    use ark_ed_on_bls12_381::{EdwardsParameters, EdwardsProjective};
+    use ark_ed_on_bls12_381::{EdwardsParameters,};
     use ark_poly::univariate::DensePolynomial;
     use ark_poly_commit::kzg10;
     use ark_poly_commit::kzg10::Powers;
@@ -672,7 +664,6 @@ mod general_composer_tests {
     fn test_initial_circuit_size() {
         let composer: StandardComposer<
             Bls12_381,
-            EdwardsProjective,
             EdwardsParameters,
         > = StandardComposer::new();
         // Circuit size is n+3 because
@@ -693,7 +684,6 @@ mod general_composer_tests {
         let res = gadget_tester(
             |composer: &mut StandardComposer<
                 Bls12_381,
-                JubjubProjective,
                 JubjubParameters,
             >| {
                 // do nothing except add the dummy constraints
@@ -708,7 +698,6 @@ mod general_composer_tests {
         let res = gadget_tester(
             |composer: &mut StandardComposer<
                 Bls12_381,
-                JubjubProjective,
                 JubjubParameters,
             >| {
                 let bit_1 = composer.add_input(BlsScalar::one());
@@ -742,7 +731,7 @@ mod general_composer_tests {
         .unwrap();
 
         // Create a prover struct
-        let mut prover: Prover<Bls12_381, JubjubProjective, JubjubParameters> =
+        let mut prover: Prover<Bls12_381, JubjubParameters> =
             Prover::new(b"demo");
 
         // Add gadgets
@@ -781,7 +770,6 @@ mod general_composer_tests {
         //
         let mut verifier: Verifier<
             Bls12_381,
-            JubjubProjective,
             JubjubParameters,
         > = Verifier::new(b"demo");
 
