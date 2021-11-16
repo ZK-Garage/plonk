@@ -520,44 +520,49 @@ fn compute_barycentric_eval<F: PrimeField>(
 
 #[cfg(test)]
 mod proof_tests {
+    use crate::batch_test;
+
     use super::*;
-    use ark_bls12_381::{Bls12_381, Fr as BlsScalar};
-    use ark_ed_on_bls12_381::EdwardsParameters;
+    use ark_bls12_377::Bls12_377;
+    use ark_bls12_381::Bls12_381;
     use ark_ff::UniformRand;
     use ark_poly_commit::kzg10::Commitment;
     use rand_core::OsRng;
 
-    #[test]
-    fn test_dusk_bytes_serde_proof() {
-        let proof = Proof::<Bls12_381, EdwardsParameters> {
-            a_comm: Commitment::<Bls12_381>::default(),
-            b_comm: Commitment::<Bls12_381>::default(),
-            c_comm: Commitment::<Bls12_381>::default(),
-            d_comm: Commitment::<Bls12_381>::default(),
-            z_comm: Commitment::<Bls12_381>::default(),
-            t_1_comm: Commitment::<Bls12_381>::default(),
-            t_2_comm: Commitment::<Bls12_381>::default(),
-            t_3_comm: Commitment::<Bls12_381>::default(),
-            t_4_comm: Commitment::<Bls12_381>::default(),
-            w_z_comm: Commitment::<Bls12_381>::default(),
-            w_zw_comm: Commitment::<Bls12_381>::default(),
+    fn test_serde_proof<
+        E: PairingEngine,
+        T: ProjectiveCurve<BaseField = E::Fr>,
+        P: TEModelParameters<BaseField = E::Fr> + PartialEq,
+    >() {
+        let proof = Proof::<E, P> {
+            a_comm: Commitment::<E>::default(),
+            b_comm: Commitment::<E>::default(),
+            c_comm: Commitment::<E>::default(),
+            d_comm: Commitment::<E>::default(),
+            z_comm: Commitment::<E>::default(),
+            t_1_comm: Commitment::<E>::default(),
+            t_2_comm: Commitment::<E>::default(),
+            t_3_comm: Commitment::<E>::default(),
+            t_4_comm: Commitment::<E>::default(),
+            w_z_comm: Commitment::<E>::default(),
+            w_zw_comm: Commitment::<E>::default(),
             evaluations: ProofEvaluations {
-                a_eval: BlsScalar::rand(&mut OsRng),
-                b_eval: BlsScalar::rand(&mut OsRng),
-                c_eval: BlsScalar::rand(&mut OsRng),
-                d_eval: BlsScalar::rand(&mut OsRng),
-                a_next_eval: BlsScalar::rand(&mut OsRng),
-                b_next_eval: BlsScalar::rand(&mut OsRng),
-                d_next_eval: BlsScalar::rand(&mut OsRng),
-                q_arith_eval: BlsScalar::rand(&mut OsRng),
-                q_c_eval: BlsScalar::rand(&mut OsRng),
-                q_l_eval: BlsScalar::rand(&mut OsRng),
-                q_r_eval: BlsScalar::rand(&mut OsRng),
-                left_sigma_eval: BlsScalar::rand(&mut OsRng),
-                right_sigma_eval: BlsScalar::rand(&mut OsRng),
-                out_sigma_eval: BlsScalar::rand(&mut OsRng),
-                lin_poly_eval: BlsScalar::rand(&mut OsRng),
-                perm_eval: BlsScalar::rand(&mut OsRng),
+                a_eval: E::Fr::rand(&mut OsRng),
+                b_eval: E::Fr::rand(&mut OsRng),
+                c_eval: E::Fr::rand(&mut OsRng),
+                d_eval: E::Fr::rand(&mut OsRng),
+                a_next_eval: E::Fr::rand(&mut OsRng),
+                b_next_eval: E::Fr::rand(&mut OsRng),
+                d_next_eval: E::Fr::rand(&mut OsRng),
+                q_arith_eval: E::Fr::rand(&mut OsRng),
+                q_c_eval: E::Fr::rand(&mut OsRng),
+                q_l_eval: E::Fr::rand(&mut OsRng),
+                q_r_eval: E::Fr::rand(&mut OsRng),
+                left_sigma_eval: E::Fr::rand(&mut OsRng),
+                right_sigma_eval: E::Fr::rand(&mut OsRng),
+                out_sigma_eval: E::Fr::rand(&mut OsRng),
+                lin_poly_eval: E::Fr::rand(&mut OsRng),
+                perm_eval: E::Fr::rand(&mut OsRng),
             },
             _marker: PhantomData,
         };
@@ -565,9 +570,33 @@ mod proof_tests {
         let mut proof_bytes = vec![];
         proof.serialize(&mut proof_bytes).unwrap();
 
-        let obtained_proof: Proof<Bls12_381, EdwardsParameters> =
+        let obtained_proof: Proof<E, P> =
             Proof::deserialize(proof_bytes.as_slice()).unwrap();
 
         assert!(proof == obtained_proof);
     }
+
+    // Bls12-381 tests
+    batch_test!(
+        [
+        test_serde_proof
+        ],
+        [] => (
+        Bls12_381,
+        ark_ed_on_bls12_381::EdwardsProjective,
+        ark_ed_on_bls12_381::EdwardsParameters
+        )
+    );
+
+    // Bls12-377 tests
+    batch_test!(
+        [
+        test_serde_proof
+        ],
+        [] => (
+        Bls12_377,
+        ark_ed_on_bls12_377::EdwardsProjective,
+        ark_ed_on_bls12_377::EdwardsParameters
+        )
+    );
 }
