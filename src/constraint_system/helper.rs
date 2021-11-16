@@ -7,7 +7,7 @@
 use super::StandardComposer;
 use crate::error::Error;
 use crate::proof_system::{Prover, Verifier};
-use ark_ec::{PairingEngine, ProjectiveCurve, TEModelParameters};
+use ark_ec::{PairingEngine, TEModelParameters};
 use ark_poly::univariate::DensePolynomial;
 use ark_poly_commit::kzg10::{self, Powers, KZG10};
 use ark_poly_commit::sonic_pc::SonicKZG10;
