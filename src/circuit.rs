@@ -40,8 +40,6 @@ trait GeIntoPubInput<F> {
     fn ge_into(self) -> F;
 }
 
-struct Values<F: PrimeField>(pub(crate) Vec<F>);
-
 #[derive(Default, Debug, Clone, CanonicalDeserialize, CanonicalSerialize)]
 /// Structure that represents a PLONK Circuit Public Input converted into its
 /// scalar representation.
@@ -49,17 +47,6 @@ pub struct PublicInputValue<F: PrimeField, P: TEModelParameters<BaseField = F>>
 {
     pub(crate) values: Vec<F>,
     _marker: PhantomData<P>,
-}
-
-impl<F: PrimeField, P: TEModelParameters<BaseField = F>> From<Values<F>>
-    for PublicInputValue<F, P>
-{
-    fn from(values: Values<F>) -> Self {
-        Self {
-            values: values.0,
-            _marker: PhantomData,
-        }
-    }
 }
 
 impl<F: PrimeField, P: TEModelParameters<BaseField = F>> FeIntoPubInput<PublicInputValue<F, P>> for F {
@@ -89,14 +76,6 @@ impl<F: PrimeField, P: TEModelParameters<BaseField = F>> GeIntoPubInput<PublicIn
         }
     }
 }
-
-impl<F: PrimeField, P: TEModelParameters<BaseField = F>> GeIntoPubInput<Values<F>> for GroupProjective<P>
-{
-    fn ge_into(self) -> Values<F> {
-        Values(vec![self.x, self.y])
-    }
-}
-
 
 #[derive(Debug, Clone, PartialEq, Eq, CanonicalDeserialize, CanonicalSerialize)]
 /// Collection of structs/objects that the Verifier will use in order to
