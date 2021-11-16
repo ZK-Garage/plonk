@@ -30,14 +30,15 @@ use ark_serialize::*;
 // not possible is because both the trait `PrimeField` and the struct `GroupAffine` are external
 // to the crate, and therefore the compiler cannot be sure that `PrimeField` will never be
 // implemented for `GroupAffine`. In which case, the two implementations of `From` would be
-// inconsistent. To this end, we create to helper traits, `FeIntoValues` and `GeIntoValues`,
-// that stand for "Field Element Into Values" and "Group Element Into Values" respectively.
-trait FeIntoPubInput<F> {
-    fn fe_into(self) -> F;
+// inconsistent. To this end, we create to helper traits, `FeIntoPubInput` and `GeIntoPubInput`,
+// that stand for "Field Element Into Public Input" and "Group Element Into Public Input"
+// respectively.
+trait FeIntoPubInput<T> {
+    fn into_pi(self) -> T;
 }
 
-trait GeIntoPubInput<F> {
-    fn ge_into(self) -> F;
+trait GeIntoPubInput<T> {
+    fn into_pi(self) -> T;
 }
 
 #[derive(Default, Debug, Clone, CanonicalDeserialize, CanonicalSerialize)]
@@ -50,7 +51,7 @@ pub struct PublicInputValue<F: PrimeField, P: TEModelParameters<BaseField = F>>
 }
 
 impl<F: PrimeField, P: TEModelParameters<BaseField = F>> FeIntoPubInput<PublicInputValue<F, P>> for F {
-    fn fe_into(self) -> PublicInputValue<F, P> {
+    fn into_pi(self) -> PublicInputValue<F, P> {
         PublicInputValue {
             values: vec![self],
             _marker: PhantomData,
@@ -59,7 +60,7 @@ impl<F: PrimeField, P: TEModelParameters<BaseField = F>> FeIntoPubInput<PublicIn
 }
 
 impl<F: PrimeField, P: TEModelParameters<BaseField = F>> GeIntoPubInput<PublicInputValue<F, P>> for GroupAffine<P> {
-    fn ge_into(self) -> PublicInputValue<F, P> {
+    fn into_pi(self) -> PublicInputValue<F, P> {
         PublicInputValue{
             values: vec![self.x, self.y],
             _marker: PhantomData
@@ -68,7 +69,7 @@ impl<F: PrimeField, P: TEModelParameters<BaseField = F>> GeIntoPubInput<PublicIn
 }
 
 impl<F: PrimeField, P: TEModelParameters<BaseField = F>> GeIntoPubInput<PublicInputValue<F, P>> for GroupProjective<P> {
-    fn ge_into(self) -> PublicInputValue<F, P> {
+    fn into_pi(self) -> PublicInputValue<F, P> {
         let point: GroupAffine<P> = self.into_affine();
         PublicInputValue{
             values: vec![point.x, point.y],
@@ -410,7 +411,7 @@ mod tests {
     // 3) b <= 2^5
     // 4) a * b = d where D is a PI
     // 5) JubJub::GENERATOR * e(JubJubScalar) = f where F is a PI
-    #[derive(Debug, Default)]
+    #[derive(Debug)]
     pub struct TestCircuit<
         E: PairingEngine,
         T: ProjectiveCurve<BaseField = E::Fr>,
@@ -424,7 +425,23 @@ mod tests {
         f: GroupAffine<P>,
         _marker: PhantomData<T>,
     }
-
+    impl<
+        E: PairingEngine,
+        T: ProjectiveCurve<BaseField = E::Fr>,
+        P: TEModelParameters<BaseField = E::Fr>,
+    > Default for TestCircuit<E, T, P> {
+        fn default() -> Self {
+            Self {
+                a: E::Fr::zero(),
+                b: E::Fr::zero(),
+                c: E::Fr::zero(),
+                d: E::Fr::zero(),
+                e: P::ScalarField::zero(),
+                f: GroupAffine::<P>::zero(),
+                _marker: Default::default()
+            }
+        }
+    }
     impl<
             E: PairingEngine,
             T: ProjectiveCurve<BaseField = E::Fr>,
@@ -468,13 +485,20 @@ mod tests {
 
     // TODO: Complete serialization first
     #[test]
-    fn test_full() {
+    fn test_full() -> Result<(), Error> {
         use rand_core::OsRng;
 
         // Generate CRS
         let pp = KZG10::<Bls12_381,DensePolynomial<BlsScalar>,>::setup(
             1 << 12, false, &mut OsRng
-        ).unwrap();
+        )?;
+
+        let mut circuit = TestCircuit::<Bls12_381,
+            EdwardsProjective,
+            EdwardsParameters>::default();
+
+        // Compile the circuit
+        let (pk_p, verifier_data) = circuit.compile(&pp)?;
 
         let (x, y) = EdwardsParameters::AFFINE_GENERATOR_COEFFS;
         let generator = EdwardsAffine::new(x, y);
@@ -484,7 +508,7 @@ mod tests {
         ).into_affine();
 
         // Prover POV
-        let (proof, verifier_data) = {
+        let proof = {
 
             let mut circuit: TestCircuit<
                 Bls12_381,
@@ -500,11 +524,7 @@ mod tests {
                 _marker: PhantomData,
             };
 
-            // Compile the circuit
-            // todo: maybe this can be done out of the prover scope? How should we initialise the circuit then?
-            let (pk_p, og_verifier_data) = circuit.compile(&pp).unwrap();
-
-            (circuit.gen_proof(&pp, pk_p, b"Test").unwrap(), og_verifier_data)
+            circuit.gen_proof(&pp, pk_p, b"Test")?
         };
 
         // Test serialisation for verifier_data
@@ -517,9 +537,9 @@ mod tests {
 
         // Verifier POV
         let public_inputs: Vec<PublicInputValue<BlsScalar, EdwardsParameters>> = vec![
-            BlsScalar::from(25u64).fe_into(),
-            BlsScalar::from(100u64).fe_into(),
-            point_f_pi.ge_into(),
+            BlsScalar::from(25u64).into_pi(),
+            BlsScalar::from(100u64).into_pi(),
+            point_f_pi.into_pi(),
         ];
 
         // todo: non-ideal hack for a first functional version.
@@ -532,5 +552,7 @@ mod tests {
             &pi_pos,
             b"Test",
         ).is_ok());
+
+        Ok(())
     }
 }
