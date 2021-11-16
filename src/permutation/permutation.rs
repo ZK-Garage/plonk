@@ -753,11 +753,10 @@ impl<F: PrimeField> Permutation<F> {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::batch_test;
     use crate::{constraint_system::StandardComposer, util};
-    use ark_bls12_381::{Bls12_381, Fr as BlsScalar};
-    use ark_ed_on_bls12_381::{
-        EdwardsParameters as JubjubParameters,
-    };
+    use ark_bls12_377::Bls12_377;
+    use ark_bls12_381::Bls12_381;
     use ark_ff::fields::FftParameters;
     use ark_ff::Field;
     use ark_ff::UniformRand;
@@ -765,42 +764,25 @@ mod test {
     use ark_poly::Polynomial;
     use num_traits::{One, Zero};
     // use rand::{rngs::StdRng, SeedableRng};
+    use ark_ec::{PairingEngine, ProjectiveCurve, TEModelParameters};
     use rand_core::OsRng;
 
-    #[test]
-    fn test_multizip_permutation_poly() {
-        let mut cs: StandardComposer<
-            Bls12_381,
-            JubjubParameters,
-        > = StandardComposer::with_expected_size(4);
-        let x1 = cs.add_input(BlsScalar::new(
-            <ark_bls12_381::FrParameters as FftParameters>::BigInt::new([
-                4, 0, 0, 0,
-            ]),
-        ));
-        let x2 = cs.add_input(BlsScalar::new(
-            <ark_bls12_381::FrParameters as FftParameters>::BigInt::new([
-                12, 0, 0, 0,
-            ]),
-        ));
-        let x3 = cs.add_input(BlsScalar::new(
-            <ark_bls12_381::FrParameters as FftParameters>::BigInt::new([
-                8, 0, 0, 0,
-            ]),
-        ));
-        let x4 = cs.add_input(BlsScalar::new(
-            <ark_bls12_381::FrParameters as FftParameters>::BigInt::new([
-                3, 0, 0, 0,
-            ]),
-        ));
+    fn test_multizip_permutation_poly<
+        E: PairingEngine,
+        T: ProjectiveCurve<BaseField = E::Fr>,
+        P: TEModelParameters<BaseField = E::Fr>,
+    >() {
+        let mut cs: StandardComposer<E, T, P> =
+            StandardComposer::with_expected_size(4);
 
-        let zero = BlsScalar::zero();
-        let one = BlsScalar::one();
-        let two = BlsScalar::new(
-            <ark_bls12_381::FrParameters as FftParameters>::BigInt::new([
-                2, 0, 0, 0,
-            ]),
-        );
+        let zero = E::Fr::zero();
+        let one = E::Fr::one();
+        let two = one + one;
+
+        let x1 = cs.add_input(E::Fr::from(4u64));
+        let x2 = cs.add_input(E::Fr::from(12u64));
+        let x3 = cs.add_input(E::Fr::from(8u64));
+        let x4 = cs.add_input(E::Fr::from(3u64));
 
         // x1 * x4 = x2
         cs.poly_gate(x1, x4, x2, one, zero, zero, -one, zero, None);
@@ -815,16 +797,15 @@ mod test {
         cs.poly_gate(x3, x4, x2, one, zero, zero, -two, zero, None);
 
         let domain =
-            GeneralEvaluationDomain::<BlsScalar>::new(cs.circuit_size())
-                .unwrap();
-        let pad = vec![BlsScalar::zero(); domain.size() - cs.w_l.len()];
-        let mut w_l_scalar: Vec<BlsScalar> =
+            GeneralEvaluationDomain::<E::Fr>::new(cs.circuit_size()).unwrap();
+        let pad = vec![E::Fr::zero(); domain.size() - cs.w_l.len()];
+        let mut w_l_scalar: Vec<E::Fr> =
             cs.w_l.iter().map(|v| cs.variables[v]).collect();
-        let mut w_r_scalar: Vec<BlsScalar> =
+        let mut w_r_scalar: Vec<E::Fr> =
             cs.w_r.iter().map(|v| cs.variables[v]).collect();
-        let mut w_o_scalar: Vec<BlsScalar> =
+        let mut w_o_scalar: Vec<E::Fr> =
             cs.w_o.iter().map(|v| cs.variables[v]).collect();
-        let mut w_4_scalar: Vec<BlsScalar> =
+        let mut w_4_scalar: Vec<E::Fr> =
             cs.w_4.iter().map(|v| cs.variables[v]).collect();
 
         w_l_scalar.extend(&pad);
@@ -832,17 +813,17 @@ mod test {
         w_o_scalar.extend(&pad);
         w_4_scalar.extend(&pad);
 
-        let sigmas: Vec<Vec<BlsScalar>> = cs
+        let sigmas: Vec<Vec<E::Fr>> = cs
             .perm
             .compute_sigma_permutations(7)
             .iter()
             .map(|wd| cs.perm.compute_permutation_lagrange(wd, &domain))
             .collect();
 
-        let beta = BlsScalar::rand(&mut OsRng);
-        let gamma = BlsScalar::rand(&mut OsRng);
+        let beta = E::Fr::rand(&mut OsRng);
+        let gamma = E::Fr::rand(&mut OsRng);
 
-        let sigma_polys: Vec<DensePolynomial<BlsScalar>> = sigmas
+        let sigma_polys: Vec<DensePolynomial<E::Fr>> = sigmas
             .iter()
             .map(|v| DensePolynomial::from_coefficients_vec(domain.ifft(&v)))
             .collect();
@@ -881,9 +862,12 @@ mod test {
         assert!(mz == old_z);
     }
 
-    #[test]
-    fn test_permutation_format() {
-        let mut perm: Permutation<BlsScalar> = Permutation::new();
+    fn test_permutation_format<
+        E: PairingEngine,
+        T: ProjectiveCurve<BaseField = E::Fr>,
+        P: TEModelParameters<BaseField = E::Fr>,
+    >() {
+        let mut perm: Permutation<E::Fr> = Permutation::new();
 
         let num_variables = 10u8;
         for i in 0..num_variables {
@@ -914,9 +898,12 @@ mod test {
         }
     }
 
-    #[test]
-    fn test_permutation_compute_sigmas_only_left_wires() {
-        let mut perm = Permutation::<BlsScalar>::new();
+    fn test_permutation_compute_sigmas_only_left_wires<
+        E: PairingEngine,
+        T: ProjectiveCurve<BaseField = E::Fr>,
+        P: TEModelParameters<BaseField = E::Fr>,
+    >() {
+        let mut perm = Permutation::<E::Fr>::new();
 
         let var_zero = perm.new_variable();
         let var_two = perm.new_variable();
@@ -982,8 +969,7 @@ mod test {
         assert_eq!(fourth_sigma[3], WireData::Fourth(0));
 
         let domain =
-            GeneralEvaluationDomain::<BlsScalar>::new(num_wire_mappings)
-                .unwrap();
+            GeneralEvaluationDomain::<E::Fr>::new(num_wire_mappings).unwrap();
         let w = util::get_domain_attrs(&domain, "group_gen");
         let w_squared = w.pow(&[2, 0, 0, 0]);
         let w_cubed = w.pow(&[3, 0, 0, 0]);
@@ -993,10 +979,10 @@ mod test {
         // Should turn into {1 * K1, w^2, w^3, 1}
         let encoded_left_sigma =
             perm.compute_permutation_lagrange(left_sigma, &domain);
-        assert_eq!(encoded_left_sigma[0], BlsScalar::one() * &K1());
+        assert_eq!(encoded_left_sigma[0], E::Fr::one() * &K1());
         assert_eq!(encoded_left_sigma[1], w_squared);
         assert_eq!(encoded_left_sigma[2], w_cubed);
-        assert_eq!(encoded_left_sigma[3], BlsScalar::one());
+        assert_eq!(encoded_left_sigma[3], E::Fr::one());
 
         // Check the right sigmas have been encoded properly
         // Right_sigma = {L1, R1, R2, R3}
@@ -1014,7 +1000,7 @@ mod test {
 
         let encoded_output_sigma =
             perm.compute_permutation_lagrange(out_sigma, &domain);
-        assert_eq!(encoded_output_sigma[0], BlsScalar::one() * &K2());
+        assert_eq!(encoded_output_sigma[0], E::Fr::one() * &K2());
         assert_eq!(encoded_output_sigma[1], w * &K2());
         assert_eq!(encoded_output_sigma[2], w_squared * &K2());
         assert_eq!(encoded_output_sigma[3], w_cubed * &K2());
@@ -1030,29 +1016,15 @@ mod test {
         assert_eq!(encoded_fourth_sigma[3], K3());
 
         let w_l = vec![
-            BlsScalar::from(2),
-            BlsScalar::from(2),
-            BlsScalar::from(2),
-            BlsScalar::from(2),
+            E::Fr::from(2u64),
+            E::Fr::from(2u64),
+            E::Fr::from(2u64),
+            E::Fr::from(2u64),
         ];
-        let w_r = vec![
-            BlsScalar::from(2),
-            BlsScalar::one(),
-            BlsScalar::one(),
-            BlsScalar::one(),
-        ];
-        let w_o = vec![
-            BlsScalar::one(),
-            BlsScalar::one(),
-            BlsScalar::one(),
-            BlsScalar::one(),
-        ];
-        let w_4 = vec![
-            BlsScalar::one(),
-            BlsScalar::one(),
-            BlsScalar::one(),
-            BlsScalar::one(),
-        ];
+        let w_r =
+            vec![E::Fr::from(2u64), E::Fr::one(), E::Fr::one(), E::Fr::one()];
+        let w_o = vec![E::Fr::one(), E::Fr::one(), E::Fr::one(), E::Fr::one()];
+        let w_4 = vec![E::Fr::one(), E::Fr::one(), E::Fr::one(), E::Fr::one()];
 
         test_correct_permutation_poly(
             num_wire_mappings,
@@ -1064,9 +1036,12 @@ mod test {
             w_4.clone(),
         );
     }
-    #[test]
-    fn test_permutation_compute_sigmas() {
-        let mut perm: Permutation<BlsScalar> = Permutation::new();
+    fn test_permutation_compute_sigmas<
+        E: PairingEngine,
+        T: ProjectiveCurve<BaseField = E::Fr>,
+        P: TEModelParameters<BaseField = E::Fr>,
+    >() {
+        let mut perm: Permutation<E::Fr> = Permutation::new();
 
         let var_one = perm.new_variable();
         let var_two = perm.new_variable();
@@ -1134,8 +1109,7 @@ mod test {
             When encoded using w, K1, K2,K3 we have {w * K3, w^2 * K3, w^3 * K3, 1 * K3}
         */
         let domain =
-            GeneralEvaluationDomain::<BlsScalar>::new(num_wire_mappings)
-                .unwrap();
+            GeneralEvaluationDomain::<E::Fr>::new(num_wire_mappings).unwrap();
         let w = util::get_domain_attrs(&domain, "group_gen");
         let w_squared = w.pow(&[2, 0, 0, 0]);
         let w_cubed = w.pow(&[3, 0, 0, 0]);
@@ -1145,7 +1119,7 @@ mod test {
         assert_eq!(encoded_left_sigma[0], K1());
         assert_eq!(encoded_left_sigma[1], w * &K2());
         assert_eq!(encoded_left_sigma[2], w_squared * &K1());
-        assert_eq!(encoded_left_sigma[3], BlsScalar::one() * &K2());
+        assert_eq!(encoded_left_sigma[3], E::Fr::one() * &K2());
 
         // check the right sigmas have been encoded properly
         let encoded_right_sigma =
@@ -1153,7 +1127,7 @@ mod test {
         assert_eq!(encoded_right_sigma[0], w * &K1());
         assert_eq!(encoded_right_sigma[1], w_squared * &K2());
         assert_eq!(encoded_right_sigma[2], w_cubed * &K2());
-        assert_eq!(encoded_right_sigma[3], BlsScalar::one());
+        assert_eq!(encoded_right_sigma[3], E::Fr::one());
 
         // check the output sigmas have been encoded properly
         let encoded_output_sigma =
@@ -1172,13 +1146,15 @@ mod test {
         assert_eq!(encoded_fourth_sigma[3], K3());
     }
 
-    #[test]
-    fn test_basic_slow_permutation_poly() {
+    fn test_basic_slow_permutation_poly<
+        E: PairingEngine,
+        T: ProjectiveCurve<BaseField = E::Fr>,
+        P: TEModelParameters<BaseField = E::Fr>,
+    >() {
         let num_wire_mappings = 2;
         let mut perm = Permutation::new();
         let domain =
-            GeneralEvaluationDomain::<BlsScalar>::new(num_wire_mappings)
-                .unwrap();
+            GeneralEvaluationDomain::<E::Fr>::new(num_wire_mappings).unwrap();
 
         let var_one = perm.new_variable();
         let var_two = perm.new_variable();
@@ -1188,10 +1164,10 @@ mod test {
         perm.add_variables_to_map(var_one, var_two, var_three, var_four, 0);
         perm.add_variables_to_map(var_three, var_two, var_one, var_four, 1);
 
-        let w_l: Vec<_> = vec![BlsScalar::one(), BlsScalar::from(3)];
-        let w_r: Vec<_> = vec![BlsScalar::from(2), BlsScalar::from(2)];
-        let w_o: Vec<_> = vec![BlsScalar::from(3), BlsScalar::one()];
-        let w_4: Vec<_> = vec![BlsScalar::one(), BlsScalar::one()];
+        let w_l: Vec<_> = vec![E::Fr::one(), E::Fr::from(3u64)];
+        let w_r: Vec<_> = vec![E::Fr::from(2u64), E::Fr::from(2u64)];
+        let w_o: Vec<_> = vec![E::Fr::from(3u64), E::Fr::one()];
+        let w_4: Vec<_> = vec![E::Fr::one(), E::Fr::one()];
 
         test_correct_permutation_poly(
             num_wire_mappings,
@@ -1354,6 +1330,38 @@ mod test {
             assert_eq!(z_eval, shifted_z_eval)
         }
     }
+
+    // Test on Bls12-381
+    batch_test!(
+        [test_multizip_permutation_poly,
+        test_permutation_format,
+        test_permutation_compute_sigmas_only_left_wires,
+        test_permutation_compute_sigmas,
+        test_basic_slow_permutation_poly
+        ],
+        []
+        => (
+        Bls12_381,
+        ark_ed_on_bls12_381::EdwardsProjective,
+        ark_ed_on_bls12_381::EdwardsParameters
+        )
+    );
+
+    // Test on Bls12-377
+    batch_test!(
+        [test_multizip_permutation_poly,
+        test_permutation_format,
+        test_permutation_compute_sigmas_only_left_wires,
+        test_permutation_compute_sigmas,
+        test_basic_slow_permutation_poly
+        ],
+        []
+        => (
+        Bls12_377,
+        ark_ed_on_bls12_377::EdwardsProjective,
+        ark_ed_on_bls12_377::EdwardsParameters
+        )
+    );
 }
 
 // bls_12-381 library does not provide a `random` method for F
