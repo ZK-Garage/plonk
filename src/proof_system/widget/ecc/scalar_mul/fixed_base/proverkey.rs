@@ -8,9 +8,11 @@ use ark_ec::TEModelParameters;
 use ark_ff::PrimeField;
 use ark_poly::polynomial::univariate::DensePolynomial;
 use ark_poly::Evaluations;
+use ark_serialize::*;
 use core::marker::PhantomData;
-
-#[derive(Debug, Eq, PartialEq, Clone)]
+#[derive(
+    Debug, PartialEq, Eq, Clone, CanonicalDeserialize, CanonicalSerialize,
+)]
 pub(crate) struct ProverKey<F: PrimeField, P: TEModelParameters<BaseField = F>>
 {
     pub(crate) q_l: (DensePolynomial<F>, Evaluations<F>),
@@ -21,6 +23,20 @@ pub(crate) struct ProverKey<F: PrimeField, P: TEModelParameters<BaseField = F>>
 }
 
 impl<F: PrimeField, P: TEModelParameters<BaseField = F>> ProverKey<F, P> {
+    pub(crate) fn new(
+        q_l: (DensePolynomial<F>, Evaluations<F>),
+        q_r: (DensePolynomial<F>, Evaluations<F>),
+        q_c: (DensePolynomial<F>, Evaluations<F>),
+        q_fixed_group_add: (DensePolynomial<F>, Evaluations<F>),
+    ) -> ProverKey<F, P> {
+        ProverKey {
+            q_l,
+            q_r,
+            q_c,
+            q_fixed_group_add,
+            _marker: PhantomData,
+        }
+    }
     pub(crate) fn compute_quotient_i(
         &self,
         index: usize,

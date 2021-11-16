@@ -9,8 +9,10 @@ use crate::proof_system::linearisation_poly::ProofEvaluations;
 use ark_ec::PairingEngine;
 use ark_ff::Field;
 use ark_poly_commit::sonic_pc::Commitment;
-
-#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+use ark_serialize::*;
+#[derive(
+    Debug, PartialEq, Eq, Copy, Clone, CanonicalDeserialize, CanonicalSerialize,
+)]
 pub(crate) struct VerifierKey<E: PairingEngine> {
     pub(crate) left_sigma: Commitment<E>,
     pub(crate) right_sigma: Commitment<E>,

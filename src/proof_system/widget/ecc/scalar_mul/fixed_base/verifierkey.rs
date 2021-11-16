@@ -11,10 +11,12 @@ use crate::proof_system::widget::ecc::scalar_mul::fixed_base::proverkey::{
 use ark_ec::{PairingEngine, TEModelParameters};
 use ark_ff::Field;
 use ark_poly_commit::kzg10::Commitment;
+use ark_serialize::*;
 use core::marker::PhantomData;
 use num_traits::One;
-
-#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+#[derive(
+    Debug, PartialEq, Eq, Copy, Clone, CanonicalDeserialize, CanonicalSerialize,
+)]
 pub(crate) struct VerifierKey<
     E: PairingEngine,
     P: TEModelParameters<BaseField = E::Fr>,

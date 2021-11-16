@@ -10,8 +10,10 @@ use ark_poly::polynomial::univariate::DensePolynomial;
 use ark_poly::{
     EvaluationDomain, Evaluations, GeneralEvaluationDomain, Polynomial,
 };
-
-#[derive(Debug, Eq, PartialEq, Clone)]
+use ark_serialize::*;
+#[derive(
+    Debug, PartialEq, Eq, Clone, CanonicalDeserialize, CanonicalSerialize,
+)]
 pub(crate) struct ProverKey<F: PrimeField> {
     pub(crate) left_sigma: (DensePolynomial<F>, Evaluations<F>),
     pub(crate) right_sigma: (DensePolynomial<F>, Evaluations<F>),

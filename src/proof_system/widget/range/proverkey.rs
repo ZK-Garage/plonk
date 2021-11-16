@@ -7,8 +7,10 @@
 use ark_ff::PrimeField;
 use ark_poly::polynomial::univariate::DensePolynomial;
 use ark_poly::Evaluations;
-
-#[derive(Debug, Eq, PartialEq, Clone)]
+use ark_serialize::*;
+#[derive(
+    Debug, PartialEq, Eq, Clone, CanonicalDeserialize, CanonicalSerialize,
+)]
 pub(crate) struct ProverKey<F: PrimeField> {
     pub(crate) q_range: (DensePolynomial<F>, Evaluations<F>),
 }

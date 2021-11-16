@@ -155,18 +155,16 @@ fn main() {
 ### Features
 
 This crate includes a variety of features which will briefly be explained below:
-- `alloc`: Enables the usage of an allocator and with it the capability of performing `Proof` constructions and
-  verifications. Without this feature it **IS NOT** possible to prove or verify anything.
-  Its absence only makes `ark-plonk` export certain fixed-size data structures such as `Proof` which can be useful in no_std envoirments where we don't have allocators either.
-- `std`: Enables `std` usage as well as `rayon` parallelisation in some proving and verifying ops.
+- `parallel`: Enables `rayon` and other parallelisation primitives to be used and speed up some of the algorithms used
+by the crate and it's dependencies.
+- `asm`: Enables inline-assembly implementations for some of the internal algorithms and primitives used by the `arkworks` dependencies of the crate.
 - `trace`: Enables the Circuit debugger tooling. This is essentially the capability of using the
-  `StandardComposer::check_circuit_satisfied` function. The function will output information about each circuit gate until
-  one of the gates does not satisfy the equation, or there are no more gates. If there is an unsatisfied gate
-  equation, the function will panic and return the gate number.
+`StandardComposer::check_circuit_satisfied` function. The function will output information about each circuit gate until one of the gates does not satisfy the equation, or there are no more gates. If there is an unsatisfied gate
+equation, the function will panic and return the gate number.
 - `trace-print`: Goes a step further than `trace` and prints each `gate` component data, giving a clear overview of all the
-  values which make up the circuit that we're constructing.
-  __The recommended method is to derive the std output, and the std error, and then place them in text file
-    which can be used to efficiently analyse the gates.__
+values which make up the circuit that we're constructing.
+__The recommended method is to derive the std output, and the std error, and then place them in text file
+  which can be used to efficiently analyse the gates.__
 
 
 
@@ -176,7 +174,7 @@ There are two main types of documentation in this repository:
 
 - **Crate documentation**. This provides info about all of the functions that the library provides, as well
   as the documentation regarding the data structures that it exports. To check this, please feel free to go to
-  the [documentation page](https://docs.rs/dusk-plonk/) or run `make doc` or `make doc-internal`.
+  the [documentation page](https://docs.rs/ark-plonk/) or run `make doc` or `make doc-internal`.
 
 - **Notes**. This is a specific subset of documentation which explains the key mathematical concepts
   of PLONK and how they work with mathematical demonstrations. To check it, run `make doc` and open the resulting docs,

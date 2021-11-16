@@ -11,6 +11,9 @@ use ark_ff::PrimeField;
 use ark_poly::{
     univariate::DensePolynomial, GeneralEvaluationDomain, Polynomial,
 };
+use ark_serialize::{
+    CanonicalDeserialize, CanonicalSerialize, Read, SerializationError, Write,
+};
 
 #[allow(dead_code)]
 /// Evaluations at points `z` or and `z * root of unity`
@@ -22,7 +25,15 @@ pub(crate) struct Evaluations<F: PrimeField> {
 
 /// Subset of all of the evaluations. These evaluations
 /// are added to the [`Proof`](super::Proof).
-#[derive(Debug, Eq, PartialEq, Clone, Default)]
+#[derive(
+    Debug,
+    Eq,
+    PartialEq,
+    Clone,
+    Default,
+    CanonicalDeserialize,
+    CanonicalSerialize,
+)]
 pub(crate) struct ProofEvaluations<F: PrimeField> {
     // Evaluation of the witness polynomial for the left wire at `z`
     pub(crate) a_eval: F,
