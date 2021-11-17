@@ -55,17 +55,20 @@ impl<
         let a = composer.add_input(self.a);
         let b = composer.add_input(self.b);
         // Make first constraint a + b = c
-        composer.add(
-          (E::Fr::zero(), a),
-          (E::Fr::zero(), b),
+        let add_result = composer.add(
+          (E::Fr::one(), a),
+          (E::Fr::one(), b),
           E::Fr::zero(),
           Some(-self.c),
         );
+	composer.assert_equal(add_result, composer.zero_var());
+
         // Check that a and b are in range
         composer.range_gate(a, 1 << 6);
         composer.range_gate(b, 1 << 5);
         // Make second constraint a * b = d
-        composer.mul(E::Fr::one(), a, b, E::Fr::zero(), Some(-self.d));
+        let mul_result = composer.mul(E::Fr::one(), a, b, E::Fr::zero(), Some(-self.d));
+        composer.assert_equal(mul_result, composer.zero_var());
 
         let e_repr = self.e.into_repr().to_bytes_le();
         let e = composer.add_input(E::Fr::from_le_bytes_mod_order(&e_repr));
@@ -117,7 +120,7 @@ fn main()-> Result<(), Error> {
         BlsScalar::from(100u64).into_pi(),
         point_f_pi.into_pi()
     ];
-  
+
     circuit::verify_proof(
         &pp,
         *vd.key(),
