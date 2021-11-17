@@ -31,10 +31,8 @@ where
     ProjectiveCurve::batch_normalization_into_affine(&mut multiples)
 }
 
-impl<
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
-    > StandardComposer<E, P>
+impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
+    StandardComposer<E, P>
 {
     /// Adds an elliptic curve Scalar multiplication gate to the circuit
     /// description.
@@ -173,39 +171,67 @@ impl<
     }
 }
 
-#[cfg(feature = "std")]
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::constraint_system::helper::*;
-    use ark_bls12_381::{Bls12_381, Fr as BlsScalar};
+    use crate::util;
+    use crate::{batch_test, constraint_system::helper::*};
+    use ark_bls12_377::Bls12_377;
+    use ark_bls12_381::Bls12_381;
     use ark_ec::{group::Group, AffineCurve};
-    use ark_ed_on_bls12_381::{
-        EdwardsAffine as JubjubAffine, EdwardsParameters as JubjubParameters,
-    };
     use ark_ff::PrimeField;
     use num_traits::Zero;
 
-    #[test]
-    fn test_ecc_constraint() {
+    fn test_ecc_constraint<
+        E: PairingEngine,
+        P: TEModelParameters<BaseField = E::Fr>,
+    >() {
         let res = gadget_tester(
-            |composer: &mut StandardComposer<
-                Bls12_381,
-                JubjubParameters,
-            >| {
-                let bls_scalar = BlsScalar::from_le_bytes_mod_order(&[
+            |composer: &mut StandardComposer<E, P>| {
+                let scalar = E::Fr::from_le_bytes_mod_order(&[
                     182, 44, 247, 214, 94, 14, 151, 208, 130, 16, 200, 204,
                     147, 32, 104, 166, 0, 59, 52, 1, 1, 59, 103, 6, 169, 175,
-                    51, 101, 234, 180, 125, 14, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                    51, 101, 234, 180, 125, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                    0, 0,
+                    0,
                 ]);
-                let secret_scalar = composer.add_input(bls_scalar);
+                let secret_scalar = composer.add_input(scalar);
 
-                let (x, y) = JubjubParameters::AFFINE_GENERATOR_COEFFS;
-                let generator = ark_ed_on_bls12_381::EdwardsAffine::new(x, y);
-                let expected_point: JubjubAffine =
-                    AffineCurve::mul(&generator, bls_scalar).into();
+                let (x, y) = P::AFFINE_GENERATOR_COEFFS;
+                let generator: GroupAffine<P> = GroupAffine::new(x, y);
+                let expected_point: GroupAffine<P> = AffineCurve::mul(
+                    &generator,
+                    util::to_embedded_curve_scalar::<E, P>(scalar),
+                )
+                .into();
+
+                let point_scalar =
+                    composer.fixed_base_scalar_mul(secret_scalar, generator);
+
+                composer
+                    .assert_equal_public_point(point_scalar, expected_point);
+            },
+            600,
+        );
+        assert!(res.is_ok());
+    }
+
+    fn test_ecc_constraint_zero<
+        E: PairingEngine,
+        P: TEModelParameters<BaseField = E::Fr>,
+    >() {
+        let res = gadget_tester(
+            |composer: &mut StandardComposer<E, P>| {
+                let scalar = E::Fr::zero();
+                let secret_scalar = composer.add_input(scalar);
+
+                let (x, y) = P::AFFINE_GENERATOR_COEFFS;
+                let generator: GroupAffine<P> = GroupAffine::new(x, y);
+                let expected_point: GroupAffine<P> = AffineCurve::mul(
+                    &generator,
+                    util::to_embedded_curve_scalar::<E, P>(scalar),
+                )
+                .into();
 
                 let point_scalar =
                     composer.fixed_base_scalar_mul(secret_scalar, generator);
@@ -218,49 +244,25 @@ mod tests {
         assert!(res.is_ok());
     }
 
-    #[test]
-    fn test_ecc_constraint_zero() {
+    fn test_ecc_constraint_should_fail<
+        E: PairingEngine,
+        P: TEModelParameters<BaseField = E::Fr>,
+    >() {
         let res = gadget_tester(
-            |composer: &mut StandardComposer<
-                Bls12_381,
-                JubjubParameters,
-            >| {
-                let bls_scalar = BlsScalar::zero();
-                let secret_scalar = composer.add_input(bls_scalar);
-
-                let (x, y) = JubjubParameters::AFFINE_GENERATOR_COEFFS;
-                let generator = ark_ed_on_bls12_381::EdwardsAffine::new(x, y);
-                let expected_point =
-                    AffineCurve::mul(&generator, bls_scalar).into();
-
-                let point_scalar =
-                    composer.fixed_base_scalar_mul(secret_scalar, generator);
-
-                composer
-                    .assert_equal_public_point(point_scalar, expected_point);
-            },
-            600,
-        );
-        assert!(res.is_ok());
-    }
-    #[test]
-    fn test_ecc_constraint_should_fail() {
-        let res = gadget_tester(
-            |composer: &mut StandardComposer<
-                Bls12_381,
-                JubjubParameters,
-            >| {
-                let bls_scalar = BlsScalar::from(100u64);
-                let secret_scalar = composer.add_input(bls_scalar);
+            |composer: &mut StandardComposer<E, P>| {
+                let scalar = E::Fr::from(100u64);
+                let secret_scalar = composer.add_input(scalar);
                 // Fails because we are not multiplying by the GENERATOR, it is
                 // double
-                let (x, y) = JubjubParameters::AFFINE_GENERATOR_COEFFS;
-                let generator = JubjubAffine::new(x, y);
-                let double_gen: JubjubAffine = generator.double();
+                let (x, y) = P::AFFINE_GENERATOR_COEFFS;
+                let generator: GroupAffine<P> = GroupAffine::new(x, y);
+                let double_gen = generator.double();
 
-                let expected_point: GroupAffine<JubjubParameters> =
-                    AffineCurve::mul(&double_gen, bls_scalar.into_repr())
-                        .into();
+                let expected_point: GroupAffine<P> = AffineCurve::mul(
+                    &double_gen,
+                    util::to_embedded_curve_scalar::<E, P>(scalar),
+                )
+                .into();
 
                 let point_scalar =
                     composer.fixed_base_scalar_mul(secret_scalar, generator);
@@ -273,43 +275,31 @@ mod tests {
 
         assert!(res.is_err());
     }
-    #[test]
-    fn test_point_addition() {
+
+    fn test_point_addition<
+        E: PairingEngine,
+        P: TEModelParameters<BaseField = E::Fr>,
+    >() {
         let res = gadget_tester(
-            |composer: &mut StandardComposer<
-                Bls12_381,
-                JubjubParameters,
-            >| {
-                let (x, y) = JubjubParameters::AFFINE_GENERATOR_COEFFS;
-                let generator = JubjubAffine::new(x, y);
+            |composer: &mut StandardComposer<E, P>| {
+                let (x, y) = P::AFFINE_GENERATOR_COEFFS;
+                let generator: GroupAffine<P> = GroupAffine::new(x, y);
 
                 let point_a = generator;
                 let point_b = point_a.double();
                 let expected_point = point_a + point_b;
 
-                let affine_point_a: GroupAffine<JubjubParameters> =
-                    point_a.into();
-                let affine_point_b: GroupAffine<JubjubParameters> =
-                    point_b.into();
-                let affine_expected_point: GroupAffine<JubjubParameters> =
+                let affine_point_a: GroupAffine<P> = point_a.into();
+                let affine_point_b: GroupAffine<P> = point_b.into();
+                let affine_expected_point: GroupAffine<P> =
                     expected_point.into();
 
                 let var_point_a_x = composer.add_input(affine_point_a.x);
                 let var_point_a_y = composer.add_input(affine_point_a.y);
-                let point_a = Point::<
-                    Bls12_381,
-                    JubjubParameters,
-                >::new(
-                    var_point_a_x, var_point_a_y
-                );
+                let point_a = Point::<E, P>::new(var_point_a_x, var_point_a_y);
                 let var_point_b_x = composer.add_input(affine_point_b.x);
                 let var_point_b_y = composer.add_input(affine_point_b.y);
-                let point_b = Point::<
-                    Bls12_381,
-                    JubjubParameters,
-                >::new(
-                    var_point_b_x, var_point_b_y
-                );
+                let point_b = Point::<E, P>::new(var_point_b_x, var_point_b_y);
                 let new_point = composer.point_addition_gate(point_a, point_b);
 
                 composer.assert_equal_public_point(
@@ -322,35 +312,44 @@ mod tests {
 
         assert!(res.is_ok());
     }
-    #[test]
-    #[allow(non_snake_case)]
-    fn test_pedersen_hash() {
+
+    fn test_pedersen_hash<
+        E: PairingEngine,
+        P: TEModelParameters<BaseField = E::Fr>,
+    >() {
         let res = gadget_tester(
-            |composer: &mut StandardComposer<
-                Bls12_381,
-                JubjubParameters,
-            >| {
-                let (x, y) = JubjubParameters::AFFINE_GENERATOR_COEFFS;
-                let generator = JubjubAffine::new(x, y);
+            |composer: &mut StandardComposer<E, P>| {
+                let (x, y) = P::AFFINE_GENERATOR_COEFFS;
+                let generator: GroupAffine<P> = GroupAffine::new(x, y);
                 // First component
-                let scalar_a = BlsScalar::from(112233u64);
+                let scalar_a = E::Fr::from(112233u64);
                 let secret_scalar_a = composer.add_input(scalar_a);
                 let point_a = generator;
-                let c_a: GroupAffine<JubjubParameters> =
-                    AffineCurve::mul(&point_a, scalar_a.into_repr()).into();
+                let c_a: GroupAffine<P> = AffineCurve::mul(
+                    &point_a,
+                    util::to_embedded_curve_scalar::<E, P>(scalar_a),
+                )
+                .into();
 
                 // Second component
-                let scalar_b = BlsScalar::from(445566u64);
+                let scalar_b = E::Fr::from(445566u64);
                 let secret_scalar_b = composer.add_input(scalar_b);
                 let point_b = point_a.double() + point_a;
-                let c_b: GroupAffine<JubjubParameters> =
-                    AffineCurve::mul(&point_b, scalar_b.into_repr()).into();
+                let c_b: GroupAffine<P> = AffineCurve::mul(
+                    &point_b,
+                    util::to_embedded_curve_scalar::<E, P>(scalar_b),
+                )
+                .into();
 
                 // Expected pedersen hash
-                let expected_point: GroupAffine<JubjubParameters> =
-                    (AffineCurve::mul(&point_a, scalar_a.into_repr())
-                        + AffineCurve::mul(&point_b, scalar_b.into_repr()))
-                    .into();
+                let expected_point: GroupAffine<P> = (AffineCurve::mul(
+                    &point_a,
+                    util::to_embedded_curve_scalar::<E, P>(scalar_a),
+                ) + AffineCurve::mul(
+                    &point_b,
+                    util::to_embedded_curve_scalar::<E, P>(scalar_b),
+                ))
+                .into();
 
                 // To check this pedersen commitment, we will need to do:
                 // - Two scalar multiplications
@@ -379,37 +378,42 @@ mod tests {
         );
         assert!(res.is_ok());
     }
-    #[test]
-    #[allow(non_snake_case)]
-    fn test_pedersen_balance() {
+
+    fn test_pedersen_balance<
+        E: PairingEngine,
+        P: TEModelParameters<BaseField = E::Fr>,
+    >() {
         let res = gadget_tester(
-            |composer: &mut StandardComposer<
-                Bls12_381,
-                JubjubParameters,
-            >| {
-                let (x, y) = JubjubParameters::AFFINE_GENERATOR_COEFFS;
-                let generator = JubjubAffine::new(x, y);
+            |composer: &mut StandardComposer<E, P>| {
+                let (x, y) = P::AFFINE_GENERATOR_COEFFS;
+                let generator: GroupAffine<P> = GroupAffine::new(x, y);
 
                 // First component
-                let scalar_a = BlsScalar::from(25u64);
+                let scalar_a = E::Fr::from(25u64);
                 let secret_scalar_a = composer.add_input(scalar_a);
                 // Second component
-                let scalar_b = BlsScalar::from(30u64);
+                let scalar_b = E::Fr::from(30u64);
                 let secret_scalar_b = composer.add_input(scalar_b);
                 // Third component
-                let scalar_c = BlsScalar::from(10u64);
+                let scalar_c = E::Fr::from(10u64);
                 let secret_scalar_c = composer.add_input(scalar_c);
                 // Fourth component
-                let scalar_d = BlsScalar::from(45u64);
+                let scalar_d = E::Fr::from(45u64);
                 let secret_scalar_d = composer.add_input(scalar_d);
 
-                let (x, y) = JubjubParameters::AFFINE_GENERATOR_COEFFS;
-                let gen = JubjubAffine::new(x, y);
+                let (x, y) = P::AFFINE_GENERATOR_COEFFS;
+                let gen: GroupAffine<P> = GroupAffine::new(x, y);
 
-                let expected_lhs: GroupAffine<JubjubParameters> =
-                    (AffineCurve::mul(&gen, scalar_a + scalar_b)).into();
-                let expected_rhs: GroupAffine<JubjubParameters> =
-                    AffineCurve::mul(&gen, scalar_c + scalar_d).into();
+                let expected_lhs: GroupAffine<P> = AffineCurve::mul(
+                    &gen,
+                    util::to_embedded_curve_scalar::<E, P>(scalar_a + scalar_b),
+                )
+                .into();
+                let expected_rhs: GroupAffine<P> = AffineCurve::mul(
+                    &gen,
+                    util::to_embedded_curve_scalar::<E, P>(scalar_c + scalar_d),
+                )
+                .into();
 
                 let P1 =
                     composer.fixed_base_scalar_mul(secret_scalar_a, generator);
@@ -432,4 +436,36 @@ mod tests {
         );
         assert!(res.is_ok());
     }
+
+    // Bls12-381 tests
+    batch_test!(
+        [
+        test_ecc_constraint,
+        test_ecc_constraint_zero,
+        test_ecc_constraint_should_fail,
+        test_point_addition,
+        test_pedersen_hash,
+        test_pedersen_balance
+        ],
+        [] => (
+        Bls12_381,
+        ark_ed_on_bls12_381::EdwardsParameters
+        )
+    );
+
+    // Bls12-377 tests
+    batch_test!(
+        [
+        test_ecc_constraint,
+        test_ecc_constraint_zero,
+        test_ecc_constraint_should_fail,
+        test_point_addition,
+        test_pedersen_hash,
+        test_pedersen_balance
+        ],
+        [] => (
+        Bls12_377,
+        ark_ed_on_bls12_377::EdwardsParameters
+        )
+    );
 }

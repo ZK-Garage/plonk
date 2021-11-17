@@ -60,7 +60,9 @@ pub struct PublicInputValue<F: PrimeField, P: TEModelParameters<BaseField = F>>
     _marker: PhantomData<P>,
 }
 
-impl<F: PrimeField, P: TEModelParameters<BaseField = F>> FeIntoPubInput<PublicInputValue<F, P>> for F {
+impl<F: PrimeField, P: TEModelParameters<BaseField = F>>
+    FeIntoPubInput<PublicInputValue<F, P>> for F
+{
     fn into_pi(self) -> PublicInputValue<F, P> {
         PublicInputValue {
             values: vec![self],
@@ -69,26 +71,32 @@ impl<F: PrimeField, P: TEModelParameters<BaseField = F>> FeIntoPubInput<PublicIn
     }
 }
 
-impl<F: PrimeField, P: TEModelParameters<BaseField = F>> GeIntoPubInput<PublicInputValue<F, P>> for GroupAffine<P> {
+impl<F: PrimeField, P: TEModelParameters<BaseField = F>>
+    GeIntoPubInput<PublicInputValue<F, P>> for GroupAffine<P>
+{
     fn into_pi(self) -> PublicInputValue<F, P> {
-        PublicInputValue{
+        PublicInputValue {
             values: vec![self.x, self.y],
-            _marker: PhantomData
+            _marker: PhantomData,
         }
     }
 }
 
-impl<F: PrimeField, P: TEModelParameters<BaseField = F>> GeIntoPubInput<PublicInputValue<F, P>> for GroupProjective<P> {
+impl<F: PrimeField, P: TEModelParameters<BaseField = F>>
+    GeIntoPubInput<PublicInputValue<F, P>> for GroupProjective<P>
+{
     fn into_pi(self) -> PublicInputValue<F, P> {
         let point: GroupAffine<P> = self.into_affine();
-        PublicInputValue{
+        PublicInputValue {
             values: vec![point.x, point.y],
-            _marker: PhantomData
+            _marker: PhantomData,
         }
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, CanonicalDeserialize, CanonicalSerialize)]
+#[derive(
+    Debug, Clone, PartialEq, Eq, CanonicalDeserialize, CanonicalSerialize,
+)]
 /// Collection of structs/objects that the Verifier will use in order to
 /// de/serialize data needed for Circuit proof verification.
 /// This structure can be seen as a link between the [`Circuit`] public input
@@ -426,12 +434,12 @@ fn build_pi<F: PrimeField, P: TEModelParameters<BaseField = F>>(
 mod tests {
     use super::*;
     use crate::{constraint_system::StandardComposer, util};
-    use ark_bls12_381::{Fr as BlsScalar, Bls12_381};
+    use ark_bls12_377::Bls12_377;
+    use ark_bls12_381::Bls12_381;
     use ark_ec::twisted_edwards_extended::GroupAffine;
-    use ark_ed_on_bls12_381::{Fr as EmbeddedScalar, EdwardsParameters, EdwardsAffine};
-    use num_traits::{One, Zero};
+    use ark_ec::AffineCurve;
     use ark_poly_commit::kzg10::KZG10;
-    use ark_ec::{AffineCurve, ProjectiveCurve};
+    use num_traits::{One, Zero};
 
     // Implements a circuit that checks:
     // 1) a + b = c where C is a PI
@@ -451,10 +459,9 @@ mod tests {
         e: P::ScalarField,
         f: GroupAffine<P>,
     }
-    impl<
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
-    > Default for TestCircuit<E, P> {
+    impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Default
+        for TestCircuit<E, P>
+    {
         fn default() -> Self {
             Self {
                 a: E::Fr::zero(),
@@ -466,10 +473,8 @@ mod tests {
             }
         }
     }
-    impl<
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
-    > Circuit<E, P> for TestCircuit<E, P>
+    impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
+        Circuit<E, P> for TestCircuit<E, P>
     {
         const CIRCUIT_ID: [u8; 32] = [0xff; 32];
         fn gadget(
@@ -506,40 +511,40 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_full() -> Result<(), Error> {
+    fn test_full<
+        E: PairingEngine,
+        P: TEModelParameters<BaseField = E::Fr> + PartialEq,
+    >() -> Result<(), Error> {
         use rand_core::OsRng;
 
         // Generate CRS
-        let pp = KZG10::<Bls12_381,DensePolynomial<BlsScalar>,>::setup(
-            1 << 12, false, &mut OsRng
+        let pp = KZG10::<E, DensePolynomial<E::Fr>>::setup(
+            1 << 12,
+            false,
+            &mut OsRng,
         )?;
 
-        let mut circuit = TestCircuit::<Bls12_381,
-            EdwardsParameters>::default();
+        let mut circuit = TestCircuit::<E, P>::default();
 
         // Compile the circuit
         let (pk_p, verifier_data) = circuit.compile(&pp)?;
 
-        let (x, y) = EdwardsParameters::AFFINE_GENERATOR_COEFFS;
-        let generator = EdwardsAffine::new(x, y);
-        let point_f_pi: EdwardsAffine = AffineCurve::mul(
+        let (x, y) = P::AFFINE_GENERATOR_COEFFS;
+        let generator: GroupAffine<P> = GroupAffine::new(x, y);
+        let point_f_pi: GroupAffine<P> = AffineCurve::mul(
             &generator,
-            EmbeddedScalar::from(2u64).into_repr(),
-        ).into_affine();
+            P::ScalarField::from(2u64).into_repr(),
+        )
+        .into_affine();
 
         // Prover POV
         let proof = {
-
-            let mut circuit: TestCircuit<
-                Bls12_381,
-                EdwardsParameters,
-            > = TestCircuit {
-                a: BlsScalar::from(20u64),
-                b: BlsScalar::from(5u64),
-                c: BlsScalar::from(25u64),
-                d: BlsScalar::from(100u64),
-                e: EmbeddedScalar::from(2u64),
+            let mut circuit: TestCircuit<E, P> = TestCircuit {
+                a: E::Fr::from(20u64),
+                b: E::Fr::from(5u64),
+                c: E::Fr::from(25u64),
+                d: E::Fr::from(100u64),
+                e: P::ScalarField::from(2u64),
                 f: point_f_pi,
             };
 
@@ -550,28 +555,42 @@ mod tests {
         let mut verifier_data_bytes = Vec::new();
         verifier_data.serialize(&mut verifier_data_bytes).unwrap();
 
-        let verif_data: VerifierData<Bls12_381, EdwardsParameters> = VerifierData::deserialize(verifier_data_bytes.as_slice()).unwrap();
+        let verif_data: VerifierData<E, P> =
+            VerifierData::deserialize(verifier_data_bytes.as_slice()).unwrap();
 
         assert!(verif_data == verifier_data);
 
         // Verifier POV
-        let public_inputs: Vec<PublicInputValue<BlsScalar, EdwardsParameters>> = vec![
-            BlsScalar::from(25u64).into_pi(),
-            BlsScalar::from(100u64).into_pi(),
+        let public_inputs: Vec<PublicInputValue<E::Fr, P>> = vec![
+            E::Fr::from(25u64).into_pi(),
+            E::Fr::from(100u64).into_pi(),
             point_f_pi.into_pi(),
         ];
 
         // todo: non-ideal hack for a first functional version.
         let pi_pos = verifier_data.pi_pos().clone();
-        assert!(verify_proof::<Bls12_381, EdwardsParameters>(
+        assert!(verify_proof::<E, P>(
             &pp,
             verifier_data.key(),
             &proof,
             &public_inputs,
             &pi_pos,
             b"Test",
-        ).is_ok());
+        )
+        .is_ok());
 
         Ok(())
+    }
+
+    #[allow(non_snake_case)]
+    #[test]
+    fn test_full_on_Bls12_381() {
+        test_full::<Bls12_381, ark_ed_on_bls12_381::EdwardsParameters>();
+    }
+
+    #[allow(non_snake_case)]
+    #[test]
+    fn test_full_on_Bls12_377() {
+        test_full::<Bls12_377, ark_ed_on_bls12_377::EdwardsParameters>();
     }
 }

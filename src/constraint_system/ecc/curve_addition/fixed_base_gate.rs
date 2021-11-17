@@ -7,14 +7,15 @@
 use crate::constraint_system::StandardComposer;
 use crate::constraint_system::Variable;
 use ark_ec::models::TEModelParameters;
-use ark_ec::{PairingEngine};
+use ark_ec::PairingEngine;
 use core::marker::PhantomData;
 use num_traits::{One, Zero};
 
 #[derive(Debug, Clone, Copy)]
 /// Contains all of the components needed to verify that a bit scalar
 /// multiplication was computed correctly
-pub struct WnafRound<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> {
+pub struct WnafRound<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
+{
     /// This is the accumulated x coordinate point that we wish to add (so
     /// far.. depends on where you are in the scalar mul) it is linked to
     /// the wnaf entry, so must not be revealed
@@ -42,10 +43,8 @@ pub struct WnafRound<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> 
     _marker1: PhantomData<P>,
 }
 
-impl<
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
-    > StandardComposer<E, P>
+impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
+    StandardComposer<E, P>
 {
     /// Generates a new structure for preparing a WNAF ROUND
     pub fn new_wnaf(

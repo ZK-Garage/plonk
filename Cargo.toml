@@ -3,10 +3,10 @@ name = "ark-plonk"
 version = "0.8.2"
 authors = ["Kevaundray Wedderburn <kevtheappdev@gmail.com>",
            "Luke Pearson <luke@polychain.capital>",
-           "Jules De Smit <jules@aleo.org>", 
+           "Jules De Smit <jules@aleo.org>",
            "Joshua Fitzgerald <joshua@heliax.dev>",
            "Carlos Perez <carlos.perezbaro@iohk.io>",
-           "David Nevado <david.nevado@iohk.io>"] 
+           "David Nevado <david.nevado@iohk.io>"]
 readme = "README.md"
 repository = "https://github.com/rust-zkp/ark-plonk"
 keywords = ["cryptography", "plonk", "zk-snarks", "zero-knowledge", "crypto"]
@@ -38,8 +38,11 @@ num-traits = "0.2.14"
 [dev-dependencies]
 tempdir = "0.3"
 ark-bls12-381 = "0.3"
+ark-bls12-377 = "0.3"
 ark-ed-on-bls12-381 = "0.3"
+ark-ed-on-bls12-377 = "0.3"
 rand = "0.8.0"
+paste = "1.0.6"
 
 [features]
 default = [

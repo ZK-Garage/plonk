@@ -8,13 +8,11 @@ use crate::constraint_system::ecc::Point;
 use crate::constraint_system::StandardComposer;
 use ark_ec::models::twisted_edwards_extended::GroupAffine;
 use ark_ec::models::TEModelParameters;
-use ark_ec::{PairingEngine};
+use ark_ec::PairingEngine;
 use num_traits::{One, Zero};
 
-impl<
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
-    > StandardComposer<E, P>
+impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
+    StandardComposer<E, P>
 {
     /// Adds two curve points together using a curve addition gate
     /// Note that since the points are not fixed the generator is not a part of
@@ -94,24 +92,23 @@ impl<
 #[cfg(test)]
 mod variable_base_gate_tests {
     use super::*;
-    use crate::constraint_system::helper::*;
-    use ark_bls12_381::{Bls12_381, Fr as BlsScalar};
-    use ark_ed_on_bls12_381::{
-        EdwardsAffine as JubjubAffine, EdwardsParameters as JubjubParameters,
-    };
+    use crate::{batch_test, constraint_system::helper::*};
+    use ark_bls12_377::Bls12_377;
+    use ark_bls12_381::Bls12_381;
+    use ark_ec::models::twisted_edwards_extended::GroupAffine;
     use ark_ff::Field;
     use num_traits::{One, Zero};
     /// Adds two curve points together using the classical point addition
     /// algorithm. This method is slower than WNaf and is just meant to be the
     /// source of truth to test the WNaf method.
-    pub fn classical_point_addition(
-        composer: &mut StandardComposer<
-            Bls12_381,
-            JubjubParameters,
-        >,
-        point_a: Point<Bls12_381, JubjubParameters>,
-        point_b: Point<Bls12_381, JubjubParameters>,
-    ) -> Point<Bls12_381, JubjubParameters> {
+    pub fn classical_point_addition<
+        E: PairingEngine,
+        P: TEModelParameters<BaseField = E::Fr>,
+    >(
+        composer: &mut StandardComposer<E, P>,
+        point_a: Point<E, P>,
+        point_b: Point<E, P>,
+    ) -> Point<E, P> {
         let x1 = point_a.x;
         let y1 = point_a.y;
 
@@ -119,47 +116,38 @@ mod variable_base_gate_tests {
         let y2 = point_b.y;
 
         // x1 * y2
-        let x1_y2 =
-            composer.mul(BlsScalar::one(), x1, y2, BlsScalar::zero(), None);
+        let x1_y2 = composer.mul(E::Fr::one(), x1, y2, E::Fr::zero(), None);
         // y1 * x2
-        let y1_x2 =
-            composer.mul(BlsScalar::one(), y1, x2, BlsScalar::zero(), None);
+        let y1_x2 = composer.mul(E::Fr::one(), y1, x2, E::Fr::zero(), None);
         // y1 * y2
-        let y1_y2 =
-            composer.mul(BlsScalar::one(), y1, y2, BlsScalar::zero(), None);
+        let y1_y2 = composer.mul(E::Fr::one(), y1, y2, E::Fr::zero(), None);
         // x1 * x2
-        let x1_x2 =
-            composer.mul(BlsScalar::one(), x1, x2, BlsScalar::zero(), None);
+        let x1_x2 = composer.mul(E::Fr::one(), x1, x2, E::Fr::zero(), None);
         // d x1x2 * y1y2
-        let d_x1_x2_y1_y2 = composer.mul(
-            JubjubParameters::COEFF_D,
-            x1_x2,
-            y1_y2,
-            BlsScalar::zero(),
-            None,
-        );
+        let d_x1_x2_y1_y2 =
+            composer.mul(P::COEFF_D, x1_x2, y1_y2, E::Fr::zero(), None);
 
         // x1y2 + y1x2
         let x_numerator = composer.add(
-            (BlsScalar::one(), x1_y2),
-            (BlsScalar::one(), y1_x2),
-            BlsScalar::zero(),
+            (E::Fr::one(), x1_y2),
+            (E::Fr::one(), y1_x2),
+            E::Fr::zero(),
             None,
         );
 
         // y1y2 - a * x1x2 (a=-1) => y1y2 + x1x2
         let y_numerator = composer.add(
-            (BlsScalar::one(), y1_y2),
-            (BlsScalar::one(), x1_x2),
-            BlsScalar::zero(),
+            (E::Fr::one(), y1_y2),
+            (E::Fr::one(), x1_x2),
+            E::Fr::zero(),
             None,
         );
 
         // 1 + dx1x2y1y2
         let x_denominator = composer.add(
-            (BlsScalar::one(), d_x1_x2_y1_y2),
-            (BlsScalar::zero(), composer.zero_var),
-            BlsScalar::one(),
+            (E::Fr::one(), d_x1_x2_y1_y2),
+            (E::Fr::zero(), composer.zero_var),
+            E::Fr::one(),
             None,
         );
 
@@ -178,17 +166,17 @@ mod variable_base_gate_tests {
             x_denominator,
             inv_x_denom,
             composer.zero_var,
-            BlsScalar::one(),
-            BlsScalar::zero(),
-            -BlsScalar::one(),
+            E::Fr::one(),
+            E::Fr::zero(),
+            -E::Fr::one(),
             None,
         );
 
         // 1 - dx1x2y1y2
         let y_denominator = composer.add(
-            (-BlsScalar::one(), d_x1_x2_y1_y2),
-            (BlsScalar::zero(), composer.zero_var),
-            BlsScalar::one(),
+            (-E::Fr::one(), d_x1_x2_y1_y2),
+            (E::Fr::zero(), composer.zero_var),
+            E::Fr::one(),
             None,
         );
         let inv_y_denom = composer
@@ -204,41 +192,43 @@ mod variable_base_gate_tests {
             y_denominator,
             inv_y_denom,
             composer.zero_var,
-            BlsScalar::one(),
-            BlsScalar::zero(),
-            -BlsScalar::one(),
+            E::Fr::one(),
+            E::Fr::zero(),
+            -E::Fr::one(),
             None,
         );
 
         // We can now use the inverses
 
         let x_3 = composer.mul(
-            BlsScalar::one(),
+            E::Fr::one(),
             inv_x_denom,
             x_numerator,
-            BlsScalar::zero(),
+            E::Fr::zero(),
             None,
         );
         let y_3 = composer.mul(
-            BlsScalar::one(),
+            E::Fr::one(),
             inv_y_denom,
             y_numerator,
-            BlsScalar::zero(),
+            E::Fr::zero(),
             None,
         );
 
         Point::new(x_3, y_3)
     }
 
-    #[test]
-    fn test_curve_addition() {
+    fn test_curve_addition<
+        E: PairingEngine,
+        P: TEModelParameters<BaseField = E::Fr>,
+    >() {
         let res = gadget_tester(
-            |composer| {
-                let (x, y) = JubjubParameters::AFFINE_GENERATOR_COEFFS;
-                let generator = JubjubAffine::new(x, y);
+            |composer: &mut StandardComposer<E, P>| {
+                let (x, y) = P::AFFINE_GENERATOR_COEFFS;
+                let generator: GroupAffine<P> = GroupAffine::new(x, y);
                 let x_var = composer.add_input(x);
                 let y_var = composer.add_input(y);
-                let expected_point: JubjubAffine =
+                let expected_point: GroupAffine<P> =
                     (generator + generator).into();
                 let point_a = Point::new(x_var, y_var);
                 let point_b = Point::new(x_var, y_var);
@@ -256,4 +246,21 @@ mod variable_base_gate_tests {
         );
         assert!(res.is_ok());
     }
+
+    batch_test!(
+        [test_curve_addition],
+        []
+        => (
+        Bls12_381,
+        ark_ed_on_bls12_381::EdwardsParameters
+        )
+    );
+
+    batch_test!(
+        [test_curve_addition],
+        [] => (
+        Bls12_377,
+        ark_ed_on_bls12_377::EdwardsParameters
+        )
+    );
 }
