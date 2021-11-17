@@ -14,7 +14,10 @@ use crate::proof_system::{
     Proof, Prover, ProverKey, Verifier, VerifierKey as PlonkVerifierKey,
 };
 use ark_ec::models::TEModelParameters;
-use ark_ec::{twisted_edwards_extended::{GroupAffine, GroupProjective}, PairingEngine, ProjectiveCurve};
+use ark_ec::{
+    twisted_edwards_extended::{GroupAffine, GroupProjective},
+    PairingEngine, ProjectiveCurve,
+};
 use ark_ff::PrimeField;
 use ark_poly::univariate::DensePolynomial;
 use ark_poly_commit::kzg10::{self, Powers, UniversalParams};
@@ -22,32 +25,34 @@ use ark_poly_commit::sonic_pc::SonicKZG10;
 use ark_poly_commit::PolynomialCommitment;
 use ark_serialize::*;
 
-/// The reason for introducing these two traits, `FeIntoPubInput` and `GeIntoPubInput` is to have a
-/// workaround for not being able to
-/// implement `From<_> for Values` for both `PrimeField` and `GroupAffine`. The reason why this is
-/// not possible is because both the trait `PrimeField` and the struct `GroupAffine` are external
-/// to the crate, and therefore the compiler cannot be sure that `PrimeField` will never be
-/// implemented for `GroupAffine`. In which case, the two implementations of `From` would be
-/// inconsistent. To this end, we create to helper traits, `FeIntoPubInput` and `GeIntoPubInput`,
-/// that stand for "Field Element Into Public Input" and "Group Element Into Public Input"
-/// respectively.
+/// The reason for introducing these two traits, `FeIntoPubInput` and
+/// `GeIntoPubInput` is to have a workaround for not being able to
+/// implement `From<_> for Values` for both `PrimeField` and `GroupAffine`. The
+/// reason why this is not possible is because both the trait `PrimeField` and
+/// the struct `GroupAffine` are external to the crate, and therefore the
+/// compiler cannot be sure that `PrimeField` will never be implemented for
+/// `GroupAffine`. In which case, the two implementations of `From` would be
+/// inconsistent. To this end, we create to helper traits, `FeIntoPubInput` and
+/// `GeIntoPubInput`, that stand for "Field Element Into Public Input" and
+/// "Group Element Into Public Input" respectively.
 pub trait FeIntoPubInput<T> {
-    /// Ad-hot `Into` implementation. Serves the same purpose as `Into`, but as a different trait.
-    /// Read documentation of Trait for more details.
+    /// Ad-hot `Into` implementation. Serves the same purpose as `Into`, but as
+    /// a different trait. Read documentation of Trait for more details.
     fn into_pi(self) -> T;
 }
 
-/// The reason for introducing these two traits is to have a workaround for not being able to
-/// implement `From<_> for Values` for both `PrimeField` and `GroupAffine`. The reason why this is
-/// not possible is because both the trait `PrimeField` and the struct `GroupAffine` are external
-/// to the crate, and therefore the compiler cannot be sure that `PrimeField` will never be
-/// implemented for `GroupAffine`. In which case, the two implementations of `From` would be
-/// inconsistent. To this end, we create to helper traits, `FeIntoPubInput` and `GeIntoPubInput`,
-/// that stand for "Field Element Into Public Input" and "Group Element Into Public Input"
-/// respectively.
+/// The reason for introducing these two traits is to have a workaround for not
+/// being able to implement `From<_> for Values` for both `PrimeField` and
+/// `GroupAffine`. The reason why this is not possible is because both the trait
+/// `PrimeField` and the struct `GroupAffine` are external to the crate, and
+/// therefore the compiler cannot be sure that `PrimeField` will never be
+/// implemented for `GroupAffine`. In which case, the two implementations of
+/// `From` would be inconsistent. To this end, we create to helper traits,
+/// `FeIntoPubInput` and `GeIntoPubInput`, that stand for "Field Element Into
+/// Public Input" and "Group Element Into Public Input" respectively.
 pub trait GeIntoPubInput<T> {
-    /// Ad-hot `Into` implementation. Serves the same purpose as `Into`, but as a different trait.
-    /// Read documentation of Trait for more details.
+    /// Ad-hot `Into` implementation. Serves the same purpose as `Into`, but as
+    /// a different trait. Read documentation of Trait for more details.
     fn into_pi(self) -> T;
 }
 
@@ -110,7 +115,7 @@ pub struct VerifierData<
 }
 
 impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
-VerifierData<E, P>
+    VerifierData<E, P>
 {
     /// Creates a new `VerifierData` from a [`VerifierKey`] and the public
     /// input positions of the circuit that it represents.
@@ -277,10 +282,10 @@ VerifierData<E, P>
 /// )
 /// }
 pub trait Circuit<E, P>
-    where
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
-        Self: Sized,
+where
+    E: PairingEngine,
+    P: TEModelParameters<BaseField = E::Fr>,
+    Self: Sized,
 {
     /// Circuit identifier associated constant.
     const CIRCUIT_ID: [u8; 32];
@@ -306,7 +311,7 @@ pub trait Circuit<E, P>
             0,
             None,
         )
-            .unwrap();
+        .unwrap();
         let powers = Powers {
             powers_of_g: ck.powers_of_g.into(),
             powers_of_gamma_g: ck.powers_of_gamma_g.into(),
@@ -352,7 +357,7 @@ pub trait Circuit<E, P>
             0,
             None,
         )
-            .unwrap();
+        .unwrap();
         let powers = Powers {
             powers_of_g: ck.powers_of_g.into(),
             powers_of_gamma_g: ck.powers_of_gamma_g.into(),
@@ -393,7 +398,7 @@ pub fn verify_proof<
         0,
         None,
     )
-        .unwrap();
+    .unwrap();
 
     let vk = kzg10::VerifierKey {
         g: sonic_vk.g,
