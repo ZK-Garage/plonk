@@ -22,6 +22,7 @@ use crate::constraint_system::Variable;
 use crate::permutation::Permutation;
 use ark_ec::models::TEModelParameters;
 use ark_ec::PairingEngine;
+use ark_ff::{BigInteger, PrimeField};
 use core::marker::PhantomData;
 use hashbrown::HashMap;
 use num_traits::{One, Zero};
@@ -596,34 +597,64 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
                 d
             );
 
-            let k = qarith
-                * ((qm * a * b)
-                    + (ql * a)
-                    + (qr * b)
-                    + (qo * c)
-                    + (q4 * d)
-                    + pi
-                    + qc)
-                + qlogic
-                    * (((delta(a_next - four * a) - delta(b_next - four * b))
-                        * c)
-                        + delta(a_next - four * a)
-                        + delta(b_next - four * b)
-                        + delta(d_next - four * d)
-                        + match (
-                            qlogic == E::Fr::one(),
-                            qlogic == -E::Fr::one(),
-                        ) {
-                            (true, false) => (a & b) - d,
-                            (false, true) => (a ^ b) - d,
-                            (false, false) => E::Fr::zero(),
-                            _ => unreachable!(),
-                        })
-                + qrange
-                    * (delta(c - four * d)
-                        + delta(b - four * c)
-                        + delta(a - four * b)
-                        + delta(d_next - four * a));
+            let k =
+                qarith
+                    * ((qm * a * b)
+                        + (ql * a)
+                        + (qr * b)
+                        + (qo * c)
+                        + (q4 * d)
+                        + pi
+                        + qc)
+                    + qlogic
+                        * (((delta(*a_next - four * a)
+                            - delta(*b_next - four * b))
+                            * c)
+                            + delta(*a_next - four * a)
+                            + delta(*b_next - four * b)
+                            + delta(*d_next - four * d)
+                            + match (
+                                qlogic == E::Fr::one(),
+                                qlogic == -E::Fr::one(),
+                            ) {
+                                (true, false) => {
+                                    let a_bits = a.into_repr().to_bits_le();
+                                    let b_bits = b.into_repr().to_bits_le();
+                                    let a_and_b = a_bits
+                                        .iter()
+                                        .zip(b_bits)
+                                        .map(|(a_bit, b_bit)| a_bit & b_bit)
+                                        .collect::<Vec<bool>>();
+
+                                    E::Fr::from_repr(
+                                    <E::Fr as PrimeField>::BigInt::from_bits_le(
+                                        &a_and_b,
+                                    ),
+                                ).unwrap() - *d
+                                }
+                                (false, true) => {
+                                    let a_bits = a.into_repr().to_bits_le();
+                                    let b_bits = b.into_repr().to_bits_le();
+                                    let a_xor_b = a_bits
+                                        .iter()
+                                        .zip(b_bits)
+                                        .map(|(a_bit, b_bit)| a_bit ^ b_bit)
+                                        .collect::<Vec<bool>>();
+
+                                    E::Fr::from_repr(
+                                    <E::Fr as PrimeField>::BigInt::from_bits_le(
+                                        &a_xor_b,
+                                    ),
+                                ).unwrap() - *d
+                                }
+                                (false, false) => E::Fr::zero(),
+                                _ => unreachable!(),
+                            })
+                    + qrange
+                        * (delta(*c - four * d)
+                            + delta(*b - four * c)
+                            + delta(*a - four * b)
+                            + delta(*d_next - four * a));
 
             assert_eq!(k, E::Fr::zero(), "Check failed at gate {}", i,);
         }
