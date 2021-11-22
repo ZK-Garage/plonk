@@ -19,8 +19,8 @@ pub(crate) fn powers_of<F: PrimeField>(
 ) -> Vec<F> {
     let mut powers = Vec::with_capacity(max_degree + 1);
     powers.push(F::one());
-    for i in 1..=max_degree {
-        powers.push(powers[i - 1] * scalar);
+    for i in 0..max_degree {
+        powers.push(powers[i] * scalar);
     }
     powers
 }
