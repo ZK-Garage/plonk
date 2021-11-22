@@ -6,7 +6,7 @@
 
 use crate::constraint_system::StandardComposer;
 use crate::error::Error;
-use crate::proof_system::widget::VerifierKey as PlonkVerifierKey;
+use crate::proof_system::widget::VerifierKey;
 use crate::proof_system::Proof;
 use crate::transcript::TranscriptWrapper;
 use ark_ec::{PairingEngine, TEModelParameters};
@@ -16,7 +16,7 @@ use ark_poly_commit::kzg10::{Powers, VerifierKey};
 #[allow(missing_debug_implementations)]
 pub struct Verifier<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> {
     /// VerificationKey which is used to verify a specific PLONK circuit
-    pub verifier_key: Option<PlonkVerifierKey<E, P>>,
+    pub verifier_key: Option<VerifierKey<E, P>>,
 
     pub(crate) cs: StandardComposer<E, P>,
     /// Store the messages exchanged during the preprocessing stage
@@ -67,7 +67,7 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Verifier<E, P> {
         &mut self.cs
     }
 
-    /// Preprocess a circuit to obtain a [`PlonkVerifierKey`] and a circuit
+    /// Preprocess a circuit to obtain a [`VerifierKey`] and a circuit
     /// descriptor so that the `Verifier` instance can verify [`Proof`]s
     /// for this circuit descriptor instance.
     pub fn preprocess(&mut self, commit_key: &Powers<E>) -> Result<(), Error> {
