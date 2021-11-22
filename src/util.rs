@@ -7,8 +7,8 @@
 use ark_ec::{AffineCurve, ModelParameters, PairingEngine, TEModelParameters};
 use ark_ff::{BigInteger, FftField, FpParameters, PrimeField};
 use ark_poly::{
-    univariate::DensePolynomial, GeneralEvaluationDomain, Polynomial,
-    UVPolynomial,
+    univariate::DensePolynomial, EvaluationDomain, GeneralEvaluationDomain,
+    Polynomial, UVPolynomial,
 };
 use ark_poly_commit::kzg10::Commitment;
 
@@ -52,34 +52,77 @@ pub fn ruffini<F: PrimeField>(
     DensePolynomial::from_coefficients_vec(quotient)
 }
 
-pub fn get_domain_attrs<F: FftField>(
-    domain: &GeneralEvaluationDomain<F>,
-    attr: &'static str,
-) -> F {
-    match domain {
-        GeneralEvaluationDomain::MixedRadix(domain) => match attr {
-            "group_gen" => domain.group_gen,
-            "group_gen_inv" => domain.group_gen_inv,
-            "generator_inv" => domain.generator_inv,
-            "size_as_fe" => domain.size_as_field_element,
-            "size_inv" => domain.size_inv,
-            _ => unreachable!(),
-        },
-        GeneralEvaluationDomain::Radix2(domain) => match attr {
-            "group_gen" => domain.group_gen,
-            "group_gen_inv" => domain.group_gen_inv,
-            "generator_inv" => domain.generator_inv,
-            "size_as_fe" => domain.size_as_field_element,
-            "size_inv" => domain.size_inv,
-            _ => unreachable!(),
-        },
-        _ => unreachable!(),
+/// Evaluation Domain Extension Trait
+pub trait EvaluationDomainExt<F>: EvaluationDomain<F>
+where
+    F: FftField,
+{
+    /// Returns the value of `log_2(self.size)`.
+    fn log_size_of_group(&self) -> u32;
+
+    /// Returns the inverse of the size in the field.
+    fn size_inv(&self) -> F;
+
+    /// Returns a fixed generator of the subgroup.
+    fn group_gen(&self) -> F;
+
+    /// Returns the inverse of the fixed generator of the subgroup.
+    fn group_gen_inv(&self) -> F;
+
+    /// Returns a fixed multiplicative generator of the finite field.
+    fn generator_inv(&self) -> F;
+}
+
+impl<F> EvaluationDomainExt<F> for GeneralEvaluationDomain<F>
+where
+    F: FftField,
+{
+    #[inline]
+    fn log_size_of_group(&self) -> u32 {
+        match self {
+            GeneralEvaluationDomain::Radix2(domain) => domain.log_size_of_group,
+            GeneralEvaluationDomain::MixedRadix(domain) => {
+                domain.log_size_of_group
+            }
+        }
+    }
+
+    #[inline]
+    fn size_inv(&self) -> F {
+        match self {
+            GeneralEvaluationDomain::Radix2(domain) => domain.size_inv,
+            GeneralEvaluationDomain::MixedRadix(domain) => domain.size_inv,
+        }
+    }
+
+    #[inline]
+    fn group_gen(&self) -> F {
+        match self {
+            GeneralEvaluationDomain::Radix2(domain) => domain.group_gen,
+            GeneralEvaluationDomain::MixedRadix(domain) => domain.group_gen,
+        }
+    }
+
+    #[inline]
+    fn group_gen_inv(&self) -> F {
+        match self {
+            GeneralEvaluationDomain::Radix2(domain) => domain.group_gen_inv,
+            GeneralEvaluationDomain::MixedRadix(domain) => domain.group_gen_inv,
+        }
+    }
+
+    #[inline]
+    fn generator_inv(&self) -> F {
+        match self {
+            GeneralEvaluationDomain::Radix2(domain) => domain.generator_inv,
+            GeneralEvaluationDomain::MixedRadix(domain) => domain.generator_inv,
+        }
     }
 }
 
-/// Get a pairing friendly curve scalar `E::Fr` from a scalar of the embedded curve.
-/// Panics if the embedded scalar is greater than the modulus of the pairing firendly
-/// curve scalar field
+/// Get a pairing friendly curve scalar `E::Fr` from a scalar of the embedded
+/// curve. Panics if the embedded scalar is greater than the modulus of the
+/// pairing firendly curve scalar field
 pub(crate) fn from_embedded_curve_scalar<
     E: PairingEngine,
     P: TEModelParameters<BaseField = E::Fr>,
@@ -105,9 +148,9 @@ pub(crate) fn from_embedded_curve_scalar<
     E::Fr::from_le_bytes_mod_order(&scalar_repr.to_bytes_le())
 }
 
-/// Get a embedded curve scalar `P::ScalarField` from a scalar of the pariring friendly curve.
-/// Panics if the pairing frindly curve scalar is greater than the modulus of the embedded
-/// curve scalar field
+/// Get a embedded curve scalar `P::ScalarField` from a scalar of the pariring
+/// friendly curve. Panics if the pairing frindly curve scalar is greater than
+/// the modulus of the embedded curve scalar field
 pub(crate) fn to_embedded_curve_scalar<
     E: PairingEngine,
     P: TEModelParameters<BaseField = E::Fr>,
@@ -144,14 +187,12 @@ pub fn linear_combination<E: PairingEngine>(
 ) -> (Commitment<E>, E::Fr) {
     assert_eq!(evals.len(), commitments.len());
     // Generate a challenge to generate a linear combination of the proofs
-    let powers: Vec<E::Fr> =
-        crate::util::powers_of(&challenge, evals.len() - 1);
+    let powers: Vec<E::Fr> = powers_of(&challenge, evals.len() - 1);
     let combined_eval: E::Fr = evals
         .iter()
         .zip(powers.iter())
         .map(|(&eval, power)| eval * power)
         .sum();
-
     let combined_commitment: Commitment<E> = Commitment(
         commitments
             .iter()

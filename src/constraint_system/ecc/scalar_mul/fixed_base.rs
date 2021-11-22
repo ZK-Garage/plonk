@@ -28,7 +28,7 @@ where
         multiples[i] = multiples[i - 1].double();
     }
 
-    ProjectiveCurve::batch_normalization_into_affine(&mut multiples)
+    ProjectiveCurve::batch_normalization_into_affine(&multiples)
 }
 
 impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
@@ -36,12 +36,13 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
 {
     /// Adds an elliptic curve Scalar multiplication gate to the circuit
     /// description.
-    ///
-    /// # Note
-    /// This function is optimized for fixed base ops **ONLY** and therefore,
-    /// the **ONLY** `generator` inputs that should be passed to this
-    /// function as inputs are [`dusk_jubjub::GENERATOR`] or
-    /// [`dusk_jubjub::GENERATOR_NUMS`].
+    // FIXME: `dusk_jubjub` is not used in this crate.
+    //
+    // # Note
+    // This function is optimized for fixed base ops **ONLY** and therefore,
+    // the **ONLY** `generator` inputs that should be passed to this
+    // function as inputs are [`dusk_jubjub::GENERATOR`] or
+    // [`dusk_jubjub::GENERATOR_NUMS`].
     pub fn fixed_base_scalar_mul(
         &mut self,
         jubjub_scalar: Variable,
@@ -97,7 +98,7 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
 
             let prev_accumulator = E::Fr::from(2u64) * scalar_acc[index];
             scalar_acc.push(prev_accumulator + scalar_to_add);
-            point_acc.push((point_acc[index] + point_to_add).into());
+            point_acc.push(point_acc[index] + point_to_add);
 
             let x_alpha = point_to_add.x;
             let y_alpha = point_to_add.y;
@@ -289,10 +290,9 @@ mod tests {
                 let point_b = point_a.double();
                 let expected_point = point_a + point_b;
 
-                let affine_point_a: GroupAffine<P> = point_a.into();
-                let affine_point_b: GroupAffine<P> = point_b.into();
-                let affine_expected_point: GroupAffine<P> =
-                    expected_point.into();
+                let affine_point_a = point_a;
+                let affine_point_b = point_b;
+                let affine_expected_point = expected_point;
 
                 let var_point_a_x = composer.add_input(affine_point_a.x);
                 let var_point_a_y = composer.add_input(affine_point_a.y);
@@ -313,6 +313,7 @@ mod tests {
         assert!(res.is_ok());
     }
 
+    #[allow(non_snake_case)] // NOTE: We want to use capital `G` and `H`.
     fn test_pedersen_hash<
         E: PairingEngine,
         P: TEModelParameters<BaseField = E::Fr>,
@@ -379,6 +380,7 @@ mod tests {
         assert!(res.is_ok());
     }
 
+    #[allow(non_snake_case)] // NOTE: We want to use capital `P`.
     fn test_pedersen_balance<
         E: PairingEngine,
         P: TEModelParameters<BaseField = E::Fr>,

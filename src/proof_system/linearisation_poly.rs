@@ -5,7 +5,7 @@
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
 use super::ProverKey;
-use crate::util::*;
+use crate::util::EvaluationDomainExt;
 use ark_ec::{PairingEngine, TEModelParameters};
 use ark_ff::PrimeField;
 use ark_poly::{
@@ -74,6 +74,7 @@ pub(crate) struct ProofEvaluations<F: PrimeField> {
 }
 
 /// Compute the linearisation polynomial.
+#[allow(clippy::type_complexity)] // FIXME: Make a separate struct for the tuple arguments.
 pub(crate) fn compute<
     E: PairingEngine,
     P: TEModelParameters<BaseField = E::Fr>,
@@ -114,7 +115,7 @@ pub(crate) fn compute<
     let q_l_eval = prover_key.fixed_base.q_l.0.evaluate(z_challenge);
     let q_r_eval = prover_key.fixed_base.q_r.0.evaluate(z_challenge);
 
-    let group_gen = get_domain_attrs(domain, "group_gen");
+    let group_gen = domain.group_gen();
     let a_next_eval = w_l_poly.evaluate(&(*z_challenge * group_gen));
     let b_next_eval = w_r_poly.evaluate(&(*z_challenge * group_gen));
     let d_next_eval = w_4_poly.evaluate(&(*z_challenge * group_gen));

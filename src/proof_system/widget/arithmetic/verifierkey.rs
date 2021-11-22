@@ -31,19 +31,19 @@ impl<E: PairingEngine> VerifierKey<E> {
     ) {
         let q_arith_eval = evaluations.q_arith_eval;
 
-        scalars.push(evaluations.a_eval * &evaluations.b_eval * &q_arith_eval);
+        scalars.push(evaluations.a_eval * evaluations.b_eval * q_arith_eval);
         points.push(self.q_m.0);
 
-        scalars.push(evaluations.a_eval * &q_arith_eval);
+        scalars.push(evaluations.a_eval * q_arith_eval);
         points.push(self.q_l.0);
 
-        scalars.push(evaluations.b_eval * &q_arith_eval);
+        scalars.push(evaluations.b_eval * q_arith_eval);
         points.push(self.q_r.0);
 
-        scalars.push(evaluations.c_eval * &q_arith_eval);
+        scalars.push(evaluations.c_eval * q_arith_eval);
         points.push(self.q_o.0);
 
-        scalars.push(evaluations.d_eval * &q_arith_eval);
+        scalars.push(evaluations.d_eval * q_arith_eval);
         points.push(self.q_4.0);
 
         scalars.push(q_arith_eval);

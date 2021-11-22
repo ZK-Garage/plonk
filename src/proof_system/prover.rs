@@ -26,10 +26,7 @@ use num_traits::Zero;
 /// Abstraction structure designed to construct a circuit and generate
 /// [`Proof`]s for it.
 #[allow(missing_debug_implementations)]
-pub struct Prover<
-    E: PairingEngine,
-    P: TEModelParameters<BaseField = E::Fr>,
-> {
+pub struct Prover<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> {
     /// ProverKey which is used to create proofs about a specific PLONK circuit
     pub prover_key: Option<ProverKey<E::Fr, P>>,
 
@@ -39,11 +36,7 @@ pub struct Prover<
     pub preprocessed_transcript: TranscriptWrapper<E>,
 }
 
-impl<
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
-    > Prover<E, P>
-{
+impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Prover<E, P> {
     /// Returns a mutable copy of the underlying [`StandardComposer`].
     pub fn mut_cs(&mut self) -> &mut StandardComposer<E, P> {
         &mut self.cs
@@ -62,21 +55,15 @@ impl<
     }
 }
 
-impl<
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
-    > Default for Prover<E, P>
+impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Default
+    for Prover<E, P>
 {
     fn default() -> Prover<E, P> {
         Prover::new(b"plonk")
     }
 }
 
-impl<
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
-    > Prover<E, P>
-{
+impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Prover<E, P> {
     /// Creates a new `Prover` instance.
     pub fn new(label: &'static [u8]) -> Prover<E, P> {
         Prover {
@@ -105,6 +92,7 @@ impl<
     }
 
     /// Split `t(X)` poly into 4 degree `n` polynomials.
+    #[allow(clippy::type_complexity)] // NOTE: This is an ok type for internal use.
     pub(crate) fn split_tx_poly(
         &self,
         n: usize,
@@ -168,6 +156,9 @@ impl<
 
     /// Keys the [`Transcript`] with additional seed information
     /// Wrapper around [`Transcript::append_message`].
+    ///
+    /// [`Transcript`]: merlin::Transcript
+    /// [`Transcript::append_message`]: merlin::Transcript::append_message
     pub fn key_transcript(&mut self, label: &'static [u8], message: &[u8]) {
         self.preprocessed_transcript
             .transcript
@@ -273,7 +264,7 @@ impl<
         let z_poly = DensePolynomial::from_coefficients_slice(
             &self.cs.perm.compute_permutation_poly(
                 &domain,
-                (&w_l_scalar, &w_r_scalar, &w_o_scalar, &w_4_scalar),
+                (w_l_scalar, w_r_scalar, w_o_scalar, w_4_scalar),
                 beta,
                 gamma,
                 (
@@ -314,7 +305,7 @@ impl<
 
         let t_poly = quotient_poly::compute(
             &domain,
-            &prover_key,
+            prover_key,
             &z_poly,
             (&w_l_poly, &w_r_poly, &w_o_poly, &w_4_poly),
             &pi_poly,
@@ -360,7 +351,7 @@ impl<
 
         let (lin_poly, evaluations) = linearisation_poly::compute::<E, P>(
             &domain,
-            &prover_key,
+            prover_key,
             &(
                 alpha,
                 beta,

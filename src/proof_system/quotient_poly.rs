@@ -38,33 +38,33 @@ pub(crate) fn compute<F: PrimeField, P: TEModelParameters<BaseField = F>>(
     // Compute 4n eval of z(X)
     let domain_4n =
         GeneralEvaluationDomain::<F>::new(4 * domain.size()).unwrap();
-    let mut z_eval_4n = domain_4n.coset_fft(&z_poly);
+    let mut z_eval_4n = domain_4n.coset_fft(z_poly);
     z_eval_4n.push(z_eval_4n[0]);
     z_eval_4n.push(z_eval_4n[1]);
     z_eval_4n.push(z_eval_4n[2]);
     z_eval_4n.push(z_eval_4n[3]);
 
     // Compute 4n evaluations of the wire Densepolynomials
-    let mut wl_eval_4n = domain_4n.coset_fft(&w_l_poly);
+    let mut wl_eval_4n = domain_4n.coset_fft(w_l_poly);
     wl_eval_4n.push(wl_eval_4n[0]);
     wl_eval_4n.push(wl_eval_4n[1]);
     wl_eval_4n.push(wl_eval_4n[2]);
     wl_eval_4n.push(wl_eval_4n[3]);
-    let mut wr_eval_4n = domain_4n.coset_fft(&w_r_poly);
+    let mut wr_eval_4n = domain_4n.coset_fft(w_r_poly);
     wr_eval_4n.push(wr_eval_4n[0]);
     wr_eval_4n.push(wr_eval_4n[1]);
     wr_eval_4n.push(wr_eval_4n[2]);
     wr_eval_4n.push(wr_eval_4n[3]);
-    let wo_eval_4n = domain_4n.coset_fft(&w_o_poly);
+    let wo_eval_4n = domain_4n.coset_fft(w_o_poly);
 
-    let mut w4_eval_4n = domain_4n.coset_fft(&w_4_poly);
+    let mut w4_eval_4n = domain_4n.coset_fft(w_4_poly);
     w4_eval_4n.push(w4_eval_4n[0]);
     w4_eval_4n.push(w4_eval_4n[1]);
     w4_eval_4n.push(w4_eval_4n[2]);
     w4_eval_4n.push(w4_eval_4n[3]);
 
     let t_1 = compute_circuit_satisfiability_equation(
-        &domain,
+        domain,
         (
             *range_challenge,
             *logic_challenge,
@@ -83,7 +83,7 @@ pub(crate) fn compute<F: PrimeField, P: TEModelParameters<BaseField = F>>(
         &z_eval_4n,
         (*alpha, *beta, *gamma),
     );
-    let range = (0..domain_4n.size()).into_iter();
+    let range = 0..domain_4n.size();
 
     let quotient: Vec<_> = range
         .map(|i| {
@@ -118,7 +118,7 @@ fn compute_circuit_satisfiability_equation<
         GeneralEvaluationDomain::<F>::new(4 * domain.size()).unwrap();
     let pi_eval_4n = domain_4n.coset_fft(pi_poly);
 
-    let range = (0..domain_4n.size()).into_iter();
+    let range = 0..domain_4n.size();
 
     let t: Vec<_> = range
         .map(|i| {
@@ -201,7 +201,7 @@ fn compute_permutation_checks<
         compute_first_lagrange_poly_scaled(domain, alpha.square());
     let l1_alpha_sq_evals = domain_4n.coset_fft(&l1_poly_alpha.coeffs);
 
-    let range = (0..domain_4n.size()).into_iter();
+    let range = 0..domain_4n.size();
 
     let t: Vec<_> = range
         .map(|i| {

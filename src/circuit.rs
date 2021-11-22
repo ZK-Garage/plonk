@@ -10,9 +10,7 @@ use core::marker::PhantomData;
 
 use crate::constraint_system::StandardComposer;
 use crate::error::Error;
-use crate::proof_system::{
-    Proof, Prover, ProverKey, Verifier, VerifierKey as PlonkVerifierKey,
-};
+use crate::proof_system::{Proof, Prover, ProverKey, Verifier, VerifierKey};
 use ark_ec::models::TEModelParameters;
 use ark_ec::{
     twisted_edwards_extended::{GroupAffine, GroupProjective},
@@ -110,7 +108,7 @@ pub struct VerifierData<
     E: PairingEngine,
     P: TEModelParameters<BaseField = E::Fr>,
 > {
-    key: PlonkVerifierKey<E, P>,
+    key: VerifierKey<E, P>,
     pi_pos: Vec<usize>,
 }
 
@@ -119,12 +117,12 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
 {
     /// Creates a new `VerifierData` from a [`VerifierKey`] and the public
     /// input positions of the circuit that it represents.
-    pub fn new(key: PlonkVerifierKey<E, P>, pi_pos: Vec<usize>) -> Self {
+    pub fn new(key: VerifierKey<E, P>, pi_pos: Vec<usize>) -> Self {
         Self { key, pi_pos }
     }
 
     /// Returns a reference to the contained [`VerifierKey`].
-    pub fn key(self) -> PlonkVerifierKey<E, P> {
+    pub fn key(self) -> VerifierKey<E, P> {
         self.key
     }
 
@@ -293,13 +291,16 @@ where
 {
     /// Circuit identifier associated constant.
     const CIRCUIT_ID: [u8; 32];
+
     /// Gadget implementation used to fill the composer.
     fn gadget(
         &mut self,
         composer: &mut StandardComposer<E, P>,
     ) -> Result<(), Error>;
+
     /// Compiles the circuit by using a function that returns a `Result`
     /// with the `ProverKey`, `VerifierKey` and the circuit size.
+    #[allow(clippy::type_complexity)] // NOTE: Clippy is too hash here.
     fn compile(
         &mut self,
         u_params: &UniversalParams<E>,
@@ -386,7 +387,7 @@ pub fn verify_proof<
     P: TEModelParameters<BaseField = E::Fr>,
 >(
     u_params: &UniversalParams<E>,
-    plonk_verifier_key: PlonkVerifierKey<E, P>,
+    plonk_verifier_key: VerifierKey<E, P>,
     proof: &Proof<E, P>,
     pub_inputs_values: &[PublicInputValue<E::Fr, P>],
     pub_inputs_positions: &[usize],
@@ -599,13 +600,13 @@ mod tests {
 
     #[allow(non_snake_case)]
     #[test]
-    fn test_full_on_Bls12_381() {
-        test_full::<Bls12_381, ark_ed_on_bls12_381::EdwardsParameters>();
+    fn test_full_on_Bls12_381() -> Result<(), Error> {
+        test_full::<Bls12_381, ark_ed_on_bls12_381::EdwardsParameters>()
     }
 
     #[allow(non_snake_case)]
     #[test]
-    fn test_full_on_Bls12_377() {
-        test_full::<Bls12_377, ark_ed_on_bls12_377::EdwardsParameters>();
+    fn test_full_on_Bls12_377() -> Result<(), Error> {
+        test_full::<Bls12_377, ark_ed_on_bls12_377::EdwardsParameters>()
     }
 }

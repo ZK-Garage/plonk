@@ -289,8 +289,7 @@ mod test {
         > = GeneralEvaluationDomain::new(4 * n).unwrap();
         let values: Vec<_> =
             (0..4 * n).map(|_| BlsScalar::rand(&mut OsRng)).collect();
-        let evaluations = Evaluations::from_vec_and_domain(values, domain);
-        evaluations
+        Evaluations::from_vec_and_domain(values, domain)
     }
 
     #[test]

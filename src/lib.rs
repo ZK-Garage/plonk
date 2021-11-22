@@ -13,7 +13,7 @@
 //! - Zachary J. Williamson (Aztec Protocol)
 //! - Oana Ciobotaru
 //!
-//! This crate contains a pure-rust implementation of this algorithm using
+//! This crate contains a pure Rust implementation of this algorithm using
 //! code done by the creators of the protocol as a reference implementation:
 //!
 //! <https://github.com/AztecProtocol/barretenberg/blob/master/barretenberg/src/aztec/plonk/>

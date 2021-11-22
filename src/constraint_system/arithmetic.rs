@@ -313,7 +313,6 @@ mod arithmetic_gates_tests {
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
     use ark_ec::PairingEngine;
-    use ark_ec::ProjectiveCurve;
     use ark_ec::TEModelParameters;
     use num_traits::{One, Zero};
 

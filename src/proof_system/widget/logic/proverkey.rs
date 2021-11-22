@@ -29,7 +29,7 @@ impl<F: PrimeField> ProverKey<F> {
         w_4_i: F,
         w_4_i_next: F,
     ) -> F {
-        let four = F::from(4 as u64);
+        let four = F::from(4_u64);
 
         let q_logic_i = self.q_logic.1[index];
         let q_c_i = self.q_c.1[index];
@@ -68,7 +68,7 @@ impl<F: PrimeField> ProverKey<F> {
         d_next_eval: F,
         q_c_eval: F,
     ) -> DensePolynomial<F> {
-        let four = F::from(4 as u64);
+        let four = F::from(4_u64);
         let q_logic_poly = &self.q_logic.0;
 
         let kappa = logic_separation_challenge.square();
@@ -99,8 +99,8 @@ impl<F: PrimeField> ProverKey<F> {
 // Computes f(f-1)(f-2)(f-3)
 pub(crate) fn delta<F: PrimeField>(f: F) -> F {
     let f_1 = f - F::one();
-    let f_2 = f - F::from(2 as u64);
-    let f_3 = f - F::from(3 as u64);
+    let f_2 = f - F::from(2_u64);
+    let f_3 = f - F::from(3_u64);
     f * f_1 * f_2 * f_3
 }
 
@@ -117,13 +117,13 @@ pub(crate) fn delta_xor_and<F: PrimeField>(
     c: F,
     q_c: F,
 ) -> F {
-    let nine = F::from(9 as u64);
-    let two = F::from(2 as u64);
-    let three = F::from(3 as u64);
-    let four = F::from(4 as u64);
-    let eighteen = F::from(18 as u64);
-    let eighty_one = F::from(81 as u64);
-    let eighty_three = F::from(83 as u64);
+    let nine = F::from(9_u64);
+    let two = F::from(2_u64);
+    let three = F::from(3_u64);
+    let four = F::from(4_u64);
+    let eighteen = F::from(18_u64);
+    let eighty_one = F::from(81_u64);
+    let eighty_three = F::from(83_u64);
 
     let F = w
         * (w * (four * w - eighteen * (a + b) + eighty_one)

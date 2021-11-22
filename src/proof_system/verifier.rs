@@ -14,10 +14,7 @@ use ark_poly_commit::kzg10::{Powers, VerifierKey};
 
 /// Abstraction structure designed verify [`Proof`]s.
 #[allow(missing_debug_implementations)]
-pub struct Verifier<
-    E: PairingEngine,
-    P: TEModelParameters<BaseField = E::Fr>,
-> {
+pub struct Verifier<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> {
     /// VerificationKey which is used to verify a specific PLONK circuit
     pub verifier_key: Option<PlonkVerifierKey<E, P>>,
 
@@ -30,21 +27,15 @@ pub struct Verifier<
     pub preprocessed_transcript: TranscriptWrapper<E>,
 }
 
-impl<
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
-    > Default for Verifier<E, P>
+impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Default
+    for Verifier<E, P>
 {
     fn default() -> Verifier<E, P> {
         Verifier::new(b"plonk")
     }
 }
 
-impl<
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
-    > Verifier<E, P>
-{
+impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Verifier<E, P> {
     /// Creates a new `Verifier` instance.
     pub fn new(label: &'static [u8]) -> Verifier<E, P> {
         Verifier {
@@ -91,6 +82,9 @@ impl<
 
     /// Keys the [`Transcript`] with additional seed information
     /// Wrapper around [`Transcript::append_message`].
+    ///
+    /// [`Transcript`]: merlin::Transcript
+    /// [`Transcript::append_message`]: merlin::Transcript::append_message
     pub fn key_transcript(&mut self, label: &'static [u8], message: &[u8]) {
         self.preprocessed_transcript
             .transcript

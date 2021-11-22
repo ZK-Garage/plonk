@@ -59,7 +59,7 @@ pub(crate) fn gadget_tester<
         prover.key_transcript(b"key", b"additional seed information");
 
         // Add gadgets
-        gadget(&mut prover.mut_cs());
+        gadget(prover.mut_cs());
 
         // Commit Key
         let (ck, _) = SonicKZG10::<E, DensePolynomial<E::Fr>>::trim(
@@ -92,7 +92,7 @@ pub(crate) fn gadget_tester<
     verifier.key_transcript(b"key", b"additional seed information");
 
     // Add gadgets
-    gadget(&mut verifier.mut_cs());
+    gadget(verifier.mut_cs());
 
     // Compute Commit and Verifier Key
     let (sonic_ck, sonic_vk) = SonicKZG10::<E, DensePolynomial<E::Fr>>::trim(
