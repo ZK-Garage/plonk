@@ -6,7 +6,7 @@
 
 use crate::constraint_system::StandardComposer;
 use crate::error::Error;
-use crate::proof_system::widget::VerifierKey;
+use crate::proof_system::widget::VerifierKey as PlonkVerifierKey;
 use crate::proof_system::Proof;
 use crate::transcript::TranscriptWrapper;
 use ark_ec::{PairingEngine, TEModelParameters};
@@ -16,7 +16,7 @@ use ark_poly_commit::kzg10::{Powers, VerifierKey};
 #[allow(missing_debug_implementations)]
 pub struct Verifier<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> {
     /// VerificationKey which is used to verify a specific PLONK circuit
-    pub verifier_key: Option<VerifierKey<E, P>>,
+    pub verifier_key: Option<PlonkVerifierKey<E, P>>,
 
     pub(crate) cs: StandardComposer<E, P>,
     /// Store the messages exchanged during the preprocessing stage
@@ -100,7 +100,6 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Verifier<E, P> {
     ) -> Result<(), Error> {
         let mut cloned_transcript = self.preprocessed_transcript.clone();
         let plonk_verifier_key = self.verifier_key.as_ref().unwrap();
-
         proof.verify(
             plonk_verifier_key,
             &mut cloned_transcript,
