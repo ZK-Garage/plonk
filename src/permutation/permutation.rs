@@ -11,6 +11,7 @@ use ark_poly::domain::{EvaluationDomain, GeneralEvaluationDomain};
 use ark_poly::{univariate::DensePolynomial, UVPolynomial};
 use hashbrown::HashMap;
 use itertools::izip;
+use rand_core::RngCore;
 use std::marker::PhantomData;
 
 /// Permutation provides the necessary state information and functions
@@ -96,17 +97,16 @@ impl<F: PrimeField> Permutation<F> {
         vec_wire_data.push(wire_data);
     }
 
-    #[allow(clippy::redundant_closure)]
     // Performs shift by one permutation and computes sigma_1, sigma_2 and
     // sigma_3, sigma_4 permutations from the variable maps
     pub(super) fn compute_sigma_permutations(
         &mut self,
         n: usize,
     ) -> [Vec<WireData>; 4] {
-        let sigma_1: Vec<_> = (0..n).map(|x| WireData::Left(x)).collect();
-        let sigma_2: Vec<_> = (0..n).map(|x| WireData::Right(x)).collect();
-        let sigma_3: Vec<_> = (0..n).map(|x| WireData::Output(x)).collect();
-        let sigma_4: Vec<_> = (0..n).map(|x| WireData::Fourth(x)).collect();
+        let sigma_1 = (0..n).map(WireData::Left).collect::<Vec<_>>();
+        let sigma_2 = (0..n).map(WireData::Right).collect::<Vec<_>>();
+        let sigma_3 = (0..n).map(WireData::Output).collect::<Vec<_>>();
+        let sigma_4 = (0..n).map(WireData::Fourth).collect::<Vec<_>>();
 
         let mut sigmas = [sigma_1, sigma_2, sigma_3, sigma_4];
 
@@ -746,6 +746,13 @@ impl<F: PrimeField> Permutation<F> {
     }
 }
 
+/// The `bls_12-381` library does not provide a `random` method for `F`.
+/// We wil use this helper function to compensate.
+#[allow(dead_code)]
+pub(crate) fn random_scalar<F: PrimeField, R: RngCore>(rng: &mut R) -> F {
+    F::rand(rng)
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -1348,12 +1355,4 @@ mod test {
         ark_ed_on_bls12_377::EdwardsParameters
         )
     );
-}
-
-// bls_12-381 library does not provide a `random` method for F
-// We wil use this helper function to compensate
-use rand_core::RngCore;
-#[allow(dead_code)]
-pub(crate) fn random_scalar<F: PrimeField, R: RngCore>(rng: &mut R) -> F {
-    F::rand(rng)
 }

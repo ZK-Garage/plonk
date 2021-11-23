@@ -16,6 +16,7 @@ use num_traits::{One, Zero};
 use rand_core::OsRng;
 
 /// Adds dummy constraints using arithmetic gates
+#[allow(dead_code)]
 pub(crate) fn dummy_gadget<
     E: PairingEngine,
     P: TEModelParameters<BaseField = E::Fr>,
@@ -40,6 +41,7 @@ pub(crate) fn dummy_gadget<
 
 /// Takes a generic gadget function with no auxillary input and
 /// tests whether it passes an end-to-end test
+#[allow(dead_code)]
 pub(crate) fn gadget_tester<
     E: PairingEngine,
     P: TEModelParameters<BaseField = E::Fr>,

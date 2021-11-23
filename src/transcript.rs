@@ -13,6 +13,7 @@ use ark_serialize::CanonicalSerialize;
 use core::marker::PhantomData;
 use merlin::Transcript;
 
+/// Wrapper around [`Transcript`]
 #[derive(Clone)]
 pub struct TranscriptWrapper<E: PairingEngine> {
     pub transcript: Transcript,

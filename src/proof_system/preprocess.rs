@@ -224,7 +224,7 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
     /// must perform IFFTs on the selector polynomials and permutation
     /// polynomials in order to commit to them and have the same transcript
     /// view.
-    #[allow(clippy::type_complexity)] // FIXME: Add struct for preprocessed key.
+    #[allow(clippy::type_complexity)] // FIXME: Add struct for prover side (last two tuple items).
     fn preprocess_shared(
         &mut self,
         commit_key: &Powers<E>,

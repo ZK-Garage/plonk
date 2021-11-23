@@ -36,13 +36,12 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
 {
     /// Adds an elliptic curve Scalar multiplication gate to the circuit
     /// description.
-    // FIXME: `dusk_jubjub` is not used in this crate.
-    //
-    // # Note
-    // This function is optimized for fixed base ops **ONLY** and therefore,
-    // the **ONLY** `generator` inputs that should be passed to this
-    // function as inputs are [`dusk_jubjub::GENERATOR`] or
-    // [`dusk_jubjub::GENERATOR_NUMS`].
+    ///
+    /// # Note
+    ///
+    /// This function is optimized for fixed base ops **ONLY** and therefore,
+    /// the **ONLY** input that should be passed to the function as a point is
+    /// the generator or basepoint of the curve over which we are operating.
     pub fn fixed_base_scalar_mul(
         &mut self,
         jubjub_scalar: Variable,
@@ -69,9 +68,9 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
         assert!(wnaf_entries.len() <= num_bits);
 
         // Initialise the accumulators
-        let mut scalar_acc: Vec<E::Fr> = Vec::with_capacity(num_bits);
+        let mut scalar_acc = Vec::with_capacity(num_bits);
         scalar_acc.push(E::Fr::zero());
-        let mut point_acc: Vec<GroupAffine<P>> = Vec::with_capacity(num_bits);
+        let mut point_acc = Vec::with_capacity(num_bits);
         point_acc.push(GroupAffine::<P>::zero());
 
         // Auxillary point to help with checks on the backend
@@ -199,7 +198,7 @@ mod tests {
                 let secret_scalar = composer.add_input(scalar);
 
                 let (x, y) = P::AFFINE_GENERATOR_COEFFS;
-                let generator: GroupAffine<P> = GroupAffine::new(x, y);
+                let generator = GroupAffine::new(x, y);
                 let expected_point: GroupAffine<P> = AffineCurve::mul(
                     &generator,
                     util::to_embedded_curve_scalar::<E, P>(scalar),
@@ -227,7 +226,7 @@ mod tests {
                 let secret_scalar = composer.add_input(scalar);
 
                 let (x, y) = P::AFFINE_GENERATOR_COEFFS;
-                let generator: GroupAffine<P> = GroupAffine::new(x, y);
+                let generator = GroupAffine::new(x, y);
                 let expected_point: GroupAffine<P> = AffineCurve::mul(
                     &generator,
                     util::to_embedded_curve_scalar::<E, P>(scalar),
@@ -256,7 +255,7 @@ mod tests {
                 // Fails because we are not multiplying by the GENERATOR, it is
                 // double
                 let (x, y) = P::AFFINE_GENERATOR_COEFFS;
-                let generator: GroupAffine<P> = GroupAffine::new(x, y);
+                let generator = GroupAffine::new(x, y);
                 let double_gen = generator.double();
 
                 let expected_point: GroupAffine<P> = AffineCurve::mul(
@@ -284,7 +283,7 @@ mod tests {
         let res = gadget_tester(
             |composer: &mut StandardComposer<E, P>| {
                 let (x, y) = P::AFFINE_GENERATOR_COEFFS;
-                let generator: GroupAffine<P> = GroupAffine::new(x, y);
+                let generator = GroupAffine::new(x, y);
 
                 let point_a = generator;
                 let point_b = point_a.double();
@@ -313,7 +312,6 @@ mod tests {
         assert!(res.is_ok());
     }
 
-    #[allow(non_snake_case)] // NOTE: We want to use capital `G` and `H`.
     fn test_pedersen_hash<
         E: PairingEngine,
         P: TEModelParameters<BaseField = E::Fr>,
@@ -321,12 +319,12 @@ mod tests {
         let res = gadget_tester(
             |composer: &mut StandardComposer<E, P>| {
                 let (x, y) = P::AFFINE_GENERATOR_COEFFS;
-                let generator: GroupAffine<P> = GroupAffine::new(x, y);
+                let generator = GroupAffine::new(x, y);
                 // First component
                 let scalar_a = E::Fr::from(112233u64);
                 let secret_scalar_a = composer.add_input(scalar_a);
                 let point_a = generator;
-                let c_a: GroupAffine<P> = AffineCurve::mul(
+                let expected_component_a: GroupAffine<P> = AffineCurve::mul(
                     &point_a,
                     util::to_embedded_curve_scalar::<E, P>(scalar_a),
                 )
@@ -336,7 +334,7 @@ mod tests {
                 let scalar_b = E::Fr::from(445566u64);
                 let secret_scalar_b = composer.add_input(scalar_b);
                 let point_b = point_a.double() + point_a;
-                let c_b: GroupAffine<P> = AffineCurve::mul(
+                let expected_component_b: GroupAffine<P> = AffineCurve::mul(
                     &point_b,
                     util::to_embedded_curve_scalar::<E, P>(scalar_b),
                 )
@@ -357,19 +355,26 @@ mod tests {
                 // - One curve addition
                 //
                 // Scalar multiplications
-                let aG =
+                let component_a =
                     composer.fixed_base_scalar_mul(secret_scalar_a, point_a);
-                let bH =
+                let component_b =
                     composer.fixed_base_scalar_mul(secret_scalar_b, point_b);
 
-                // Depending on the context, one can check if the resulting aG
-                // and bH are as expected
+                // Depending on the context, one can check if the resulting
+                // components are as expected
                 //
-                composer.assert_equal_public_point(aG, c_a);
-                composer.assert_equal_public_point(bH, c_b);
+                composer.assert_equal_public_point(
+                    component_a,
+                    expected_component_a,
+                );
+                composer.assert_equal_public_point(
+                    component_b,
+                    expected_component_b,
+                );
 
                 // Curve addition
-                let commitment = composer.point_addition_gate(aG, bH);
+                let commitment =
+                    composer.point_addition_gate(component_a, component_b);
 
                 // Add final constraints to ensure that the commitment that we
                 // computed is equal to the public point
@@ -380,7 +385,6 @@ mod tests {
         assert!(res.is_ok());
     }
 
-    #[allow(non_snake_case)] // NOTE: We want to use capital `P`.
     fn test_pedersen_balance<
         E: PairingEngine,
         P: TEModelParameters<BaseField = E::Fr>,
@@ -388,7 +392,7 @@ mod tests {
         let res = gadget_tester(
             |composer: &mut StandardComposer<E, P>| {
                 let (x, y) = P::AFFINE_GENERATOR_COEFFS;
-                let generator: GroupAffine<P> = GroupAffine::new(x, y);
+                let generator = GroupAffine::new(x, y);
 
                 // First component
                 let scalar_a = E::Fr::from(25u64);
@@ -417,22 +421,26 @@ mod tests {
                 )
                 .into();
 
-                let P1 =
+                let point_a =
                     composer.fixed_base_scalar_mul(secret_scalar_a, generator);
-                let P2 =
+                let point_b =
                     composer.fixed_base_scalar_mul(secret_scalar_b, generator);
-                let P3 =
+                let point_c =
                     composer.fixed_base_scalar_mul(secret_scalar_c, generator);
-                let P4 =
+                let point_d =
                     composer.fixed_base_scalar_mul(secret_scalar_d, generator);
 
-                let commitment_a = composer.point_addition_gate(P1, P2);
-                let commitment_b = composer.point_addition_gate(P3, P4);
+                let commitment_lhs =
+                    composer.point_addition_gate(point_a, point_b);
+                let commitment_rhs =
+                    composer.point_addition_gate(point_c, point_d);
 
-                composer.assert_equal_point(commitment_a, commitment_b);
+                composer.assert_equal_point(commitment_lhs, commitment_rhs);
 
-                composer.assert_equal_public_point(commitment_a, expected_lhs);
-                composer.assert_equal_public_point(commitment_b, expected_rhs);
+                composer
+                    .assert_equal_public_point(commitment_lhs, expected_lhs);
+                composer
+                    .assert_equal_public_point(commitment_rhs, expected_rhs);
             },
             2048,
         );

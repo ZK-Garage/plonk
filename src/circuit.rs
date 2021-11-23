@@ -54,9 +54,9 @@ pub trait GeIntoPubInput<T> {
     fn into_pi(self) -> T;
 }
 
-#[derive(Default, Debug, Clone, CanonicalDeserialize, CanonicalSerialize)]
 /// Structure that represents a PLONK Circuit Public Input converted into its
 /// scalar representation.
+#[derive(CanonicalDeserialize, CanonicalSerialize, Clone, Debug, Default)]
 pub struct PublicInputValue<F: PrimeField, P: TEModelParameters<BaseField = F>>
 {
     pub(crate) values: Vec<F>,
@@ -97,13 +97,13 @@ impl<F: PrimeField, P: TEModelParameters<BaseField = F>>
     }
 }
 
-#[derive(
-    Debug, Clone, PartialEq, Eq, CanonicalDeserialize, CanonicalSerialize,
-)]
 /// Collection of structs/objects that the Verifier will use in order to
 /// de/serialize data needed for Circuit proof verification.
 /// This structure can be seen as a link between the [`Circuit`] public input
 /// positions and the [`VerifierKey`] that the Verifier needs to use.
+#[derive(
+    CanonicalDeserialize, CanonicalSerialize, Clone, Debug, Eq, PartialEq,
+)]
 pub struct VerifierData<
     E: PairingEngine,
     P: TEModelParameters<BaseField = E::Fr>,
@@ -135,6 +135,7 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
 /// Trait that should be implemented for any circuit function to provide to it
 /// the capabilities of automatically being able to generate, and verify proofs
 /// as well as compile the circuit.
+///
 /// # Example
 ///
 /// ```
@@ -154,6 +155,7 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
 /// use ark_bls12_381::{Bls12_381, Fr as BlsScalar};
 /// use ark_poly::polynomial::univariate::DensePolynomial;
 /// use ark_ff::{PrimeField, BigInteger};
+///
 /// fn main() -> Result<(), Error> {
 /// // Implements a circuit that checks:
 /// // 1) a + b = c where C is a PI
@@ -174,28 +176,29 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
 ///     f: GroupAffine<P>,
 /// }
 ///
-///     impl<
-///         E: PairingEngine,
-///         P: TEModelParameters<BaseField = E::Fr>
-///     > Default for TestCircuit<E, P> {
-///         fn default() -> Self {
-///             Self {
-///                 a: E::Fr::zero(),
-///                 b: E::Fr::zero(),
-///                 c: E::Fr::zero(),
-///                 d: E::Fr::zero(),
-///                 e: P::ScalarField::zero(),
-///                 f: GroupAffine::<P>::zero(),
-///             }
+/// impl<
+///     E: PairingEngine,
+///     P: TEModelParameters<BaseField = E::Fr>
+/// > Default for TestCircuit<E, P> {
+///     fn default() -> Self {
+///         Self {
+///             a: E::Fr::zero(),
+///             b: E::Fr::zero(),
+///             c: E::Fr::zero(),
+///             d: E::Fr::zero(),
+///             e: P::ScalarField::zero(),
+///             f: GroupAffine::<P>::zero(),
 ///         }
 ///     }
+/// }
 ///
 /// impl<
-///         E: PairingEngine,
-///         P: TEModelParameters<BaseField = E::Fr>,
-///     > Circuit<E, P> for TestCircuit<E, P>
+///     E: PairingEngine,
+///     P: TEModelParameters<BaseField = E::Fr>,
+/// > Circuit<E, P> for TestCircuit<E, P>
 /// {
 ///     const CIRCUIT_ID: [u8; 32] = [0xff; 32];
+///
 ///     fn gadget(
 ///         &mut self,
 ///         composer: &mut StandardComposer<E, P>,
@@ -226,24 +229,24 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
 ///         let generator = GroupAffine::new(x, y);
 ///         let scalar_mul_result =
 ///             composer.fixed_base_scalar_mul(e, generator);
-///         // Apply the constrain
+///         // Apply the constraint
 ///         composer
 ///             .assert_equal_public_point(scalar_mul_result, self.f.clone());
 ///         Ok(())
 ///     }
+///
 ///     fn padded_circuit_size(&self) -> usize {
 ///         1 << 11
 ///     }
 /// }
 ///
 /// let pp = KZG10::<Bls12_381,DensePolynomial<BlsScalar>,>::setup(
-///           1 << 12, false, &mut OsRng
-///     )?;
+///     1 << 12, false, &mut OsRng
+///  )?;
+///
 /// // Initialize the circuit
-/// let mut circuit = TestCircuit::<
-///         Bls12_381,
-///         JubjubParameters
-///     >::default();
+/// let mut circuit = TestCircuit::<Bls12_381, JubjubParameters>::default();
+///
 /// // Compile the circuit
 /// let (pk, vd) = circuit.compile(&pp)?;
 ///
@@ -254,6 +257,7 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
 ///   &generator,
 ///   JubjubScalar::from(2u64).into_repr(),
 /// ).into_affine();
+///
 /// let proof = {
 ///     let mut circuit = TestCircuit {
 ///         a: BlsScalar::from(20u64),
@@ -263,7 +267,6 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
 ///         e: JubjubScalar::from(2u64),
 ///         f: point_f_pi,
 ///     };
-///
 ///     circuit.gen_proof(&pp, pk, b"Test")
 /// }?;
 ///
@@ -283,6 +286,7 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
 ///     b"Test",
 /// )
 /// }
+/// ```
 pub trait Circuit<E, P>
 where
     E: PairingEngine,

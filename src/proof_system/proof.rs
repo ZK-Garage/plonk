@@ -40,13 +40,13 @@ use rand_core::OsRng;
 /// capabilities of adquiring any kind of knowledge about the witness used to
 /// construct the Proof.
 #[derive(
-    Debug,
-    Eq,
-    PartialEq,
-    Clone,
-    Default,
     CanonicalDeserialize,
     CanonicalSerialize,
+    Clone,
+    Debug,
+    Default,
+    Eq,
+    PartialEq,
 )]
 pub struct Proof<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> {
     /// Commitment to the witness polynomial for the left wires.
@@ -244,9 +244,9 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Proof<E, P> {
         transcript.append_commitment(b"w_z", &self.w_z_comm);
         transcript.append_commitment(b"w_z_w", &self.w_zw_comm);
 
-        let group_gen = domain.element(1);
+        let group_gen = domain.group_gen();
 
-        match KZG10::<E, DensePolynomial<E::Fr>>::batch_check::<OsRng>(
+        match KZG10::<E, DensePolynomial<E::Fr>>::batch_check(
             verifier_key,
             &[aggregate_proof_commitment, aggregate_shift_proof_commitment],
             &[z_challenge, (z_challenge * group_gen)],
@@ -299,7 +299,7 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Proof<E, P> {
         )
     }
 
-    //TODO: Doc this
+    // TODO: Doc this
     fn gen_shift_aggregate_proof(
         &self,
         transcript: &mut TranscriptWrapper<E>,
@@ -495,8 +495,7 @@ fn compute_barycentric_eval<F: PrimeField>(
     // Only compute the denominators with non-zero evaluations
     let range = 0..non_zero_evaluations.len();
 
-    // FIXME: Should we just call `domain.group_gen_inv()` here?
-    let group_gen_inv = domain.group_gen().inverse().unwrap();
+    let group_gen_inv = domain.group_gen_inv();
     let mut denominators: Vec<F> = range
         .clone()
         .map(|i| {

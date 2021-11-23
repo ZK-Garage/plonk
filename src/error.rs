@@ -76,11 +76,6 @@ pub enum Error {
     ScalarMalformed,
 }
 
-/// Result Types with PLONK Errors
-// NOTE: This type is not very useful in this crate until this PR is merged:
-// <https://github.com/arkworks-rs/algebra/pull/350>.
-pub type Result<T = ()> = core::result::Result<T, Error>;
-
 impl From<ark_poly_commit::error::Error> for Error {
     fn from(error: ark_poly_commit::error::Error) -> Self {
         Self::PCError { error }

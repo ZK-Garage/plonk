@@ -26,13 +26,13 @@ pub(crate) struct Evaluations<F: PrimeField> {
 /// Subset of all of the evaluations. These evaluations
 /// are added to the [`Proof`](super::Proof).
 #[derive(
-    Debug,
-    Eq,
-    PartialEq,
-    Clone,
-    Default,
     CanonicalDeserialize,
     CanonicalSerialize,
+    Clone,
+    Debug,
+    Default,
+    Eq,
+    PartialEq,
 )]
 pub(crate) struct ProofEvaluations<F: PrimeField> {
     // Evaluation of the witness polynomial for the left wire at `z`
@@ -74,23 +74,20 @@ pub(crate) struct ProofEvaluations<F: PrimeField> {
 }
 
 /// Compute the linearisation polynomial.
-#[allow(clippy::type_complexity)] // FIXME: Make a separate struct for the tuple arguments.
 pub(crate) fn compute<
     E: PairingEngine,
     P: TEModelParameters<BaseField = E::Fr>,
 >(
     domain: &GeneralEvaluationDomain<E::Fr>,
     prover_key: &ProverKey<E::Fr, P>,
-    (
-        alpha,
-        beta,
-        gamma,
-        range_separation_challenge,
-        logic_separation_challenge,
-        fixed_base_separation_challenge,
-        var_base_separation_challenge,
-        z_challenge,
-    ): &(E::Fr, E::Fr, E::Fr, E::Fr, E::Fr, E::Fr, E::Fr, E::Fr),
+    alpha: &E::Fr,
+    beta: &E::Fr,
+    gamma: &E::Fr,
+    range_separation_challenge: &E::Fr,
+    logic_separation_challenge: &E::Fr,
+    fixed_base_separation_challenge: &E::Fr,
+    var_base_separation_challenge: &E::Fr,
+    z_challenge: &E::Fr,
     w_l_poly: &DensePolynomial<E::Fr>,
     w_r_poly: &DensePolynomial<E::Fr>,
     w_o_poly: &DensePolynomial<E::Fr>,

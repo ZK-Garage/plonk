@@ -55,7 +55,6 @@ use ark_ff::{BigInteger, PrimeField};
 /// Each gate or group of gates adds an specific functionallity or operation to
 /// the circuit description, and so, that's why we can understand
 /// the StandardComposer as a builder.
-
 #[derive(Debug)]
 pub struct StandardComposer<
     E: PairingEngine,
@@ -143,10 +142,7 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
     // TODO: Find a more performant solution which can return a ref to a Vec or
     // Iterator.
     pub fn pi_positions(&self) -> Vec<usize> {
-        self.public_inputs_sparse_store
-            .keys()
-            .copied()
-            .collect::<Vec<usize>>()
+        self.public_inputs_sparse_store.keys().copied().collect()
     }
 }
 

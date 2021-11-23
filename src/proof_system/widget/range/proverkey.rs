@@ -8,8 +8,9 @@ use ark_ff::PrimeField;
 use ark_poly::polynomial::univariate::DensePolynomial;
 use ark_poly::Evaluations;
 use ark_serialize::*;
+
 #[derive(
-    Debug, PartialEq, Eq, Clone, CanonicalDeserialize, CanonicalSerialize,
+    CanonicalDeserialize, CanonicalSerialize, Clone, Debug, Eq, PartialEq,
 )]
 pub(crate) struct ProverKey<F: PrimeField> {
     pub(crate) q_range: (DensePolynomial<F>, Evaluations<F>),
@@ -73,7 +74,7 @@ impl<F: PrimeField> ProverKey<F> {
     }
 }
 
-// Computes f(f-1)(f-2)(f-3)
+/// Computes `f(f-1)(f-2)(f-3)`.
 pub(crate) fn delta<F: PrimeField>(f: F) -> F {
     let f_1 = f - F::one();
     let f_2 = f - F::from(2_u64);
