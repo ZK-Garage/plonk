@@ -24,11 +24,6 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           override: false
-      - name: Run clippy
-        uses: actions-rs/cargo@v1
-        with:
-          command: clippy
-          args: --verbose --release --workspace --examples --tests --all-features -- -D warnings
       - name: Run tests
         uses: actions-rs/cargo@v1
         with:
@@ -99,3 +94,23 @@ jobs:
         with:
           command: fmt
           args: --all -- --check
+
+  clippy:
+    if: github.event.pull_request.draft == false
+
+    name: Clippy lint checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+          components: clippy
+      - name: Run clippy
+        uses: actions-rs/cargo@v1
+        with:
+          command: clippy
+          args: --verbose --release --workspace --examples --tests --all-features -- -D warnings
+
