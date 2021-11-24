@@ -14,8 +14,9 @@ use ark_poly_commit::kzg10::Commitment;
 use ark_serialize::*;
 use core::marker::PhantomData;
 use num_traits::One;
+
 #[derive(
-    Debug, PartialEq, Eq, Copy, Clone, CanonicalDeserialize, CanonicalSerialize,
+    CanonicalDeserialize, CanonicalSerialize, Clone, Copy, Debug, Eq, PartialEq,
 )]
 pub(crate) struct VerifierKey<
     E: PairingEngine,

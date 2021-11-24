@@ -11,46 +11,34 @@ pub mod scalar_mul;
 
 use crate::constraint_system::{variable::Variable, StandardComposer};
 use ark_ec::{
-    twisted_edwards_extended::GroupAffine, PairingEngine,
-    TEModelParameters,
+    twisted_edwards_extended::GroupAffine, PairingEngine, TEModelParameters,
 };
 use core::marker::PhantomData;
 use num_traits::{One, Zero};
 
 /// Represents a point of the embeded curve in the circuit
 #[derive(Debug)]
-pub struct Point<
-    E: PairingEngine,
-    P: TEModelParameters<BaseField = E::Fr>,
-> {
+pub struct Point<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> {
     x: Variable,
     y: Variable,
     _marker0: PhantomData<E>,
     _marker1: PhantomData<P>,
 }
 
-impl<
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
-    > Copy for Point<E, P>
+impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Copy
+    for Point<E, P>
 {
 }
 
-impl<
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
-    > Clone for Point<E, P>
+impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Clone
+    for Point<E, P>
 {
     fn clone(&self) -> Point<E, P> {
         *self
     }
 }
 
-impl<
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
-    > Point<E, P>
-{
+impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Point<E, P> {
     /// Creates a new point including the markers.
     pub fn new(x: Variable, y: Variable) -> Point<E, P> {
         Point::<E, P> {
@@ -61,9 +49,7 @@ impl<
         }
     }
     /// Returns an identity point
-    pub fn identity(
-        composer: &mut StandardComposer<E, P>,
-    ) -> Point<E, P> {
+    pub fn identity(composer: &mut StandardComposer<E, P>) -> Point<E, P> {
         let one = composer.add_witness_to_circuit_description(E::Fr::one());
         Point::<E, P>::new(composer.zero_var, one)
     }
@@ -78,10 +64,8 @@ impl<
     }
 }
 
-impl<
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
-    > StandardComposer<E, P>
+impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
+    StandardComposer<E, P>
 {
     /// Converts an embeded curve point into a constraint system Point
     /// without constraining the values
@@ -93,10 +77,7 @@ impl<
 
     /// Converts an embeded curve point into a constraint system Point
     /// without constraining the values
-    pub fn add_public_affine(
-        &mut self,
-        affine: GroupAffine<P>,
-    ) -> Point<E, P> {
+    pub fn add_public_affine(&mut self, affine: GroupAffine<P>) -> Point<E, P> {
         let point = self.add_affine(affine);
         self.constrain_to_constant(point.x, E::Fr::zero(), Some(-affine.x));
         self.constrain_to_constant(point.y, E::Fr::zero(), Some(-affine.y));
@@ -114,7 +95,7 @@ impl<
         let x = self.add_witness_to_circuit_description(affine.x);
         let y = self.add_witness_to_circuit_description(affine.y);
 
-        Point::<E,P>::new(x, y)
+        Point::<E, P>::new(x, y)
     }
 
     /// Asserts that a [`Point`] in the circuit is equal to a known public

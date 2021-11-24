@@ -225,11 +225,10 @@ mod variable_base_gate_tests {
         let res = gadget_tester(
             |composer: &mut StandardComposer<E, P>| {
                 let (x, y) = P::AFFINE_GENERATOR_COEFFS;
-                let generator: GroupAffine<P> = GroupAffine::new(x, y);
+                let generator = GroupAffine::new(x, y);
                 let x_var = composer.add_input(x);
                 let y_var = composer.add_input(y);
-                let expected_point: GroupAffine<P> =
-                    (generator + generator).into();
+                let expected_point = generator + generator;
                 let point_a = Point::new(x_var, y_var);
                 let point_b = Point::new(x_var, y_var);
 
@@ -239,8 +238,7 @@ mod variable_base_gate_tests {
 
                 composer.assert_equal_point(point, point2);
 
-                composer
-                    .assert_equal_public_point(point.into(), expected_point);
+                composer.assert_equal_public_point(point, expected_point);
             },
             2000,
         );

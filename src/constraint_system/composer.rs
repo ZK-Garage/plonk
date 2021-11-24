@@ -28,6 +28,9 @@ use hashbrown::HashMap;
 use num_traits::{One, Zero};
 use std::collections::BTreeMap;
 
+#[cfg(feature = "trace")]
+use ark_ff::{BigInteger, PrimeField};
+
 /// The StandardComposer is the circuit-builder tool that the `dusk-plonk`
 /// repository provides so that circuit descriptions can be written, stored and
 /// transformed into a [`Proof`](crate::proof_system::Proof) at some point.
@@ -53,7 +56,6 @@ use std::collections::BTreeMap;
 /// Each gate or group of gates adds an specific functionallity or operation to
 /// the circuit description, and so, that's why we can understand
 /// the StandardComposer as a builder.
-
 #[derive(Debug)]
 pub struct StandardComposer<
     E: PairingEngine,
@@ -141,10 +143,7 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
     // TODO: Find a more performant solution which can return a ref to a Vec or
     // Iterator.
     pub fn pi_positions(&self) -> Vec<usize> {
-        self.public_inputs_sparse_store
-            .keys()
-            .copied()
-            .collect::<Vec<usize>>()
+        self.public_inputs_sparse_store.keys().copied().collect()
     }
 }
 
@@ -237,6 +236,8 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
     ///
     /// The Composer then links the variable to the [`E::Fr`]
     /// and returns it for its use in the system.
+    ///
+    /// [`E::Fr`]: PairingEngine::Fr
     pub fn add_input(&mut self, s: E::Fr) -> Variable {
         // Get a new Variable from the permutation
         let var = self.perm.new_variable();
@@ -510,22 +511,22 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
         let w_l: Vec<&E::Fr> = self
             .w_l
             .iter()
-            .map(|w_l_i| self.variables.get(&w_l_i).unwrap())
+            .map(|w_l_i| self.variables.get(w_l_i).unwrap())
             .collect();
         let w_r: Vec<&E::Fr> = self
             .w_r
             .iter()
-            .map(|w_r_i| self.variables.get(&w_r_i).unwrap())
+            .map(|w_r_i| self.variables.get(w_r_i).unwrap())
             .collect();
         let w_o: Vec<&E::Fr> = self
             .w_o
             .iter()
-            .map(|w_o_i| self.variables.get(&w_o_i).unwrap())
+            .map(|w_o_i| self.variables.get(w_o_i).unwrap())
             .collect();
         let w_4: Vec<&E::Fr> = self
             .w_4
             .iter()
-            .map(|w_4_i| self.variables.get(&w_4_i).unwrap())
+            .map(|w_4_i| self.variables.get(w_4_i).unwrap())
             .collect();
         // Computes f(f-1)(f-2)(f-3)
         let delta = |f: E::Fr| -> E::Fr {
@@ -546,7 +547,9 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
             let qarith = self.q_arith[i];
             let qrange = self.q_range[i];
             let qlogic = self.q_logic[i];
+            #[cfg(all(feature = "trace-print", feature = "std"))]
             let qfixed = self.q_fixed_group_add[i];
+            #[cfg(all(feature = "trace-print", feature = "std"))]
             let qvar = self.q_variable_group_add[i];
             let pi = pi_vec[i];
 

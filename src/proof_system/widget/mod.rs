@@ -28,7 +28,7 @@ use ark_serialize::*;
 /// This structure is used by the Verifier in order to verify a
 /// [`Proof`](super::Proof).
 #[derive(
-    Debug, PartialEq, Eq, Copy, Clone, CanonicalDeserialize, CanonicalSerialize,
+    CanonicalDeserialize, CanonicalSerialize, Clone, Copy, Debug, Eq, PartialEq,
 )]
 pub struct VerifierKey<
     E: PairingEngine,
@@ -162,7 +162,7 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
 /// This structure is used by the Prover in order to construct a
 /// [`Proof`](crate::proof_system::Proof).
 #[derive(
-    Debug, PartialEq, Eq, Clone, CanonicalSerialize, CanonicalDeserialize,
+    CanonicalDeserialize, CanonicalSerialize, Clone, Debug, Eq, PartialEq,
 )]
 pub struct ProverKey<F: PrimeField, P: TEModelParameters<BaseField = F>> {
     /// Circuit size
@@ -289,8 +289,7 @@ mod test {
         > = GeneralEvaluationDomain::new(4 * n).unwrap();
         let values: Vec<_> =
             (0..4 * n).map(|_| BlsScalar::rand(&mut OsRng)).collect();
-        let evaluations = Evaluations::from_vec_and_domain(values, domain);
-        evaluations
+        Evaluations::from_vec_and_domain(values, domain)
     }
 
     #[test]

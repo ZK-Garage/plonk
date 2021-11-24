@@ -7,7 +7,7 @@
 //! A collection of all possible errors encountered in PLONK.
 
 /// Defines all possible errors that can be encountered in PLONK.
-#[derive(core::fmt::Debug)]
+#[derive(Debug)]
 pub enum Error {
     // FFT errors
     /// This error occurs when an error triggers on any of the fft module

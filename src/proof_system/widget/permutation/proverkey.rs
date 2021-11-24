@@ -11,8 +11,9 @@ use ark_poly::{
     EvaluationDomain, Evaluations, GeneralEvaluationDomain, Polynomial,
 };
 use ark_serialize::*;
+
 #[derive(
-    Debug, PartialEq, Eq, Clone, CanonicalDeserialize, CanonicalSerialize,
+    CanonicalDeserialize, CanonicalSerialize, Clone, Debug, Eq, PartialEq,
 )]
 pub(crate) struct ProverKey<F: PrimeField> {
     pub(crate) left_sigma: (DensePolynomial<F>, Evaluations<F>),
@@ -52,6 +53,7 @@ impl<F: PrimeField> ProverKey<F> {
         let c = self.compute_quotient_term_check_one_i(z_i, l1_alpha_sq);
         a + b + c
     }
+
     // (a(x) + beta * X + gamma) (b(X) + beta * k1 * X + gamma) (c(X) + beta *
     // k2 * X + gamma)(d(X) + beta * k3 * X + gamma)z(X) * alpha
     fn compute_quotient_identity_range_check_i(
@@ -75,6 +77,7 @@ impl<F: PrimeField> ProverKey<F> {
             * z_i
             * alpha
     }
+
     // (a(x) + beta* Sigma1(X) + gamma) (b(X) + beta * Sigma2(X) + gamma) (c(X)
     // + beta * Sigma3(X) + gamma)(d(X) + beta * Sigma4(X) + gamma) Z(X.omega) *
     // alpha
@@ -104,6 +107,7 @@ impl<F: PrimeField> ProverKey<F> {
 
         -product
     }
+
     // L_1(X)[Z(X) - 1]
     fn compute_quotient_term_check_one_i(&self, z_i: F, l1_alpha_sq: F) -> F {
         (z_i - F::one()) * l1_alpha_sq
@@ -143,6 +147,7 @@ impl<F: PrimeField> ProverKey<F> {
         );
         &(&a + &b) + &c
     }
+
     // (a_eval + beta * z_challenge + gamma)(b_eval + beta * K1 * z_challenge +
     // gamma)(c_eval + beta * K2 * z_challenge + gamma) * alpha z(X)
     fn compute_lineariser_identity_range_check(
@@ -183,6 +188,7 @@ impl<F: PrimeField> ProverKey<F> {
                    // * z_challenge + gamma)(c_eval + beta * K2 * z_challenge +
                    // gamma) * alpha z(X)
     }
+
     // -(a_eval + beta * sigma_1 + gamma)(b_eval + beta * sigma_2 + gamma)
     // (c_eval + beta * sigma_3 + gamma) * beta *z_eval * alpha^2 * Sigma_4(X)
     fn compute_lineariser_copy_range_check(

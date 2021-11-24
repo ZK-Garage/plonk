@@ -5,7 +5,7 @@
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
 use super::ProverKey;
-use crate::util::*;
+use crate::util::EvaluationDomainExt;
 use ark_ec::{PairingEngine, TEModelParameters};
 use ark_ff::PrimeField;
 use ark_poly::{
@@ -26,13 +26,13 @@ pub(crate) struct Evaluations<F: PrimeField> {
 /// Subset of all of the evaluations. These evaluations
 /// are added to the [`Proof`](super::Proof).
 #[derive(
-    Debug,
-    Eq,
-    PartialEq,
-    Clone,
-    Default,
     CanonicalDeserialize,
     CanonicalSerialize,
+    Clone,
+    Debug,
+    Default,
+    Eq,
+    PartialEq,
 )]
 pub(crate) struct ProofEvaluations<F: PrimeField> {
     // Evaluation of the witness polynomial for the left wire at `z`
@@ -80,16 +80,14 @@ pub(crate) fn compute<
 >(
     domain: &GeneralEvaluationDomain<E::Fr>,
     prover_key: &ProverKey<E::Fr, P>,
-    (
-        alpha,
-        beta,
-        gamma,
-        range_separation_challenge,
-        logic_separation_challenge,
-        fixed_base_separation_challenge,
-        var_base_separation_challenge,
-        z_challenge,
-    ): &(E::Fr, E::Fr, E::Fr, E::Fr, E::Fr, E::Fr, E::Fr, E::Fr),
+    alpha: &E::Fr,
+    beta: &E::Fr,
+    gamma: &E::Fr,
+    range_separation_challenge: &E::Fr,
+    logic_separation_challenge: &E::Fr,
+    fixed_base_separation_challenge: &E::Fr,
+    var_base_separation_challenge: &E::Fr,
+    z_challenge: &E::Fr,
     w_l_poly: &DensePolynomial<E::Fr>,
     w_r_poly: &DensePolynomial<E::Fr>,
     w_o_poly: &DensePolynomial<E::Fr>,
@@ -114,7 +112,7 @@ pub(crate) fn compute<
     let q_l_eval = prover_key.fixed_base.q_l.0.evaluate(z_challenge);
     let q_r_eval = prover_key.fixed_base.q_r.0.evaluate(z_challenge);
 
-    let group_gen = get_domain_attrs(domain, "group_gen");
+    let group_gen = domain.group_gen();
     let a_next_eval = w_l_poly.evaluate(&(*z_challenge * group_gen));
     let b_next_eval = w_r_poly.evaluate(&(*z_challenge * group_gen));
     let d_next_eval = w_4_poly.evaluate(&(*z_challenge * group_gen));

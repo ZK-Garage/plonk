@@ -19,6 +19,8 @@ use num_traits::{One, Zero};
 
 /// Struct that contains all of the selector and permutation [`Polynomial`]s in
 /// PLONK.
+///
+/// [`Polynomial`]: DensePolynomial
 pub(crate) struct SelectorPolynomials<F: PrimeField> {
     q_m: DensePolynomial<F>,
     q_l: DensePolynomial<F>,
@@ -222,6 +224,7 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
     /// must perform IFFTs on the selector polynomials and permutation
     /// polynomials in order to commit to them and have the same transcript
     /// view.
+    #[allow(clippy::type_complexity)] // FIXME: Add struct for prover side (last two tuple items).
     fn preprocess_shared(
         &mut self,
         commit_key: &Powers<E>,

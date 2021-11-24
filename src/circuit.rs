@@ -10,9 +10,7 @@ use core::marker::PhantomData;
 
 use crate::constraint_system::StandardComposer;
 use crate::error::Error;
-use crate::proof_system::{
-    Proof, Prover, ProverKey, Verifier, VerifierKey as PlonkVerifierKey,
-};
+use crate::proof_system::{Proof, Prover, ProverKey, Verifier, VerifierKey};
 use ark_ec::models::TEModelParameters;
 use ark_ec::{
     twisted_edwards_extended::{GroupAffine, GroupProjective},
@@ -56,9 +54,9 @@ pub trait GeIntoPubInput<T> {
     fn into_pi(self) -> T;
 }
 
-#[derive(Default, Debug, Clone, CanonicalDeserialize, CanonicalSerialize)]
 /// Structure that represents a PLONK Circuit Public Input converted into its
 /// scalar representation.
+#[derive(CanonicalDeserialize, CanonicalSerialize, Clone, Debug, Default)]
 pub struct PublicInputValue<F: PrimeField, P: TEModelParameters<BaseField = F>>
 {
     pub(crate) values: Vec<F>,
@@ -99,18 +97,18 @@ impl<F: PrimeField, P: TEModelParameters<BaseField = F>>
     }
 }
 
-#[derive(
-    Debug, Clone, PartialEq, Eq, CanonicalDeserialize, CanonicalSerialize,
-)]
 /// Collection of structs/objects that the Verifier will use in order to
 /// de/serialize data needed for Circuit proof verification.
 /// This structure can be seen as a link between the [`Circuit`] public input
 /// positions and the [`VerifierKey`] that the Verifier needs to use.
+#[derive(
+    CanonicalDeserialize, CanonicalSerialize, Clone, Debug, Eq, PartialEq,
+)]
 pub struct VerifierData<
     E: PairingEngine,
     P: TEModelParameters<BaseField = E::Fr>,
 > {
-    key: PlonkVerifierKey<E, P>,
+    key: VerifierKey<E, P>,
     pi_pos: Vec<usize>,
 }
 
@@ -119,12 +117,12 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
 {
     /// Creates a new `VerifierData` from a [`VerifierKey`] and the public
     /// input positions of the circuit that it represents.
-    pub fn new(key: PlonkVerifierKey<E, P>, pi_pos: Vec<usize>) -> Self {
+    pub fn new(key: VerifierKey<E, P>, pi_pos: Vec<usize>) -> Self {
         Self { key, pi_pos }
     }
 
     /// Returns a reference to the contained [`VerifierKey`].
-    pub fn key(self) -> PlonkVerifierKey<E, P> {
+    pub fn key(self) -> VerifierKey<E, P> {
         self.key
     }
 
@@ -137,6 +135,7 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
 /// Trait that should be implemented for any circuit function to provide to it
 /// the capabilities of automatically being able to generate, and verify proofs
 /// as well as compile the circuit.
+///
 /// # Example
 ///
 /// ```
@@ -156,6 +155,7 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
 /// use ark_bls12_381::{Bls12_381, Fr as BlsScalar};
 /// use ark_poly::polynomial::univariate::DensePolynomial;
 /// use ark_ff::{PrimeField, BigInteger};
+///
 /// fn main() -> Result<(), Error> {
 /// // Implements a circuit that checks:
 /// // 1) a + b = c where C is a PI
@@ -176,28 +176,29 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
 ///     f: GroupAffine<P>,
 /// }
 ///
-///     impl<
-///         E: PairingEngine,
-///         P: TEModelParameters<BaseField = E::Fr>
-///     > Default for TestCircuit<E, P> {
-///         fn default() -> Self {
-///             Self {
-///                 a: E::Fr::zero(),
-///                 b: E::Fr::zero(),
-///                 c: E::Fr::zero(),
-///                 d: E::Fr::zero(),
-///                 e: P::ScalarField::zero(),
-///                 f: GroupAffine::<P>::zero(),
-///             }
+/// impl<
+///     E: PairingEngine,
+///     P: TEModelParameters<BaseField = E::Fr>
+/// > Default for TestCircuit<E, P> {
+///     fn default() -> Self {
+///         Self {
+///             a: E::Fr::zero(),
+///             b: E::Fr::zero(),
+///             c: E::Fr::zero(),
+///             d: E::Fr::zero(),
+///             e: P::ScalarField::zero(),
+///             f: GroupAffine::<P>::zero(),
 ///         }
 ///     }
+/// }
 ///
 /// impl<
-///         E: PairingEngine,
-///         P: TEModelParameters<BaseField = E::Fr>,
-///     > Circuit<E, P> for TestCircuit<E, P>
+///     E: PairingEngine,
+///     P: TEModelParameters<BaseField = E::Fr>,
+/// > Circuit<E, P> for TestCircuit<E, P>
 /// {
 ///     const CIRCUIT_ID: [u8; 32] = [0xff; 32];
+///
 ///     fn gadget(
 ///         &mut self,
 ///         composer: &mut StandardComposer<E, P>,
@@ -228,24 +229,24 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
 ///         let generator = GroupAffine::new(x, y);
 ///         let scalar_mul_result =
 ///             composer.fixed_base_scalar_mul(e, generator);
-///         // Apply the constrain
+///         // Apply the constraint
 ///         composer
 ///             .assert_equal_public_point(scalar_mul_result, self.f.clone());
 ///         Ok(())
 ///     }
+///
 ///     fn padded_circuit_size(&self) -> usize {
 ///         1 << 11
 ///     }
 /// }
 ///
 /// let pp = KZG10::<Bls12_381,DensePolynomial<BlsScalar>,>::setup(
-///           1 << 12, false, &mut OsRng
-///     )?;
+///     1 << 12, false, &mut OsRng
+///  )?;
+///
 /// // Initialize the circuit
-/// let mut circuit = TestCircuit::<
-///         Bls12_381,
-///         JubjubParameters
-///     >::default();
+/// let mut circuit = TestCircuit::<Bls12_381, JubjubParameters>::default();
+///
 /// // Compile the circuit
 /// let (pk, vd) = circuit.compile(&pp)?;
 ///
@@ -256,6 +257,7 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
 ///   &generator,
 ///   JubjubScalar::from(2u64).into_repr(),
 /// ).into_affine();
+///
 /// let proof = {
 ///     let mut circuit = TestCircuit {
 ///         a: BlsScalar::from(20u64),
@@ -265,7 +267,6 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
 ///         e: JubjubScalar::from(2u64),
 ///         f: point_f_pi,
 ///     };
-///
 ///     circuit.gen_proof(&pp, pk, b"Test")
 /// }?;
 ///
@@ -285,6 +286,7 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
 ///     b"Test",
 /// )
 /// }
+/// ```
 pub trait Circuit<E, P>
 where
     E: PairingEngine,
@@ -293,13 +295,16 @@ where
 {
     /// Circuit identifier associated constant.
     const CIRCUIT_ID: [u8; 32];
+
     /// Gadget implementation used to fill the composer.
     fn gadget(
         &mut self,
         composer: &mut StandardComposer<E, P>,
     ) -> Result<(), Error>;
+
     /// Compiles the circuit by using a function that returns a `Result`
     /// with the `ProverKey`, `VerifierKey` and the circuit size.
+    #[allow(clippy::type_complexity)] // NOTE: Clippy is too hash here.
     fn compile(
         &mut self,
         u_params: &UniversalParams<E>,
@@ -386,7 +391,7 @@ pub fn verify_proof<
     P: TEModelParameters<BaseField = E::Fr>,
 >(
     u_params: &UniversalParams<E>,
-    plonk_verifier_key: PlonkVerifierKey<E, P>,
+    plonk_verifier_key: VerifierKey<E, P>,
     proof: &Proof<E, P>,
     pub_inputs_values: &[PublicInputValue<E::Fr, P>],
     pub_inputs_positions: &[usize],
@@ -599,13 +604,13 @@ mod tests {
 
     #[allow(non_snake_case)]
     #[test]
-    fn test_full_on_Bls12_381() {
-        test_full::<Bls12_381, ark_ed_on_bls12_381::EdwardsParameters>();
+    fn test_full_on_Bls12_381() -> Result<(), Error> {
+        test_full::<Bls12_381, ark_ed_on_bls12_381::EdwardsParameters>()
     }
 
     #[allow(non_snake_case)]
     #[test]
-    fn test_full_on_Bls12_377() {
-        test_full::<Bls12_377, ark_ed_on_bls12_377::EdwardsParameters>();
+    fn test_full_on_Bls12_377() -> Result<(), Error> {
+        test_full::<Bls12_377, ark_ed_on_bls12_377::EdwardsParameters>()
     }
 }

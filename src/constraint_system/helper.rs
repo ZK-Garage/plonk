@@ -16,6 +16,7 @@ use num_traits::{One, Zero};
 use rand_core::OsRng;
 
 /// Adds dummy constraints using arithmetic gates
+#[allow(dead_code)]
 pub(crate) fn dummy_gadget<
     E: PairingEngine,
     P: TEModelParameters<BaseField = E::Fr>,
@@ -40,6 +41,7 @@ pub(crate) fn dummy_gadget<
 
 /// Takes a generic gadget function with no auxillary input and
 /// tests whether it passes an end-to-end test
+#[allow(dead_code)]
 pub(crate) fn gadget_tester<
     E: PairingEngine,
     P: TEModelParameters<BaseField = E::Fr>,
@@ -59,7 +61,7 @@ pub(crate) fn gadget_tester<
         prover.key_transcript(b"key", b"additional seed information");
 
         // Add gadgets
-        gadget(&mut prover.mut_cs());
+        gadget(prover.mut_cs());
 
         // Commit Key
         let (ck, _) = SonicKZG10::<E, DensePolynomial<E::Fr>>::trim(
@@ -92,7 +94,7 @@ pub(crate) fn gadget_tester<
     verifier.key_transcript(b"key", b"additional seed information");
 
     // Add gadgets
-    gadget(&mut verifier.mut_cs());
+    gadget(verifier.mut_cs());
 
     // Compute Commit and Verifier Key
     let (sonic_ck, sonic_vk) = SonicKZG10::<E, DensePolynomial<E::Fr>>::trim(

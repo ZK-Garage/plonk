@@ -10,8 +10,9 @@ use ark_poly::polynomial::univariate::DensePolynomial;
 use ark_poly::Evaluations;
 use ark_serialize::*;
 use core::marker::PhantomData;
+
 #[derive(
-    Debug, PartialEq, Eq, Clone, CanonicalDeserialize, CanonicalSerialize,
+    CanonicalDeserialize, CanonicalSerialize, Clone, Debug, Eq, PartialEq,
 )]
 pub(crate) struct ProverKey<F: PrimeField, P: TEModelParameters<BaseField = F>>
 {
@@ -32,6 +33,7 @@ impl<F: PrimeField, P: TEModelParameters<BaseField = F>> ProverKey<F, P> {
             _marker: PhantomData,
         }
     }
+
     pub(crate) fn compute_quotient_i(
         &self,
         index: usize,

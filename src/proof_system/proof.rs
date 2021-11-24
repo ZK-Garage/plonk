@@ -14,6 +14,7 @@ use super::linearisation_poly::ProofEvaluations;
 use crate::proof_system::VerifierKey as PlonkVerifierKey;
 use crate::transcript::TranscriptProtocol;
 use crate::util;
+use crate::util::EvaluationDomainExt;
 use crate::{error::Error, transcript::TranscriptWrapper};
 use ark_ec::{msm::VariableBaseMSM, AffineCurve, TEModelParameters};
 use ark_ec::{PairingEngine, ProjectiveCurve};
@@ -39,13 +40,13 @@ use rand_core::OsRng;
 /// capabilities of adquiring any kind of knowledge about the witness used to
 /// construct the Proof.
 #[derive(
-    Debug,
-    Eq,
-    PartialEq,
-    Clone,
-    Default,
     CanonicalDeserialize,
     CanonicalSerialize,
+    Clone,
+    Debug,
+    Default,
+    Eq,
+    PartialEq,
 )]
 pub struct Proof<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> {
     /// Commitment to the witness polynomial for the left wires.
@@ -198,7 +199,7 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Proof<E, P> {
             ),
             z_challenge,
             l1_eval,
-            &plonk_verifier_key,
+            plonk_verifier_key,
         );
 
         // Commitment Scheme
@@ -243,9 +244,9 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Proof<E, P> {
         transcript.append_commitment(b"w_z", &self.w_z_comm);
         transcript.append_commitment(b"w_z_w", &self.w_zw_comm);
 
-        let group_gen = domain.element(1);
+        let group_gen = domain.group_gen();
 
-        match KZG10::<E, DensePolynomial<E::Fr>>::batch_check::<OsRng>(
+        match KZG10::<E, DensePolynomial<E::Fr>>::batch_check(
             verifier_key,
             &[aggregate_proof_commitment, aggregate_shift_proof_commitment],
             &[z_challenge, (z_challenge * group_gen)],
@@ -298,7 +299,7 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Proof<E, P> {
         )
     }
 
-    //TODO: Doc this
+    // TODO: Doc this
     fn gen_shift_aggregate_proof(
         &self,
         transcript: &mut TranscriptWrapper<E>,
@@ -366,13 +367,14 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Proof<E, P> {
         z_challenge: &E::Fr,
         n: usize,
     ) -> Commitment<E> {
-        let z_n = z_challenge.pow(&[n as u64, 0, 0, 0]);
-        let z_two_n = z_challenge.pow(&[2 * n as u64, 0, 0, 0]);
-        let z_three_n = z_challenge.pow(&[3 * n as u64, 0, 0, 0]);
+        let n = n as u64;
+        let z_n = z_challenge.pow(&[n, 0, 0, 0]);
+        let z_two_n = z_challenge.pow(&[2 * n, 0, 0, 0]);
+        let z_three_n = z_challenge.pow(&[3 * n, 0, 0, 0]);
         let t_comm = self.t_1_comm.0.into_projective()
-            + &(self.t_2_comm.0.mul(z_n.into_repr()))
-            + &(self.t_3_comm.0.mul(z_two_n.into_repr()))
-            + &(self.t_4_comm.0.mul(z_three_n.into_repr()));
+            + self.t_2_comm.0.mul(z_n.into_repr())
+            + self.t_3_comm.0.mul(z_two_n.into_repr())
+            + self.t_4_comm.0.mul(z_three_n.into_repr());
         Commitment(t_comm.into_affine())
     }
 
@@ -470,7 +472,7 @@ fn compute_first_lagrange_evaluation<F: PrimeField>(
     z_challenge: &F,
 ) -> F {
     let n_fr = F::from(domain.size() as u64);
-    let denom = n_fr * &(*z_challenge - &F::one());
+    let denom = n_fr * (*z_challenge - F::one());
     *z_h_eval * denom.inverse().unwrap()
 }
 
@@ -479,9 +481,9 @@ fn compute_barycentric_eval<F: PrimeField>(
     point: F,
     domain: &GeneralEvaluationDomain<F>,
 ) -> F {
-    let numerator = domain.evaluate_vanishing_polynomial(point)
-        * util::get_domain_attrs(&domain, "size_inv");
-    let range = (0..evaluations.len()).into_iter();
+    let numerator =
+        domain.evaluate_vanishing_polynomial(point) * domain.size_inv();
+    let range = 0..evaluations.len();
 
     let non_zero_evaluations: Vec<usize> = range
         .filter(|&i| {
@@ -491,11 +493,9 @@ fn compute_barycentric_eval<F: PrimeField>(
         .collect();
 
     // Only compute the denominators with non-zero evaluations
-    let range = (0..non_zero_evaluations.len()).into_iter();
+    let range = 0..non_zero_evaluations.len();
 
-    let group_gen_inv = util::get_domain_attrs(&domain, "group_gen")
-        .inverse()
-        .unwrap();
+    let group_gen_inv = domain.group_gen_inv();
     let mut denominators: Vec<F> = range
         .clone()
         .map(|i| {
@@ -510,7 +510,6 @@ fn compute_barycentric_eval<F: PrimeField>(
         .map(|i| {
             let eval_index = non_zero_evaluations[i];
             let eval = evaluations[eval_index];
-
             denominators[i] * eval
         })
         .sum();

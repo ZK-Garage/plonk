@@ -10,8 +10,9 @@ use ark_ff::Field;
 use ark_poly_commit::kzg10::Commitment;
 use ark_serialize::*;
 use core::marker::PhantomData;
+
 #[derive(
-    Debug, PartialEq, Eq, Copy, Clone, CanonicalDeserialize, CanonicalSerialize,
+    CanonicalDeserialize, CanonicalSerialize, Clone, Copy, Debug, Eq, PartialEq,
 )]
 pub(crate) struct VerifierKey<
     E: PairingEngine,
@@ -32,6 +33,7 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
             _marker: PhantomData,
         }
     }
+
     pub(crate) fn compute_linearisation_commitment(
         &self,
         curve_add_separation_challenge: E::Fr,

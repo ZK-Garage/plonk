@@ -24,11 +24,15 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           override: false
+      - name: Run clippy
+        with:
+          command: clippy
+          args: --verbose --release --workspace --examples --tests --all-features -- -D warnings
       - name: Run tests
         uses: actions-rs/cargo@v1
         with:
           command: test
-          args: --verbose --release --all --all-features
+          args: --verbose --release --workspace --all-features -- -D warnings
 
   build:
     if: github.event.pull_request.draft == false
@@ -76,7 +80,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: doc
-          args: --all --document-private-items
+          args: --workspace --document-private-items --all-features
 
   fmt:
     if: github.event.pull_request.draft == false

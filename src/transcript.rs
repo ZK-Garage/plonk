@@ -13,6 +13,7 @@ use ark_serialize::CanonicalSerialize;
 use core::marker::PhantomData;
 use merlin::Transcript;
 
+/// Wrapper around [`Transcript`]
 #[derive(Clone)]
 pub struct TranscriptWrapper<E: PairingEngine> {
     pub transcript: Transcript,
@@ -62,7 +63,8 @@ impl<E: PairingEngine> TranscriptProtocol<E> for TranscriptWrapper<E> {
     }
 
     fn challenge_scalar(&mut self, label: &'static [u8]) -> E::Fr {
-        // XXX: review this: assure from_random_bytes returnes a valid Field element
+        // XXX: review this: assure from_random_bytes returnes a valid Field
+        // element
         let size = E::Fr::size_in_bits() / 8;
         let mut buf = vec![0u8; size];
         self.transcript.challenge_bytes(label, &mut buf);

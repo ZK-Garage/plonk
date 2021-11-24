@@ -10,8 +10,9 @@ use ark_ec::PairingEngine;
 use ark_ff::Field;
 use ark_poly_commit::sonic_pc::Commitment;
 use ark_serialize::*;
+
 #[derive(
-    Debug, PartialEq, Eq, Copy, Clone, CanonicalDeserialize, CanonicalSerialize,
+    CanonicalDeserialize, CanonicalSerialize, Clone, Copy, Debug, Eq, PartialEq,
 )]
 pub(crate) struct VerifierKey<E: PairingEngine> {
     pub(crate) left_sigma: Commitment<E>,
@@ -34,6 +35,7 @@ impl<E: PairingEngine> VerifierKey<E> {
             fourth_sigma,
         }
     }
+
     pub(crate) fn compute_linearisation_commitment(
         &self,
         scalars: &mut Vec<E::Fr>,

@@ -11,9 +11,9 @@ use ark_ec::PairingEngine;
 use core::marker::PhantomData;
 use num_traits::{One, Zero};
 
-#[derive(Debug, Clone, Copy)]
 /// Contains all of the components needed to verify that a bit scalar
 /// multiplication was computed correctly
+#[derive(Clone, Copy, Debug)]
 pub struct WnafRound<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
 {
     /// This is the accumulated x coordinate point that we wish to add (so
