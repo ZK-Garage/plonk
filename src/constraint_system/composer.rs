@@ -22,14 +22,12 @@ use crate::constraint_system::Variable;
 use crate::permutation::Permutation;
 use ark_ec::models::TEModelParameters;
 use ark_ec::PairingEngine;
+#[cfg(feature = "trace")]
 use ark_ff::{BigInteger, PrimeField};
 use core::marker::PhantomData;
 use hashbrown::HashMap;
 use num_traits::{One, Zero};
 use std::collections::BTreeMap;
-
-#[cfg(feature = "trace")]
-use ark_ff::{BigInteger, PrimeField};
 
 /// The StandardComposer is the circuit-builder tool that the `dusk-plonk`
 /// repository provides so that circuit descriptions can be written, stored and
