@@ -36,6 +36,7 @@ hashbrown = {version = "0.11.2", default-features=false, features = ["ahash"]}
 num-traits = "0.2.14"
 
 [dev-dependencies]
+criterion = "0.3"
 tempdir = "0.3"
 ark-bls12-381 = "0.3"
 ark-bls12-377 = "0.3"
@@ -62,3 +63,17 @@ asm = [
 ]
 trace = []
 trace-print = ["trace"]
+
+[[bench]]
+name = "plonk"
+harness = false
+
+[profile.bench]
+opt-level = 3
+debug = false
+debug-assertions = false
+overflow-checks = false
+rpath = false
+lto = "thin"
+incremental = false
+codegen-units = 1
