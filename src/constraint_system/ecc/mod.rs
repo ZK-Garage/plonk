@@ -15,7 +15,6 @@ use ark_ec::{
 };
 use core::marker::PhantomData;
 use num_traits::{One, Zero};
-use std::ops::Neg;
 
 /// Represents a point of the embeded curve in the circuit
 #[derive(Debug)]
@@ -167,7 +166,7 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
 
         // negation of point (x, y) is (-x, y)
         let x_neg = self.add(
-            (E::Fr::one().neg(), x),
+            (-E::Fr::one(), x),
             (E::Fr::zero(), self.zero_var),
             E::Fr::zero(),
             None,
@@ -252,7 +251,7 @@ mod tests {
 
                 let neg_point =
                     composer.conditional_point_neg(bit_1, point_var);
-                composer.assert_equal_public_point(neg_point, point.neg());
+                composer.assert_equal_public_point(neg_point, -point);
 
                 let non_neg_point =
                     composer.conditional_point_neg(bit_0, point_var);
