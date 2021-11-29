@@ -15,6 +15,7 @@ use ark_ec::{
 };
 use core::marker::PhantomData;
 use num_traits::{One, Zero};
+use std::ops::Neg;
 
 /// Represents a point of the embeded curve in the circuit
 #[derive(Debug)]
@@ -148,6 +149,34 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
         Point::<E, P>::new(x, y)
     }
 
+    /// Adds to the circuit description the conditional negation of a point:
+    /// bit == 1 => -value,
+    /// bit == 0 => value,
+    ///
+    /// # Note
+    /// The `bit` used as input which is a [`Variable`] should had previously
+    /// been constrained to be either 1 or 0 using a bool constrain. See:
+    /// [`StandardComposer::boolean_gate`].
+    pub fn conditional_point_neg(
+        &mut self,
+        bit: Variable,
+        point_b: Point<E, P>,
+    ) -> Point<E, P> {
+        let x = point_b.x;
+        let y = point_b.y;
+
+        // negation of point (x, y) is (-x, y)
+        let x_neg = self.add(
+            (E::Fr::one().neg(), x),
+            (E::Fr::zero(), self.zero_var),
+            E::Fr::zero(),
+            None,
+        );
+        let x_updated = self.conditional_select(bit, x_neg, x);
+
+        Point::new(x_updated, y)
+    }
+
     /// Adds to the circuit description the conditional selection of the
     /// identity point:
     /// bit == 1 => value,
@@ -169,26 +198,27 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
     }
 }
 
-/*
-#[cfg(feature = "std")]
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::constraint_system::helper::*;
-    use ark_bls12_381::Fr as BlsScalar;
+    use crate::{batch_test, constraint_system::helper::*};
+    use ark_bls12_377::Bls12_377;
+    use ark_bls12_381::Bls12_381;
 
-    #[test]
-    fn test_conditional_select_point() {
+    fn test_conditional_select_point<
+        E: PairingEngine,
+        P: TEModelParameters<BaseField = E::Fr>,
+    >() {
         let res = gadget_tester(
-            |composer| {
-                let bit_1 = composer.add_input(BlsScalar::one());
+            |composer: &mut StandardComposer<E, P>| {
+                let bit_1 = composer.add_input(E::Fr::one());
                 let bit_0 = composer.zero_var();
 
                 let point_a = Point::identity(composer);
-                let point_b = Point {
-                    x: composer.add_input(BlsScalar::from(10u64)),
-                    y: composer.add_input(BlsScalar::from(20u64)),
-                };
+                let point_b = Point::new(
+                    composer.add_input(E::Fr::from(10u64)),
+                    composer.add_input(E::Fr::from(10u64)),
+                );
 
                 let choice =
                     composer.conditional_point_select(point_a, point_b, bit_1);
@@ -203,5 +233,55 @@ mod tests {
         );
         assert!(res.is_ok());
     }
+
+    fn test_conditional_point_neg<
+        E: PairingEngine,
+        P: TEModelParameters<BaseField = E::Fr>,
+    >() {
+        gadget_tester(
+            |composer: &mut StandardComposer<E, P>| {
+                let bit_1 = composer.add_input(E::Fr::one());
+                let bit_0 = composer.zero_var();
+
+                let point =
+                    GroupAffine::new(E::Fr::from(10u64), E::Fr::from(20u64));
+                let point_var = Point::new(
+                    composer.add_input(point.x),
+                    composer.add_input(point.y),
+                );
+
+                let neg_point =
+                    composer.conditional_point_neg(bit_1, point_var);
+                composer.assert_equal_public_point(neg_point, point.neg());
+
+                let non_neg_point =
+                    composer.conditional_point_neg(bit_0, point_var);
+                composer.assert_equal_public_point(non_neg_point, point);
+            },
+            32,
+        )
+        .expect("test failed");
+    }
+
+    // Bls12-381 tests
+    batch_test!([
+        test_conditional_select_point,
+        test_conditional_point_neg
+    ],
+        [] => (
+        Bls12_381,
+        ark_ed_on_bls12_381::EdwardsParameters
+        )
+    );
+
+    // Bls12-377 tests
+    batch_test!([
+        test_conditional_select_point,
+        test_conditional_point_neg
+    ],
+        [] => (
+        Bls12_377,
+        ark_ed_on_bls12_377::EdwardsParameters
+        )
+    );
 }
-*/
