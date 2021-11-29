@@ -4,6 +4,7 @@
 //
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
+use crate::proof_system::linearisation_poly::ProofEvaluations;
 use ark_ec::PairingEngine;
 use ark_poly_commit::sonic_pc::Commitment;
 use ark_serialize::*;
@@ -20,8 +21,6 @@ pub(crate) struct VerifierKey<E: PairingEngine> {
     pub q_c: Commitment<E>,
     pub q_arith: Commitment<E>,
 }
-
-use crate::proof_system::linearisation_poly::ProofEvaluations;
 
 impl<E: PairingEngine> VerifierKey<E> {
     pub(crate) fn compute_linearisation_commitment(

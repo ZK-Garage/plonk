@@ -18,13 +18,15 @@ use ark_serialize::{
 #[allow(dead_code)]
 /// Evaluations at points `z` or and `z * root of unity`
 pub(crate) struct Evaluations<F: PrimeField> {
+    /// Proof Evaluations
     pub(crate) proof: ProofEvaluations<F>,
-    // Evaluation of the linearisation sigma polynomial at `z`
+
+    /// Evaluation of the linearisation sigma polynomial at `z`
     pub(crate) quot_eval: F,
 }
 
-/// Subset of all of the evaluations. These evaluations
-/// are added to the [`Proof`](super::Proof).
+/// Subset of all of the evaluations. These evaluations are added to the
+/// [`Proof`](super::Proof).
 #[derive(
     CanonicalDeserialize,
     CanonicalSerialize,
@@ -35,41 +37,54 @@ pub(crate) struct Evaluations<F: PrimeField> {
     PartialEq,
 )]
 pub(crate) struct ProofEvaluations<F: PrimeField> {
-    // Evaluation of the witness polynomial for the left wire at `z`
+    /// Evaluation of the witness polynomial for the left wire at `z`
     pub(crate) a_eval: F,
-    // Evaluation of the witness polynomial for the right wire at `z`
+
+    /// Evaluation of the witness polynomial for the right wire at `z`
     pub(crate) b_eval: F,
-    // Evaluation of the witness polynomial for the output wire at `z`
+
+    /// Evaluation of the witness polynomial for the output wire at `z`
     pub(crate) c_eval: F,
-    // Evaluation of the witness polynomial for the fourth wire at `z`
+
+    /// Evaluation of the witness polynomial for the fourth wire at `z`
     pub(crate) d_eval: F,
-    //
+
+    ///
     pub(crate) a_next_eval: F,
-    //
+
+    ///
     pub(crate) b_next_eval: F,
-    // Evaluation of the witness polynomial for the fourth wire at `z * root of
-    // unity`
+
+    /// Evaluation of the witness polynomial for the fourth wire at `z * root
+    /// of unity`
     pub(crate) d_next_eval: F,
-    // Evaluation of the arithmetic selector polynomial at `z`
+
+    /// Evaluation of the arithmetic selector polynomial at `z`
     pub(crate) q_arith_eval: F,
-    //
+
+    ///
     pub(crate) q_c_eval: F,
-    //
+
+    ///
     pub(crate) q_l_eval: F,
-    //
+
+    ///
     pub(crate) q_r_eval: F,
-    // Evaluation of the left sigma polynomial at `z`
+
+    /// Evaluation of the left sigma polynomial at `z`
     pub(crate) left_sigma_eval: F,
-    // Evaluation of the right sigma polynomial at `z`
+
+    /// Evaluation of the right sigma polynomial at `z`
     pub(crate) right_sigma_eval: F,
-    // Evaluation of the out sigma polynomial at `z`
+
+    /// Evaluation of the out sigma polynomial at `z`
     pub(crate) out_sigma_eval: F,
 
-    // Evaluation of the linearisation sigma polynomial at `z`
+    /// Evaluation of the linearisation sigma polynomial at `z`
     pub(crate) lin_poly_eval: F,
 
-    // (Shifted) Evaluation of the permutation polynomial at `z * root of
-    // unity`
+    /// (Shifted) Evaluation of the permutation polynomial at `z * root of
+    /// unity`
     pub(crate) perm_eval: F,
 }
 
@@ -119,12 +134,10 @@ pub(crate) fn compute<
     let perm_eval = z_poly.evaluate(&(*z_challenge * group_gen));
 
     let f_1 = compute_circuit_satisfiability::<E, P>(
-        (
-            range_separation_challenge,
-            logic_separation_challenge,
-            fixed_base_separation_challenge,
-            var_base_separation_challenge,
-        ),
+        range_separation_challenge,
+        logic_separation_challenge,
+        fixed_base_separation_challenge,
+        var_base_separation_challenge,
         a_eval,
         b_eval,
         c_eval,
@@ -183,12 +196,10 @@ fn compute_circuit_satisfiability<
     E: PairingEngine,
     P: TEModelParameters<BaseField = E::Fr>,
 >(
-    (
-        range_separation_challenge,
-        logic_separation_challenge,
-        fixed_base_separation_challenge,
-        var_base_separation_challenge,
-    ): (&E::Fr, &E::Fr, &E::Fr, &E::Fr),
+    range_separation_challenge: &E::Fr,
+    logic_separation_challenge: &E::Fr,
+    fixed_base_separation_challenge: &E::Fr,
+    var_base_separation_challenge: &E::Fr,
     a_eval: E::Fr,
     b_eval: E::Fr,
     c_eval: E::Fr,

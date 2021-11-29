@@ -3,25 +3,126 @@
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 //
 // Copyright (c) DUSK NETWORK. All rights reserved.
-/// XXX: Doc this
 
-/// XXX: Doc this
+//! XXX: Doc this
+
 pub mod arithmetic;
-/// XXX: Doc this
 pub mod ecc;
-/// XXX: Doc this
 pub mod logic;
-/// XXX: Doc this
 pub mod permutation;
-/// XXX: Doc this
 pub mod range;
 
+use crate::proof_system::linearisation_poly::ProofEvaluations;
 use crate::transcript::TranscriptProtocol;
 use ark_ec::{PairingEngine, TEModelParameters};
-use ark_ff::PrimeField;
+use ark_ff::{Field, PrimeField};
 use ark_poly::{univariate::DensePolynomial, Evaluations};
 use ark_poly_commit::sonic_pc::Commitment;
 use ark_serialize::*;
+
+/// Gate Values
+///
+/// This data structures holds the wire values for a given gate.
+pub struct GateValues<F>
+where
+    F: Field,
+{
+    /// Left Value
+    pub left: F,
+
+    /// Right Value
+    pub right: F,
+
+    /// Output Value
+    pub output: F,
+
+    /// Fourth Value
+    pub fourth: F,
+
+    /// Next Left Value
+    ///
+    /// Only used in gates which use internal copy constraints.
+    pub left_next: F,
+
+    /// Next Right Value
+    ///
+    /// Only used in gates which use internal copy constraints.
+    pub right_next: F,
+
+    /// Next Fourth Value
+    ///
+    /// Only used in gates which use internal copy constraints.
+    pub fourth_next: F,
+
+    /// Left Wire Selector Weight
+    pub left_selector: F,
+
+    /// Right Wire Selector Weight
+    pub right_selector: F,
+
+    /// Constant Wire Selector Weight
+    pub constant_selector: F,
+}
+
+/// Gate Constraint
+pub trait GateConstraint<F>
+where
+    F: Field,
+{
+    /// Returns the coefficient of the quotient polynomial for this gate given
+    /// an instantiation of the gate at `values` and a
+    /// `separation_challenge` if this gate requires it for soundness.
+    ///
+    /// This method is an encoding of the polynomial constraint(s) that this
+    /// gate represents whenever it is added to a circuit.
+    fn compute_constraint(separation_challenge: F, values: GateValues<F>) -> F;
+}
+
+/// Computes the linearisation polynomial term for the given `G` gate type at
+/// the `selector_polynomial` instantiated with `separation_challenge` and
+/// `values`.
+pub(crate) fn compute_linearisation_term<E, G>(
+    selector_polynomial: &DensePolynomial<E::Fr>,
+    separation_challenge: E::Fr,
+    values: GateValues<E::Fr>,
+) -> DensePolynomial<E::Fr>
+where
+    E: PairingEngine,
+    G: GateConstraint<E::Fr>,
+{
+    selector_polynomial * G::compute_constraint(separation_challenge, values)
+}
+
+/// Extends the `scalars` and `points` to build the linearisation commitment,
+/// with the given instantiation of `evaluations` and `separation_challenge`.
+pub(crate) fn extend_linearisation_commitment<E, G>(
+    selector_commitment: Commitment<E>,
+    separation_challenge: E::Fr,
+    evaluations: &ProofEvaluations<E::Fr>,
+    scalars: &mut Vec<E::Fr>,
+    points: &mut Vec<E::G1Affine>,
+) where
+    E: PairingEngine,
+    G: GateConstraint<E::Fr>,
+{
+    let coefficient = G::compute_constraint(
+        separation_challenge,
+        GateValues {
+            left: evaluations.a_eval,
+            right: evaluations.b_eval,
+            output: evaluations.c_eval,
+            fourth: evaluations.d_eval,
+            left_next: evaluations.a_next_eval,
+            right_next: evaluations.b_next_eval,
+            fourth_next: evaluations.d_next_eval,
+            left_selector: evaluations.q_l_eval,
+            right_selector: evaluations.q_r_eval,
+            constant_selector: evaluations.q_c_eval,
+        },
+    );
+    scalars.push(coefficient);
+    points.push(selector_commitment.0);
+}
 
 /// PLONK circuit Verification Key.
 ///
