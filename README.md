@@ -6,11 +6,15 @@
 
 _This is a pure Rust implementation of the PLONK zk proving system_
 
-## Usage
 
+## About
+Initial implementation created by [Kev](https://github.com/kevaundray), [Carlos](https://github.com/CPerezz) and [Luke](https://github.com/LukePearson1) at Dusk Network.
+Redesigned by the [rust zkp](https://github.com/rust-zkp) team to have a backend which is compatible with the [arkworks](https://github.com/arkworks-rs) suite. This allows us to leverage the multitude of curves
+and optimised algebra present in various arkworks repositories.
+
+## Usage
 ```rust
 use core::marker::PhantomData;
-
 use ark_bls12_381::{Bls12_381, Fr as BlsScalar};
 use ark_ec::twisted_edwards_extended::GroupAffine;
 use ark_ec::{AffineCurve, PairingEngine, TEModelParameters};
@@ -212,17 +216,11 @@ Verify 2^18 = 262144 gates/18 time:   [6.7577 ms 6.8124 ms 6.8925 ms]
 ## Acknowledgements
 
 - Reference [implementation](https://github.com/AztecProtocol/barretenberg) by Aztec Protocol
-- Initial [implementation](https://github.com/kobigurk/plonk/tree/kobigurk/port_to_zexe) of PLONK with arkworks backend by Kobi Gurkan
-
+- Initial [implementation](https://github.com/kobigurk/plonk/tree/kobigurk/port_to_zexe) of PLONK with arkworks backend was done years before this lib existed by Kobi Gurkan
 
 ## Licensing
 
 This code is licensed under Mozilla Public License Version 2.0 (MPL-2.0). Please see [LICENSE](https://github.com/rust-zkp/ark-plonk/blob/master/LICENSE) for further info.
-
-## About
-Initial [implementation](https://github.com/dusk-network/plonk) created by [Kev](https://github.com/kevaundray), [Carlos](https://github.com/CPerezz) and [Luke](https://github.com/LukePearson1) at Dusk Network.
-Redesigned by the [rust zkp](https://github.com/rust-zkp) team to have a backend which is compatible with the [arkworks](https://github.com/arkworks-rs) suite. This allows us to leverage the multitude of curves
-and optimised algebra present in various arkworks repositories.
 
 ## Contributing
 
