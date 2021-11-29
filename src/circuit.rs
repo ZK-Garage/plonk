@@ -487,6 +487,7 @@ mod tests {
             }
         }
     }
+
     impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
         Circuit<E, P> for TestCircuit<E, P>
     {
