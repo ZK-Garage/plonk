@@ -10,7 +10,12 @@
 //! This module contains the implementation of the `StandardComposer`s
 //! `Proof` structure and it's methods.
 
-use super::linearisation_poly::ProofEvaluations;
+use crate::proof_system::ecc::CurveAddition;
+use crate::proof_system::ecc::FixedBaseScalarMul;
+use crate::proof_system::extend_linearisation_commitment;
+use crate::proof_system::linearisation_poly::ProofEvaluations;
+use crate::proof_system::logic::Logic;
+use crate::proof_system::range::Range;
 use crate::proof_system::VerifierKey as PlonkVerifierKey;
 use crate::transcript::TranscriptProtocol;
 use crate::util;
@@ -406,6 +411,7 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Proof<E, P> {
         let mut scalars: Vec<_> = Vec::with_capacity(6);
         let mut points: Vec<E::G1Affine> = Vec::with_capacity(6);
 
+        // TODO:
         plonk_verifier_key
             .arithmetic
             .compute_linearisation_commitment(
@@ -414,20 +420,49 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Proof<E, P> {
                 &self.evaluations,
             );
 
+        extend_linearisation_commitment::<E, Range<_>>(
+            plonk_verifier_key.range_selector_commitment,
+            range_sep_challenge,
+            &self.evaluations,
+            &mut scalars,
+            &mut points,
+        );
+
+        /*
         plonk_verifier_key.range.compute_linearisation_commitment(
             range_sep_challenge,
             &mut scalars,
             &mut points,
             &self.evaluations,
         );
+        */
 
+        extend_linearisation_commitment::<E, Logic<_>>(
+            plonk_verifier_key.logic_selector_commitment,
+            logic_sep_challenge,
+            &self.evaluations,
+            &mut scalars,
+            &mut points,
+        );
+
+        /*
         plonk_verifier_key.logic.compute_linearisation_commitment(
             logic_sep_challenge,
             &mut scalars,
             &mut points,
             &self.evaluations,
         );
+        */
 
+        extend_linearisation_commitment::<E, FixedBaseScalarMul<_, P>>(
+            plonk_verifier_key.fixed_group_add_selector_commitment,
+            fixed_base_sep_challenge,
+            &self.evaluations,
+            &mut scalars,
+            &mut points,
+        );
+
+        /*
         plonk_verifier_key
             .fixed_base
             .compute_linearisation_commitment(
@@ -436,7 +471,17 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Proof<E, P> {
                 &mut points,
                 &self.evaluations,
             );
+        */
 
+        extend_linearisation_commitment::<E, CurveAddition<_, P>>(
+            plonk_verifier_key.variable_group_add_selector_commitment,
+            var_base_sep_challenge,
+            &self.evaluations,
+            &mut scalars,
+            &mut points,
+        );
+
+        /*
         plonk_verifier_key
             .variable_base
             .compute_linearisation_commitment(
@@ -445,6 +490,7 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Proof<E, P> {
                 &mut points,
                 &self.evaluations,
             );
+        */
 
         plonk_verifier_key
             .permutation

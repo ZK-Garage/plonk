@@ -63,12 +63,13 @@ where
     /// Right Wire Selector Weight
     pub right_selector: F,
 
+    /* TODO:
     /// Output Wire Selector Weight
     pub output_selector: F,
 
     /// Fourth Wire Selector Weight
     pub fourth_selector: F,
-
+    */
     /// Constant Wire Selector Weight
     pub constant_selector: F,
 }
@@ -90,7 +91,7 @@ where
 /// Computes the linearisation polynomial term for the given `G` gate type at
 /// the `selector_polynomial` instantiated with `separation_challenge` and
 /// `values`.
-pub(crate) fn compute_linearisation_term<F, G>(
+pub fn compute_linearisation_term<F, G>(
     selector_polynomial: &DensePolynomial<F>,
     separation_challenge: F,
     values: GateValues<F>,
@@ -104,7 +105,7 @@ where
 
 /// Extends the `scalars` and `points` to build the linearisation commitment,
 /// with the given instantiation of `evaluations` and `separation_challenge`.
-pub(crate) fn extend_linearisation_commitment<E, G>(
+pub fn extend_linearisation_commitment<E, G>(
     selector_commitment: Commitment<E>,
     separation_challenge: E::Fr,
     evaluations: &ProofEvaluations<E::Fr>,
@@ -126,8 +127,8 @@ pub(crate) fn extend_linearisation_commitment<E, G>(
             fourth_next: evaluations.d_next_eval,
             left_selector: evaluations.q_l_eval,
             right_selector: evaluations.q_r_eval,
-            output_selector: evaluations.q_o_eval,
-            fourth_selector: evaluations.q_4_eval,
+            // TODO: output_selector: evaluations.q_o_eval,
+            // TODO: fourth_selector: evaluations.q_4_eval,
             constant_selector: evaluations.q_c_eval,
         },
     );
@@ -146,10 +147,11 @@ pub(crate) fn extend_linearisation_commitment<E, G>(
     Eq(bound = ""),
     PartialEq(bound = "")
 )]
-pub struct VerifierKey<
+pub struct VerifierKey<E, P>
+where
     E: PairingEngine,
     P: TEModelParameters<BaseField = E::Fr>,
-> {
+{
     /// Circuit size (not padded to a power of two).
     pub(crate) n: usize,
 
@@ -407,6 +409,7 @@ impl<F: PrimeField, P: TEModelParameters<BaseField = F>> ProverKey<F, P> {
                 linear_evaluations,
             },
             v_h_coset_4n,
+            __: PhantomData,
         }
     }
 }

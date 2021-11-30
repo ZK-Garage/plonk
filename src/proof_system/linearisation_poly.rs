@@ -244,7 +244,7 @@ where
     );
 
     let range = compute_linearisation_term::<_, Range<_>>(
-        &prover_key.q_range.0,
+        &prover_key.range_selector.0,
         *range_separation_challenge,
         values,
     );
@@ -261,7 +261,7 @@ where
     */
 
     let logic = compute_linearisation_term::<_, Logic<_>>(
-        &prover_key.q_logic.0,
+        &prover_key.logic_selector.0,
         *logic_separation_challenge,
         values,
     );
@@ -282,7 +282,7 @@ where
 
     let fixed_base_scalar_mul =
         compute_linearisation_term::<_, FixedBaseScalarMul<_, P>>(
-            &prover_key.q_fixed_group_add.0,
+            &prover_key.fixed_group_add_selector.0,
             *fixed_base_separation_challenge,
             values,
         );
@@ -304,7 +304,7 @@ where
     */
 
     let curve_addition = compute_linearisation_term::<_, CurveAddition<_, P>>(
-        &prover_key.q_variable_group_add.0,
+        &prover_key.variable_group_add_selector.0,
         *var_base_separation_challenge,
         values,
     );

@@ -65,12 +65,10 @@ pub(crate) fn compute<F: PrimeField, P: TEModelParameters<BaseField = F>>(
 
     let t_1 = compute_circuit_satisfiability_equation(
         domain,
-        (
-            *range_challenge,
-            *logic_challenge,
-            *fixed_base_challenge,
-            *var_base_challenge,
-        ),
+        *range_challenge,
+        *logic_challenge,
+        *fixed_base_challenge,
+        *var_base_challenge,
         prover_key,
         (&wl_eval_4n, &wr_eval_4n, &wo_eval_4n, &w4_eval_4n),
         public_inputs_poly,
@@ -98,22 +96,21 @@ pub(crate) fn compute<F: PrimeField, P: TEModelParameters<BaseField = F>>(
     })
 }
 
-// Ensures that the circuit is satisfied
-fn compute_circuit_satisfiability_equation<
-    F: PrimeField,
-    P: TEModelParameters<BaseField = F>,
->(
+/// Ensures that the circuit is satisfied.
+fn compute_circuit_satisfiability_equation<F, P>(
     domain: &GeneralEvaluationDomain<F>,
-    (
-        range_challenge,
-        logic_challenge,
-        fixed_base_challenge,
-        var_base_challenge,
-    ): (F, F, F, F),
+    range_challenge: F,
+    logic_challenge: F,
+    fixed_base_challenge: F,
+    var_base_challenge: F,
     prover_key: &ProverKey<F, P>,
     (wl_eval_4n, wr_eval_4n, wo_eval_4n, w4_eval_4n): (&[F], &[F], &[F], &[F]),
     pi_poly: &DensePolynomial<F>,
-) -> Vec<F> {
+) -> Vec<F>
+where
+    F: PrimeField,
+    P: TEModelParameters<BaseField = F>,
+{
     let domain_4n =
         GeneralEvaluationDomain::<F>::new(4 * domain.size()).unwrap();
     let pi_eval_4n = domain_4n.coset_fft(pi_poly);
