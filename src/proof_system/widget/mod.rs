@@ -63,12 +63,6 @@ where
     /// Right Wire Selector Weight
     pub right_selector: F,
 
-    /// Output Wire Selector Weight
-    pub output_selector: F,
-
-    /// Fourth Wire Selector Weight
-    pub fourth_selector: F,
-
     /// Constant Wire Selector Weight
     pub constant_selector: F,
 }
@@ -86,17 +80,6 @@ where
     /// gate represents whenever it is added to a circuit.
     fn constraints(separation_challenge: F, values: GateValues<F>) -> F;
 
-    /// Computes the linearisation polynomial term for the given gate type
-    /// at the `selector_polynomial` instantiated with `separation_challenge`
-    /// and `values`.
-    fn linearisation_term(
-        selector_polynomial: &DensePolynomial<F>,
-        separation_challenge: F,
-        values: GateValues<F>,
-    ) -> DensePolynomial<F> {
-        selector_polynomial * Self::constraints(separation_challenge, values)
-    }
-
     /// Computes the quotient polynomial term for the given gate type for the
     /// given value of `selector` instantiated with `separation_challenge` and
     /// `values`.
@@ -108,8 +91,19 @@ where
         selector * Self::constraints(separation_challenge, values)
     }
 
-    /// Extends the `scalars` and `points` to build the linearisation
-    /// commitment, with the given instantiation of `evaluations` and
+    /// Computes the linearisation polynomial term for the given gate type
+    /// at the `selector_polynomial` instantiated with `separation_challenge`
+    /// and `values`.
+    fn linearisation_term(
+        selector_polynomial: &DensePolynomial<F>,
+        separation_challenge: F,
+        values: GateValues<F>,
+    ) -> DensePolynomial<F> {
+        selector_polynomial * Self::constraints(separation_challenge, values)
+    }
+
+    /// Extends `scalars` and `points` to build the linearisation commitment
+    /// with the given instantiation of `evaluations` and
     /// `separation_challenge`.
     fn extend_linearisation_commitment<E>(
         selector_commitment: Commitment<E>,
@@ -132,8 +126,6 @@ where
                 fourth_next: evaluations.d_next_eval,
                 left_selector: evaluations.q_l_eval,
                 right_selector: evaluations.q_r_eval,
-                output_selector: evaluations.q_o_eval,
-                fourth_selector: evaluations.q_4_eval,
                 constant_selector: evaluations.q_c_eval,
             },
         );
@@ -230,8 +222,13 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
             fourth_selector_commitment: q_4,
             constant_selector_commitment: q_c,
             arithmetic: arithmetic::VerifierKey {
-                arithmetic_selector_commitment: q_arith,
-                mul_selector_commitment: q_m,
+                q_m,
+                q_l,
+                q_r,
+                q_o,
+                q_4,
+                q_c,
+                q_arith,
             },
             range_selector_commitment: q_range,
             logic_selector_commitment: q_logic,
@@ -263,20 +260,14 @@ where
     where
         T: TranscriptProtocol<E>,
     {
-        transcript.append_commitment(
-            b"q_m",
-            &self.arithmetic.mul_selector_commitment,
-        );
+        transcript.append_commitment(b"q_m", &self.arithmetic.q_m);
         transcript.append_commitment(b"q_l", &self.left_selector_commitment);
         transcript.append_commitment(b"q_r", &self.right_selector_commitment);
         transcript.append_commitment(b"q_o", &self.output_selector_commitment);
         transcript
             .append_commitment(b"q_c", &self.constant_selector_commitment);
         transcript.append_commitment(b"q_4", &self.fourth_selector_commitment);
-        transcript.append_commitment(
-            b"q_arith",
-            &self.arithmetic.arithmetic_selector_commitment,
-        );
+        transcript.append_commitment(b"q_arith", &self.arithmetic.q_arith);
         transcript
             .append_commitment(b"q_range", &self.range_selector_commitment);
         transcript
@@ -395,14 +386,19 @@ impl<F: PrimeField, P: TEModelParameters<BaseField = F>> ProverKey<F, P> {
     ) -> Self {
         Self {
             n,
-            left_selector: q_l,
-            right_selector: q_r,
-            output_selector: q_o,
-            fourth_selector: q_4,
-            constant_selector: q_c,
+            left_selector: q_l.clone(),
+            right_selector: q_r.clone(),
+            output_selector: q_o.clone(),
+            fourth_selector: q_4.clone(),
+            constant_selector: q_c.clone(),
             arithmetic: arithmetic::ProverKey {
-                arithmetic_selector: q_arith,
-                mul_selector: q_m,
+                q_m,
+                q_l,
+                q_r,
+                q_o,
+                q_4,
+                q_c,
+                q_arith,
             },
             range_selector: q_range,
             logic_selector: q_logic,
@@ -463,8 +459,8 @@ mod test {
         let q_l = rand_poly_eval(n);
         let q_r = rand_poly_eval(n);
         let q_o = rand_poly_eval(n);
-        let q_c = rand_poly_eval(n);
         let q_4 = rand_poly_eval(n);
+        let q_c = rand_poly_eval(n);
         let q_arith = rand_poly_eval(n);
         let q_range = rand_poly_eval(n);
         let q_logic = rand_poly_eval(n);
@@ -522,8 +518,8 @@ mod test {
         let q_l = Commitment(G1Affine::default());
         let q_r = Commitment(G1Affine::default());
         let q_o = Commitment(G1Affine::default());
-        let q_c = Commitment(G1Affine::default());
         let q_4 = Commitment(G1Affine::default());
+        let q_c = Commitment(G1Affine::default());
         let q_arith = Commitment(G1Affine::default());
         let q_range = Commitment(G1Affine::default());
         let q_logic = Commitment(G1Affine::default());

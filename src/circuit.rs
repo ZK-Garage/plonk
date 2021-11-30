@@ -117,10 +117,10 @@ where
     P: TEModelParameters<BaseField = E::Fr>,
 {
     /// Verifier Key
-    key: VerifierKey<E, P>,
+    pub key: VerifierKey<E, P>,
 
     /// Public Input Positions
-    pi_pos: Vec<usize>,
+    pub pi_pos: Vec<usize>,
 }
 
 impl<E, P> VerifierData<E, P>
@@ -151,23 +151,24 @@ where
 ///
 /// # Example
 ///
-/// ```
-/// use rand_core::OsRng;
+/// ```rust
+/// use ark_bls12_381::{Bls12_381, Fr as BlsScalar};
 /// use ark_ec::PairingEngine;
-/// use ark_plonk::error::Error;
+/// use ark_ec::models::twisted_edwards_extended::GroupAffine;
+/// use ark_ec::{TEModelParameters, AffineCurve, ProjectiveCurve};
 /// use ark_ed_on_bls12_381::{
 ///     EdwardsAffine as JubjubAffine, EdwardsParameters as JubjubParameters,
 ///     EdwardsProjective as JubjubProjective, Fr as JubjubScalar,
 /// };
-/// use ark_ec::{TEModelParameters, AffineCurve, ProjectiveCurve};
+/// use ark_ff::{PrimeField, BigInteger};
 /// use ark_plonk::circuit::{Circuit, PublicInputValue, verify_proof, GeIntoPubInput, FeIntoPubInput};
 /// use ark_plonk::constraint_system::StandardComposer;
-/// use num_traits::{Zero, One};
-/// use ark_ec::models::twisted_edwards_extended::GroupAffine;
-/// use ark_poly_commit::kzg10::KZG10;
-/// use ark_bls12_381::{Bls12_381, Fr as BlsScalar};
+/// use ark_plonk::error::Error;
+/// use ark_plonk::prelude::VerifierData;
 /// use ark_poly::polynomial::univariate::DensePolynomial;
-/// use ark_ff::{PrimeField, BigInteger};
+/// use ark_poly_commit::kzg10::KZG10;
+/// use num_traits::{Zero, One};
+/// use rand_core::OsRng;
 ///
 /// fn main() -> Result<(), Error> {
 /// // Implements a circuit that checks:
@@ -286,15 +287,15 @@ where
 /// }?;
 ///
 /// // Verifier POV
-/// let public_inputs: Vec<PublicInputValue<BlsScalar, JubjubParameters>> = vec![
+/// let public_inputs: Vec<PublicInputValue<JubjubParameters>> = vec![
 ///     BlsScalar::from(25u64).into_pi(),
 ///     BlsScalar::from(100u64).into_pi(),
-///     point_f_pi.into_pi(),
+///     GeIntoPubInput::into_pi(point_f_pi),
 /// ];
-/// let pi_pos = vd.pi_pos().clone();
+/// let VerifierData { key, pi_pos } = vd;
 /// verify_proof(
 ///     &pp,
-///     vd.key(),
+///     key,
 ///     &proof,
 ///     &public_inputs,
 ///     &pi_pos,

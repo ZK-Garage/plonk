@@ -413,15 +413,10 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Proof<E, P> {
 
         plonk_verifier_key
             .arithmetic
-            .extend_linearisation_commitment(
-                &plonk_verifier_key.left_selector_commitment,
-                &plonk_verifier_key.right_selector_commitment,
-                &plonk_verifier_key.output_selector_commitment,
-                &plonk_verifier_key.fourth_selector_commitment,
-                &plonk_verifier_key.constant_selector_commitment,
-                &self.evaluations,
+            .compute_linearisation_commitment(
                 &mut scalars,
                 &mut points,
+                &self.evaluations,
             );
 
         Range::extend_linearisation_commitment::<E>(
@@ -432,15 +427,6 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Proof<E, P> {
             &mut points,
         );
 
-        /*
-        plonk_verifier_key.range.compute_linearisation_commitment(
-            range_sep_challenge,
-            &mut scalars,
-            &mut points,
-            &self.evaluations,
-        );
-        */
-
         Logic::extend_linearisation_commitment::<E>(
             plonk_verifier_key.logic_selector_commitment,
             logic_sep_challenge,
@@ -448,15 +434,6 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Proof<E, P> {
             &mut scalars,
             &mut points,
         );
-
-        /*
-        plonk_verifier_key.logic.compute_linearisation_commitment(
-            logic_sep_challenge,
-            &mut scalars,
-            &mut points,
-            &self.evaluations,
-        );
-        */
 
         FixedBaseScalarMul::<_, P>::extend_linearisation_commitment::<E>(
             plonk_verifier_key.fixed_group_add_selector_commitment,
@@ -600,8 +577,6 @@ mod test {
                 q_c_eval: E::Fr::rand(&mut OsRng),
                 q_l_eval: E::Fr::rand(&mut OsRng),
                 q_r_eval: E::Fr::rand(&mut OsRng),
-                q_o_eval: E::Fr::rand(&mut OsRng),
-                q_4_eval: E::Fr::rand(&mut OsRng),
                 left_sigma_eval: E::Fr::rand(&mut OsRng),
                 right_sigma_eval: E::Fr::rand(&mut OsRng),
                 out_sigma_eval: E::Fr::rand(&mut OsRng),

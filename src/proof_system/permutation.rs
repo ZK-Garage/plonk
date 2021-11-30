@@ -319,7 +319,7 @@ where
     E: PairingEngine,
 {
     /// Computes the linearisation commitments.
-    pub fn compute_linearisation_commitment(
+    pub(crate) fn compute_linearisation_commitment(
         &self,
         scalars: &mut Vec<E::Fr>,
         points: &mut Vec<E::G1Affine>,
