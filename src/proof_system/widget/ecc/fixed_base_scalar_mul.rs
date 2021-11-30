@@ -37,7 +37,7 @@ where
     P: TEModelParameters<BaseField = F>,
 {
     #[inline]
-    fn compute_constraint(separation_challenge: F, values: GateValues<F>) -> F {
+    fn constraints(separation_challenge: F, values: GateValues<F>) -> F {
         let kappa = separation_challenge.square();
         let kappa_sq = kappa.square();
         let kappa_cu = kappa_sq * kappa;

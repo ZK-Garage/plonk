@@ -195,7 +195,7 @@ pub fn linear_combination<E: PairingEngine>(
         .zip(powers.iter())
         .map(|(&eval, power)| eval * power)
         .sum();
-    let combined_commitment: Commitment<E> = Commitment(
+    let combined_commitment = Commitment(
         commitments
             .iter()
             .zip(powers.iter())

@@ -12,10 +12,10 @@
 
 use crate::proof_system::ecc::CurveAddition;
 use crate::proof_system::ecc::FixedBaseScalarMul;
-use crate::proof_system::extend_linearisation_commitment;
 use crate::proof_system::linearisation_poly::ProofEvaluations;
 use crate::proof_system::logic::Logic;
 use crate::proof_system::range::Range;
+use crate::proof_system::GateConstraint;
 use crate::proof_system::VerifierKey as PlonkVerifierKey;
 use crate::transcript::TranscriptProtocol;
 use crate::util;
@@ -411,16 +411,20 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Proof<E, P> {
         let mut scalars: Vec<_> = Vec::with_capacity(6);
         let mut points: Vec<E::G1Affine> = Vec::with_capacity(6);
 
-        // TODO:
         plonk_verifier_key
             .arithmetic
-            .compute_linearisation_commitment(
+            .extend_linearisation_commitment(
+                &plonk_verifier_key.left_selector_commitment,
+                &plonk_verifier_key.right_selector_commitment,
+                &plonk_verifier_key.output_selector_commitment,
+                &plonk_verifier_key.fourth_selector_commitment,
+                &plonk_verifier_key.constant_selector_commitment,
+                &self.evaluations,
                 &mut scalars,
                 &mut points,
-                &self.evaluations,
             );
 
-        extend_linearisation_commitment::<E, Range<_>>(
+        Range::extend_linearisation_commitment::<E>(
             plonk_verifier_key.range_selector_commitment,
             range_sep_challenge,
             &self.evaluations,
@@ -437,7 +441,7 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Proof<E, P> {
         );
         */
 
-        extend_linearisation_commitment::<E, Logic<_>>(
+        Logic::extend_linearisation_commitment::<E>(
             plonk_verifier_key.logic_selector_commitment,
             logic_sep_challenge,
             &self.evaluations,
@@ -454,7 +458,7 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Proof<E, P> {
         );
         */
 
-        extend_linearisation_commitment::<E, FixedBaseScalarMul<_, P>>(
+        FixedBaseScalarMul::<_, P>::extend_linearisation_commitment::<E>(
             plonk_verifier_key.fixed_group_add_selector_commitment,
             fixed_base_sep_challenge,
             &self.evaluations,
@@ -473,7 +477,7 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Proof<E, P> {
             );
         */
 
-        extend_linearisation_commitment::<E, CurveAddition<_, P>>(
+        CurveAddition::<_, P>::extend_linearisation_commitment::<E>(
             plonk_verifier_key.variable_group_add_selector_commitment,
             var_base_sep_challenge,
             &self.evaluations,
@@ -609,6 +613,8 @@ mod proof_tests {
                 q_c_eval: E::Fr::rand(&mut OsRng),
                 q_l_eval: E::Fr::rand(&mut OsRng),
                 q_r_eval: E::Fr::rand(&mut OsRng),
+                q_o_eval: E::Fr::rand(&mut OsRng),
+                q_4_eval: E::Fr::rand(&mut OsRng),
                 left_sigma_eval: E::Fr::rand(&mut OsRng),
                 right_sigma_eval: E::Fr::rand(&mut OsRng),
                 out_sigma_eval: E::Fr::rand(&mut OsRng),

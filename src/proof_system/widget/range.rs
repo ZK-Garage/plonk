@@ -6,9 +6,8 @@
 
 //! Range Gate
 
-mod proverkey;
-pub(crate) use proverkey::ProverKey;
-
+// TODO[remove]: mod proverkey;
+// TODO[remove]: pub(crate) use proverkey::ProverKey;
 // TODO[remove]: mod verifierkey;
 // TODO[remove]: pub(crate) use verifierkey::VerifierKey;
 
@@ -29,7 +28,7 @@ where
     F: Field,
 {
     #[inline]
-    fn compute_constraint(separation_challenge: F, values: GateValues<F>) -> F {
+    fn constraints(separation_challenge: F, values: GateValues<F>) -> F {
         let four = F::from(4u64);
         let kappa = separation_challenge.square();
         let kappa_sq = kappa.square();

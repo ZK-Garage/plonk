@@ -6,11 +6,11 @@
 
 //! Linearisation Polynomial
 
-use crate::proof_system::compute_linearisation_term;
 use crate::proof_system::ecc::CurveAddition;
 use crate::proof_system::ecc::FixedBaseScalarMul;
 use crate::proof_system::logic::Logic;
 use crate::proof_system::range::Range;
+use crate::proof_system::GateConstraint;
 use crate::proof_system::GateValues;
 use crate::proof_system::ProverKey;
 use crate::util::EvaluationDomainExt;
@@ -78,6 +78,12 @@ where
     /// Evaluation of the right selector polynomial at `z`.
     pub q_r_eval: F,
 
+    /// Evaluation of the output selector polynomial at `z`.
+    pub q_o_eval: F,
+
+    /// Evaluation of the fourth selector polynomial at `z`.
+    pub q_4_eval: F,
+
     /// Evaluation of the left sigma polynomial at `z`
     pub left_sigma_eval: F,
 
@@ -118,7 +124,6 @@ where
     E: PairingEngine,
     P: TEModelParameters<BaseField = E::Fr>,
 {
-    // Compute evaluations
     let quot_eval = t_x_poly.evaluate(z_challenge);
     let a_eval = w_l_poly.evaluate(z_challenge);
     let b_eval = w_r_poly.evaluate(z_challenge);
@@ -130,10 +135,18 @@ where
         prover_key.permutation.right_sigma.0.evaluate(z_challenge);
     let out_sigma_eval =
         prover_key.permutation.out_sigma.0.evaluate(z_challenge);
-    let q_arith_eval = prover_key.arithmetic_selector.0.evaluate(z_challenge);
+    // TODO[remove]: let q_arith_eval =
+    // prover_key.arithmetic_selector.0.evaluate(z_challenge);
     let q_c_eval = prover_key.constant_selector.0.evaluate(z_challenge);
+    let q_arith_eval = prover_key
+        .arithmetic
+        .arithmetic_selector
+        .0
+        .evaluate(z_challenge);
     let q_l_eval = prover_key.left_selector.0.evaluate(z_challenge);
     let q_r_eval = prover_key.right_selector.0.evaluate(z_challenge);
+    let q_o_eval = prover_key.output_selector.0.evaluate(z_challenge);
+    let q_4_eval = prover_key.fourth_selector.0.evaluate(z_challenge);
 
     let group_gen = domain.group_gen();
     let a_next_eval = w_l_poly.evaluate(&(*z_challenge * group_gen));
@@ -142,6 +155,7 @@ where
     let perm_eval = z_poly.evaluate(&(*z_challenge * group_gen));
 
     let f_1 = compute_circuit_satisfiability::<E, P>(
+        z_challenge,
         range_separation_challenge,
         logic_separation_challenge,
         fixed_base_separation_challenge,
@@ -153,10 +167,11 @@ where
         a_next_eval,
         b_next_eval,
         d_next_eval,
-        q_arith_eval,
         q_c_eval,
         q_l_eval,
         q_r_eval,
+        q_o_eval,
+        q_4_eval,
         prover_key,
     );
 
@@ -170,8 +185,6 @@ where
     );
 
     let lin_poly = &f_1 + &f_2;
-
-    // Evaluate linearisation polynomial at z_challenge
     let lin_poly_eval = lin_poly.evaluate(z_challenge);
 
     (
@@ -185,10 +198,12 @@ where
                 a_next_eval,
                 b_next_eval,
                 d_next_eval,
-                q_arith_eval,
                 q_c_eval,
+                q_arith_eval,
                 q_l_eval,
                 q_r_eval,
+                q_o_eval,
+                q_4_eval,
                 left_sigma_eval,
                 right_sigma_eval,
                 out_sigma_eval,
@@ -200,7 +215,9 @@ where
     )
 }
 
+///
 fn compute_circuit_satisfiability<E, P>(
+    z_challenge: &E::Fr,
     range_separation_challenge: &E::Fr,
     logic_separation_challenge: &E::Fr,
     fixed_base_separation_challenge: &E::Fr,
@@ -212,10 +229,11 @@ fn compute_circuit_satisfiability<E, P>(
     a_next_eval: E::Fr,
     b_next_eval: E::Fr,
     d_next_eval: E::Fr,
-    q_arith_eval: E::Fr,
     q_c_eval: E::Fr,
     q_l_eval: E::Fr,
     q_r_eval: E::Fr,
+    q_o_eval: E::Fr,
+    q_4_eval: E::Fr,
     prover_key: &ProverKey<E::Fr, P>,
 ) -> DensePolynomial<E::Fr>
 where
@@ -232,18 +250,16 @@ where
         fourth_next: d_next_eval,
         left_selector: q_l_eval,
         right_selector: q_r_eval,
+        output_selector: q_o_eval,
+        fourth_selector: q_4_eval,
         constant_selector: q_c_eval,
     };
 
-    let arithmetic = prover_key.arithmetic.compute_linearisation(
-        a_eval,
-        b_eval,
-        c_eval,
-        d_eval,
-        q_arith_eval,
-    );
+    let arithmetic = prover_key
+        .arithmetic
+        .linearisation_term(z_challenge, values);
 
-    let range = compute_linearisation_term::<_, Range<_>>(
+    let range = Range::linearisation_term(
         &prover_key.range_selector.0,
         *range_separation_challenge,
         values,
@@ -260,7 +276,7 @@ where
     );
     */
 
-    let logic = compute_linearisation_term::<_, Logic<_>>(
+    let logic = Logic::linearisation_term(
         &prover_key.logic_selector.0,
         *logic_separation_challenge,
         values,
@@ -280,12 +296,11 @@ where
     );
     */
 
-    let fixed_base_scalar_mul =
-        compute_linearisation_term::<_, FixedBaseScalarMul<_, P>>(
-            &prover_key.fixed_group_add_selector.0,
-            *fixed_base_separation_challenge,
-            values,
-        );
+    let fixed_base_scalar_mul = FixedBaseScalarMul::<_, P>::linearisation_term(
+        &prover_key.fixed_group_add_selector.0,
+        *fixed_base_separation_challenge,
+        values,
+    );
 
     /*
     let d = prover_key.fixed_base.compute_linearisation(
@@ -303,7 +318,7 @@ where
     );
     */
 
-    let curve_addition = compute_linearisation_term::<_, CurveAddition<_, P>>(
+    let curve_addition = CurveAddition::<_, P>::linearisation_term(
         &prover_key.variable_group_add_selector.0,
         *var_base_separation_challenge,
         values,

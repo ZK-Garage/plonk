@@ -63,13 +63,12 @@ where
     /// Right Wire Selector Weight
     pub right_selector: F,
 
-    /* TODO:
     /// Output Wire Selector Weight
     pub output_selector: F,
 
     /// Fourth Wire Selector Weight
     pub fourth_selector: F,
-    */
+
     /// Constant Wire Selector Weight
     pub constant_selector: F,
 }
@@ -85,55 +84,62 @@ where
     ///
     /// This method is an encoding of the polynomial constraint(s) that this
     /// gate represents whenever it is added to a circuit.
-    fn compute_constraint(separation_challenge: F, values: GateValues<F>) -> F;
-}
+    fn constraints(separation_challenge: F, values: GateValues<F>) -> F;
 
-/// Computes the linearisation polynomial term for the given `G` gate type at
-/// the `selector_polynomial` instantiated with `separation_challenge` and
-/// `values`.
-pub fn compute_linearisation_term<F, G>(
-    selector_polynomial: &DensePolynomial<F>,
-    separation_challenge: F,
-    values: GateValues<F>,
-) -> DensePolynomial<F>
-where
-    F: Field,
-    G: GateConstraint<F>,
-{
-    selector_polynomial * G::compute_constraint(separation_challenge, values)
-}
+    /// Computes the linearisation polynomial term for the given gate type
+    /// at the `selector_polynomial` instantiated with `separation_challenge`
+    /// and `values`.
+    fn linearisation_term(
+        selector_polynomial: &DensePolynomial<F>,
+        separation_challenge: F,
+        values: GateValues<F>,
+    ) -> DensePolynomial<F> {
+        selector_polynomial * Self::constraints(separation_challenge, values)
+    }
 
-/// Extends the `scalars` and `points` to build the linearisation commitment,
-/// with the given instantiation of `evaluations` and `separation_challenge`.
-pub fn extend_linearisation_commitment<E, G>(
-    selector_commitment: Commitment<E>,
-    separation_challenge: E::Fr,
-    evaluations: &ProofEvaluations<E::Fr>,
-    scalars: &mut Vec<E::Fr>,
-    points: &mut Vec<E::G1Affine>,
-) where
-    E: PairingEngine,
-    G: GateConstraint<E::Fr>,
-{
-    let coefficient = G::compute_constraint(
-        separation_challenge,
-        GateValues {
-            left: evaluations.a_eval,
-            right: evaluations.b_eval,
-            output: evaluations.c_eval,
-            fourth: evaluations.d_eval,
-            left_next: evaluations.a_next_eval,
-            right_next: evaluations.b_next_eval,
-            fourth_next: evaluations.d_next_eval,
-            left_selector: evaluations.q_l_eval,
-            right_selector: evaluations.q_r_eval,
-            // TODO: output_selector: evaluations.q_o_eval,
-            // TODO: fourth_selector: evaluations.q_4_eval,
-            constant_selector: evaluations.q_c_eval,
-        },
-    );
-    scalars.push(coefficient);
-    points.push(selector_commitment.0);
+    /// Computes the quotient polynomial term for the given gate type for the
+    /// given value of `selector` instantiated with `separation_challenge` and
+    /// `values`.
+    fn quotient_term(
+        selector: F,
+        separation_challenge: F,
+        values: GateValues<F>,
+    ) -> F {
+        selector * Self::constraints(separation_challenge, values)
+    }
+
+    /// Extends the `scalars` and `points` to build the linearisation
+    /// commitment, with the given instantiation of `evaluations` and
+    /// `separation_challenge`.
+    fn extend_linearisation_commitment<E>(
+        selector_commitment: Commitment<E>,
+        separation_challenge: E::Fr,
+        evaluations: &ProofEvaluations<E::Fr>,
+        scalars: &mut Vec<E::Fr>,
+        points: &mut Vec<E::G1Affine>,
+    ) where
+        E: PairingEngine<Fr = F>,
+    {
+        let coefficient = Self::constraints(
+            separation_challenge,
+            GateValues {
+                left: evaluations.a_eval,
+                right: evaluations.b_eval,
+                output: evaluations.c_eval,
+                fourth: evaluations.d_eval,
+                left_next: evaluations.a_next_eval,
+                right_next: evaluations.b_next_eval,
+                fourth_next: evaluations.d_next_eval,
+                left_selector: evaluations.q_l_eval,
+                right_selector: evaluations.q_r_eval,
+                output_selector: evaluations.q_o_eval,
+                fourth_selector: evaluations.q_4_eval,
+                constant_selector: evaluations.q_c_eval,
+            },
+        );
+        scalars.push(coefficient);
+        points.push(selector_commitment.0);
+    }
 }
 
 /// PLONK circuit Verification Key.
@@ -170,11 +176,8 @@ where
     /// Constant Selector Commitment
     pub(crate) constant_selector_commitment: Commitment<E>,
 
-    /// Multiplication Selector Commitment
-    pub(crate) mul_selector_commitment: Commitment<E>,
-
-    /// Arithmetic Selector Commitment
-    pub(crate) arithmetic_selector_commitment: Commitment<E>,
+    /// Arithmetic Verifier Key
+    pub(crate) arithmetic: arithmetic::VerifierKey<E>,
 
     /// Range Gate Selector Commitment
     pub(crate) range_selector_commitment: Commitment<E>,
@@ -226,18 +229,20 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
             output_selector_commitment: q_o,
             fourth_selector_commitment: q_4,
             constant_selector_commitment: q_c,
-            mul_selector_commitment: q_m,
-            arithmetic_selector_commitment: q_arith,
+            arithmetic: arithmetic::VerifierKey {
+                arithmetic_selector_commitment: q_arith,
+                mul_selector_commitment: q_m,
+            },
             range_selector_commitment: q_range,
             logic_selector_commitment: q_logic,
             fixed_group_add_selector_commitment: q_fixed_group_add,
             variable_group_add_selector_commitment: q_variable_group_add,
-            permutation: permutation::VerifierKey::new(
+            permutation: permutation::VerifierKey {
                 left_sigma,
                 right_sigma,
                 out_sigma,
                 fourth_sigma,
-            ),
+            },
             __: PhantomData,
         }
     }
@@ -258,7 +263,10 @@ where
     where
         T: TranscriptProtocol<E>,
     {
-        transcript.append_commitment(b"q_m", &self.mul_selector_commitment);
+        transcript.append_commitment(
+            b"q_m",
+            &self.arithmetic.mul_selector_commitment,
+        );
         transcript.append_commitment(b"q_l", &self.left_selector_commitment);
         transcript.append_commitment(b"q_r", &self.right_selector_commitment);
         transcript.append_commitment(b"q_o", &self.output_selector_commitment);
@@ -267,7 +275,7 @@ where
         transcript.append_commitment(b"q_4", &self.fourth_selector_commitment);
         transcript.append_commitment(
             b"q_arith",
-            &self.arithmetic_selector_commitment,
+            &self.arithmetic.arithmetic_selector_commitment,
         );
         transcript
             .append_commitment(b"q_range", &self.range_selector_commitment);
@@ -326,11 +334,8 @@ where
     /// Constant Selector
     pub(crate) constant_selector: (DensePolynomial<F>, Evaluations<F>),
 
-    /// Multiplication Selector
-    pub(crate) mul_selector: (DensePolynomial<F>, Evaluations<F>),
-
-    /// Arithmetic Selector
-    pub(crate) arithmetic_selector: (DensePolynomial<F>, Evaluations<F>),
+    /// Arithmetic Prover Key
+    pub(crate) arithmetic: arithmetic::ProverKey<F>,
 
     /// Range Gate Selector
     pub(crate) range_selector: (DensePolynomial<F>, Evaluations<F>),
@@ -395,8 +400,10 @@ impl<F: PrimeField, P: TEModelParameters<BaseField = F>> ProverKey<F, P> {
             output_selector: q_o,
             fourth_selector: q_4,
             constant_selector: q_c,
-            mul_selector: q_m,
-            arithmetic_selector: q_arith,
+            arithmetic: arithmetic::ProverKey {
+                arithmetic_selector: q_arith,
+                mul_selector: q_m,
+            },
             range_selector: q_range,
             logic_selector: q_logic,
             fixed_group_add_selector: q_fixed_group_add,

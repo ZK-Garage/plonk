@@ -6,8 +6,6 @@
 
 //! Tools & traits for PLONK circuits
 
-use core::marker::PhantomData;
-
 use crate::constraint_system::StandardComposer;
 use crate::error::Error;
 use crate::proof_system::{Proof, Prover, ProverKey, Verifier, VerifierKey};
@@ -586,10 +584,10 @@ mod tests {
         assert!(verif_data == verifier_data);
 
         // Verifier POV
-        let public_inputs: Vec<PublicInputValue<E::Fr, P>> = vec![
+        let public_inputs: Vec<PublicInputValue<P>> = vec![
             E::Fr::from(25u64).into_pi(),
             E::Fr::from(100u64).into_pi(),
-            point_f_pi.into_pi(),
+            GeIntoPubInput::into_pi(point_f_pi),
         ];
 
         let VerifierData { key, pi_pos } = verifier_data;

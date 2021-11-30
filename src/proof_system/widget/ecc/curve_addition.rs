@@ -25,7 +25,7 @@ where
     P: TEModelParameters<BaseField = F>,
 {
     #[inline]
-    fn compute_constraint(separation_challenge: F, values: GateValues<F>) -> F {
+    fn constraints(separation_challenge: F, values: GateValues<F>) -> F {
         let x_1 = values.left;
         let x_3 = values.left_next;
         let y_1 = values.right;

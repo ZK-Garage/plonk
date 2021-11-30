@@ -308,21 +308,6 @@ impl<E> VerifierKey<E>
 where
     E: PairingEngine,
 {
-    /// Builds a new [`VerifierKey`] from permutation commitments.
-    pub fn new(
-        left_sigma: Commitment<E>,
-        right_sigma: Commitment<E>,
-        out_sigma: Commitment<E>,
-        fourth_sigma: Commitment<E>,
-    ) -> Self {
-        Self {
-            left_sigma,
-            right_sigma,
-            out_sigma,
-            fourth_sigma,
-        }
-    }
-
     /// Computes the linearisation commitments.
     pub fn compute_linearisation_commitment(
         &self,
