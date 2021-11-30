@@ -37,7 +37,7 @@ pub(crate) fn compute<F: PrimeField, P: TEModelParameters<BaseField = F>>(
     fixed_base_challenge: &F,
     var_base_challenge: &F,
 ) -> Result<DensePolynomial<F>, Error> {
-    // Compute 4n eval of z(X)
+    // Compute `4n` eval of `z(X)`.
     let domain_4n =
         GeneralEvaluationDomain::<F>::new(4 * domain.size()).unwrap();
     let mut z_eval_4n = domain_4n.coset_fft(z_poly);
@@ -46,7 +46,7 @@ pub(crate) fn compute<F: PrimeField, P: TEModelParameters<BaseField = F>>(
     z_eval_4n.push(z_eval_4n[2]);
     z_eval_4n.push(z_eval_4n[3]);
 
-    // Compute 4n evaluations of the wire Densepolynomials
+    // Compute `4n` evaluations of the wire dense polynomials.
     let mut wl_eval_4n = domain_4n.coset_fft(w_l_poly);
     wl_eval_4n.push(wl_eval_4n[0]);
     wl_eval_4n.push(wl_eval_4n[1]);
@@ -88,13 +88,13 @@ pub(crate) fn compute<F: PrimeField, P: TEModelParameters<BaseField = F>>(
     );
     let range = 0..domain_4n.size();
 
-    let quotient: Vec<_> = range
+    let quotient = range
         .map(|i| {
             let numerator = t_1[i] + t_2[i];
             let denominator = prover_key.v_h_coset_4n()[i];
             numerator * denominator.inverse().unwrap()
         })
-        .collect();
+        .collect::<Vec<_>>();
 
     Ok(DensePolynomial {
         coeffs: domain_4n.coset_ifft(&quotient),
@@ -149,37 +149,11 @@ where
                 values,
             );
 
-            /*
-            let b = prover_key.range.compute_quotient_i(
-                i,
-                range_challenge,
-                wl,
-                wr,
-                wo,
-                w4,
-                w4_next,
-            );
-            */
-
             let logic = Logic::quotient_term(
                 prover_key.logic_selector.1[i],
                 logic_challenge,
                 values,
             );
-
-            /*
-            let c = prover_key.logic.compute_quotient_i(
-                i,
-                logic_challenge,
-                wl,
-                wl_next,
-                wr,
-                wr_next,
-                wo,
-                w4,
-                w4_next,
-            );
-            */
 
             let fixed_base_scalar_mul =
                 FixedBaseScalarMul::<_, P>::quotient_term(
@@ -188,39 +162,11 @@ where
                     values,
                 );
 
-            /*
-            let d = prover_key.fixed_base.compute_quotient_i(
-                i,
-                fixed_base_challenge,
-                wl,
-                wl_next,
-                wr,
-                wr_next,
-                wo,
-                w4,
-                w4_next,
-            );
-            */
-
             let curve_addition = CurveAddition::<_, P>::quotient_term(
                 prover_key.variable_group_add_selector.1[i],
                 var_base_challenge,
                 values,
             );
-
-            /*
-            let e = prover_key.variable_base.compute_quotient_i(
-                i,
-                var_base_challenge,
-                wl,
-                wl_next,
-                wr,
-                wr_next,
-                wo,
-                w4,
-                w4_next,
-            );
-            */
 
             (arithmetic + pi)
                 + range

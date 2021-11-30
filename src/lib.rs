@@ -35,6 +35,8 @@
 #![deny(rustdoc::broken_intra_doc_links)]
 #![deny(missing_docs)]
 
+extern crate alloc;
+
 mod permutation;
 mod transcript;
 mod util;

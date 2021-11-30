@@ -14,12 +14,9 @@
 //! It allows us not only to build Add and Mul constraints but also to build
 //! ECC op. gates, Range checks, Logical gates (Bitwise ops) etc.
 
-// Gate fn's have a large number of attributes but
-// it is intended to be like this in order to provide
-// maximum performance and minimum circuit sizes.
-
 use crate::constraint_system::Variable;
 use crate::permutation::Permutation;
+use alloc::collections::BTreeMap;
 use ark_ec::models::TEModelParameters;
 use ark_ec::PairingEngine;
 #[cfg(feature = "trace")]
@@ -27,7 +24,6 @@ use ark_ff::{BigInteger, PrimeField};
 use core::marker::PhantomData;
 use hashbrown::HashMap;
 use num_traits::{One, Zero};
-use std::collections::BTreeMap;
 
 /// The StandardComposer is the circuit-builder tool that the `dusk-plonk`
 /// repository provides so that circuit descriptions can be written, stored and

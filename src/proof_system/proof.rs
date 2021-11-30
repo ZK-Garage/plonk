@@ -466,17 +466,6 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Proof<E, P> {
             &mut points,
         );
 
-        /*
-        plonk_verifier_key
-            .fixed_base
-            .compute_linearisation_commitment(
-                fixed_base_sep_challenge,
-                &mut scalars,
-                &mut points,
-                &self.evaluations,
-            );
-        */
-
         CurveAddition::<_, P>::extend_linearisation_commitment::<E>(
             plonk_verifier_key.variable_group_add_selector_commitment,
             var_base_sep_challenge,
@@ -484,17 +473,6 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Proof<E, P> {
             &mut scalars,
             &mut points,
         );
-
-        /*
-        plonk_verifier_key
-            .variable_base
-            .compute_linearisation_commitment(
-                var_base_sep_challenge,
-                &mut scalars,
-                &mut points,
-                &self.evaluations,
-            );
-        */
 
         plonk_verifier_key
             .permutation
@@ -517,14 +495,22 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Proof<E, P> {
     }
 }
 
-// The first lagrange polynomial has the expression
-// L_0(X) = mul_from_1_to_(n-1) [(X - g^i) / (1 - g^i)]
-// with g being the generator of the domain (the nth root of unity)
-// We use two equalities:
-//   1. mul_from_2_to_(n-1)[ 1 / (1 - g^i)]  =  1 / n
-//   2. mul_from_2_to_(n-1)[ (X - g^i)] = (X^n -1) / (X - 1)
-// to obtain the expression:
-// L_0(X) = (X^n -1) / n * (X -1)
+/// The first lagrange polynomial has the expression:
+///
+/// ```text
+/// L_0(X) = mul_from_1_to_(n-1) [(X - g^i) / (1 - g^i)]
+/// ```
+///
+/// with `g` being the generator of the domain (the `n`th root of unity).
+///
+/// We use two equalities:
+///   1. `mul_from_2_to_(n-1)[ 1 / (1 - g^i)]  =  1 / n`
+///   2. `mul_from_2_to_(n-1)[ (X - g^i)] = (X^n -1) / (X - 1)`
+/// to obtain the expression:
+///
+/// ```text
+/// L_0(X) = (X^n -1) / n * (X -1)
+/// ```
 fn compute_first_lagrange_evaluation<F: PrimeField>(
     domain: &GeneralEvaluationDomain<F>,
     z_h_eval: &F,

@@ -135,8 +135,6 @@ where
         prover_key.permutation.right_sigma.0.evaluate(z_challenge);
     let out_sigma_eval =
         prover_key.permutation.out_sigma.0.evaluate(z_challenge);
-    // TODO[remove]: let q_arith_eval =
-    // prover_key.arithmetic_selector.0.evaluate(z_challenge);
     let q_c_eval = prover_key.constant_selector.0.evaluate(z_challenge);
     let q_arith_eval = prover_key
         .arithmetic
@@ -265,36 +263,11 @@ where
         values,
     );
 
-    /*
-    let b = prover_key.range.compute_linearisation(
-        *range_separation_challenge,
-        a_eval,
-        b_eval,
-        c_eval,
-        d_eval,
-        d_next_eval,
-    );
-    */
-
     let logic = Logic::linearisation_term(
         &prover_key.logic_selector.0,
         *logic_separation_challenge,
         values,
     );
-
-    /*
-    let c = prover_key.logic.compute_linearisation(
-        *logic_separation_challenge,
-        a_eval,
-        a_next_eval,
-        b_eval,
-        b_next_eval,
-        c_eval,
-        d_eval,
-        d_next_eval,
-        q_c_eval,
-    );
-    */
 
     let fixed_base_scalar_mul = FixedBaseScalarMul::<_, P>::linearisation_term(
         &prover_key.fixed_group_add_selector.0,
@@ -302,40 +275,11 @@ where
         values,
     );
 
-    /*
-    let d = prover_key.fixed_base.compute_linearisation(
-        *fixed_base_separation_challenge,
-        a_eval,
-        a_next_eval,
-        b_eval,
-        b_next_eval,
-        c_eval,
-        d_eval,
-        d_next_eval,
-        q_l_eval,
-        q_r_eval,
-        q_c_eval,
-    );
-    */
-
     let curve_addition = CurveAddition::<_, P>::linearisation_term(
         &prover_key.variable_group_add_selector.0,
         *var_base_separation_challenge,
         values,
     );
-
-    /*
-    let e = prover_key.variable_base.compute_linearisation(
-        *var_base_separation_challenge,
-        a_eval,
-        a_next_eval,
-        b_eval,
-        b_next_eval,
-        c_eval,
-        d_eval,
-        d_next_eval,
-    );
-    */
 
     let mut linearisation_poly = &arithmetic + &range;
     linearisation_poly += &logic;
@@ -343,19 +287,3 @@ where
     linearisation_poly += &curve_addition;
     linearisation_poly
 }
-
-/*
-#[cfg(test)]
-mod evaluations_tests {
-    use super::*;
-
-    #[test]
-    fn proof_evaluations_dusk_bytes_serde() {
-        let proof_evals = ProofEvaluations::default();
-        let bytes = proof_evals.to_bytes();
-        let obtained_evals = ProofEvaluations::from_slice(&bytes)
-            .expect("Deserialization error");
-        assert_eq!(proof_evals.to_bytes(), obtained_evals.to_bytes())
-    }
-}
-*/
