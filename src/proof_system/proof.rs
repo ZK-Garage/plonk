@@ -563,7 +563,7 @@ fn compute_barycentric_eval<F: PrimeField>(
 }
 
 #[cfg(test)]
-mod proof_tests {
+mod test {
     use super::*;
     use crate::batch_test;
     use ark_bls12_377::Bls12_377;
@@ -571,10 +571,11 @@ mod proof_tests {
     use ark_ff::UniformRand;
     use rand_core::OsRng;
 
-    fn test_serde_proof<
+    fn test_serde_proof<E, P>()
+    where
         E: PairingEngine,
         P: TEModelParameters<BaseField = E::Fr>,
-    >() {
+    {
         let proof = Proof::<E, P> {
             a_comm: Default::default(),
             b_comm: Default::default(),
@@ -621,23 +622,19 @@ mod proof_tests {
 
     // Bls12-381 tests
     batch_test!(
-        [
-        test_serde_proof
-        ],
+        [test_serde_proof],
         [] => (
-        Bls12_381,
-        ark_ed_on_bls12_381::EdwardsParameters
+            Bls12_381,
+            ark_ed_on_bls12_381::EdwardsParameters
         )
     );
 
     // Bls12-377 tests
     batch_test!(
-        [
-        test_serde_proof
-        ],
+        [test_serde_proof],
         [] => (
-        Bls12_377,
-        ark_ed_on_bls12_377::EdwardsParameters
+            Bls12_377,
+            ark_ed_on_bls12_377::EdwardsParameters
         )
     );
 }

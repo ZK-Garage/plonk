@@ -4,13 +4,16 @@
 //
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
-use crate::constraint_system::StandardComposer;
-use crate::constraint_system::Variable;
+//! Boolean Gates
+
+use crate::constraint_system::{StandardComposer, Variable};
 use ark_ec::{PairingEngine, TEModelParameters};
 use num_traits::{One, Zero};
 
-impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
-    StandardComposer<E, P>
+impl<E, P> StandardComposer<E, P>
+where
+    E: PairingEngine,
+    P: TEModelParameters<BaseField = E::Fr>,
 {
     /// Adds a boolean constraint (also known as binary constraint) where
     /// the gate eq. will enforce that the [`Variable`] received is either `0`
@@ -48,26 +51,23 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
 }
 
 #[cfg(test)]
-mod boolean_gates_tests {
+mod test {
+    use super::*;
     use crate::batch_test;
     use crate::constraint_system::helper::*;
-    use crate::constraint_system::StandardComposer;
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
-
-    use ark_ec::PairingEngine;
-    use ark_ec::TEModelParameters;
     use num_traits::One;
 
-    fn test_correct_bool_gate<
+    fn test_correct_bool_gate<E, P>()
+    where
         E: PairingEngine,
         P: TEModelParameters<BaseField = E::Fr>,
-    >() {
+    {
         let res = gadget_tester(
             |composer: &mut StandardComposer<E, P>| {
                 let zero = composer.zero_var();
                 let one = composer.add_input(E::Fr::one());
-
                 composer.boolean_gate(zero);
                 composer.boolean_gate(one);
             },
@@ -76,15 +76,15 @@ mod boolean_gates_tests {
         assert!(res.is_ok())
     }
 
-    fn test_incorrect_bool_gate<
+    fn test_incorrect_bool_gate<E, P>()
+    where
         E: PairingEngine,
         P: TEModelParameters<BaseField = E::Fr>,
-    >() {
+    {
         let res = gadget_tester(
             |composer: &mut StandardComposer<E, P>| {
                 let zero = composer.add_input(E::Fr::from(5u64));
                 let one = composer.add_input(E::Fr::one());
-
                 composer.boolean_gate(zero);
                 composer.boolean_gate(one);
             },

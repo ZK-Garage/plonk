@@ -442,11 +442,15 @@ where
 }
 
 /// Build PI vector for Proof verifications.
-fn build_pi<F: PrimeField, P: TEModelParameters<BaseField = F>>(
+fn build_pi<F, P>(
     pub_input_values: &[PublicInputValue<P>],
     pub_input_pos: &[usize],
     trim_size: usize,
-) -> Vec<F> {
+) -> Vec<F>
+where
+    F: PrimeField,
+    P: TEModelParameters<BaseField = F>,
+{
     let mut pi = vec![F::zero(); trim_size];
     pub_input_values
         .iter()
@@ -460,7 +464,7 @@ fn build_pi<F: PrimeField, P: TEModelParameters<BaseField = F>>(
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
     use super::*;
     use crate::{constraint_system::StandardComposer, util};
     use ark_bls12_377::Bls12_377;

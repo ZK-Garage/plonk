@@ -20,7 +20,12 @@ use ark_serialize::*;
 
 /// Permutation Prover Key
 #[derive(CanonicalDeserialize, CanonicalSerialize, derivative::Derivative)]
-#[derivative(Clone, Debug, Eq, PartialEq)]
+#[derivative(
+    Clone(bound = ""),
+    Debug(bound = ""),
+    Eq(bound = ""),
+    PartialEq(bound = "")
+)]
 pub struct ProverKey<F>
 where
     F: PrimeField,
@@ -286,7 +291,12 @@ where
 
 /// Permutation Verifier Key
 #[derive(CanonicalDeserialize, CanonicalSerialize, derivative::Derivative)]
-#[derivative(Clone, Debug, Eq, PartialEq)]
+#[derivative(
+    Clone(bound = ""),
+    Debug(bound = ""),
+    Eq(bound = ""),
+    PartialEq(bound = "")
+)]
 pub struct VerifierKey<E>
 where
     E: PairingEngine,

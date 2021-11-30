@@ -4,6 +4,8 @@
 //
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
+//! Fixed-Base Curve Addition Gate
+
 use crate::constraint_system::StandardComposer;
 use crate::constraint_system::Variable;
 use ark_ec::models::TEModelParameters;
@@ -12,14 +14,19 @@ use core::marker::PhantomData;
 use num_traits::{One, Zero};
 
 /// Contains all of the components needed to verify that a bit scalar
-/// multiplication was computed correctly
-#[derive(Clone, Copy, Debug)]
-pub struct WnafRound<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
+/// multiplication was computed correctly.
+#[derive(derivative::Derivative)]
+#[derivative(Clone, Copy, Debug)]
+pub struct WnafRound<E, P>
+where
+    E: PairingEngine,
+    P: TEModelParameters<BaseField = E::Fr>,
 {
     /// This is the accumulated x coordinate point that we wish to add (so
-    /// far.. depends on where you are in the scalar mul) it is linked to
+    /// far, it depends on where you are in the scalar mul) it is linked to
     /// the wnaf entry, so must not be revealed
     pub acc_x: Variable,
+
     /// This is the accumulated y coordinate
     pub acc_y: Variable,
 
@@ -31,23 +38,29 @@ pub struct WnafRound<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
     /// we need this as a distinct wire, so that the degree of the polynomial
     /// does not go over 4
     pub xy_alpha: Variable,
+
     /// This is the possible x co-ordinate of the wnaf point we are going to
     /// add Actual x-co-ordinate = b_i * x_\beta
     pub x_beta: P::BaseField,
+
     /// This is the possible y co-ordinate of the wnaf point we are going to
     /// add Actual y coordinate = (b_i)^2 [y_\beta -1] + 1
     pub y_beta: P::BaseField,
+
     /// This is the multiplication of x_\beta * y_\beta
     pub xy_beta: P::BaseField,
-    _marker0: PhantomData<E>,
-    _marker1: PhantomData<P>,
+
+    /// Type Parameter Marker
+    __: PhantomData<E>,
 }
 
-impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
-    StandardComposer<E, P>
+impl<E, P> StandardComposer<E, P>
+where
+    E: PairingEngine,
+    P: TEModelParameters<BaseField = E::Fr>,
 {
-    /// Generates a new structure for preparing a WNAF ROUND
-    pub fn new_wnaf(
+    /// Generates a new structure for preparing a [`WnafRound`] ROUND.
+    pub(crate) fn new_wnaf(
         acc_x: Variable,
         acc_y: Variable,
         accumulated_bit: Variable,
@@ -64,11 +77,11 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
             x_beta,
             y_beta,
             xy_beta,
-            _marker0: PhantomData,
-            _marker1: PhantomData,
+            __: PhantomData,
         }
     }
-    /// Fixed group addition of a jubjub point
+
+    /// Fixed group addition of a point.
     pub(crate) fn fixed_group_add(&mut self, wnaf_round: WnafRound<E, P>) {
         self.w_l.push(wnaf_round.acc_x);
         self.w_r.push(wnaf_round.acc_y);

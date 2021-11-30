@@ -11,7 +11,7 @@
 
 pub use crate::{
     circuit::{self, Circuit, PublicInputValue, VerifierData},
-    constraint_system::{Point, StandardComposer, Variable},
+    constraint_system::{ecc::Point, StandardComposer, Variable},
     error::Error,
     proof_system::{Proof, VerifierKey},
     proof_system::{Prover, ProverKey, Verifier},

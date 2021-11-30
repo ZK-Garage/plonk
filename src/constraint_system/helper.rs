@@ -15,19 +15,17 @@ use ark_poly_commit::PolynomialCommitment;
 use num_traits::{One, Zero};
 use rand_core::OsRng;
 
-/// Adds dummy constraints using arithmetic gates
+/// Adds dummy constraints using arithmetic gates.
 #[allow(dead_code)]
-pub(crate) fn dummy_gadget<
-    E: PairingEngine,
-    P: TEModelParameters<BaseField = E::Fr>,
->(
+pub(crate) fn dummy_gadget<E, P>(
     n: usize,
     composer: &mut StandardComposer<E, P>,
-) {
+) where
+    E: PairingEngine,
+    P: TEModelParameters<BaseField = E::Fr>,
+{
     let one = E::Fr::one();
-
     let var_one = composer.add_input(one);
-
     for _ in 0..n {
         composer.big_add(
             (E::Fr::one(), var_one),
@@ -39,16 +37,17 @@ pub(crate) fn dummy_gadget<
     }
 }
 
-/// Takes a generic gadget function with no auxillary input and
-/// tests whether it passes an end-to-end test
+/// Takes a generic gadget function with no auxillary input and tests whether it
+/// passes an end-to-end test.
 #[allow(dead_code)]
-pub(crate) fn gadget_tester<
+pub(crate) fn gadget_tester<E, P>(
+    gadget: fn(&mut StandardComposer<E, P>),
+    n: usize,
+) -> Result<(), Error>
+where
     E: PairingEngine,
     P: TEModelParameters<BaseField = E::Fr>,
->(
-    gadget: fn(composer: &mut StandardComposer<E, P>),
-    n: usize,
-) -> Result<(), Error> {
+{
     // Common View
     let universal_params =
         KZG10::<E, DensePolynomial<E::Fr>>::setup(2 * n, false, &mut OsRng)?;

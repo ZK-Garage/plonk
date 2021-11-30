@@ -21,31 +21,40 @@ use rand_core::RngCore;
 /// Permutation provides the necessary state information and functions
 /// to create the permutation polynomial. In the literature, Z(X) is the
 /// "accumulator", this is what this codebase calls the permutation polynomial.
-#[derive(Debug)]
-pub(crate) struct Permutation<F: PrimeField> {
-    // Maps a variable to the wires that it is associated to.
-    pub(crate) variable_map: HashMap<Variable, Vec<WireData>>,
-    _field_type: PhantomData<F>,
+#[derive(derivative::Derivative)]
+#[derivative(Debug)]
+pub(crate) struct Permutation<F>
+where
+    F: PrimeField,
+{
+    /// Maps a variable to the wires that it is associated to.
+    pub variable_map: HashMap<Variable, Vec<WireData>>,
+
+    /// Type Parameter Marker
+    __: PhantomData<F>,
 }
 
-impl<F: PrimeField> Permutation<F> {
+impl<F> Permutation<F>
+where
+    F: PrimeField,
+{
     /// Creates a Permutation struct with an expected capacity of zero.
-    pub(crate) fn new() -> Permutation<F> {
+    pub fn new() -> Self {
         Permutation::with_capacity(0)
     }
 
     /// Creates a Permutation struct with an expected capacity of `n`.
-    pub(crate) fn with_capacity(expected_size: usize) -> Permutation<F> {
-        Permutation::<F> {
+    pub fn with_capacity(expected_size: usize) -> Self {
+        Self {
             variable_map: HashMap::with_capacity(expected_size),
-            _field_type: PhantomData,
+            __: PhantomData,
         }
     }
 
     /// Creates a new [`Variable`] by incrementing the index of the
     /// `variable_map`. This is correct as whenever we add a new [`Variable`]
     /// into the system It is always allocated in the `variable_map`.
-    pub(crate) fn new_variable(&mut self) -> Variable {
+    pub fn new_variable(&mut self) -> Variable {
         // Generate the Variable
         let var = Variable(self.variable_map.keys().len());
 
@@ -88,21 +97,17 @@ impl<F: PrimeField> Permutation<F> {
         self.add_variable_to_map(d, fourth);
     }
 
-    pub(crate) fn add_variable_to_map(
-        &mut self,
-        var: Variable,
-        wire_data: WireData,
-    ) {
+    pub fn add_variable_to_map(&mut self, var: Variable, wire_data: WireData) {
         assert!(self.valid_variables(&[var]));
 
-        // Since we always allocate space for the Vec of WireData when a
-        // Variable is added to the variable_map, this should never fail
+        // NOTE: Since we always allocate space for the Vec of WireData when a
+        // `Variable` is added to the variable_map, this should never fail.
         let vec_wire_data = self.variable_map.get_mut(&var).unwrap();
         vec_wire_data.push(wire_data);
     }
 
-    // Performs shift by one permutation and computes sigma_1, sigma_2 and
-    // sigma_3, sigma_4 permutations from the variable maps
+    /// Performs shift by one permutation and computes `sigma_1`, `sigma_2` and
+    /// `sigma_3`, `sigma_4` permutations from the variable maps.
     pub(super) fn compute_sigma_permutations(
         &mut self,
         n: usize,
@@ -173,8 +178,8 @@ impl<F: PrimeField> Permutation<F> {
     }
 
     /// Computes the sigma polynomials which are used to build the permutation
-    /// polynomial
-    pub(crate) fn compute_sigma_polynomials(
+    /// polynomial.
+    pub fn compute_sigma_polynomials(
         &mut self,
         n: usize,
         domain: &GeneralEvaluationDomain<F>,
@@ -647,7 +652,7 @@ impl<F: PrimeField> Permutation<F> {
     // This can be adapted into a general product argument
     // for any number of wires, with specific formulas defined
     // in the numerator_irreducible and denominator_irreducible functions
-    pub(crate) fn compute_permutation_poly(
+    pub fn compute_permutation_poly(
         &self,
         domain: &GeneralEvaluationDomain<F>,
         wires: (&[F], &[F], &[F], &[F]),

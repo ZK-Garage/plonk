@@ -461,9 +461,13 @@ mod test {
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
 
-    /// Tests that the circuit gets padded to the correct length
-    /// XXX: We can do this test without dummy_gadget method
-    fn test_pad<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>() {
+    /// Tests that the circuit gets padded to the correct length.
+    // FIXME: We can do this test without dummy_gadget method.
+    fn test_pad<E, P>()
+    where
+        E: PairingEngine,
+        P: TEModelParameters<BaseField = E::Fr>,
+    {
         let mut composer: StandardComposer<E, P> = StandardComposer::new();
         dummy_gadget(100, &mut composer);
 
@@ -490,23 +494,19 @@ mod test {
 
     // Bls12-381 tests
     batch_test!(
-        [
-        test_pad
-        ],
+        [test_pad],
         [] => (
-        Bls12_381,
-        ark_ed_on_bls12_381::EdwardsParameters
+            Bls12_381,
+            ark_ed_on_bls12_381::EdwardsParameters
         )
     );
 
     // Bls12-377 tests
     batch_test!(
-        [
-        test_pad
-        ],
+        [test_pad],
         [] => (
-        Bls12_377,
-        ark_ed_on_bls12_377::EdwardsParameters
+            Bls12_377,
+            ark_ed_on_bls12_377::EdwardsParameters
         )
     );
 }
