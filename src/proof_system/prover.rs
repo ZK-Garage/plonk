@@ -4,6 +4,8 @@
 //
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
+//! Prover-side of the PLONK Proving System
+
 use crate::{
     constraint_system::{StandardComposer, Variable},
     error::Error,
@@ -25,14 +27,17 @@ use num_traits::Zero;
 
 /// Abstraction structure designed to construct a circuit and generate
 /// [`Proof`]s for it.
-#[allow(missing_debug_implementations)]
 pub struct Prover<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> {
-    /// ProverKey which is used to create proofs about a specific PLONK circuit
+    /// Proving Key which is used to create proofs about a specific PLONK
+    /// circuit.
     pub prover_key: Option<ProverKey<E::Fr, P>>,
 
+    /// Circuit Description
     pub(crate) cs: StandardComposer<E, P>,
-    /// Store the messages exchanged during the preprocessing stage
-    /// This is copied each time, we make a proof
+
+    /// Store the messages exchanged during the preprocessing stage.
+    ///
+    /// This is copied each time, we make a proof.
     pub preprocessed_transcript: TranscriptWrapper<E>,
 }
 
@@ -58,15 +63,16 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Prover<E, P> {
 impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Default
     for Prover<E, P>
 {
-    fn default() -> Prover<E, P> {
+    #[inline]
+    fn default() -> Self {
         Prover::new(b"plonk")
     }
 }
 
 impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Prover<E, P> {
     /// Creates a new `Prover` instance.
-    pub fn new(label: &'static [u8]) -> Prover<E, P> {
-        Prover {
+    pub fn new(label: &'static [u8]) -> Self {
+        Self {
             prover_key: None,
             cs: StandardComposer::new(),
             preprocessed_transcript: TranscriptWrapper::new(label),
@@ -74,11 +80,8 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Prover<E, P> {
     }
 
     /// Creates a new `Prover` object with some expected size.
-    pub fn with_expected_size(
-        label: &'static [u8],
-        size: usize,
-    ) -> Prover<E, P> {
-        Prover {
+    pub fn with_expected_size(label: &'static [u8], size: usize) -> Self {
+        Self {
             prover_key: None,
             cs: StandardComposer::with_expected_size(size),
             preprocessed_transcript: TranscriptWrapper::new(label),
@@ -134,7 +137,7 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Prover<E, P> {
     }
 
     /// Convert variables to their actual witness values.
-    pub(crate) fn to_scalars(&self, vars: &[Variable]) -> Vec<E::Fr> {
+    fn to_scalars(&self, vars: &[Variable]) -> Vec<E::Fr> {
         vars.iter().map(|var| self.cs.variables[var]).collect()
     }
 
@@ -446,7 +449,7 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Prover<E, P> {
             &(z_challenge * domain.element(1)),
             saw_challenge,
         );
-        let w_zx_comm = KZG10::<E, DensePolynomial<E::Fr>>::commit(
+        let w_zw_comm = KZG10::<E, DensePolynomial<E::Fr>>::commit(
             commit_key,
             &shifted_aggregate_witness,
             None,
@@ -459,19 +462,15 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Prover<E, P> {
             b_comm: w_r_poly_commit.0,
             c_comm: w_o_poly_commit.0,
             d_comm: w_4_poly_commit.0,
-
             z_comm: z_poly_commit.0,
-
             t_1_comm: t_1_commit.0,
             t_2_comm: t_2_commit.0,
             t_3_comm: t_3_commit.0,
             t_4_comm: t_4_commit.0,
-
             w_z_comm: w_z_comm.0,
-            w_zw_comm: w_zx_comm.0,
-
+            w_zw_comm: w_zw_comm.0,
             evaluations: evaluations.proof,
-            _marker: PhantomData,
+            __: PhantomData,
         })
     }
 

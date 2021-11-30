@@ -23,6 +23,8 @@ use ark_poly_commit::sonic_pc::SonicKZG10;
 use ark_poly_commit::PolynomialCommitment;
 use ark_serialize::*;
 
+/// Field Element Into Public Input
+///
 /// The reason for introducing these two traits, `FeIntoPubInput` and
 /// `GeIntoPubInput` is to have a workaround for not being able to
 /// implement `From<_> for Values` for both `PrimeField` and `GroupAffine`. The
@@ -34,11 +36,13 @@ use ark_serialize::*;
 /// `GeIntoPubInput`, that stand for "Field Element Into Public Input" and
 /// "Group Element Into Public Input" respectively.
 pub trait FeIntoPubInput<T> {
-    /// Ad-hot `Into` implementation. Serves the same purpose as `Into`, but as
+    /// Ad-hoc `Into` implementation. Serves the same purpose as `Into`, but as
     /// a different trait. Read documentation of Trait for more details.
     fn into_pi(self) -> T;
 }
 
+/// Group Element Into Public Input
+///
 /// The reason for introducing these two traits is to have a workaround for not
 /// being able to implement `From<_> for Values` for both `PrimeField` and
 /// `GroupAffine`. The reason why this is not possible is because both the trait
@@ -49,51 +53,52 @@ pub trait FeIntoPubInput<T> {
 /// `FeIntoPubInput` and `GeIntoPubInput`, that stand for "Field Element Into
 /// Public Input" and "Group Element Into Public Input" respectively.
 pub trait GeIntoPubInput<T> {
-    /// Ad-hot `Into` implementation. Serves the same purpose as `Into`, but as
+    /// Ad-hoc `Into` implementation. Serves the same purpose as `Into`, but as
     /// a different trait. Read documentation of Trait for more details.
     fn into_pi(self) -> T;
 }
 
 /// Structure that represents a PLONK Circuit Public Input converted into its
 /// scalar representation.
-#[derive(CanonicalDeserialize, CanonicalSerialize, Clone, Debug, Default)]
-pub struct PublicInputValue<F: PrimeField, P: TEModelParameters<BaseField = F>>
+#[derive(CanonicalDeserialize, CanonicalSerialize, derivative::Derivative)]
+#[derivative(Clone, Debug, Default)]
+pub struct PublicInputValue<P>
+where
+    P: TEModelParameters,
 {
-    pub(crate) values: Vec<F>,
-    _marker: PhantomData<P>,
+    /// Field Values
+    pub(crate) values: Vec<P::BaseField>,
 }
 
-impl<F: PrimeField, P: TEModelParameters<BaseField = F>>
-    FeIntoPubInput<PublicInputValue<F, P>> for F
+impl<P> FeIntoPubInput<PublicInputValue<P>> for P::BaseField
+where
+    P: TEModelParameters,
 {
-    fn into_pi(self) -> PublicInputValue<F, P> {
-        PublicInputValue {
-            values: vec![self],
-            _marker: PhantomData,
-        }
+    #[inline]
+    fn into_pi(self) -> PublicInputValue<P> {
+        PublicInputValue { values: vec![self] }
     }
 }
 
-impl<F: PrimeField, P: TEModelParameters<BaseField = F>>
-    GeIntoPubInput<PublicInputValue<F, P>> for GroupAffine<P>
+impl<P> GeIntoPubInput<PublicInputValue<P>> for GroupAffine<P>
+where
+    P: TEModelParameters,
 {
-    fn into_pi(self) -> PublicInputValue<F, P> {
+    #[inline]
+    fn into_pi(self) -> PublicInputValue<P> {
         PublicInputValue {
             values: vec![self.x, self.y],
-            _marker: PhantomData,
         }
     }
 }
 
-impl<F: PrimeField, P: TEModelParameters<BaseField = F>>
-    GeIntoPubInput<PublicInputValue<F, P>> for GroupProjective<P>
+impl<P> GeIntoPubInput<PublicInputValue<P>> for GroupProjective<P>
+where
+    P: TEModelParameters,
 {
-    fn into_pi(self) -> PublicInputValue<F, P> {
-        let point: GroupAffine<P> = self.into_affine();
-        PublicInputValue {
-            values: vec![point.x, point.y],
-            _marker: PhantomData,
-        }
+    #[inline]
+    fn into_pi(self) -> PublicInputValue<P> {
+        GeIntoPubInput::into_pi(self.into_affine())
     }
 }
 
@@ -101,19 +106,29 @@ impl<F: PrimeField, P: TEModelParameters<BaseField = F>>
 /// de/serialize data needed for Circuit proof verification.
 /// This structure can be seen as a link between the [`Circuit`] public input
 /// positions and the [`VerifierKey`] that the Verifier needs to use.
-#[derive(
-    CanonicalDeserialize, CanonicalSerialize, Clone, Debug, Eq, PartialEq,
+#[derive(CanonicalDeserialize, CanonicalSerialize, derivative::Derivative)]
+#[derivative(
+    Clone(bound = ""),
+    Debug(bound = ""),
+    Eq(bound = ""),
+    PartialEq(bound = "")
 )]
-pub struct VerifierData<
+pub struct VerifierData<E, P>
+where
     E: PairingEngine,
     P: TEModelParameters<BaseField = E::Fr>,
-> {
+{
+    /// Verifier Key
     key: VerifierKey<E, P>,
+
+    /// Public Input Positions
     pi_pos: Vec<usize>,
 }
 
-impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
-    VerifierData<E, P>
+impl<E, P> VerifierData<E, P>
+where
+    E: PairingEngine,
+    P: TEModelParameters<BaseField = E::Fr>,
 {
     /// Creates a new `VerifierData` from a [`VerifierKey`] and the public
     /// input positions of the circuit that it represents.
@@ -122,12 +137,12 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
     }
 
     /// Returns a reference to the contained [`VerifierKey`].
-    pub fn key(self) -> VerifierKey<E, P> {
-        self.key
+    pub fn key(&self) -> &VerifierKey<E, P> {
+        &self.key
     }
 
     /// Returns a reference to the contained Public Input positions.
-    pub fn pi_pos(&self) -> &Vec<usize> {
+    pub fn pi_pos(&self) -> &[usize] {
         &self.pi_pos
     }
 }
@@ -164,10 +179,11 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
 /// // 4) a * b = d where D is a PI
 /// // 5) JubJub::GENERATOR * e(JubJubScalar) = f where F is a PI
 /// #[derive(Debug)]
-/// pub struct TestCircuit<
+/// pub struct TestCircuit<E, P>
+/// where
 ///     E: PairingEngine,
-///     P: TEModelParameters<BaseField = E::Fr>
-/// > {
+///     P: TEModelParameters<BaseField = E::Fr>,
+/// {
 ///     a: E::Fr,
 ///     b: E::Fr,
 ///     c: E::Fr,
@@ -176,10 +192,11 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
 ///     f: GroupAffine<P>,
 /// }
 ///
-/// impl<
+/// impl<E, P> Default for TestCircuit<E, P>
+/// where
 ///     E: PairingEngine,
 ///     P: TEModelParameters<BaseField = E::Fr>
-/// > Default for TestCircuit<E, P> {
+/// {
 ///     fn default() -> Self {
 ///         Self {
 ///             a: E::Fr::zero(),
@@ -192,10 +209,10 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
 ///     }
 /// }
 ///
-/// impl<
+/// impl<E, P> Circuit<E, P> for TestCircuit<E, P>
+/// where
 ///     E: PairingEngine,
 ///     P: TEModelParameters<BaseField = E::Fr>,
-/// > Circuit<E, P> for TestCircuit<E, P>
 /// {
 ///     const CIRCUIT_ID: [u8; 32] = [0xff; 32];
 ///
@@ -291,7 +308,6 @@ pub trait Circuit<E, P>
 where
     E: PairingEngine,
     P: TEModelParameters<BaseField = E::Fr>,
-    Self: Sized,
 {
     /// Circuit identifier associated constant.
     const CIRCUIT_ID: [u8; 32];
@@ -386,17 +402,18 @@ where
 
 /// Verifies a proof using the provided `CircuitInputs` & `VerifierKey`
 /// instances.
-pub fn verify_proof<
-    E: PairingEngine,
-    P: TEModelParameters<BaseField = E::Fr>,
->(
+pub fn verify_proof<E, P>(
     u_params: &UniversalParams<E>,
     plonk_verifier_key: VerifierKey<E, P>,
     proof: &Proof<E, P>,
-    pub_inputs_values: &[PublicInputValue<E::Fr, P>],
+    pub_inputs_values: &[PublicInputValue<P>],
     pub_inputs_positions: &[usize],
     transcript_init: &'static [u8],
-) -> Result<(), Error> {
+) -> Result<(), Error>
+where
+    E: PairingEngine,
+    P: TEModelParameters<BaseField = E::Fr>,
+{
     let mut verifier: Verifier<E, P> = Verifier::new(transcript_init);
     let padded_circuit_size = plonk_verifier_key.padded_circuit_size();
     // let key: VerifierKey<E, P> = *plonk_verifier_key;
@@ -428,7 +445,7 @@ pub fn verify_proof<
 
 /// Build PI vector for Proof verifications.
 fn build_pi<F: PrimeField, P: TEModelParameters<BaseField = F>>(
-    pub_input_values: &[PublicInputValue<F, P>],
+    pub_input_values: &[PublicInputValue<P>],
     pub_input_pos: &[usize],
     trim_size: usize,
 ) -> Vec<F> {
@@ -461,7 +478,8 @@ mod tests {
     // 3) b <= 2^5
     // 4) a * b = d where D is a PI
     // 5) JubJub::GENERATOR * e(JubJubScalar) = f where F is a PI
-    #[derive(Debug)]
+    #[derive(derivative::Derivative)]
+    #[derivative(Debug(bound = ""), Default(bound = ""))]
     pub struct TestCircuit<
         E: PairingEngine,
         P: TEModelParameters<BaseField = E::Fr>,
@@ -473,24 +491,12 @@ mod tests {
         e: P::ScalarField,
         f: GroupAffine<P>,
     }
-    impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Default
-        for TestCircuit<E, P>
-    {
-        fn default() -> Self {
-            Self {
-                a: E::Fr::zero(),
-                b: E::Fr::zero(),
-                c: E::Fr::zero(),
-                d: E::Fr::zero(),
-                e: P::ScalarField::zero(),
-                f: GroupAffine::<P>::zero(),
-            }
-        }
-    }
+
     impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
         Circuit<E, P> for TestCircuit<E, P>
     {
         const CIRCUIT_ID: [u8; 32] = [0xff; 32];
+
         fn gadget(
             &mut self,
             composer: &mut StandardComposer<E, P>,
@@ -526,15 +532,14 @@ mod tests {
             composer.assert_equal_public_point(scalar_mul_result, self.f);
             Ok(())
         }
+
         fn padded_circuit_size(&self) -> usize {
             1 << 11
         }
     }
 
-    fn test_full<
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr> + PartialEq,
-    >() -> Result<(), Error> {
+    fn test_full<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>(
+    ) -> Result<(), Error> {
         use rand_core::OsRng;
 
         // Generate CRS
@@ -587,11 +592,12 @@ mod tests {
             point_f_pi.into_pi(),
         ];
 
-        // todo: non-ideal hack for a first functional version.
-        let pi_pos = verifier_data.pi_pos().clone();
+        let VerifierData { key, pi_pos } = verifier_data;
+
+        // TODO: non-ideal hack for a first functional version.
         assert!(verify_proof::<E, P>(
             &pp,
-            verifier_data.key(),
+            key,
             &proof,
             &public_inputs,
             &pi_pos,
@@ -602,14 +608,14 @@ mod tests {
         Ok(())
     }
 
-    #[allow(non_snake_case)]
     #[test]
+    #[allow(non_snake_case)]
     fn test_full_on_Bls12_381() -> Result<(), Error> {
         test_full::<Bls12_381, ark_ed_on_bls12_381::EdwardsParameters>()
     }
 
-    #[allow(non_snake_case)]
     #[test]
+    #[allow(non_snake_case)]
     fn test_full_on_Bls12_377() -> Result<(), Error> {
         test_full::<Bls12_377, ark_ed_on_bls12_377::EdwardsParameters>()
     }

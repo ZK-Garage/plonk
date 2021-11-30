@@ -4,7 +4,7 @@
 //
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
-//! Methods to preprocess the constraint system for use in a proof
+//! Methods to preprocess the constraint system for use in a proof.
 
 use crate::constraint_system::StandardComposer;
 use crate::error::Error;
@@ -21,7 +21,10 @@ use num_traits::{One, Zero};
 /// PLONK.
 ///
 /// [`Polynomial`]: DensePolynomial
-pub(crate) struct SelectorPolynomials<F: PrimeField> {
+pub struct SelectorPolynomials<F>
+where
+    F: PrimeField,
+{
     q_m: DensePolynomial<F>,
     q_l: DensePolynomial<F>,
     q_r: DensePolynomial<F>,
@@ -194,8 +197,8 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
             (selectors.q_4, q_4_eval_4n),
             (selectors.q_c, q_c_eval_4n),
             (selectors.q_arith, q_arith_eval_4n),
-            (selectors.q_logic, q_logic_eval_4n),
             (selectors.q_range, q_range_eval_4n),
+            (selectors.q_logic, q_logic_eval_4n),
             (selectors.q_fixed_group_add, q_fixed_group_add_eval_4n),
             (selectors.q_variable_group_add, q_variable_group_add_eval_4n),
             (selectors.left_sigma, left_sigma_eval_4n),
@@ -380,25 +383,24 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
                 None,
             )?;
 
-        let verifier_key: widget::VerifierKey<E, P> =
-            widget::VerifierKey::from_polynomial_commitments(
-                self.circuit_size(),
-                q_m_poly_commit.0,
-                q_l_poly_commit.0,
-                q_r_poly_commit.0,
-                q_o_poly_commit.0,
-                q_4_poly_commit.0,
-                q_c_poly_commit.0,
-                q_arith_poly_commit.0,
-                q_logic_poly_commit.0,
-                q_range_poly_commit.0,
-                q_fixed_group_add_poly_commit.0,
-                q_variable_group_add_poly_commit.0,
-                left_sigma_poly_commit.0,
-                right_sigma_poly_commit.0,
-                out_sigma_poly_commit.0,
-                fourth_sigma_poly_commit.0,
-            );
+        let verifier_key = widget::VerifierKey::from_polynomial_commitments(
+            self.circuit_size(),
+            q_m_poly_commit.0,
+            q_l_poly_commit.0,
+            q_r_poly_commit.0,
+            q_o_poly_commit.0,
+            q_4_poly_commit.0,
+            q_c_poly_commit.0,
+            q_arith_poly_commit.0,
+            q_range_poly_commit.0,
+            q_logic_poly_commit.0,
+            q_fixed_group_add_poly_commit.0,
+            q_variable_group_add_poly_commit.0,
+            left_sigma_poly_commit.0,
+            right_sigma_poly_commit.0,
+            out_sigma_poly_commit.0,
+            fourth_sigma_poly_commit.0,
+        );
 
         let selectors = SelectorPolynomials {
             q_m: q_m_poly,
@@ -428,7 +430,7 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
 /// Given that the domain size is `D`
 /// This function computes the `D` evaluation points for
 /// the vanishing polynomial of degree `n` over a coset
-pub(crate) fn compute_vanishing_poly_over_coset<
+pub fn compute_vanishing_poly_over_coset<
     F: PrimeField,
     D: EvaluationDomain<F>,
 >(

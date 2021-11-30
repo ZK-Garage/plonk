@@ -4,10 +4,10 @@
 //
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
-mod proverkey;
+//! Arithmetic Gate
 
+mod proverkey;
 mod verifierkey;
 
 pub(crate) use proverkey::ProverKey;
-
 pub(crate) use verifierkey::VerifierKey;

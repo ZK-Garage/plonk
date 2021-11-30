@@ -4,25 +4,28 @@
 //
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
-//! XXX: Doc this
+//! Proof System Widgets
 
 pub mod arithmetic;
 pub mod ecc;
 pub mod logic;
-pub mod permutation;
 pub mod range;
 
 use crate::proof_system::linearisation_poly::ProofEvaluations;
+use crate::proof_system::permutation;
 use crate::transcript::TranscriptProtocol;
 use ark_ec::{PairingEngine, TEModelParameters};
 use ark_ff::{Field, PrimeField};
 use ark_poly::{univariate::DensePolynomial, Evaluations};
 use ark_poly_commit::sonic_pc::Commitment;
 use ark_serialize::*;
+use core::marker::PhantomData;
 
 /// Gate Values
 ///
 /// This data structures holds the wire values for a given gate.
+#[derive(derivative::Derivative)]
+#[derivative(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
 pub struct GateValues<F>
 where
     F: Field,
@@ -60,6 +63,12 @@ where
     /// Right Wire Selector Weight
     pub right_selector: F,
 
+    /// Output Wire Selector Weight
+    pub output_selector: F,
+
+    /// Fourth Wire Selector Weight
+    pub fourth_selector: F,
+
     /// Constant Wire Selector Weight
     pub constant_selector: F,
 }
@@ -81,14 +90,14 @@ where
 /// Computes the linearisation polynomial term for the given `G` gate type at
 /// the `selector_polynomial` instantiated with `separation_challenge` and
 /// `values`.
-pub(crate) fn compute_linearisation_term<E, G>(
-    selector_polynomial: &DensePolynomial<E::Fr>,
-    separation_challenge: E::Fr,
-    values: GateValues<E::Fr>,
-) -> DensePolynomial<E::Fr>
+pub(crate) fn compute_linearisation_term<F, G>(
+    selector_polynomial: &DensePolynomial<F>,
+    separation_challenge: F,
+    values: GateValues<F>,
+) -> DensePolynomial<F>
 where
-    E: PairingEngine,
-    G: GateConstraint<E::Fr>,
+    F: Field,
+    G: GateConstraint<F>,
 {
     selector_polynomial * G::compute_constraint(separation_challenge, values)
 }
@@ -117,6 +126,8 @@ pub(crate) fn extend_linearisation_commitment<E, G>(
             fourth_next: evaluations.d_next_eval,
             left_selector: evaluations.q_l_eval,
             right_selector: evaluations.q_r_eval,
+            output_selector: evaluations.q_o_eval,
+            fourth_selector: evaluations.q_4_eval,
             constant_selector: evaluations.q_c_eval,
         },
     );
@@ -128,8 +139,12 @@ pub(crate) fn extend_linearisation_commitment<E, G>(
 ///
 /// This structure is used by the Verifier in order to verify a
 /// [`Proof`](super::Proof).
-#[derive(
-    CanonicalDeserialize, CanonicalSerialize, Clone, Copy, Debug, Eq, PartialEq,
+#[derive(CanonicalDeserialize, CanonicalSerialize, derivative::Derivative)]
+#[derivative(
+    Clone(bound = ""),
+    Debug(bound = ""),
+    Eq(bound = ""),
+    PartialEq(bound = "")
 )]
 pub struct VerifierKey<
     E: PairingEngine,
@@ -137,28 +152,50 @@ pub struct VerifierKey<
 > {
     /// Circuit size (not padded to a power of two).
     pub(crate) n: usize,
-    /// VerifierKey for arithmetic gates
-    pub(crate) arithmetic: arithmetic::VerifierKey<E>,
-    /// VerifierKey for logic gates
-    pub(crate) logic: logic::VerifierKey<E>,
-    /// VerifierKey for range gates
-    pub(crate) range: range::VerifierKey<E>,
-    /// VerifierKey for fixed base curve addition gates
-    pub(crate) fixed_base: ecc::scalar_mul::fixed_base::VerifierKey<E, P>,
-    /// VerifierKey for variable base curve addition gates
-    pub(crate) variable_base: ecc::curve_addition::VerifierKey<E, P>,
+
+    /// Left Wire Selector Commitment
+    pub(crate) left_selector_commitment: Commitment<E>,
+
+    /// Right Wire Selector Commitment
+    pub(crate) right_selector_commitment: Commitment<E>,
+
+    /// Output Wire Selector Commitment
+    pub(crate) output_selector_commitment: Commitment<E>,
+
+    /// Fourth Wire Selector Commitment
+    pub(crate) fourth_selector_commitment: Commitment<E>,
+
+    /// Constant Selector Commitment
+    pub(crate) constant_selector_commitment: Commitment<E>,
+
+    /// Multiplication Selector Commitment
+    pub(crate) mul_selector_commitment: Commitment<E>,
+
+    /// Arithmetic Selector Commitment
+    pub(crate) arithmetic_selector_commitment: Commitment<E>,
+
+    /// Range Gate Selector Commitment
+    pub(crate) range_selector_commitment: Commitment<E>,
+
+    /// Logic Gate Selector Commitment
+    pub(crate) logic_selector_commitment: Commitment<E>,
+
+    /// Fixed Group Addition Selector Commitment
+    pub(crate) fixed_group_add_selector_commitment: Commitment<E>,
+
+    /// Variable Group Addition Selector Commitment
+    pub(crate) variable_group_add_selector_commitment: Commitment<E>,
+
     /// VerifierKey for permutation checks
     pub(crate) permutation: permutation::VerifierKey<E>,
+
+    /// Type Parameter Marker
+    __: PhantomData<P>,
 }
 
 impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
     VerifierKey<E, P>
 {
-    /// Returns the Circuit size padded to the next power of two.
-    pub fn padded_circuit_size(&self) -> usize {
-        self.n.next_power_of_two()
-    }
-
     /// Constructs a [`VerifierKey`] from the widget VerifierKey's that are
     /// constructed based on the selector polynomial commitments and the
     /// sigma polynomial commitments.
@@ -171,80 +208,77 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
         q_4: Commitment<E>,
         q_c: Commitment<E>,
         q_arith: Commitment<E>,
-        q_logic: Commitment<E>,
         q_range: Commitment<E>,
+        q_logic: Commitment<E>,
         q_fixed_group_add: Commitment<E>,
         q_variable_group_add: Commitment<E>,
         left_sigma: Commitment<E>,
         right_sigma: Commitment<E>,
         out_sigma: Commitment<E>,
         fourth_sigma: Commitment<E>,
-    ) -> VerifierKey<E, P> {
-        let arithmetic = arithmetic::VerifierKey {
-            q_m,
-            q_l,
-            q_r,
-            q_o,
-            q_4,
-            q_c,
-            q_arith,
-        };
-        let logic = logic::VerifierKey { q_c, q_logic };
-        let range = range::VerifierKey { q_range };
-        let fixed_base = ecc::scalar_mul::fixed_base::VerifierKey::new(
-            q_l,
-            q_r,
-            q_fixed_group_add,
-        );
-
-        let variable_base =
-            ecc::curve_addition::VerifierKey::new(q_variable_group_add);
-
-        let permutation = permutation::VerifierKey::new(
-            left_sigma,
-            right_sigma,
-            out_sigma,
-            fourth_sigma,
-        );
-
-        VerifierKey {
+    ) -> Self {
+        Self {
             n,
-            arithmetic,
-            logic,
-            range,
-            fixed_base,
-            variable_base,
-            permutation,
+            left_selector_commitment: q_l,
+            right_selector_commitment: q_r,
+            output_selector_commitment: q_o,
+            fourth_selector_commitment: q_4,
+            constant_selector_commitment: q_c,
+            mul_selector_commitment: q_m,
+            arithmetic_selector_commitment: q_arith,
+            range_selector_commitment: q_range,
+            logic_selector_commitment: q_logic,
+            fixed_group_add_selector_commitment: q_fixed_group_add,
+            variable_group_add_selector_commitment: q_variable_group_add,
+            permutation: permutation::VerifierKey::new(
+                left_sigma,
+                right_sigma,
+                out_sigma,
+                fourth_sigma,
+            ),
+            __: PhantomData,
         }
+    }
+
+    /// Returns the Circuit size padded to the next power of two.
+    pub fn padded_circuit_size(&self) -> usize {
+        self.n.next_power_of_two()
     }
 }
 
-impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
-    VerifierKey<E, P>
+impl<E, P> VerifierKey<E, P>
+where
+    E: PairingEngine,
+    P: TEModelParameters<BaseField = E::Fr>,
 {
-    /// Adds the circuit description to the transcript
-    pub(crate) fn seed_transcript<T: TranscriptProtocol<E>>(
-        &self,
-        transcript: &mut T,
-    ) {
-        transcript.append_commitment(b"q_m", &self.arithmetic.q_m);
-        transcript.append_commitment(b"q_l", &self.arithmetic.q_l);
-        transcript.append_commitment(b"q_r", &self.arithmetic.q_r);
-        transcript.append_commitment(b"q_o", &self.arithmetic.q_o);
-        transcript.append_commitment(b"q_c", &self.arithmetic.q_c);
-        transcript.append_commitment(b"q_4", &self.arithmetic.q_4);
-        transcript.append_commitment(b"q_arith", &self.arithmetic.q_arith);
-        transcript.append_commitment(b"q_range", &self.range.q_range);
-        transcript.append_commitment(b"q_logic", &self.logic.q_logic);
+    /// Adds the circuit description to the transcript.
+    pub(crate) fn seed_transcript<T>(&self, transcript: &mut T)
+    where
+        T: TranscriptProtocol<E>,
+    {
+        transcript.append_commitment(b"q_m", &self.mul_selector_commitment);
+        transcript.append_commitment(b"q_l", &self.left_selector_commitment);
+        transcript.append_commitment(b"q_r", &self.right_selector_commitment);
+        transcript.append_commitment(b"q_o", &self.output_selector_commitment);
+        transcript
+            .append_commitment(b"q_c", &self.constant_selector_commitment);
+        transcript.append_commitment(b"q_4", &self.fourth_selector_commitment);
+        transcript.append_commitment(
+            b"q_arith",
+            &self.arithmetic_selector_commitment,
+        );
+        transcript
+            .append_commitment(b"q_range", &self.range_selector_commitment);
+        transcript
+            .append_commitment(b"q_logic", &self.logic_selector_commitment);
         transcript.append_commitment(
             b"q_variable_group_add",
-            &self.variable_base.q_variable_group_add,
+            &self.variable_group_add_selector_commitment,
         );
         transcript.append_commitment(
             b"q_fixed_group_add",
-            &self.fixed_base.q_fixed_group_add,
+            &self.fixed_group_add_selector_commitment,
         );
-
         transcript
             .append_commitment(b"left_sigma", &self.permutation.left_sigma);
         transcript
@@ -252,8 +286,6 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
         transcript.append_commitment(b"out_sigma", &self.permutation.out_sigma);
         transcript
             .append_commitment(b"fourth_sigma", &self.permutation.fourth_sigma);
-
-        // Append circuit size to transcript
         transcript.circuit_domain_sep(self.n as u64);
     }
 }
@@ -262,30 +294,68 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
 ///
 /// This structure is used by the Prover in order to construct a
 /// [`Proof`](crate::proof_system::Proof).
-#[derive(
-    CanonicalDeserialize, CanonicalSerialize, Clone, Debug, Eq, PartialEq,
+#[derive(CanonicalDeserialize, CanonicalSerialize, derivative::Derivative)]
+#[derivative(
+    Clone(bound = ""),
+    Debug(bound = ""),
+    Eq(bound = ""),
+    PartialEq(bound = "")
 )]
-pub struct ProverKey<F: PrimeField, P: TEModelParameters<BaseField = F>> {
+pub struct ProverKey<F, P>
+where
+    F: PrimeField,
+    P: TEModelParameters<BaseField = F>,
+{
     /// Circuit size
     pub(crate) n: usize,
-    /// ProverKey for arithmetic gate
-    pub(crate) arithmetic: arithmetic::ProverKey<F>,
-    /// ProverKey for logic gate
-    pub(crate) logic: logic::ProverKey<F>,
-    /// ProverKey for range gate
-    pub(crate) range: range::ProverKey<F>,
-    /// ProverKey for fixed base curve addition gates
-    pub(crate) fixed_base: ecc::scalar_mul::fixed_base::ProverKey<F, P>,
-    /// ProverKey for variable base curve addition gates
-    pub(crate) variable_base: ecc::curve_addition::ProverKey<F, P>,
+
+    /// Left Wire Selector
+    pub(crate) left_selector: (DensePolynomial<F>, Evaluations<F>),
+
+    /// Right Wire Selector
+    pub(crate) right_selector: (DensePolynomial<F>, Evaluations<F>),
+
+    /// Output Wire Selector
+    pub(crate) output_selector: (DensePolynomial<F>, Evaluations<F>),
+
+    /// Fourth Wire Selector
+    pub(crate) fourth_selector: (DensePolynomial<F>, Evaluations<F>),
+
+    /// Constant Selector
+    pub(crate) constant_selector: (DensePolynomial<F>, Evaluations<F>),
+
+    /// Multiplication Selector
+    pub(crate) mul_selector: (DensePolynomial<F>, Evaluations<F>),
+
+    /// Arithmetic Selector
+    pub(crate) arithmetic_selector: (DensePolynomial<F>, Evaluations<F>),
+
+    /// Range Gate Selector
+    pub(crate) range_selector: (DensePolynomial<F>, Evaluations<F>),
+
+    /// Logic Gate Selector
+    pub(crate) logic_selector: (DensePolynomial<F>, Evaluations<F>),
+
+    /// Fixed Group Addition Selector
+    pub(crate) fixed_group_add_selector: (DensePolynomial<F>, Evaluations<F>),
+
+    /// Variable Group Addition Selector
+    pub(crate) variable_group_add_selector:
+        (DensePolynomial<F>, Evaluations<F>),
+
     /// ProverKey for permutation checks
     pub(crate) permutation: permutation::ProverKey<F>,
-    // Pre-processes the 4n Evaluations for the vanishing polynomial, so
-    // they do not need to be computed at the proving stage.
-    // Note: With this, we can combine all parts of the quotient polynomial
-    // in their evaluation phase and divide by the quotient
-    // polynomial without having to perform IFFT
+
+    /// Pre-processes the 4n Evaluations for the vanishing polynomial, so
+    /// they do not need to be computed at the proving stage.
+    ///
+    /// NOTE: With this, we can combine all parts of the quotient polynomial
+    /// in their evaluation phase and divide by the quotient
+    /// polynomial without having to perform IFFT
     pub(crate) v_h_coset_4n: Evaluations<F>,
+
+    /// Type Parameter Marker
+    __: PhantomData<P>,
 }
 
 impl<F: PrimeField, P: TEModelParameters<BaseField = F>> ProverKey<F, P> {
@@ -305,8 +375,8 @@ impl<F: PrimeField, P: TEModelParameters<BaseField = F>> ProverKey<F, P> {
         q_4: (DensePolynomial<F>, Evaluations<F>),
         q_c: (DensePolynomial<F>, Evaluations<F>),
         q_arith: (DensePolynomial<F>, Evaluations<F>),
-        q_logic: (DensePolynomial<F>, Evaluations<F>),
         q_range: (DensePolynomial<F>, Evaluations<F>),
+        q_logic: (DensePolynomial<F>, Evaluations<F>),
         q_fixed_group_add: (DensePolynomial<F>, Evaluations<F>),
         q_variable_group_add: (DensePolynomial<F>, Evaluations<F>),
         left_sigma: (DensePolynomial<F>, Evaluations<F>),
@@ -315,49 +385,27 @@ impl<F: PrimeField, P: TEModelParameters<BaseField = F>> ProverKey<F, P> {
         fourth_sigma: (DensePolynomial<F>, Evaluations<F>),
         linear_evaluations: Evaluations<F>,
         v_h_coset_4n: Evaluations<F>,
-    ) -> ProverKey<F, P> {
-        let arithmetic = arithmetic::ProverKey {
-            q_m,
-            q_l: q_l.clone(),
-            q_r: q_r.clone(),
-            q_o,
-            q_4,
-            q_c: q_c.clone(),
-            q_arith,
-        };
-        let logic = logic::ProverKey {
-            q_c: q_c.clone(),
-            q_logic,
-        };
-        let range = range::ProverKey { q_range };
-        let fixed_base = ecc::scalar_mul::fixed_base::ProverKey::new(
-            q_l,
-            q_r,
-            q_c,
-            q_fixed_group_add,
-        );
-
-        let variable_base = ecc::curve_addition::ProverKey::new(
-            q_variable_group_add.0,
-            q_variable_group_add.1,
-        );
-
-        let permutation = permutation::ProverKey {
-            left_sigma,
-            right_sigma,
-            out_sigma,
-            fourth_sigma,
-            linear_evaluations,
-        };
-
-        ProverKey {
+    ) -> Self {
+        Self {
             n,
-            arithmetic,
-            logic,
-            range,
-            fixed_base,
-            variable_base,
-            permutation,
+            left_selector: q_l,
+            right_selector: q_r,
+            output_selector: q_o,
+            fourth_selector: q_4,
+            constant_selector: q_c,
+            mul_selector: q_m,
+            arithmetic_selector: q_arith,
+            range_selector: q_range,
+            logic_selector: q_logic,
+            fixed_group_add_selector: q_fixed_group_add,
+            variable_group_add_selector: q_variable_group_add,
+            permutation: permutation::ProverKey {
+                left_sigma,
+                right_sigma,
+                out_sigma,
+                fourth_sigma,
+                linear_evaluations,
+            },
             v_h_coset_4n,
         }
     }
@@ -366,10 +414,14 @@ impl<F: PrimeField, P: TEModelParameters<BaseField = F>> ProverKey<F, P> {
 #[cfg(test)]
 mod test {
     use super::*;
+    use ark_bls12_381::Bls12_381;
     use ark_bls12_381::Fr as BlsScalar;
+    use ark_bls12_381::G1Affine;
+    use ark_ed_on_bls12_381::EdwardsParameters;
     use ark_ff::{Fp256, UniformRand};
     use ark_poly::polynomial::univariate::DensePolynomial;
     use ark_poly::{EvaluationDomain, GeneralEvaluationDomain, UVPolynomial};
+    use ark_poly_commit::kzg10::Commitment;
     use rand_core::OsRng;
 
     fn rand_poly_eval(
@@ -404,68 +456,39 @@ mod test {
         let q_c = rand_poly_eval(n);
         let q_4 = rand_poly_eval(n);
         let q_arith = rand_poly_eval(n);
-
-        let q_logic = rand_poly_eval(n);
-
         let q_range = rand_poly_eval(n);
-
+        let q_logic = rand_poly_eval(n);
         let q_fixed_group_add = rand_poly_eval(n);
-
         let q_variable_group_add = rand_poly_eval(n);
 
         let left_sigma = rand_poly_eval(n);
         let right_sigma = rand_poly_eval(n);
         let out_sigma = rand_poly_eval(n);
         let fourth_sigma = rand_poly_eval(n);
-        let linear_evaluations = rand_evaluations(n);
 
+        let linear_evaluations = rand_evaluations(n);
         let v_h_coset_4n = rand_evaluations(n);
 
-        let arithmetic = arithmetic::ProverKey {
+        let prover_key = ProverKey::from_polynomials_and_evals(
+            n,
             q_m,
-            q_l: q_l.clone(),
-            q_r: q_r.clone(),
+            q_l,
+            q_r,
             q_o,
-            q_c: q_c.clone(),
             q_4,
+            q_c,
             q_arith,
-        };
-
-        let logic = logic::ProverKey {
+            q_range,
             q_logic,
-            q_c: q_c.clone(),
-        };
-
-        let range = range::ProverKey { q_range };
-
-        let fixed_base = ecc::scalar_mul::fixed_base::ProverKey::<
-            Fp256<ark_bls12_381::FrParameters>,
-            ark_ed_on_bls12_381::EdwardsParameters,
-        >::new(q_l, q_r, q_c, q_fixed_group_add);
-
-        let permutation = permutation::ProverKey {
+            q_fixed_group_add,
+            q_variable_group_add,
             left_sigma,
             right_sigma,
             out_sigma,
             fourth_sigma,
             linear_evaluations,
-        };
-
-        let variable_base = ecc::curve_addition::ProverKey::new(
-            q_variable_group_add.0,
-            q_variable_group_add.1,
-        );
-
-        let prover_key = ProverKey {
-            n,
-            arithmetic,
-            logic,
-            fixed_base,
-            range,
-            variable_base,
-            permutation,
             v_h_coset_4n,
-        };
+        );
 
         let mut prover_key_bytes = vec![];
         prover_key
@@ -483,12 +506,6 @@ mod test {
 
     #[test]
     fn test_serialise_deserialise_verifier_key() {
-        use super::*;
-        use ark_bls12_381::Bls12_381;
-        use ark_bls12_381::G1Affine;
-        use ark_ed_on_bls12_381::EdwardsParameters;
-        use ark_poly_commit::kzg10::Commitment;
-
         let n = 2usize.pow(5);
 
         let q_m = Commitment::<Bls12_381>(G1Affine::default());
@@ -498,56 +515,34 @@ mod test {
         let q_c = Commitment(G1Affine::default());
         let q_4 = Commitment(G1Affine::default());
         let q_arith = Commitment(G1Affine::default());
-
         let q_range = Commitment(G1Affine::default());
-
+        let q_logic = Commitment(G1Affine::default());
         let q_fixed_group_add = Commitment(G1Affine::default());
         let q_variable_group_add = Commitment(G1Affine::default());
-
-        let q_logic = Commitment(G1Affine::default());
 
         let left_sigma = Commitment(G1Affine::default());
         let right_sigma = Commitment(G1Affine::default());
         let out_sigma = Commitment(G1Affine::default());
         let fourth_sigma = Commitment(G1Affine::default());
 
-        let arithmetic = arithmetic::VerifierKey {
+        let verifier_key = VerifierKey::from_polynomial_commitments(
+            n,
             q_m,
             q_l,
             q_r,
             q_o,
-            q_c,
             q_4,
+            q_c,
             q_arith,
-        };
-
-        let logic = logic::VerifierKey { q_logic, q_c };
-
-        let range = range::VerifierKey { q_range };
-
-        let fixed_base = ecc::scalar_mul::fixed_base::VerifierKey::<
-            Bls12_381,
-            EdwardsParameters,
-        >::new(q_fixed_group_add, q_l, q_r);
-        let variable_base =
-            ecc::curve_addition::VerifierKey::new(q_variable_group_add);
-
-        let permutation = permutation::VerifierKey {
+            q_range,
+            q_logic,
+            q_fixed_group_add,
+            q_variable_group_add,
             left_sigma,
             right_sigma,
             out_sigma,
             fourth_sigma,
-        };
-
-        let verifier_key = VerifierKey {
-            n,
-            arithmetic,
-            logic,
-            range,
-            fixed_base,
-            variable_base,
-            permutation,
-        };
+        );
 
         let mut verifier_key_bytes = vec![];
         verifier_key

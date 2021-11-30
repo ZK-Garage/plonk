@@ -13,7 +13,7 @@ use ark_serialize::*;
     CanonicalDeserialize, CanonicalSerialize, Clone, Debug, Eq, PartialEq,
 )]
 pub(crate) struct ProverKey<F: PrimeField> {
-    pub(crate) q_range: (DensePolynomial<F>, Evaluations<F>),
+    pub q_range: (DensePolynomial<F>, Evaluations<F>),
 }
 
 impl<F: PrimeField> ProverKey<F> {

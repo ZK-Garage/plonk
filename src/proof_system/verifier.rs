@@ -4,6 +4,8 @@
 //
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
+//! Verifier-side of the PLONK Proving System
+
 use crate::constraint_system::StandardComposer;
 use crate::error::Error;
 use crate::proof_system::widget::VerifierKey as PlonkVerifierKey;
@@ -13,23 +15,26 @@ use ark_ec::{PairingEngine, TEModelParameters};
 use ark_poly_commit::kzg10::{Powers, VerifierKey};
 
 /// Abstraction structure designed verify [`Proof`]s.
-#[allow(missing_debug_implementations)]
 pub struct Verifier<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> {
     /// VerificationKey which is used to verify a specific PLONK circuit
     pub verifier_key: Option<PlonkVerifierKey<E, P>>,
 
+    /// Circuit Description
     pub(crate) cs: StandardComposer<E, P>,
-    /// Store the messages exchanged during the preprocessing stage
+
+    /// Store the messages exchanged during the preprocessing stage.
+    ///
     /// This is copied each time, we make a proof, so that we can use the same
-    /// verifier to Verify multiple proofs from the same circuit. If this
-    /// is not copied, then the verification procedure will modify
-    /// the transcript, making it unusable for future proofs.
+    /// verifier to verify multiple proofs from the same circuit. If this is
+    /// not copied, then the verification procedure will modify the transcript,
+    /// making it unusable for future proofs.
     pub preprocessed_transcript: TranscriptWrapper<E>,
 }
 
 impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Default
     for Verifier<E, P>
 {
+    #[inline]
     fn default() -> Verifier<E, P> {
         Verifier::new(b"plonk")
     }
@@ -37,8 +42,8 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Default
 
 impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Verifier<E, P> {
     /// Creates a new `Verifier` instance.
-    pub fn new(label: &'static [u8]) -> Verifier<E, P> {
-        Verifier {
+    pub fn new(label: &'static [u8]) -> Self {
+        Self {
             verifier_key: None,
             cs: StandardComposer::new(),
             preprocessed_transcript: TranscriptWrapper::new(label),
@@ -46,11 +51,8 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Verifier<E, P> {
     }
 
     /// Creates a new `Verifier` instance with some expected size.
-    pub fn with_expected_size(
-        label: &'static [u8],
-        size: usize,
-    ) -> Verifier<E, P> {
-        Verifier {
+    pub fn with_expected_size(label: &'static [u8], size: usize) -> Self {
+        Self {
             verifier_key: None,
             cs: StandardComposer::with_expected_size(size),
             preprocessed_transcript: TranscriptWrapper::new(label),

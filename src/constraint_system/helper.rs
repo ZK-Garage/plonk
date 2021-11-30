@@ -66,7 +66,7 @@ pub(crate) fn gadget_tester<
         // Commit Key
         let (ck, _) = SonicKZG10::<E, DensePolynomial<E::Fr>>::trim(
             &universal_params,
-            prover.cs.circuit_size().next_power_of_two(),
+            prover.circuit_size().next_power_of_two(),
             0,
             None,
         )
@@ -99,7 +99,7 @@ pub(crate) fn gadget_tester<
     // Compute Commit and Verifier Key
     let (sonic_ck, sonic_vk) = SonicKZG10::<E, DensePolynomial<E::Fr>>::trim(
         &universal_params,
-        verifier.cs.circuit_size().next_power_of_two(),
+        verifier.circuit_size().next_power_of_two(),
         0,
         None,
     )

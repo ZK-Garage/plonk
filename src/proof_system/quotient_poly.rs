@@ -222,6 +222,7 @@ fn compute_permutation_checks<
         .collect();
     t
 }
+
 fn compute_first_lagrange_poly_scaled<F: PrimeField>(
     domain: &GeneralEvaluationDomain<F>,
     scale: F,

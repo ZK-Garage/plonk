@@ -4,13 +4,7 @@
 //
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
-//! XXX: Doc this
-
-mod proverkey;
-mod verifierkey;
-
-pub(crate) use proverkey::ProverKey;
-pub(crate) use verifierkey::VerifierKey;
+//! Elliptic Curve Point Addition Gate
 
 use crate::proof_system::widget::{GateConstraint, GateValues};
 use ark_ec::TEModelParameters;
@@ -18,6 +12,8 @@ use ark_ff::Field;
 use core::marker::PhantomData;
 
 /// Curve Addition Gate
+#[derive(derivative::Derivative)]
+#[derivative(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
 pub struct CurveAddition<F, P>(PhantomData<(F, P)>)
 where
     F: Field,
