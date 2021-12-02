@@ -432,13 +432,14 @@ where
 /// Given that the domain size is `D`
 /// This function computes the `D` evaluation points for
 /// the vanishing polynomial of degree `n` over a coset
-pub fn compute_vanishing_poly_over_coset<
-    F: PrimeField,
-    D: EvaluationDomain<F>,
->(
+pub fn compute_vanishing_poly_over_coset<F, D>(
     domain: D,        // domain to evaluate over
     poly_degree: u64, // degree of the vanishing polynomial
-) -> Evaluations<F, D> {
+) -> Evaluations<F, D>
+where
+    F: PrimeField,
+    D: EvaluationDomain<F>,
+{
     assert!(
         (domain.size() as u64) > poly_degree,
         "domain_size = {}, poly_degree = {}",
