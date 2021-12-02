@@ -6,11 +6,6 @@
 
 //! Logic Gates
 
-// TODO[remove]: mod proverkey;
-// TODO[remove]: pub(crate) use proverkey::ProverKey;
-// TODO[remove]: mod verifierkey;
-// TODO[remove]: pub(crate) use verifierkey::VerifierKey;
-
 use crate::proof_system::widget::{GateConstraint, GateValues};
 use ark_ff::Field;
 use core::marker::PhantomData;

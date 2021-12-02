@@ -6,11 +6,6 @@
 
 //! Range Gate
 
-// TODO[remove]: mod proverkey;
-// TODO[remove]: pub(crate) use proverkey::ProverKey;
-// TODO[remove]: mod verifierkey;
-// TODO[remove]: pub(crate) use verifierkey::VerifierKey;
-
 use crate::proof_system::GateConstraint;
 use crate::proof_system::GateValues;
 use ark_ff::Field;
