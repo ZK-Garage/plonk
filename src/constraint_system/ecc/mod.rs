@@ -134,8 +134,8 @@ where
     /// a point between two of them:
     ///
     /// ```text
-    /// bit == 1 => lhs,
-    /// bit == 0 => rhs,
+    /// bit == 1 => point_1,
+    /// bit == 0 => point_0,
     /// ```
     ///
     /// # Note
@@ -145,13 +145,13 @@ where
     /// See: [`StandardComposer::boolean_gate`].
     pub fn conditional_point_select(
         &mut self,
-        lhs: Point<E, P>,
-        rhs: Point<E, P>,
+        point_1: Point<E, P>,
+        point_0: Point<E, P>,
         bit: Variable,
     ) -> Point<E, P> {
         Point::new(
-            self.conditional_select(bit, lhs.x, rhs.x),
-            self.conditional_select(bit, lhs.y, rhs.y),
+            self.conditional_select(bit, point_1.x, point_0.x),
+            self.conditional_select(bit, point_1.y, point_0.y),
         )
     }
 
@@ -159,7 +159,7 @@ where
     /// identity point:
     ///
     /// ```text
-    /// bit == 1 => value,
+    /// bit == 1 => point,
     /// bit == 0 => 1,
     /// ```
     ///
@@ -180,26 +180,28 @@ where
     }
 }
 
-/* TODO: Do we need this test?
-#[cfg(feature = "std")]
 #[cfg(test)]
-mod tests {
+mod test {
     use super::*;
+    use crate::batch_test;
     use crate::constraint_system::helper::*;
-    use ark_bls12_381::Fr as BlsScalar;
+    use ark_bls12_381::Bls12_381;
 
-    #[test]
-    fn test_conditional_select_point() {
+    fn test_conditional_select_point<E, P>()
+    where
+        E: PairingEngine,
+        P: TEModelParameters<BaseField = E::Fr>,
+    {
         let res = gadget_tester(
-            |composer| {
-                let bit_1 = composer.add_input(BlsScalar::one());
+            |composer: &mut StandardComposer<E, P>| {
+                let bit_1 = composer.add_input(E::Fr::one());
                 let bit_0 = composer.zero_var();
 
                 let point_a = Point::identity(composer);
-                let point_b = Point {
-                    x: composer.add_input(BlsScalar::from(10u64)),
-                    y: composer.add_input(BlsScalar::from(20u64)),
-                };
+                let point_b = Point::new(
+                    composer.add_input(E::Fr::from(10u64)),
+                    composer.add_input(E::Fr::from(20u64)),
+                );
 
                 let choice =
                     composer.conditional_point_select(point_a, point_b, bit_1);
@@ -214,5 +216,12 @@ mod tests {
         );
         assert!(res.is_ok());
     }
+
+    batch_test!(
+        [test_conditional_select_point],
+        [] => (
+            Bls12_381,
+            ark_ed_on_bls12_381::EdwardsParameters
+        )
+    );
 }
-*/

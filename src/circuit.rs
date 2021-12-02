@@ -34,7 +34,7 @@ use ark_serialize::*;
 /// `GeIntoPubInput`, that stand for "Field Element Into Public Input" and
 /// "Group Element Into Public Input" respectively.
 pub trait FeIntoPubInput<T> {
-    /// Ad-hoc `Into` implementation. Serves the same purpose as `Into`, but as
+    /// Ad hoc `Into` implementation. Serves the same purpose as `Into`, but as
     /// a different trait. Read documentation of Trait for more details.
     fn into_pi(self) -> T;
 }
@@ -51,7 +51,7 @@ pub trait FeIntoPubInput<T> {
 /// `FeIntoPubInput` and `GeIntoPubInput`, that stand for "Field Element Into
 /// Public Input" and "Group Element Into Public Input" respectively.
 pub trait GeIntoPubInput<T> {
-    /// Ad-hoc `Into` implementation. Serves the same purpose as `Into`, but as
+    /// Ad hoc `Into` implementation. Serves the same purpose as `Into`, but as
     /// a different trait. Read documentation of Trait for more details.
     fn into_pi(self) -> T;
 }
