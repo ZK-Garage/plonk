@@ -495,8 +495,10 @@ mod test {
         f: GroupAffine<P>,
     }
 
-    impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
-        Circuit<E, P> for TestCircuit<E, P>
+    impl<E, P> Circuit<E, P> for TestCircuit<E, P>
+    where
+        E: PairingEngine,
+        P: TEModelParameters<BaseField = E::Fr>,
     {
         const CIRCUIT_ID: [u8; 32] = [0xff; 32];
 

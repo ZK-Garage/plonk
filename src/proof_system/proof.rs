@@ -97,7 +97,11 @@ where
     pub(crate) __: PhantomData<P>,
 }
 
-impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Proof<E, P> {
+impl<E, P> Proof<E, P>
+where
+    E: PairingEngine,
+    P: TEModelParameters<BaseField = E::Fr>,
+{
     /// Performs the verification of a [`Proof`] returning a boolean result.
     pub(crate) fn verify(
         &self,
@@ -129,6 +133,9 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Proof<E, P> {
         let beta = transcript.challenge_scalar(b"beta");
         transcript.append_scalar(b"beta", &beta);
         let gamma = transcript.challenge_scalar(b"gamma");
+
+        assert!(beta != gamma, "challenges must be different");
+
         // Add commitment to permutation polynomial to transcript
         transcript.append_commitment(b"z", &self.z_comm);
 
@@ -200,7 +207,6 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Proof<E, P> {
         transcript.append_scalar(b"q_l_eval", &self.evaluations.q_l_eval);
         transcript.append_scalar(b"q_r_eval", &self.evaluations.q_r_eval);
         transcript.append_scalar(b"perm_eval", &self.evaluations.perm_eval);
-        assert!(beta != gamma);
         transcript.append_scalar(b"t_eval", &t_eval);
         transcript.append_scalar(b"r_eval", &self.evaluations.lin_poly_eval);
 
@@ -262,7 +268,7 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Proof<E, P> {
 
         let group_gen = domain.group_gen();
 
-        match KZG10::<E, DensePolynomial<E::Fr>>::batch_check(
+        match KZG10::<_, DensePolynomial<_>>::batch_check(
             verifier_key,
             &[aggregate_proof_commitment, aggregate_shift_proof_commitment],
             &[z_challenge, (z_challenge * group_gen)],
@@ -285,8 +291,7 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Proof<E, P> {
         plonk_verifier_key: &PlonkVerifierKey<E, P>,
         transcript: &mut TranscriptWrapper<E>,
     ) -> (Commitment<E>, E::Fr) {
-        let challenge: E::Fr =
-            transcript.challenge_scalar(b"aggregate_witness");
+        let challenge = transcript.challenge_scalar(b"aggregate_witness");
         util::linear_combination(
             &[
                 t_eval,
@@ -319,8 +324,7 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Proof<E, P> {
         &self,
         transcript: &mut TranscriptWrapper<E>,
     ) -> (Commitment<E>, E::Fr) {
-        let challenge: E::Fr =
-            transcript.challenge_scalar(b"aggregate_witness");
+        let challenge = transcript.challenge_scalar(b"aggregate_witness");
         util::linear_combination(
             &[
                 self.evaluations.perm_eval,
@@ -408,8 +412,8 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Proof<E, P> {
         l1_eval: E::Fr,
         plonk_verifier_key: &PlonkVerifierKey<E, P>,
     ) -> Commitment<E> {
-        let mut scalars: Vec<_> = Vec::with_capacity(6);
-        let mut points: Vec<E::G1Affine> = Vec::with_capacity(6);
+        let mut scalars = Vec::with_capacity(6);
+        let mut points = Vec::with_capacity(6);
 
         plonk_verifier_key
             .arithmetic
@@ -463,8 +467,8 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Proof<E, P> {
                 self.z_comm.0,
             );
 
-        let scalars_repr: Vec<<E::Fr as PrimeField>::BigInt> =
-            scalars.iter().map(move |s| s.into_repr()).collect();
+        let scalars_repr =
+            scalars.iter().map(E::Fr::into_repr).collect::<Vec<_>>();
 
         Commitment(
             VariableBaseMSM::multi_scalar_mul(&points, &scalars_repr).into(),
@@ -488,44 +492,50 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Proof<E, P> {
 /// ```text
 /// L_0(X) = (X^n -1) / n * (X -1)
 /// ```
-fn compute_first_lagrange_evaluation<F: PrimeField>(
+fn compute_first_lagrange_evaluation<F>(
     domain: &GeneralEvaluationDomain<F>,
     z_h_eval: &F,
     z_challenge: &F,
-) -> F {
+) -> F
+where
+    F: PrimeField,
+{
     let n_fr = F::from(domain.size() as u64);
     let denom = n_fr * (*z_challenge - F::one());
     *z_h_eval * denom.inverse().unwrap()
 }
 
-fn compute_barycentric_eval<F: PrimeField>(
+fn compute_barycentric_eval<F>(
     evaluations: &[F],
     point: F,
     domain: &GeneralEvaluationDomain<F>,
-) -> F {
+) -> F
+where
+    F: PrimeField,
+{
     let numerator =
         domain.evaluate_vanishing_polynomial(point) * domain.size_inv();
     let range = 0..evaluations.len();
 
-    let non_zero_evaluations: Vec<usize> = range
+    let non_zero_evaluations = range
         .filter(|&i| {
             let evaluation = &evaluations[i];
             evaluation != &F::zero()
         })
-        .collect();
+        .collect::<Vec<_>>();
 
     // Only compute the denominators with non-zero evaluations
     let range = 0..non_zero_evaluations.len();
 
     let group_gen_inv = domain.group_gen_inv();
-    let mut denominators: Vec<F> = range
+    let mut denominators = range
         .clone()
         .map(|i| {
             // index of non-zero evaluation
             let index = non_zero_evaluations[i];
             (group_gen_inv.pow(&[index as u64, 0, 0, 0]) * point) - F::one()
         })
-        .collect();
+        .collect::<Vec<_>>();
     batch_inversion(&mut denominators);
 
     let result: F = range

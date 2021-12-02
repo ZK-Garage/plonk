@@ -356,7 +356,11 @@ where
     __: PhantomData<P>,
 }
 
-impl<F: PrimeField, P: TEModelParameters<BaseField = F>> ProverKey<F, P> {
+impl<F, P> ProverKey<F, P>
+where
+    F: PrimeField,
+    P: TEModelParameters<BaseField = F>,
+{
     pub(crate) fn v_h_coset_4n(&self) -> &Evaluations<F> {
         &self.v_h_coset_4n
     }

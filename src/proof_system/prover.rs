@@ -23,11 +23,16 @@ use ark_poly::{
 };
 use ark_poly_commit::kzg10::{Powers, KZG10};
 use core::marker::PhantomData;
+use core::ops::Add;
 use num_traits::Zero;
 
 /// Abstraction structure designed to construct a circuit and generate
 /// [`Proof`]s for it.
-pub struct Prover<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> {
+pub struct Prover<E, P>
+where
+    E: PairingEngine,
+    P: TEModelParameters<BaseField = E::Fr>,
+{
     /// Proving Key which is used to create proofs about a specific PLONK
     /// circuit.
     pub prover_key: Option<ProverKey<E::Fr, P>>,
@@ -41,35 +46,11 @@ pub struct Prover<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> {
     pub preprocessed_transcript: TranscriptWrapper<E>,
 }
 
-impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Prover<E, P> {
-    /// Returns a mutable copy of the underlying [`StandardComposer`].
-    pub fn mut_cs(&mut self) -> &mut StandardComposer<E, P> {
-        &mut self.cs
-    }
-
-    /// Preprocesses the underlying constraint system.
-    pub fn preprocess(&mut self, commit_key: &Powers<E>) -> Result<(), Error> {
-        if self.prover_key.is_some() {
-            return Err(Error::CircuitAlreadyPreprocessed);
-        }
-        let pk = self
-            .cs
-            .preprocess_prover(commit_key, &mut self.preprocessed_transcript)?;
-        self.prover_key = Some(pk);
-        Ok(())
-    }
-}
-
-impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Default
-    for Prover<E, P>
+impl<E, P> Prover<E, P>
+where
+    E: PairingEngine,
+    P: TEModelParameters<BaseField = E::Fr>,
 {
-    #[inline]
-    fn default() -> Self {
-        Prover::new(b"plonk")
-    }
-}
-
-impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Prover<E, P> {
     /// Creates a new `Prover` instance.
     pub fn new(label: &'static [u8]) -> Self {
         Self {
@@ -88,15 +69,32 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Prover<E, P> {
         }
     }
 
+    /// Returns a mutable copy of the underlying [`StandardComposer`].
+    pub fn mut_cs(&mut self) -> &mut StandardComposer<E, P> {
+        &mut self.cs
+    }
+
     /// Returns the number of gates in the circuit thet the `Prover` actually
     /// stores inside.
     pub fn circuit_size(&self) -> usize {
         self.cs.circuit_size()
     }
 
+    /// Preprocesses the underlying constraint system.
+    pub fn preprocess(&mut self, commit_key: &Powers<E>) -> Result<(), Error> {
+        if self.prover_key.is_some() {
+            return Err(Error::CircuitAlreadyPreprocessed);
+        }
+        let pk = self
+            .cs
+            .preprocess_prover(commit_key, &mut self.preprocessed_transcript)?;
+        self.prover_key = Some(pk);
+        Ok(())
+    }
+
     /// Split `t(X)` poly into 4 degree `n` polynomials.
     #[allow(clippy::type_complexity)] // NOTE: This is an ok type for internal use.
-    pub(crate) fn split_tx_poly(
+    fn split_tx_poly(
         &self,
         n: usize,
         t_x: &DensePolynomial<E::Fr>,
@@ -127,13 +125,11 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Prover<E, P> {
         let z_n = z_challenge.pow(&[n as u64, 0, 0, 0]);
         let z_two_n = z_challenge.pow(&[2 * n as u64, 0, 0, 0]);
         let z_three_n = z_challenge.pow(&[3 * n as u64, 0, 0, 0]);
-
         let a = t_1_poly;
         let b = t_2_poly * z_n;
         let c = t_3_poly * z_two_n;
         let d = t_4_poly * z_three_n;
-        let abc = &(a + &b) + &c;
-        &abc + &d
+        a + &b + c + d
     }
 
     /// Convert variables to their actual witness values.
@@ -142,6 +138,7 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Prover<E, P> {
     }
 
     /// Resets the witnesses in the prover object.
+    ///
     /// This function is used when the user wants to make multiple proofs with
     /// the same circuit.
     pub fn clear_witness(&mut self) {
@@ -149,6 +146,7 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Prover<E, P> {
     }
 
     /// Clears all data in the `Prover` instance.
+    ///
     /// This function is used when the user wants to use the same `Prover` to
     /// make a [`Proof`] regarding a different circuit.
     pub fn clear(&mut self) {
@@ -170,26 +168,20 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Prover<E, P> {
 
     /// Computes a single witness for multiple polynomials at the same point, by
     /// taking a random linear combination of the individual witnesses.
-    /// The result does not depend on z, thus we can remove the term f(z).
-    pub(crate) fn compute_aggregate_witness(
+    ///
+    /// The result does not depend on `z`, thus we can remove the term `f(z)`.
+    fn compute_aggregate_witness(
         polynomials: &[DensePolynomial<E::Fr>],
         point: &E::Fr,
         challenge: E::Fr,
     ) -> DensePolynomial<E::Fr> {
-        let powers = util::powers_of(&challenge, polynomials.len() - 1);
-        assert_eq!(powers.len(), polynomials.len());
-
-        let numerator_terms: Vec<DensePolynomial<E::Fr>> = polynomials
-            .iter()
-            .zip(powers.iter())
-            .map(|(poly, challenge_power)| poly * *challenge_power)
-            .collect();
-
-        let mut numerator = DensePolynomial::zero();
-        for term in numerator_terms.iter() {
-            numerator += term;
-        }
-        util::ruffini(numerator, *point)
+        util::ruffini(
+            util::powers_of(challenge)
+                .zip(polynomials)
+                .map(|(challenge, poly)| poly * challenge)
+                .fold(Zero::zero(), Add::add),
+            *point,
+        )
     }
 
     /// Creates a [`Proof]` that demonstrates that a circuit is satisfied.
@@ -211,9 +203,9 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Prover<E, P> {
         // Commitments
         let mut transcript = self.preprocessed_transcript.clone();
 
-        //1. Compute witness Polynomials
+        // 1. Compute witness Polynomials
         //
-        // Convert Variables to BlsScalars padding them to the
+        // Convert Variables to scalars padding them to the
         // correct domain size.
         let pad = vec![E::Fr::zero(); domain.size() - self.cs.w_l.len()];
         let w_l_scalar = &[&self.to_scalars(&self.cs.w_l)[..], &pad].concat();
@@ -222,7 +214,7 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Prover<E, P> {
         let w_4_scalar = &[&self.to_scalars(&self.cs.w_4)[..], &pad].concat();
 
         // Witnesses are now in evaluation form, convert them to coefficients
-        // So that we may commit to them
+        // so that we may commit to them.
         let w_l_poly =
             DensePolynomial::from_coefficients_vec(domain.ifft(w_l_scalar));
         let w_r_poly =
@@ -232,23 +224,13 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Prover<E, P> {
         let w_4_poly =
             DensePolynomial::from_coefficients_vec(domain.ifft(w_4_scalar));
 
-        // Commit to witness polynomials
-        let w_l_poly_commit = KZG10::<E, DensePolynomial<E::Fr>>::commit(
-            commit_key, &w_l_poly, None, None,
-        )?;
-        let w_r_poly_commit = KZG10::<E, DensePolynomial<E::Fr>>::commit(
-            commit_key, &w_r_poly, None, None,
-        )?;
+        // Commit to witness polynomials.
+        let w_l_poly_commit = KZG10::commit(commit_key, &w_l_poly, None, None)?;
+        let w_r_poly_commit = KZG10::commit(commit_key, &w_r_poly, None, None)?;
+        let w_o_poly_commit = KZG10::commit(commit_key, &w_o_poly, None, None)?;
+        let w_4_poly_commit = KZG10::commit(commit_key, &w_4_poly, None, None)?;
 
-        let w_o_poly_commit = KZG10::<E, DensePolynomial<E::Fr>>::commit(
-            commit_key, &w_o_poly, None, None,
-        )?;
-
-        let w_4_poly_commit = KZG10::<E, DensePolynomial<E::Fr>>::commit(
-            commit_key, &w_4_poly, None, None,
-        )?;
-
-        // Add witness polynomial commitments to transcript
+        // Add witness polynomial commitments to transcript.
         transcript.append_commitment(b"w_l", &w_l_poly_commit.0);
         transcript.append_commitment(b"w_r", &w_r_poly_commit.0);
         transcript.append_commitment(b"w_o", &w_o_poly_commit.0);
@@ -256,8 +238,7 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Prover<E, P> {
 
         // 2. Compute permutation polynomial
         //
-        //
-        // Compute permutation challenges; `beta` and `gamma`
+        // Compute permutation challenges; `beta` and `gamma`.
         let beta = transcript.challenge_scalar(b"beta");
         transcript.append_scalar(b"beta", &beta);
         let gamma = transcript.challenge_scalar(b"gamma");
@@ -279,23 +260,23 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Prover<E, P> {
             ),
         );
 
-        // Commit to permutation polynomial
-        //
+        // Commit to permutation polynomial.
         let z_poly_commit = KZG10::<E, DensePolynomial<E::Fr>>::commit(
             commit_key, &z_poly, None, None,
         )?;
 
-        // Add permutation polynomial commitment to transcript
+        // Add permutation polynomial commitment to transcript.
         transcript.append_commitment(b"z", &z_poly_commit.0);
 
-        // 3. Compute public inputs polynomial
+        // 3. Compute public inputs polynomial.
         let pi_poly = DensePolynomial::from_coefficients_vec(
             domain.ifft(&self.cs.construct_dense_pi_vec()),
         );
 
         // 4. Compute quotient polynomial
         //
-        // Compute quotient challenge; `alpha`
+        // Compute quotient challenge; `alpha`, and gate-specific separation
+        // challenges.
         let alpha = transcript.challenge_scalar(b"alpha");
         let range_sep_challenge =
             transcript.challenge_scalar(b"range separation challenge");
@@ -329,18 +310,10 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Prover<E, P> {
             self.split_tx_poly(domain.size(), &t_poly);
 
         // Commit to splitted quotient polynomial
-        let t_1_commit = KZG10::<E, DensePolynomial<E::Fr>>::commit(
-            commit_key, &t_1_poly, None, None,
-        )?;
-        let t_2_commit = KZG10::<E, DensePolynomial<E::Fr>>::commit(
-            commit_key, &t_2_poly, None, None,
-        )?;
-        let t_3_commit = KZG10::<E, DensePolynomial<E::Fr>>::commit(
-            commit_key, &t_3_poly, None, None,
-        )?;
-        let t_4_commit = KZG10::<E, DensePolynomial<E::Fr>>::commit(
-            commit_key, &t_4_poly, None, None,
-        )?;
+        let t_1_commit = KZG10::commit(commit_key, &t_1_poly, None, None)?;
+        let t_2_commit = KZG10::commit(commit_key, &t_2_poly, None, None)?;
+        let t_3_commit = KZG10::commit(commit_key, &t_3_poly, None, None)?;
+        let t_4_commit = KZG10::commit(commit_key, &t_4_poly, None, None)?;
 
         // Add quotient polynomial commitments to transcript
         transcript.append_commitment(b"t_1", &t_1_commit.0);
@@ -350,10 +323,10 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Prover<E, P> {
 
         // 4. Compute linearisation polynomial
         //
-        // Compute evaluation challenge; `z`
+        // Compute evaluation challenge; `z`.
         let z_challenge = transcript.challenge_scalar(b"z");
 
-        let (lin_poly, evaluations) = linearisation_poly::compute::<E, P>(
+        let (lin_poly, evaluations) = linearisation_poly::compute(
             &domain,
             prover_key,
             &alpha,
@@ -372,7 +345,7 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Prover<E, P> {
             &z_poly,
         );
 
-        // Add evaluations to transcript
+        // Add evaluations to transcript.
         transcript.append_scalar(b"a_eval", &evaluations.proof.a_eval);
         transcript.append_scalar(b"b_eval", &evaluations.proof.b_eval);
         transcript.append_scalar(b"c_eval", &evaluations.proof.c_eval);
@@ -457,7 +430,6 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Prover<E, P> {
             None,
         )?;
 
-        // Create Proof
         Ok(Proof {
             a_comm: w_l_poly_commit.0,
             b_comm: w_r_poly_commit.0,
@@ -502,5 +474,16 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Prover<E, P> {
         self.clear_witness();
 
         Ok(proof)
+    }
+}
+
+impl<E, P> Default for Prover<E, P>
+where
+    E: PairingEngine,
+    P: TEModelParameters<BaseField = E::Fr>,
+{
+    #[inline]
+    fn default() -> Self {
+        Prover::new(b"plonk")
     }
 }

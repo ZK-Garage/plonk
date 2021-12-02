@@ -42,8 +42,10 @@ where
     fourth_sigma: DensePolynomial<F>,
 }
 
-impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
-    StandardComposer<E, P>
+impl<E, P> StandardComposer<E, P>
+where
+    E: PairingEngine,
+    P: TEModelParameters<BaseField = E::Fr>,
 {
     /// Pads the circuit to the next power of two.
     ///

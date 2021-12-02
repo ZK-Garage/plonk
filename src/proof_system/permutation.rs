@@ -100,7 +100,6 @@ where
         gamma: F,
     ) -> F {
         let x = self.linear_evaluations[index];
-
         (w_l_i + (beta * x) + gamma)
             * (w_r_i + (beta * K1::<F>() * x) + gamma)
             * (w_o_i + (beta * K2::<F>() * x) + gamma)
@@ -132,14 +131,12 @@ where
         let right_sigma_eval = self.right_sigma.1[index];
         let out_sigma_eval = self.out_sigma.1[index];
         let fourth_sigma_eval = self.fourth_sigma.1[index];
-
         let product = (w_l_i + (beta * left_sigma_eval) + gamma)
             * (w_r_i + (beta * right_sigma_eval) + gamma)
             * (w_o_i + (beta * out_sigma_eval) + gamma)
             * (w_4_i + (beta * fourth_sigma_eval) + gamma)
             * z_i_next
             * alpha;
-
         -product
     }
 
@@ -148,6 +145,7 @@ where
     /// ```text
     /// L_1(X)[Z(X) - 1]
     /// ```
+    #[inline]
     fn compute_quotient_term_check_one_i(&self, z_i: F, l1_alpha_sq: F) -> F {
         (z_i - F::one()) * l1_alpha_sq
     }
@@ -319,7 +317,7 @@ where
     E: PairingEngine,
 {
     /// Computes the linearisation commitments.
-    pub(crate) fn compute_linearisation_commitment(
+    pub fn compute_linearisation_commitment(
         &self,
         scalars: &mut Vec<E::Fr>,
         points: &mut Vec<E::G1Affine>,

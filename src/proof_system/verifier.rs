@@ -15,7 +15,11 @@ use ark_ec::{PairingEngine, TEModelParameters};
 use ark_poly_commit::kzg10::{Powers, VerifierKey};
 
 /// Abstraction structure designed verify [`Proof`]s.
-pub struct Verifier<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> {
+pub struct Verifier<E, P>
+where
+    E: PairingEngine,
+    P: TEModelParameters<BaseField = E::Fr>,
+{
     /// VerificationKey which is used to verify a specific PLONK circuit
     pub verifier_key: Option<PlonkVerifierKey<E, P>>,
 
@@ -31,16 +35,11 @@ pub struct Verifier<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> {
     pub preprocessed_transcript: TranscriptWrapper<E>,
 }
 
-impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Default
-    for Verifier<E, P>
+impl<E, P> Verifier<E, P>
+where
+    E: PairingEngine,
+    P: TEModelParameters<BaseField = E::Fr>,
 {
-    #[inline]
-    fn default() -> Verifier<E, P> {
-        Verifier::new(b"plonk")
-    }
-}
-
-impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Verifier<E, P> {
     /// Creates a new `Verifier` instance.
     pub fn new(label: &'static [u8]) -> Self {
         Self {
@@ -93,20 +92,29 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Verifier<E, P> {
             .append_message(label, message);
     }
 
-    /// Verifies a [`Proof`].
+    /// Verifies a [`Proof`] using `pc_verifier_key` and `public_inputs`.
     pub fn verify(
         &self,
         proof: &Proof<E, P>,
         pc_verifier_key: &VerifierKey<E>,
         public_inputs: &[E::Fr],
     ) -> Result<(), Error> {
-        let mut cloned_transcript = self.preprocessed_transcript.clone();
-        let plonk_verifier_key = self.verifier_key.as_ref().unwrap();
         proof.verify(
-            plonk_verifier_key,
-            &mut cloned_transcript,
+            self.verifier_key.as_ref().unwrap(),
+            &mut self.preprocessed_transcript.clone(),
             pc_verifier_key,
             public_inputs,
         )
+    }
+}
+
+impl<E, P> Default for Verifier<E, P>
+where
+    E: PairingEngine,
+    P: TEModelParameters<BaseField = E::Fr>,
+{
+    #[inline]
+    fn default() -> Verifier<E, P> {
+        Verifier::new(b"plonk")
     }
 }

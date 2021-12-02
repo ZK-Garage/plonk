@@ -4,15 +4,14 @@
 //
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
-use super::ProverKey;
-use crate::proof_system::ecc::CurveAddition;
-use crate::proof_system::ecc::FixedBaseScalarMul;
+use crate::proof_system::ecc::{CurveAddition, FixedBaseScalarMul};
 use crate::proof_system::logic::Logic;
 use crate::proof_system::range::Range;
 use crate::proof_system::widget::GateConstraint;
 use crate::proof_system::GateValues;
+use crate::proof_system::ProverKey;
 use crate::util::EvaluationDomainExt;
-use ark_ec::{PairingEngine, TEModelParameters};
+use ark_ec::TEModelParameters;
 use ark_ff::Field;
 use ark_ff::PrimeField;
 use ark_poly::{
@@ -22,87 +21,105 @@ use ark_serialize::{
     CanonicalDeserialize, CanonicalSerialize, Read, SerializationError, Write,
 };
 
-/// Evaluations at points `z` or and `z * root of unity`
-#[allow(dead_code)]
-pub(crate) struct Evaluations<F: PrimeField> {
-    pub(crate) proof: ProofEvaluations<F>,
-    // Evaluation of the linearisation sigma polynomial at `z`
-    pub(crate) quot_eval: F,
+/// Polynomial Evaluations
+///
+/// This `struct` keeps track of polynomial evaluations at points `z` and/or `z
+/// * w` where `w` is a root of unit.
+pub struct Evaluations<F>
+where
+    F: PrimeField,
+{
+    /// Proof-relevant Evaluations
+    pub proof: ProofEvaluations<F>,
+
+    /// Evaluation of the linearisation sigma polynomial at `z`.
+    pub quot_eval: F,
 }
 
 /// Subset of all of the evaluations. These evaluations
 /// are added to the [`Proof`](super::Proof).
-#[derive(
-    CanonicalDeserialize,
-    CanonicalSerialize,
-    Clone,
-    Debug,
-    Default,
-    Eq,
-    PartialEq,
-)]
-pub struct ProofEvaluations<F: Field> {
-    // Evaluation of the witness polynomial for the left wire at `z`
-    pub(crate) a_eval: F,
-    // Evaluation of the witness polynomial for the right wire at `z`
-    pub(crate) b_eval: F,
-    // Evaluation of the witness polynomial for the output wire at `z`
-    pub(crate) c_eval: F,
-    // Evaluation of the witness polynomial for the fourth wire at `z`
-    pub(crate) d_eval: F,
-    //
-    pub(crate) a_next_eval: F,
-    //
-    pub(crate) b_next_eval: F,
-    // Evaluation of the witness polynomial for the fourth wire at `z * root of
-    // unity`
-    pub(crate) d_next_eval: F,
-    // Evaluation of the arithmetic selector polynomial at `z`
-    pub(crate) q_arith_eval: F,
-    //
-    pub(crate) q_c_eval: F,
-    //
-    pub(crate) q_l_eval: F,
-    //
-    pub(crate) q_r_eval: F,
-    // Evaluation of the left sigma polynomial at `z`
-    pub(crate) left_sigma_eval: F,
-    // Evaluation of the right sigma polynomial at `z`
-    pub(crate) right_sigma_eval: F,
-    // Evaluation of the out sigma polynomial at `z`
-    pub(crate) out_sigma_eval: F,
+#[derive(CanonicalDeserialize, CanonicalSerialize, derivative::Derivative)]
+#[derivative(Clone, Debug, Default, Eq, PartialEq)]
+pub struct ProofEvaluations<F>
+where
+    F: Field,
+{
+    /// Evaluation of the witness polynomial for the left wire at `z`.
+    pub a_eval: F,
 
-    // Evaluation of the linearisation sigma polynomial at `z`
-    pub(crate) lin_poly_eval: F,
+    /// Evaluation of the witness polynomial for the right wire at `z`.
+    pub b_eval: F,
 
-    // (Shifted) Evaluation of the permutation polynomial at `z * root of
-    // unity`
-    pub(crate) perm_eval: F,
+    /// Evaluation of the witness polynomial for the output wire at `z`.
+    pub c_eval: F,
+
+    /// Evaluation of the witness polynomial for the fourth wire at `z`.
+    pub d_eval: F,
+
+    /// Evaluation of the witness polynomial for the left wire at `z * w`
+    /// where `w` is a root of unity.
+    pub a_next_eval: F,
+
+    /// Evaluation of the witness polynomial for the right wire at `z * w`
+    /// where `w` is a root of unity.
+    pub b_next_eval: F,
+
+    /// Evaluation of the witness polynomial for the fourth wire at `z * w`
+    /// where `w` is a root of unity.
+    pub d_next_eval: F,
+
+    /// Evaluation of the arithmetic selector polynomial at `z`.
+    pub q_arith_eval: F,
+
+    /// Evaluation of the constant selector polynomial at `z`.
+    pub q_c_eval: F,
+
+    /// Evaluation of the left selector polynomial at `z`.
+    pub q_l_eval: F,
+
+    /// Evaluation of the right selector polynomial at `z`.
+    pub q_r_eval: F,
+
+    /// Evaluation of the left sigma polynomial at `z`.
+    pub left_sigma_eval: F,
+
+    /// Evaluation of the right sigma polynomial at `z`.
+    pub right_sigma_eval: F,
+
+    /// Evaluation of the out sigma polynomial at `z`.
+    pub out_sigma_eval: F,
+
+    /// Evaluation of the linearisation sigma polynomial at `z`.
+    pub lin_poly_eval: F,
+
+    /// Evaluation of the permutation polynomial at `z * w` where `w` is a
+    /// root of unity.
+    pub perm_eval: F,
 }
 
 /// Compute the linearisation polynomial.
-pub(crate) fn compute<
-    E: PairingEngine,
-    P: TEModelParameters<BaseField = E::Fr>,
->(
-    domain: &GeneralEvaluationDomain<E::Fr>,
-    prover_key: &ProverKey<E::Fr, P>,
-    alpha: &E::Fr,
-    beta: &E::Fr,
-    gamma: &E::Fr,
-    range_separation_challenge: &E::Fr,
-    logic_separation_challenge: &E::Fr,
-    fixed_base_separation_challenge: &E::Fr,
-    var_base_separation_challenge: &E::Fr,
-    z_challenge: &E::Fr,
-    w_l_poly: &DensePolynomial<E::Fr>,
-    w_r_poly: &DensePolynomial<E::Fr>,
-    w_o_poly: &DensePolynomial<E::Fr>,
-    w_4_poly: &DensePolynomial<E::Fr>,
-    t_x_poly: &DensePolynomial<E::Fr>,
-    z_poly: &DensePolynomial<E::Fr>,
-) -> (DensePolynomial<E::Fr>, Evaluations<E::Fr>) {
-    // Compute evaluations
+pub fn compute<F, P>(
+    domain: &GeneralEvaluationDomain<F>,
+    prover_key: &ProverKey<F, P>,
+    alpha: &F,
+    beta: &F,
+    gamma: &F,
+    range_separation_challenge: &F,
+    logic_separation_challenge: &F,
+    fixed_base_separation_challenge: &F,
+    var_base_separation_challenge: &F,
+    z_challenge: &F,
+    w_l_poly: &DensePolynomial<F>,
+    w_r_poly: &DensePolynomial<F>,
+    w_o_poly: &DensePolynomial<F>,
+    w_4_poly: &DensePolynomial<F>,
+    t_x_poly: &DensePolynomial<F>,
+    z_poly: &DensePolynomial<F>,
+) -> (DensePolynomial<F>, Evaluations<F>)
+where
+    F: PrimeField,
+    P: TEModelParameters<BaseField = F>,
+{
     let quot_eval = t_x_poly.evaluate(z_challenge);
     let a_eval = w_l_poly.evaluate(z_challenge);
     let b_eval = w_r_poly.evaluate(z_challenge);
@@ -125,13 +142,11 @@ pub(crate) fn compute<
     let d_next_eval = w_4_poly.evaluate(&(*z_challenge * group_gen));
     let perm_eval = z_poly.evaluate(&(*z_challenge * group_gen));
 
-    let f_1 = compute_circuit_satisfiability::<E, P>(
-        (
-            range_separation_challenge,
-            logic_separation_challenge,
-            fixed_base_separation_challenge,
-            var_base_separation_challenge,
-        ),
+    let f_1 = compute_circuit_satisfiability(
+        range_separation_challenge,
+        logic_separation_challenge,
+        fixed_base_separation_challenge,
+        var_base_separation_challenge,
         a_eval,
         b_eval,
         c_eval,
@@ -156,8 +171,6 @@ pub(crate) fn compute<
     );
 
     let lin_poly = &f_1 + &f_2;
-
-    // Evaluate linearisation polynomial at z_challenge
     let lin_poly_eval = lin_poly.evaluate(z_challenge);
 
     (
@@ -186,29 +199,29 @@ pub(crate) fn compute<
     )
 }
 
-fn compute_circuit_satisfiability<
-    E: PairingEngine,
-    P: TEModelParameters<BaseField = E::Fr>,
->(
-    (
-        range_separation_challenge,
-        logic_separation_challenge,
-        fixed_base_separation_challenge,
-        var_base_separation_challenge,
-    ): (&E::Fr, &E::Fr, &E::Fr, &E::Fr),
-    a_eval: E::Fr,
-    b_eval: E::Fr,
-    c_eval: E::Fr,
-    d_eval: E::Fr,
-    a_next_eval: E::Fr,
-    b_next_eval: E::Fr,
-    d_next_eval: E::Fr,
-    q_arith_eval: E::Fr,
-    q_c_eval: E::Fr,
-    q_l_eval: E::Fr,
-    q_r_eval: E::Fr,
-    prover_key: &ProverKey<E::Fr, P>,
-) -> DensePolynomial<E::Fr> {
+/// Computes the circuit-satisfiability portion of the linearisation polynomial.
+fn compute_circuit_satisfiability<F, P>(
+    range_separation_challenge: &F,
+    logic_separation_challenge: &F,
+    fixed_base_separation_challenge: &F,
+    var_base_separation_challenge: &F,
+    a_eval: F,
+    b_eval: F,
+    c_eval: F,
+    d_eval: F,
+    a_next_eval: F,
+    b_next_eval: F,
+    d_next_eval: F,
+    q_arith_eval: F,
+    q_c_eval: F,
+    q_l_eval: F,
+    q_r_eval: F,
+    prover_key: &ProverKey<F, P>,
+) -> DensePolynomial<F>
+where
+    F: PrimeField,
+    P: TEModelParameters<BaseField = F>,
+{
     let values = GateValues {
         left: a_eval,
         right: b_eval,
@@ -222,7 +235,7 @@ fn compute_circuit_satisfiability<
         constant_selector: q_c_eval,
     };
 
-    let a = prover_key.arithmetic.compute_linearisation(
+    let arithmetic = prover_key.arithmetic.compute_linearisation(
         a_eval,
         b_eval,
         c_eval,
@@ -230,34 +243,29 @@ fn compute_circuit_satisfiability<
         q_arith_eval,
     );
 
-    let b = Range::linearisation_term(
+    let range = Range::linearisation_term(
         &prover_key.range_selector.0,
         *range_separation_challenge,
         values,
     );
 
-    let c = Logic::linearisation_term(
+    let logic = Logic::linearisation_term(
         &prover_key.logic_selector.0,
         *logic_separation_challenge,
         values,
     );
 
-    let d = FixedBaseScalarMul::<_, P>::linearisation_term(
+    let fixed_base_scalar_mul = FixedBaseScalarMul::<_, P>::linearisation_term(
         &prover_key.fixed_group_add_selector.0,
         *fixed_base_separation_challenge,
         values,
     );
 
-    let e = CurveAddition::<_, P>::linearisation_term(
+    let curve_addition = CurveAddition::<_, P>::linearisation_term(
         &prover_key.variable_group_add_selector.0,
         *var_base_separation_challenge,
         values,
     );
 
-    let mut linearisation_poly = &a + &b;
-    linearisation_poly += &c;
-    linearisation_poly += &d;
-    linearisation_poly += &e;
-
-    linearisation_poly
+    arithmetic + range + logic + fixed_base_scalar_mul + curve_addition
 }
