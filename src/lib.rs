@@ -43,6 +43,7 @@ mod util;
 pub mod error;
 pub mod prelude;
 pub mod proof_system;
+pub mod lookup;
 mod transcript;
 
 #[doc = include_str!("../docs/notes-intro.md")]

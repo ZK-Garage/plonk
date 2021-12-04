@@ -74,6 +74,12 @@ pub enum Error {
     /// This error occurs when a malformed scalar is decoded from a byte
     /// array.
     ScalarMalformed,
+
+    // Plonkup errors
+    /// Query element not found in lookup table
+    ElementNotIndexed,
+    /// Cannot commit to table column polynomial
+    TablePreProcessingError,
 }
 
 impl From<ark_poly_commit::error::Error> for Error {

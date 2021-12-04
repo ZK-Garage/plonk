@@ -95,6 +95,7 @@ pub struct StandardComposer<
     pub(crate) w_l: Vec<Variable>,
     /// Right wire witness vector.
     pub(crate) w_r: Vec<Variable>,
+
     /// Output wire witness vector.
     pub(crate) w_o: Vec<Variable>,
     /// Fourth wire witness vector.
