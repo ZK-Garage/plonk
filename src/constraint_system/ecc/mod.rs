@@ -155,6 +155,34 @@ where
         )
     }
 
+    /// Adds to the circuit description the conditional negation of a point:
+    /// bit == 1 => -value,
+    /// bit == 0 => value,
+    ///
+    /// # Note
+    /// The `bit` used as input which is a [`Variable`] should had previously
+    /// been constrained to be either 1 or 0 using a bool constrain. See:
+    /// [`StandardComposer::boolean_gate`].
+    pub fn conditional_point_neg(
+        &mut self,
+        bit: Variable,
+        point_b: Point<E, P>,
+    ) -> Point<E, P> {
+        let x = point_b.x;
+        let y = point_b.y;
+
+        // negation of point (x, y) is (-x, y)
+        let x_neg = self.add(
+            (-E::Fr::one(), x),
+            (E::Fr::zero(), self.zero_var),
+            E::Fr::zero(),
+            None,
+        );
+        let x_updated = self.conditional_select(bit, x_neg, x);
+
+        Point::new(x_updated, y)
+    }
+
     /// Adds to the circuit description the conditional selection of the
     /// identity point:
     ///
@@ -183,8 +211,8 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::batch_test;
-    use crate::constraint_system::helper::*;
+    use crate::{batch_test, constraint_system::helper::*};
+    use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
 
     fn test_conditional_select_point<E, P>()
@@ -217,11 +245,57 @@ mod test {
         assert!(res.is_ok());
     }
 
+    fn test_conditional_point_neg<E, P>()
+    where
+        E: PairingEngine,
+        P: TEModelParameters<BaseField = E::Fr>,
+    {
+        gadget_tester(
+            |composer: &mut StandardComposer<E, P>| {
+                let bit_1 = composer.add_input(E::Fr::one());
+                let bit_0 = composer.zero_var();
+
+                let point =
+                    GroupAffine::new(E::Fr::from(10u64), E::Fr::from(20u64));
+                let point_var = Point::new(
+                    composer.add_input(point.x),
+                    composer.add_input(point.y),
+                );
+
+                let neg_point =
+                    composer.conditional_point_neg(bit_1, point_var);
+                composer.assert_equal_public_point(neg_point, -point);
+
+                let non_neg_point =
+                    composer.conditional_point_neg(bit_0, point_var);
+                composer.assert_equal_public_point(non_neg_point, point);
+            },
+            32,
+        )
+        .expect("test failed");
+    }
+
+    // Bls12-381 tests
     batch_test!(
-        [test_conditional_select_point],
+        [
+            test_conditional_select_point,
+            test_conditional_point_neg
+        ],
         [] => (
             Bls12_381,
             ark_ed_on_bls12_381::EdwardsParameters
+        )
+    );
+
+    // Bls12-377 tests
+    batch_test!(
+        [
+            test_conditional_select_point,
+            test_conditional_point_neg
+        ],
+        [] => (
+            Bls12_377,
+            ark_ed_on_bls12_377::EdwardsParameters
         )
     );
 }
