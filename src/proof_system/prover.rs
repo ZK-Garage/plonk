@@ -371,9 +371,13 @@ where
         transcript.append_scalar(b"q_c_eval", &evaluations.proof.q_c_eval);
         transcript.append_scalar(b"q_l_eval", &evaluations.proof.q_l_eval);
         transcript.append_scalar(b"q_r_eval", &evaluations.proof.q_r_eval);
-        transcript.append_scalar(b"perm_eval", &evaluations.proof.perm_eval);
+        transcript
+            .append_scalar(b"perm_eval", &evaluations.proof.permutation_eval);
         transcript.append_scalar(b"t_eval", &evaluations.quot_eval);
-        transcript.append_scalar(b"r_eval", &evaluations.proof.lin_poly_eval);
+        transcript.append_scalar(
+            b"r_eval",
+            &evaluations.proof.linearisation_polynomial_eval,
+        );
 
         // 5. Compute Openings using KZG10
         //

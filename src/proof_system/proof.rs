@@ -176,7 +176,7 @@ where
             z_challenge,
             z_h_eval,
             l1_eval,
-            self.evaluations.perm_eval,
+            self.evaluations.permutation_eval,
         );
 
         // Compute commitment to quotient polynomial
@@ -206,9 +206,13 @@ where
         transcript.append_scalar(b"q_c_eval", &self.evaluations.q_c_eval);
         transcript.append_scalar(b"q_l_eval", &self.evaluations.q_l_eval);
         transcript.append_scalar(b"q_r_eval", &self.evaluations.q_r_eval);
-        transcript.append_scalar(b"perm_eval", &self.evaluations.perm_eval);
+        transcript
+            .append_scalar(b"perm_eval", &self.evaluations.permutation_eval);
         transcript.append_scalar(b"t_eval", &t_eval);
-        transcript.append_scalar(b"r_eval", &self.evaluations.lin_poly_eval);
+        transcript.append_scalar(
+            b"r_eval",
+            &self.evaluations.linearisation_polynomial_eval,
+        );
 
         // Compute linearisation commitment
         let r_comm = self.compute_linearisation_commitment(
@@ -295,7 +299,7 @@ where
         util::linear_combination(
             &[
                 t_eval,
-                self.evaluations.lin_poly_eval,
+                self.evaluations.linearisation_polynomial_eval,
                 self.evaluations.a_eval,
                 self.evaluations.b_eval,
                 self.evaluations.c_eval,
@@ -327,7 +331,7 @@ where
         let challenge = transcript.challenge_scalar(b"aggregate_witness");
         util::linear_combination(
             &[
-                self.evaluations.perm_eval,
+                self.evaluations.permutation_eval,
                 self.evaluations.a_next_eval,
                 self.evaluations.b_next_eval,
                 self.evaluations.d_next_eval,
@@ -355,7 +359,7 @@ where
 
         let alpha_sq = alpha.square();
         // r + PI(z)
-        let a = self.evaluations.lin_poly_eval + pi_eval;
+        let a = self.evaluations.linearisation_polynomial_eval + pi_eval;
 
         // a + beta * sigma_1 + gamma
         let beta_sig1 = beta * self.evaluations.left_sigma_eval;
@@ -479,18 +483,18 @@ where
 /// The first lagrange polynomial has the expression:
 ///
 /// ```text
-/// L_0(X) = mul_from_1_to_(n-1) [(X - g^i) / (1 - g^i)]
+/// L_0(X) = mul_from_1_to_(n-1) [(X - omega^i) / (1 - omega^i)]
 /// ```
 ///
-/// with `g` being the generator of the domain (the `n`th root of unity).
+/// with `omega` being the generator of the domain (the `n`th root of unity).
 ///
 /// We use two equalities:
-///   1. `mul_from_2_to_(n-1)[ 1 / (1 - g^i)]  =  1 / n`
-///   2. `mul_from_2_to_(n-1)[ (X - g^i)] = (X^n -1) / (X - 1)`
+///   1. `mul_from_2_to_(n-1) [1 / (1 - omega^i)] = 1 / n`
+///   2. `mul_from_2_to_(n-1) [(X - omega^i)] = (X^n - 1) / (X - 1)`
 /// to obtain the expression:
 ///
 /// ```text
-/// L_0(X) = (X^n -1) / n * (X -1)
+/// L_0(X) = (X^n - 1) / n * (X - 1)
 /// ```
 fn compute_first_lagrange_evaluation<F>(
     domain: &GeneralEvaluationDomain<F>,
@@ -590,8 +594,8 @@ mod test {
                 left_sigma_eval: E::Fr::rand(&mut OsRng),
                 right_sigma_eval: E::Fr::rand(&mut OsRng),
                 out_sigma_eval: E::Fr::rand(&mut OsRng),
-                lin_poly_eval: E::Fr::rand(&mut OsRng),
-                perm_eval: E::Fr::rand(&mut OsRng),
+                linearisation_polynomial_eval: E::Fr::rand(&mut OsRng),
+                permutation_eval: E::Fr::rand(&mut OsRng),
             },
             __: PhantomData,
         };

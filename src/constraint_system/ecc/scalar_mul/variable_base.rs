@@ -21,7 +21,8 @@ where
     /// Adds a variable-base scalar multiplication to the circuit description.
     ///
     /// # Note
-    /// If you're planning to multiply always by the generator of the Scalar
+    ///
+    /// If you're planning to multiply always by the generator of the scalar
     /// field, you should use [`StandardComposer::fixed_base_scalar_mul`]
     /// which is optimized for fixed_base ops.
     pub fn variable_base_scalar_mul(
@@ -30,7 +31,7 @@ where
         point: Point<E, P>,
     ) -> Point<E, P> {
         // Turn scalar into bits
-        let raw_bls_scalar = *self
+        let raw_scalar = *self
             .variables
             .get(&curve_var)
             // We can unwrap safely here since it should be impossible to obtain
@@ -39,8 +40,7 @@ where
             // the `get()` fn fails now, somethig is going really
             // bad.
             .expect("Variable in existance without referenced scalar");
-        let scalar_bits_var =
-            self.scalar_decomposition(curve_var, raw_bls_scalar);
+        let scalar_bits_var = self.scalar_decomposition(curve_var, raw_scalar);
 
         let identity = Point::identity(self);
         let mut result = identity;

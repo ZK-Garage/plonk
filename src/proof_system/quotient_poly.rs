@@ -70,7 +70,7 @@ where
     w4_eval_4n.push(w4_eval_4n[2]);
     w4_eval_4n.push(w4_eval_4n[3]);
 
-    let t_1 = compute_circuit_satisfiability_equation(
+    let gate_constraints = compute_gate_constraint_satisfiability(
         domain,
         *range_challenge,
         *logic_challenge,
@@ -84,7 +84,7 @@ where
         public_inputs_poly,
     );
 
-    let t_2 = compute_permutation_checks(
+    let permutation = compute_permutation_checks(
         domain,
         prover_key,
         &wl_eval_4n,
@@ -99,7 +99,7 @@ where
 
     let quotient = (0..domain_4n.size())
         .map(|i| {
-            let numerator = t_1[i] + t_2[i];
+            let numerator = gate_constraints[i] + permutation[i];
             let denominator = prover_key.v_h_coset_4n()[i];
             numerator * denominator.inverse().unwrap()
         })
@@ -110,8 +110,8 @@ where
     })
 }
 
-/// Ensures that the circuit is satisfied.
-fn compute_circuit_satisfiability_equation<F, P>(
+/// Ensures that the gate constraints are satisfied.
+fn compute_gate_constraint_satisfiability<F, P>(
     domain: &GeneralEvaluationDomain<F>,
     range_challenge: F,
     logic_challenge: F,

@@ -56,16 +56,16 @@ where
     /// Evaluation of the witness polynomial for the fourth wire at `z`.
     pub d_eval: F,
 
-    /// Evaluation of the witness polynomial for the left wire at `z * w`
-    /// where `w` is a root of unity.
+    /// Evaluation of the witness polynomial for the left wire at `z * omega`
+    /// where `omega` is a root of unity.
     pub a_next_eval: F,
 
-    /// Evaluation of the witness polynomial for the right wire at `z * w`
-    /// where `w` is a root of unity.
+    /// Evaluation of the witness polynomial for the right wire at `z * omega`
+    /// where `omega` is a root of unity.
     pub b_next_eval: F,
 
-    /// Evaluation of the witness polynomial for the fourth wire at `z * w`
-    /// where `w` is a root of unity.
+    /// Evaluation of the witness polynomial for the fourth wire at `z * omega`
+    /// where `omega` is a root of unity.
     pub d_next_eval: F,
 
     /// Evaluation of the arithmetic selector polynomial at `z`.
@@ -90,11 +90,11 @@ where
     pub out_sigma_eval: F,
 
     /// Evaluation of the linearisation sigma polynomial at `z`.
-    pub lin_poly_eval: F,
+    pub linearisation_polynomial_eval: F,
 
-    /// Evaluation of the permutation polynomial at `z * w` where `w` is a
-    /// root of unity.
-    pub perm_eval: F,
+    /// Evaluation of the permutation polynomial at `z * omega` where `omega`
+    /// is a root of unity.
+    pub permutation_eval: F,
 }
 
 /// Compute the linearisation polynomial.
@@ -136,13 +136,15 @@ where
     let q_l_eval = prover_key.left_selector.0.evaluate(z_challenge);
     let q_r_eval = prover_key.right_selector.0.evaluate(z_challenge);
 
-    let group_gen = domain.group_gen();
-    let a_next_eval = w_l_poly.evaluate(&(*z_challenge * group_gen));
-    let b_next_eval = w_r_poly.evaluate(&(*z_challenge * group_gen));
-    let d_next_eval = w_4_poly.evaluate(&(*z_challenge * group_gen));
-    let perm_eval = z_poly.evaluate(&(*z_challenge * group_gen));
+    let omega = domain.group_gen();
+    let shifted_z_challenge = *z_challenge * omega;
 
-    let f_1 = compute_circuit_satisfiability(
+    let a_next_eval = w_l_poly.evaluate(&shifted_z_challenge);
+    let b_next_eval = w_r_poly.evaluate(&shifted_z_challenge);
+    let d_next_eval = w_4_poly.evaluate(&shifted_z_challenge);
+    let permutation_eval = z_poly.evaluate(&shifted_z_challenge);
+
+    let gate_constraints = compute_gate_constraint_satisfiability(
         range_separation_challenge,
         logic_separation_challenge,
         fixed_base_separation_challenge,
@@ -161,20 +163,21 @@ where
         prover_key,
     );
 
-    let f_2 = prover_key.permutation.compute_linearisation(
+    let permutation = prover_key.permutation.compute_linearisation(
         *z_challenge,
         (*alpha, *beta, *gamma),
         (a_eval, b_eval, c_eval, d_eval),
         (left_sigma_eval, right_sigma_eval, out_sigma_eval),
-        perm_eval,
+        permutation_eval,
         z_poly,
     );
 
-    let lin_poly = &f_1 + &f_2;
-    let lin_poly_eval = lin_poly.evaluate(z_challenge);
+    let linearisation_polynomial = gate_constraints + permutation;
+    let linearisation_polynomial_eval =
+        linearisation_polynomial.evaluate(z_challenge);
 
     (
-        lin_poly,
+        linearisation_polynomial,
         Evaluations {
             proof: ProofEvaluations {
                 a_eval,
@@ -191,16 +194,17 @@ where
                 left_sigma_eval,
                 right_sigma_eval,
                 out_sigma_eval,
-                lin_poly_eval,
-                perm_eval,
+                linearisation_polynomial_eval,
+                permutation_eval,
             },
             quot_eval,
         },
     )
 }
 
-/// Computes the circuit-satisfiability portion of the linearisation polynomial.
-fn compute_circuit_satisfiability<F, P>(
+/// Computes the gate constraint satisfiability portion of the linearisation
+/// polynomial.
+fn compute_gate_constraint_satisfiability<F, P>(
     range_separation_challenge: &F,
     logic_separation_challenge: &F,
     fixed_base_separation_challenge: &F,

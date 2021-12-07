@@ -38,7 +38,7 @@ where
     E: PairingEngine,
     P: TEModelParameters<BaseField = E::Fr>,
 {
-    /// Adds an elliptic curve Scalar multiplication gate to the circuit
+    /// Adds an elliptic curve scalar multiplication gate to the circuit
     /// description.
     ///
     /// # Note
@@ -46,11 +46,9 @@ where
     /// This function is optimized for fixed base ops **ONLY** and therefore,
     /// the **ONLY** input that should be passed to the function as a point is
     /// the generator or basepoint of the curve over which we are operating.
-    //
-    //  FIXME: Change `jubjub` to a more general name.
     pub fn fixed_base_scalar_mul(
         &mut self,
-        jubjub_scalar: Variable,
+        scalar: Variable,
         base_point: GroupAffine<P>,
     ) -> Point<E, P> {
         let num_bits =
@@ -60,16 +58,11 @@ where
             compute_wnaf_point_multiples(base_point.into());
         point_multiples.reverse();
 
-        // Fetch the raw scalar value as bls scalar, then convert to a jubjub
-        // scalar
-        // XXX: Not very Tidy, impl From function in JubJub
-        let jubjub_scalar_value = self.variables.get(&jubjub_scalar).unwrap();
+        let scalar_value = self.variables.get(&scalar).unwrap();
 
         // Convert scalar to wnaf_2(k)
-        let wnaf_entries = jubjub_scalar_value
-            .into_repr()
-            .find_wnaf(2)
-            .unwrap_or_else(|| panic!("Fix this!"));
+        let wnaf_entries =
+            scalar_value.into_repr().find_wnaf(2).expect("Fix this!");
         // wnaf_entries.extend(vec![0i64; num_bits - wnaf_entries.len()]);
         assert!(wnaf_entries.len() <= num_bits);
 
@@ -170,8 +163,8 @@ where
         );
 
         // Constrain the last element in the accumulator to be equal to the
-        // input jubjub scalar
-        self.assert_equal(last_accumulated_bit, jubjub_scalar);
+        // input scalar.
+        self.assert_equal(last_accumulated_bit, scalar);
 
         Point::new(acc_x, acc_y)
     }

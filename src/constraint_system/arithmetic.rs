@@ -681,7 +681,7 @@ mod test {
         assert!(res.is_err());
     }
 
-    fn test_incorrect_add_mul_gate<E, P>
+    fn test_incorrect_add_mul_gate<E, P>()
     where
         E: PairingEngine,
         P: TEModelParameters<BaseField = E::Fr>,

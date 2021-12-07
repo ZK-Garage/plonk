@@ -367,7 +367,7 @@ where
             let beta_sigma_3 = beta * evaluations.out_sigma_eval;
             let q_2 = evaluations.c_eval + beta_sigma_3 + gamma;
 
-            let q_3 = beta * evaluations.perm_eval * alpha;
+            let q_3 = beta * evaluations.permutation_eval * alpha;
 
             -(q_0 * q_1 * q_2 * q_3)
         };
