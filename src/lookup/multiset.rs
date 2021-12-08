@@ -4,50 +4,42 @@
 //
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
-use ark_ff::Field;
 use crate::error::Error;
-//use crate::fft::{EvaluationDomain, Polynomial};
+use ark_ff::{Field, PrimeField};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, GeneralEvaluationDomain,
-    UVPolynomial,
+    Polynomial, UVPolynomial,
 };
 use core::ops::{Add, Mul};
-use ark_ec::PairingEngine;
 
 /// MultiSet is struct containing vectors of scalars, which
 /// individually represents either a wire value or an index
 /// of a PlookUp table
-#[derive(Clone, Eq, PartialEq, Debug)]
-pub struct MultiSet<E: PairingEngine>(pub Vec<E::Fr>);
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct MultiSet<F>(pub Vec<F>)
+where
+    F: Field;
 
-impl<E: PairingEngine> Default for MultiSet<E> {
-    fn default() -> MultiSet<E> {
-        MultiSet::new()
-    }
-}
-
-impl<E: PairingEngine> From<&[E::Fr]> for MultiSet<E> {
-    fn from(slice: &[E::Fr]) -> MultiSet<E> {
-        MultiSet(slice.to_vec())
-    }
-}
-
-impl<E: PairingEngine> 
-    MultiSet<E> {
+impl<F> MultiSet<F>
+where
+    F: Field,
+{
     /// Creates an empty vector with a multiset wrapper around it
-    pub fn new() -> MultiSet<E> {
-        MultiSet(vec![])
-        
+    pub fn new() -> Self {
+        Default::default()
     }
 
     /// Generate a `MultiSet` struct from a slice of bytes.
-    pub fn from_slice(bytes: &[u8]) -> Result<MultiSet<E>, Error> {
-        let mut buffer = bytes;
-        let elements = buffer
-            .chunks(E::Fr::SIZE)
-            .map(|chunk| E::Fr::from_slice(chunk))
-            .collect::<Result<Vec<E::Fr>, Error>>()?;
-        Ok(MultiSet(elements))
+    pub fn from_slice(bytes: &[u8]) -> Result<Self, Error> {
+        /* FIXME: Find correct implementation.
+            let mut buffer = bytes;
+            let elements = buffer
+                .chunks(F::SIZE)
+                .map(F::from_slice)
+                .collect::<Result<_, Error>>()?;
+            Ok(Self(elements))
+        */
+        todo!()
     }
 
     /// Given a [`MultiSet`], return it in it's bytes representation
@@ -55,7 +47,12 @@ impl<E: PairingEngine>
     pub fn to_var_bytes(&self) -> Vec<u8> {
         self.0
             .iter()
-            .map(|item| item.to_bytes().to_vec())
+            .map(|item| {
+                // FIXME: Is there a better way to do this in arkworks?
+                let mut bytes = vec![];
+                item.write(&mut bytes).expect("This never fails.");
+                bytes
+            })
             .flatten()
             .collect()
     }
@@ -70,13 +67,13 @@ impl<E: PairingEngine>
     }
 
     /// Pushes chosen value onto the end of the Multiset
-    pub fn push(&mut self, value: E::Fr) {
+    pub fn push(&mut self, value: F) {
         self.0.push(value)
     }
 
     /// Fetches last element in MultiSet.
     /// Returns None if there are no elements in the MultiSet.
-    pub fn last(&self) -> Option<&E::Fr> {
+    pub fn last(&self) -> Option<&F> {
         self.0.last()
     }
 
@@ -92,8 +89,8 @@ impl<E: PairingEngine>
 
     /// Returns the position of the element in the Multiset.
     /// Returns None if the element is not found.
-    pub fn position(&self, element: &E::Fr) -> Option<usize> {
-        self.0.iter().position(|&x| x == *element)
+    pub fn position(&self, element: &F) -> Option<usize> {
+        self.0.iter().position(move |x| x == element)
     }
 
     /// Concatenates and sorts two Multisets together.
@@ -103,26 +100,27 @@ impl<E: PairingEngine>
     /// Then we combine the multisets together and sort
     /// their elements together. The final MultiSet will
     /// look as follows, s: {1,1,2,2,3,3,4,4}
-    pub fn sorted_concat(&self, f: &MultiSet<E>) -> Result<MultiSet<E>, Error> {
+    pub fn sorted_concat(&self, f: &Self) -> Result<Self, Error> {
         let mut s = self.clone();
         s.0.reserve(f.0.len());
         for element in f.0.iter() {
             let index = s.position(element).ok_or(Error::ElementNotIndexed)?;
             s.0.insert(index, *element);
         }
-
         Ok(s)
     }
 
     /// Checks whether one mutltiset is a subset of another.
     /// This function will be used to check if the all elements
     /// in set f, from the paper, are contained inside t.
-    pub fn contains_all(&self, other: &MultiSet<E>) -> bool {
+    pub fn contains_all(&self, other: &Self) -> bool {
+        // TODO: Use a more optimal algorithm, should probably be able to do
+        // `O(nlogn)`.
         other.0.iter().all(|item| self.contains(item))
     }
 
     /// Checks if an element is in the MultiSet
-    pub fn contains(&self, entry: &E::Fr) -> bool {
+    pub fn contains(&self, entry: &F) -> bool {
         self.0.contains(entry)
     }
 
@@ -131,19 +129,17 @@ impl<E: PairingEngine>
     /// as the first element of the second half.
     /// Since a multiset can never have an even cardinality, we
     /// always split it in the way described above.
-    pub fn halve(&self) -> (MultiSet<E>, MultiSet<E>) {
+    pub fn halve(&self) -> (Self, Self) {
         let length = self.0.len();
-
-        let first_half = MultiSet::from(&self.0[0..=length / 2]);
-        let second_half = MultiSet::from(&self.0[length / 2..]);
-
+        let first_half = Self::from(&self.0[..=length / 2]);
+        let second_half = Self::from(&self.0[length / 2..]);
         (first_half, second_half)
     }
 
     /// Splits a multiset into alternating halves of the same length
     /// as specified in the Plonkup paper. A multiset must have even
     /// cardinality to be split in this manner.
-    pub fn halve_alternating(&self) -> (MultiSet<E>, MultiSet<E>) {
+    pub fn halve_alternating(&self) -> (Self, Self) {
         let mut evens = vec![];
         let mut odds = vec![];
         for i in 0..self.len() {
@@ -153,8 +149,7 @@ impl<E: PairingEngine>
                 odds.push(self.0[i]);
             }
         }
-
-        (MultiSet(evens), MultiSet(odds))
+        (Self(evens), Self(odds))
     }
 
     /// Treats each element in the multiset as evaluation points
@@ -162,8 +157,11 @@ impl<E: PairingEngine>
     /// and returns the coefficients as a Polynomial data structure
     pub(crate) fn to_polynomial(
         &self,
-        domain: &GeneralEvaluationDomain<E::Fr>,
-    ) -> DensePolynomial<E::Fr> {
+        domain: &GeneralEvaluationDomain<F>,
+    ) -> DensePolynomial<F>
+    where
+        F: PrimeField,
+    {
         DensePolynomial::from_coefficients_vec(domain.ifft(&self.0))
     }
 
@@ -172,19 +170,15 @@ impl<E: PairingEngine>
     /// the transcript.
     /// The function iterates over the given sets and mutiplies by alpha:
     /// a + (b * alpha) + (c * alpha^2)  
-    pub fn compress_three_arity(
-        multisets: [&MultiSet<E>; 3],
-        alpha: E::Fr,
-    ) -> MultiSet<E> {
-        MultiSet(
-            multisets[0]
-                .0
-                .iter()
-                .zip(multisets[1].0.iter())
-                .zip(multisets[2].0.iter())
-                .map(|((a, b), c)| a + b * alpha + c * alpha.square())
-                .collect::<Vec<E::Fr>>(),
-        )
+    pub fn compress_three_arity(multisets: [&Self; 3], alpha: F) -> Self {
+        let alpha_squared = alpha.square();
+        multisets[0]
+            .0
+            .iter()
+            .zip(multisets[1].0.iter())
+            .zip(multisets[2].0.iter())
+            .map(|((a, b), c)| *a + *b * alpha + *c * alpha_squared)
+            .collect()
     }
 
     /// Turn four multisets into a single multiset using
@@ -192,92 +186,114 @@ impl<E: PairingEngine>
     /// the transcript.
     /// The function iterates over the given sets and mutiplies by alpha:
     /// a + (b * alpha) + (c * alpha^2) + (d * alpha^3)  
-    pub fn compress_four_arity(
-        multisets: [&MultiSet<E>; 4],
-        alpha: E::Fr,
-    ) -> MultiSet<E> {
-        MultiSet(
-            multisets[0]
-                .0
-                .iter()
-                .zip(multisets[1].0.iter())
-                .zip(multisets[2].0.iter())
-                .zip(multisets[3].0.iter())
-                .map(|(((a, b), c), d)| {
-                    a + b * alpha
-                        + c * alpha.square()
-                        + d * alpha.pow(&[3u64, 0u64, 0u64, 0u64])
-                })
-                .collect::<Vec<E::Fr>>(),
-            )
+    pub fn compress_four_arity(multisets: [&Self; 4], alpha: F) -> Self {
+        let alpha_squared = alpha.square();
+        let alpha_cubed = alpha_squared * alpha;
+        multisets[0]
+            .0
+            .iter()
+            .zip(multisets[1].0.iter())
+            .zip(multisets[2].0.iter())
+            .zip(multisets[3].0.iter())
+            .map(|(((a, b), c), d)| {
+                *a + *b * alpha + *c * alpha_squared + *d * alpha_cubed
+            })
+            .collect()
     }
 }
 
-impl<E: PairingEngine> Add for MultiSet<E> {
-    type Output = MultiSet<E>;
+impl<F> From<&[F]> for MultiSet<F>
+where
+    F: Field,
+{
+    #[inline]
+    fn from(slice: &[F]) -> Self {
+        Self(slice.to_vec())
+    }
+}
 
-    fn add(self, other: MultiSet<E>) -> Self::Output {
-        let result = self
-            .0
+impl<F> FromIterator<F> for MultiSet<F>
+where
+    F: Field,
+{
+    #[inline]
+    fn from_iter<I>(iter: I) -> Self
+    where
+        I: IntoIterator<Item = F>,
+    {
+        Self(Vec::from_iter(iter))
+    }
+}
+
+impl<F> Add for MultiSet<F>
+where
+    F: Field,
+{
+    type Output = Self;
+
+    fn add(self, other: Self) -> Self::Output {
+        self.0
             .into_iter()
             .zip(other.0.iter())
             .map(|(x, y)| x + y)
-            .collect();
-
-        MultiSet(result)
+            .collect()
     }
 }
 
-impl<E: PairingEngine> Mul for MultiSet<E> {
-    type Output = MultiSet<E>;
+impl<F> Mul for MultiSet<F>
+where
+    F: Field,
+{
+    type Output = Self;
 
-    fn mul(self, other: MultiSet<E>) -> Self::Output {
-        let result = self
-            .0
+    fn mul(self, other: Self) -> Self::Output {
+        self.0
             .into_iter()
             .zip(other.0.iter())
             .map(|(x, y)| x * y)
-            .collect();
-
-        MultiSet(result)
+            .collect()
     }
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
-    use ark_poly::EvaluationDomain;
     use crate::lookup::WitnessTable;
+    use ark_poly::EvaluationDomain;
 
-    #[test]
-    fn test_halve<E: PairingEngine>() {
+    // FIXME: Run tests on both BLS fields.
+
+    fn test_halve<F>()
+    where
+        F: Field,
+    {
         let mut s = MultiSet::new();
-        s.push(E::Fr::from(0));
-        s.push(E::Fr::from(1));
-        s.push(E::Fr::from(2));
-        s.push(E::Fr::from(3));
-        s.push(E::Fr::from(4));
-        s.push(E::Fr::from(5));
-        s.push(E::Fr::from(6));
+        s.push(F::from(0u32));
+        s.push(F::from(1u32));
+        s.push(F::from(2u32));
+        s.push(F::from(3u32));
+        s.push(F::from(4u32));
+        s.push(F::from(5u32));
+        s.push(F::from(6u32));
 
         let (h_1, h_2) = s.halve();
         assert_eq!(h_1.len(), 4);
         assert_eq!(h_2.len(), 4);
 
         let left_half = MultiSet(vec![
-            E::Fr::from(0),
-            E::Fr::from(1),
-            E::Fr::from(2),
-            E::Fr::from(3),
+            F::from(0u32),
+            F::from(1u32),
+            F::from(2u32),
+            F::from(3u32),
         ]);
 
         assert_eq!(left_half, h_1);
 
         let right_half = MultiSet(vec![
-            E::Fr::from(3),
-            E::Fr::from(4),
-            E::Fr::from(5),
-            E::Fr::from(6),
+            F::from(3u32),
+            F::from(4u32),
+            F::from(5u32),
+            F::from(6u32),
         ]);
 
         assert_eq!(right_half, h_2);
@@ -287,106 +303,115 @@ mod test {
         assert_eq!(h_1.0.last().unwrap(), &h_2.0[0])
     }
 
-    #[test]
-    fn test_to_polynomial<E: PairingEngine>() {
+    fn test_to_polynomial<F>()
+    where
+        F: PrimeField,
+    {
         let mut s = MultiSet::new();
-        s.push(E::Fr::from(1));
-        s.push(E::Fr::from(2));
-        s.push(E::Fr::from(3));
-        s.push(E::Fr::from(4));
-        s.push(E::Fr::from(5));
-        s.push(E::Fr::from(6));
-        s.push(E::Fr::from(7));
+        s.push(F::from(1u32));
+        s.push(F::from(2u32));
+        s.push(F::from(3u32));
+        s.push(F::from(4u32));
+        s.push(F::from(5u32));
+        s.push(F::from(6u32));
+        s.push(F::from(7u32));
 
         let domain = EvaluationDomain::new(s.len() + 1).unwrap();
         let s_poly = s.to_polynomial(&domain);
 
         assert_eq!(s_poly.degree(), 7)
     }
-    #[test]
-    fn test_is_subset<E: PairingEngine>() {
+
+    fn test_is_subset<F>()
+    where
+        F: Field,
+    {
         let mut t = MultiSet::new();
-        t.push(E::Fr::from(1));
-        t.push(E::Fr::from(2));
-        t.push(E::Fr::from(3));
-        t.push(E::Fr::from(4));
-        t.push(E::Fr::from(5));
-        t.push(E::Fr::from(6));
-        t.push(E::Fr::from(7));
+        t.push(F::from(1u32));
+        t.push(F::from(2u32));
+        t.push(F::from(3u32));
+        t.push(F::from(4u32));
+        t.push(F::from(5u32));
+        t.push(F::from(6u32));
+        t.push(F::from(7u32));
+
         let mut f = MultiSet::new();
-        f.push(E::Fr::from(1));
-        f.push(E::Fr::from(2));
+        f.push(F::from(1u32));
+        f.push(F::from(2u32));
+
         let mut n = MultiSet::new();
-        n.push(E::Fr::from(8));
+        n.push(F::from(8u32));
 
         assert!(t.contains_all(&f));
         assert!(!t.contains_all(&n));
     }
 
-    #[test]
-    fn test_full_compression_into_s<E: PairingEngine>() {
+    fn test_full_compression_into_s<F>()
+    where
+        F: Field,
+    {
         let mut t = MultiSet::new();
-
-        t.push(E::Fr::zero());
-        t.push(E::Fr::one());
-        t.push(E::Fr::from(2));
-        t.push(E::Fr::from(3));
-        t.push(E::Fr::from(4));
-        t.push(E::Fr::from(5));
-        t.push(E::Fr::from(6));
-        t.push(E::Fr::from(7));
+        t.push(F::zero());
+        t.push(F::one());
+        t.push(F::from(2u32));
+        t.push(F::from(3u32));
+        t.push(F::from(4u32));
+        t.push(F::from(5u32));
+        t.push(F::from(6u32));
+        t.push(F::from(7u32));
 
         let mut f = MultiSet::new();
-        f.push(E::Fr::from(3));
-        f.push(E::Fr::from(6));
-        f.push(E::Fr::from(0));
-        f.push(E::Fr::from(5));
-        f.push(E::Fr::from(4));
-        f.push(E::Fr::from(3));
-        f.push(E::Fr::from(2));
-        f.push(E::Fr::from(0));
-        f.push(E::Fr::from(0));
-        f.push(E::Fr::from(1));
-        f.push(E::Fr::from(2));
+        f.push(F::from(3u32));
+        f.push(F::from(6u32));
+        f.push(F::from(0u32));
+        f.push(F::from(5u32));
+        f.push(F::from(4u32));
+        f.push(F::from(3u32));
+        f.push(F::from(2u32));
+        f.push(F::from(0u32));
+        f.push(F::from(0u32));
+        f.push(F::from(1u32));
+        f.push(F::from(2u32));
 
         assert!(t.contains_all(&f));
-
-        assert!(t.contains(&E::Fr::from(2)));
+        assert!(t.contains(&F::from(2u32)));
 
         let s = t.sorted_concat(&f);
 
         // The sets should be merged but also
         // in the ascending order
         let concatenated_set = MultiSet(vec![
-            E::Fr::zero(),
-            E::Fr::zero(),
-            E::Fr::zero(),
-            E::Fr::zero(),
-            E::Fr::one(),
-            E::Fr::one(),
-            E::Fr::from(2),
-            E::Fr::from(2),
-            E::Fr::from(2),
-            E::Fr::from(3),
-            E::Fr::from(3),
-            E::Fr::from(3),
-            E::Fr::from(4),
-            E::Fr::from(4),
-            E::Fr::from(5),
-            E::Fr::from(5),
-            E::Fr::from(6),
-            E::Fr::from(6),
-            E::Fr::from(7),
+            F::zero(),
+            F::zero(),
+            F::zero(),
+            F::zero(),
+            F::one(),
+            F::one(),
+            F::from(2u32),
+            F::from(2u32),
+            F::from(2u32),
+            F::from(3u32),
+            F::from(3u32),
+            F::from(3u32),
+            F::from(4u32),
+            F::from(4u32),
+            F::from(5u32),
+            F::from(5u32),
+            F::from(6u32),
+            F::from(6u32),
+            F::from(7u32),
         ]);
 
         assert_eq!(s.unwrap(), concatenated_set);
     }
 
-    #[test]
-    fn multiset_compression_input<E: PairingEngine>() {
+    fn multiset_compression_input<F>()
+    where
+        F: Field,
+    {
         // Alpha is a random challenge from
         // the transcript
-        let alpha = E::Fr::from(2);
+        let alpha = F::from(2u32);
         let alpha_squared = alpha * alpha;
 
         let mut table = WitnessTable::default();
@@ -395,10 +420,10 @@ mod test {
         // plookup table as this will not be going
         // into a proof
         table.from_wire_values(
-            E::Fr::from(1),
-            E::Fr::from(2),
-            E::Fr::from(3),
-            E::Fr::from(3),
+            F::from(1u32),
+            F::from(2u32),
+            F::from(3u32),
+            F::from(3u32),
         );
 
         // Computed expected result
@@ -407,9 +432,9 @@ mod test {
             alpha,
         );
 
-        let actual_element = E::Fr::from(1)
-            + (E::Fr::from(2) * alpha)
-            + (E::Fr::from(3) * alpha_squared);
+        let actual_element = F::from(1u32)
+            + (F::from(2u32) * alpha)
+            + (F::from(3u32) * alpha_squared);
 
         let mut actual_set = MultiSet::new();
 
