@@ -455,8 +455,7 @@ where
     let mut pi = vec![F::zero(); trim_size];
     pub_input_values
         .iter()
-        .map(|pub_input| pub_input.values.clone())
-        .flatten()
+        .flat_map(|pub_input| pub_input.values.clone())
         .zip(pub_input_pos.iter().copied())
         .for_each(|(value, pos)| {
             pi[pos] = -value;

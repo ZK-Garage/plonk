@@ -458,19 +458,16 @@ where
         &mut self,
         commit_key: &Powers<E>,
     ) -> Result<Proof<E, P>, Error> {
-        let prover_key: &ProverKey<E::Fr, P>;
-
         if self.prover_key.is_none() {
-            // Preprocess circuit
-            let prover_key = self.cs.preprocess_prover(
+            // Preprocess circuit and store preprocessed circuit and transcript
+            // in the Prover.
+            self.prover_key = Some(self.cs.preprocess_prover(
                 commit_key,
                 &mut self.preprocessed_transcript,
-            )?;
-            // Store preprocessed circuit and transcript in the Prover
-            self.prover_key = Some(prover_key);
+            )?);
         }
 
-        prover_key = self.prover_key.as_ref().unwrap();
+        let prover_key = self.prover_key.as_ref().unwrap();
 
         let proof = self.prove_with_preprocessed(commit_key, prover_key)?;
 
