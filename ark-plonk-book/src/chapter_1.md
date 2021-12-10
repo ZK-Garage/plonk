@@ -63,7 +63,7 @@ We can define an abelian group $G$ over elliptic curves as follows:
 
 
 <figure>
-<img src="images/EC.png"
+<img src="images/images/EC.png"
      alt="EC arithmetic"
      style="float: left; margin-right: 10px;" />
 <figcaption>Figure 1: Elliptic curve arithmetics</figcaption>
@@ -82,8 +82,8 @@ Else, $P+Q=S$ for $S=(x_s,y_s)$ where $S=-R$ (the point represented in the graph
 
 
 <figure>
-<img src="images/ECP.png"
-     alt="Markdown Monster icon"
+<img src="images/images/ECP.png"
+     alt="projective"
      style="float: left; margin-right: 10px;" />
 <figcaption>Figure 2: Graphical representation of the map with z =1</figcaption>
 </figure>

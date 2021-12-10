@@ -33,7 +33,7 @@ PlonK is gate-based instead of R1CS-based like some proof systems like Groth16. 
 The following circuit translates the previous equation $x^3+x+5=0$ where we have 2 multiplication gates and 2 addition gates. 
 
 <p align="center">
-  <img  alt="circuit" width="250"src="images/circuit.png" />
+  <img  alt="circuit" width="250"src="images/images/circuit.png" />
   
 </p>
 
