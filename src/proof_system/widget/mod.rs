@@ -153,21 +153,6 @@ where
     /// Circuit size (not padded to a power of two).
     pub(crate) n: usize,
 
-    /// Left Wire Selector Commitment
-    pub(crate) left_selector_commitment: Commitment<E>,
-
-    /// Right Wire Selector Commitment
-    pub(crate) right_selector_commitment: Commitment<E>,
-
-    /// Output Wire Selector Commitment
-    pub(crate) output_selector_commitment: Commitment<E>,
-
-    /// Fourth Wire Selector Commitment
-    pub(crate) fourth_selector_commitment: Commitment<E>,
-
-    /// Constant Selector Commitment
-    pub(crate) constant_selector_commitment: Commitment<E>,
-
     /// Arithmetic Verifier Key
     pub(crate) arithmetic: arithmetic::VerifierKey<E>,
 
@@ -190,8 +175,10 @@ where
     __: PhantomData<P>,
 }
 
-impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
-    VerifierKey<E, P>
+impl<E, P> VerifierKey<E, P>
+where
+    E: PairingEngine,
+    P: TEModelParameters<BaseField = E::Fr>,
 {
     /// Constructs a [`VerifierKey`] from the widget VerifierKey's that are
     /// constructed based on the selector polynomial commitments and the
@@ -216,11 +203,6 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
     ) -> Self {
         Self {
             n,
-            left_selector_commitment: q_l,
-            right_selector_commitment: q_r,
-            output_selector_commitment: q_o,
-            fourth_selector_commitment: q_4,
-            constant_selector_commitment: q_c,
             arithmetic: arithmetic::VerifierKey {
                 q_m,
                 q_l,
@@ -261,12 +243,11 @@ where
         T: TranscriptProtocol<E>,
     {
         transcript.append_commitment(b"q_m", &self.arithmetic.q_m);
-        transcript.append_commitment(b"q_l", &self.left_selector_commitment);
-        transcript.append_commitment(b"q_r", &self.right_selector_commitment);
-        transcript.append_commitment(b"q_o", &self.output_selector_commitment);
-        transcript
-            .append_commitment(b"q_c", &self.constant_selector_commitment);
-        transcript.append_commitment(b"q_4", &self.fourth_selector_commitment);
+        transcript.append_commitment(b"q_l", &self.arithmetic.q_l);
+        transcript.append_commitment(b"q_r", &self.arithmetic.q_r);
+        transcript.append_commitment(b"q_o", &self.arithmetic.q_o);
+        transcript.append_commitment(b"q_c", &self.arithmetic.q_c);
+        transcript.append_commitment(b"q_4", &self.arithmetic.q_4);
         transcript.append_commitment(b"q_arith", &self.arithmetic.q_arith);
         transcript
             .append_commitment(b"q_range", &self.range_selector_commitment);
@@ -309,21 +290,6 @@ where
 {
     /// Circuit size
     pub(crate) n: usize,
-
-    /// Left Wire Selector
-    pub(crate) left_selector: (DensePolynomial<F>, Evaluations<F>),
-
-    /// Right Wire Selector
-    pub(crate) right_selector: (DensePolynomial<F>, Evaluations<F>),
-
-    /// Output Wire Selector
-    pub(crate) output_selector: (DensePolynomial<F>, Evaluations<F>),
-
-    /// Fourth Wire Selector
-    pub(crate) fourth_selector: (DensePolynomial<F>, Evaluations<F>),
-
-    /// Constant Selector
-    pub(crate) constant_selector: (DensePolynomial<F>, Evaluations<F>),
 
     /// Arithmetic Prover Key
     pub(crate) arithmetic: arithmetic::ProverKey<F>,
@@ -390,11 +356,6 @@ where
     ) -> Self {
         Self {
             n,
-            left_selector: q_l.clone(),
-            right_selector: q_r.clone(),
-            output_selector: q_o.clone(),
-            fourth_selector: q_4.clone(),
-            constant_selector: q_c.clone(),
             arithmetic: arithmetic::ProverKey {
                 q_m,
                 q_l,

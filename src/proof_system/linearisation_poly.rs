@@ -132,9 +132,9 @@ where
     let out_sigma_eval =
         prover_key.permutation.out_sigma.0.evaluate(z_challenge);
     let q_arith_eval = prover_key.arithmetic.q_arith.0.evaluate(z_challenge);
-    let q_c_eval = prover_key.constant_selector.0.evaluate(z_challenge);
-    let q_l_eval = prover_key.left_selector.0.evaluate(z_challenge);
-    let q_r_eval = prover_key.right_selector.0.evaluate(z_challenge);
+    let q_c_eval = prover_key.arithmetic.q_c.0.evaluate(z_challenge);
+    let q_l_eval = prover_key.arithmetic.q_l.0.evaluate(z_challenge);
+    let q_r_eval = prover_key.arithmetic.q_r.0.evaluate(z_challenge);
 
     let omega = domain.group_gen();
     let shifted_z_challenge = *z_challenge * omega;

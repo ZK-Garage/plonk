@@ -142,9 +142,9 @@ where
                 left_next: wl_eval_4n[i + 4],
                 right_next: wr_eval_4n[i + 4],
                 fourth_next: w4_eval_4n[i + 4],
-                left_selector: prover_key.left_selector.1[i],
-                right_selector: prover_key.right_selector.1[i],
-                constant_selector: prover_key.constant_selector.1[i],
+                left_selector: prover_key.arithmetic.q_l.1[i],
+                right_selector: prover_key.arithmetic.q_r.1[i],
+                constant_selector: prover_key.arithmetic.q_c.1[i],
             };
 
             let arithmetic = prover_key.arithmetic.compute_quotient_i(
