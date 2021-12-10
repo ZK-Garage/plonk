@@ -64,7 +64,7 @@ We can define an abelian group $G$ over elliptic curves as follows:
 
 <figure>
 <img src="images/EC.png"
-     alt="Markdown Monster icon"
+     alt="EC arithmetic"
      style="float: left; margin-right: 10px;" />
 <figcaption>Figure 1: Elliptic curve arithmetics</figcaption>
 </figure>
@@ -184,6 +184,82 @@ Every Twisted Edwards curve is birationally equivalent to an elliptic curve in M
 Curve25519 is Montgomery curve providing 128 bits of security defined as:    $$y^2=x^3+ax^2+x$$
 over prime field $p$ where: $b=1$.\
 The curve is birationally equivalent to a twisted Edwards curve used in Ed25519 signature scheme.
+
+#### Barreto-Naehrig curves(BN curves)
+The [BN-curve](https://eprint.iacr.org/2005/133.pdf) is a pairing frienly elliptic curve built over a field $F_q$ for $q\geq 5$ that achieves both high security and efficiency and has optimal ate pairing. BN curves with 256-bit (for example BN256) were believed to provide 128-bit security level but due to recent research [exTNFS](https://link.springer.com/article/10.1007/s00145-018-9280-5) this number dropped to 100-bits of security.
+
+#### Barreto-Lynn-Scott curves (BLS curves)
+
+A BLS curve is a pairing over BLS curves that constructs optimal Ate pairings. BLS12-381 is optimal for zk-SNARKs at the 128-bit security level and is implemented by the zcash team. Bls12-381 has  an embedded Jubjub curve. 
+  
+BLS-12 is more efficient  choice than BNcurves in terms of optimal Ate pairings and has a better security level (Bls12-381 provides 128-bits security whereas BN256 provides only 100-bits security) 
+
+**Jubjub curve:** is a twisted Edwards curve of the form $-x^2+y^2=dx^2y^2$ built over the BLS12-381 scalar field.
+
+
+## Lagrange basis and polynomial interpolation
+
+Polynomial interpolation is a process that given a set of points $(x_i, y_i)$, $i \in [n]$ allows us
+to construct a polynomial $f(x)$ that passes through all of them. We will assume
+that $x_i \neq x_j$ for all distinct $i,j$ pairs, otherwise there is a repeated pair or it is not
+possible to construct the polynomial as it would have to take two different values at the same $x$-point.
+
+Notice that for a set of 2 points, we can find a line that crosses both of them, for a
+set of 3 points, a parabola, and in general, for a set of $n$ points there is a polynomial of degree
+$n-1$ that contains all of them.
+
+
+The Lagrange interpolation consists of 2 steps:
+
+ 1. Construct a **Lagrange basis**. This is basically a set of $n$ polynomials of degree $n-1$ that
+    take value 0 at all points of the set except one, where their value is 1. Expressed in a formula:
+ $$
+ L_i(x) =
+ \begin{cases}
+   0, & \text{if }\ x = {x_j}, j \in [n], j\neq i\\
+   1, & \text{if }\ x = x_i
+ \end{cases}
+ $$
+ The polynomials $L_i$ can be constructed in the following way:
+ $$
+ L_i(x) = \prod_{0 \leq j < n\text{,  }j\neq i}
+ \frac{x-x_j}{x_i - x_j}
+ $$
+ Notice that this product has $n-1$ terms, and therefore results in a $n-1$ degree polynomial.
+
+ 2. Scale and sum the polynomials of the basis.
+ $$
+  f(x) = \sum_{i=0}^{n-1} y_i \cdot L_i(x)
+ $$
+ The properties of the Lagrange basis now allow us to scale each polynomial to its target vale --
+ multiplying by $y_i$ and then add up all the terms.
+
+
+The important observation we can extract from the Lagrange interpolation is that given a fixed set
+of points $x_1,\dots,x_n$ (an evaluation domain) we can represent any polynomial of degree $d<n$
+by its evaluations $f(x_i)$ at $d+1$ points in the set. As it turns out, this representation is
+much more convenient than the usual coefficient representation as it provides a very simple and fast
+way of computing sums and multiplication of polynomials.
+However, the coefficient form is still useful for evaluating the polynomial at points outside the evaluation domain.
+
+Switching between these two forms of representation is very useful. The coefficient form is
+preferred when the polynomial must be evaluated at a random point (outside of the evaluation
+domain). The evaluation form is better suited for operations between polynomials such as
+addition, multiplication and exact quotients. The algorithm that allows us to efficiently switch
+between representations is the Fast Fourier Transform (FFT).  This is an efficient algorithm for the
+more general discrete Fourier Transform (DFT). It has a complexity of $\mathcal{O}(n \cdot log(n))$
+with $n$ being the degree of the polynomial.
+
+#### Fast Fourier Transform algorithm
+
+The FFT is generally defined over the complex numbers but in the crypto context it is always used over
+a finite field $\mathbb{F}$.  The only requisite for $\mathbb{F}$ is that it has a large
+multiplicative subgroup $H$ of order $n=2^k$ for some $k \in \mathbb{N}$.  This subgroup $H$ will be
+the evaluation domain and it will consist of the $n^{th}$ roots of unity
+$$
+H = \{ \omega, \omega^2, \dots \omega^n \} =
+\{ x \in \mathbb{F} | x^n -1 =0 \}
+$$
 
 ## Commitment schemes
 A commitment scheme $C$ is a protocol between two parties: a prover $P$ and a verifier $V$. The goal of such a scheme is to satisfy the following security properties:
