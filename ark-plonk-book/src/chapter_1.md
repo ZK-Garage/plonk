@@ -24,13 +24,10 @@ A field $F$ is a set with two binary operations $+$ and $*$ that satisfies the f
  
 * Closure under addition:  $\forall x,y\in F,\; x+y\in F$
 * Closure under multiplication:  $\forall x,y\in F,\; x*y\in F$
-* $(F, +)$ is a commutative and associative group with identity element $0$
-* $(F-\{0\},* )$ is a commutative and associative group with identity element $1$
-* Additive inverses:  $\forall x\in F,  y\in F$ such that  $x+y=y+x=0$
-* Multiplication inverses:  $\forall x\in F$ such that $x\neq 0, \; \exists \; y\in F$ such that $x*y=y*x=1$, 
+* Additive inverses:  $\forall x\in F,  y\in F$ such that  $x+y=0$
+* Multiplication inverses:  $\forall x\in F$ such that $x\neq 0, \; \exists \; y\in F$ such that $x*y=1$, 
 $y$ is called the multiplicative inverse of $x$ and is denoted $x^{-1}$ or $\dfrac{1}{x}$
 * The distributive law:  $\forall x,y,z\in F,\; x*(y+z)=x*y+x*z$
-
 
 ### Finite Fields:
 
@@ -39,15 +36,16 @@ A finite field is a field $F_q$ with a finite number of elements. The order of a
 for some integer $k\geq 1$ and $p$ prime equals the number of elements in the field.
 
 ## Elliptic curves
-An Elliptic curve $E$ is a mathematical object defined over a field $F_q$ and generally expressed in the following Weierstrass form:
+For ARK-PLONK, we use pairing friendly elliptic curves defined over very large finite fields $|F_p|≈2^{256}$. In the following we will explain what is an elliptic curve, pairings and elliptic curves over finite fields.
+
+### Definition
+An Elliptic curve $E$ is a mathematical object defined over a field $F$ and generally expressed in the following Weierstrass form:
 $$y^2=x^3+ax+b$$ 
 for some $a,b\in F_q$ where $(x,y)$ are called "affine coordinates" 
 
 ### Elliptic curves over finite fields
 
-
-We will mainly focus on elliptic curves over finite fields since they are the ones used for cryptographic applications. An elliptic curve over a finite field $F_q$ yields an abelian group $G$ with a finite number of points $n$ such that $n=|G|$ (order of the group $G$).
-
+We will mainly focus on elliptic curves over finite fields since they are the ones used for cryptographic applications. An elliptic curve over a finite field $F_q$ is an abelian group $G$ with a finite number of points $n$ such that $n=|G|$ (order of the group $G$). 
 
 The group on which the elliptic curve is defined is the one used for many cryptographic protocols. An elliptic curve over a finite field is represented in the projective plane, such a curve will have an additional point at infinity $O$ which serves as the identity of the group. There are several ways to define the curve equation, but for the purpose of doing the group law arithmetics, let $y^2=x^3+b$ for some constant $b\in F_q$.
 
@@ -120,7 +118,7 @@ Given $g,h\in G$ to find $a$, if it exists, such that $h=g^a$.
 Let $E$ be an elliptic curve of the Weierstrass form defined over a finite field $F_q$. Let $S$ and $T$ be two points in $E(F_q)$. Find an integer $m$ such that:
 $$T=mS$$
 
-The fastest method to solve the ECDLP problem in $E(F_q)$ is the [Pollard Rho](https://www.ams.org/mcom/1978-32-143/S0025-5718-1978-0491431-9/S0025-5718-1978-0491431-9.pdf) method which has exponential complexity $O(\sqrt{|G|})$.
+The fastest method to solve the ECDLP problem in $E(F_q)$ is the [Pollard Rho](https://www.ams.org/mcom/1978-32-143/S0025-5718-1978-0491431-9/S0025-5718-1978-0491431-9.pdf) method which has exponential complexity $O(\sqrt{|G|})$. In order for this algorithm to be exponential, we need to define elliptic curves over very large fields $|F_p|≈2^{256}$ which is currently the case for ARK-PLONK.
 
 ### Pairings
 Pairing based-cryptography is used in many cryptographic applications like signature schemes, key agreement, zero knowledge...etc.\
@@ -292,7 +290,7 @@ We will first provide a formal definition of the original version of Kate commit
 
 #### Terminology:
 
-Let $\phi(x)\in F_p[X]$ be a polynomial of degree $\leq t$ in $F_p[X]$ where $F_p[X]$ is a polynomial ring over the finite field $F_p$ of prime order $p$. Let $G$ be an elliptic curves group of prime order $p$ and such that there exists a symmetric bilinear pairing $e:G\times G\rightarrow G_T$ into the multiplicative group $G_T$ and for which the t-Strong  Diffie-Hellman  (t-SDH)  Assumption holds. Let $g$ be a generator of  $G$. We will be using the multiplicative notation of the DLP assumption explained earlier instead of the additive notation for the EC group.  We will use the following notation: $[x]=g^x​​$
+Let $\phi\in F_p[X]$ be a polynomial of degree $\leq t$ in $F_p[X]$ where $F_p[X]$ is a polynomial ring over the finite field $F_p$ of prime order $p$. Let $G$ be an elliptic curves group of prime order $p$ and such that there exists a symmetric bilinear pairing $e:G\times G\rightarrow G_T$ into the multiplicative group $G_T$ and for which the t-Strong  Diffie-Hellman  (t-SDH)  Assumption holds. Let $g$ be a generator of  $G$. We will be using the multiplicative notation of the DLP assumption explained earlier instead of the additive notation for the EC group.  We will use the following notation: $[x]=g^x​​$
 
 
 
@@ -340,13 +338,12 @@ A zero-knowledge proof needs to fulfill each of the following properties to be f
 #### Types of Zero knowledge proofs
 
 There are two types of zero knowledge proofs (interactive and non interactive ones)
-Interactive zero-knowledge proof systems were first introduced in 1985 by Goldwasser, Micali and Rackoff. Non-interactive schemes were introduced later on by Blum et al. The main difference between both schemes is that interactive proofs require interaction between both parties which means both have to be online in order to do so which could be seen as inconvenient especially for modern cryptography applications while non-interactive proofs need a trusted setup preprocessing phase instead.
-
+Interactive zero-knowledge proof systems were first introduced in 1985 by Goldwasser, Micali and Rackoff. Non-interactive schemes were introduced later on by Blum et al. The main difference between both schemes is that interactive proofs require interaction between both parties which means both have to be online in order to do so which could be seen as inconvenient especially for modern cryptography applications while non-interactive proofs need a shared setup preprocessing phase instead. The shared setup phase will allow the participating parties to know which statement is being proved and what protocol is being used.
 
 
 #### Interactive Zero Knowledge Proofs 
 
-A prover $P$ has a secret s correctly responds to challenges to convince a verifier $V$ it has knowledge of $s$ using rounds of interaction between the two parties.
+A prover $P$ has a secret $s$ correctly responds to challenges to convince a verifier $V$ it has knowledge of $s$ using rounds of interaction between the two parties.
  
 #### Non interactive zero knowledge proofs (NIZK)
 

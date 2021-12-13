@@ -27,7 +27,7 @@ Prover creates a program to represent the problem in a function code which then 
 ### Arithmetic circuit
 This step transforms a program into an arithmetic circuit where two basic components: are being used: wires and gates. Plonk uses fan-in two gates, therefore each gate has a left input, a right input and an output. A circuit with n gates will have $3n$ wires. 
 
-PlonK is gate-based instead of R1CS-based like some proof systems like Groth16. The difference between both systems is in how they handle addition gates, in R1CS addition gates are cheap as  wires that are going from an addition to multiplication gate are not labeled which is not the case for a gate-based system. The reason why PLONK uses a gate-based instead of a R1CS fan-in;  and  thus  our  linear constraints  are  just  wiring  constraints  that  can  be reduced to a permutation check
+PlonK is gate-based instead of R1CS-based like some proof systems like Groth16. The difference between both systems is in how they handle addition gates, in R1CS addition gates are cheap as  wires that are going from an addition to multiplication gate are not labeled which is not the case for a gate-based system. The reason why PLONK uses a gate-based instead of a R1CS fan-in;  and  thus  our  linear constraints  are  just  wiring  constraints  that  can  be reduced to a permutation check. To understand more the advantages and disadvantages of each of those designs check this [article](https://hackmd.io/@aztec-network/plonk-arithmetiization-air#How-does-all-this-relate-to-R1CS).
 
 
 The following circuit translates the previous equation $x^3+x+5=0$ where we have 2 multiplication gates and 2 addition gates. 
@@ -164,7 +164,6 @@ will add blinders to add the zero-knowledge property to the Plonk protocol.
         e(W + r'\cdot W', [x]_2)
         $$
 
-:::spoiler We can check for **correctness**
 Extending the right side of the check we get
         $$
         e(F +z \cdot W + r'z'\cdot W', [1]_2) =\\
