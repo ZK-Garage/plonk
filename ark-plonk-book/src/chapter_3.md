@@ -5,11 +5,28 @@ ARK-PLONK is a generic Rust PLONK implementation using arkworks as a backend. AR
 
 ARK-PLONK is however the only generic implementation which allows any curve implementation or commitment scheme to be used and isn’t restricted to only one implementation like other existing libraries (for example duskPlonk is based on bls12-281).
 
+
+
+
 ## State of the art
+
+| Library     | Description | Prover speed| Verifier speed| Proof size | Setup     |
+|             |             |             |               |            |           |
+| ----------- | ----------- |-------------|-------------  | -----------|-----------|
+|             |             |             |               |            |           |
+|             |             |             |               |            |           |
+|             |             |             |               |            |           |
+|             |             |             |               |            |           |
+|             |             |             |               |            |           |
 
 ## Circuit implementation
 
+ARK-PLONK's implementation is an optimization of the original PLONK protocol as it enables lookup table to the PLONK circuit. This optimization allows for precomputation of some of the operations that are not snark friendly like bit operations (see [PLOOKUP](https://eprint.iacr.org/2020/315.pdf) for further explanation on PLONK + LOOKUP tables).
 
+Our implementation also uses custom gates similarly to [TurboPolnk](https://docs.zkproof.org/pages/standards/accepted-workshop3/proposal-turbo_plonk.pdf) which allow us to define our own custom bit arithmetic operations like efficient Poseidon or MIMC hashes which are extremely efficient to evaluate inside of a snark. 
+
+
+  
 
 ### Gadgets
 
