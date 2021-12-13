@@ -4,13 +4,17 @@
 //
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
+//! Simple Arithmetic Gates
+
 use crate::constraint_system::StandardComposer;
 use crate::constraint_system::Variable;
 use ark_ec::{PairingEngine, TEModelParameters};
 use num_traits::{One, Zero};
 
-impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
-    StandardComposer<E, P>
+impl<E, P> StandardComposer<E, P>
+where
+    E: PairingEngine,
+    P: TEModelParameters<BaseField = E::Fr>,
 {
     /// Adds a width-3 add gate to the circuit, linking the addition of the
     /// provided inputs, scaled by the selector coefficients with the output
@@ -428,24 +432,21 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
 }
 
 #[cfg(test)]
-mod arithmetic_gates_tests {
+mod test {
+    use super::*;
     use crate::batch_test;
     use crate::constraint_system::helper::*;
-    use crate::constraint_system::StandardComposer;
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
-    use ark_ec::PairingEngine;
-    use ark_ec::TEModelParameters;
-    use num_traits::{One, Zero};
 
-    fn test_public_inputs<
+    fn test_public_inputs<E, P>()
+    where
         E: PairingEngine,
         P: TEModelParameters<BaseField = E::Fr>,
-    >() {
+    {
         let res = gadget_tester(
             |composer: &mut StandardComposer<E, P>| {
                 let var_one = composer.add_input(E::Fr::one());
-
                 let should_be_three = composer.big_add(
                     (E::Fr::one(), var_one),
                     (E::Fr::one(), var_one),
@@ -476,10 +477,11 @@ mod arithmetic_gates_tests {
         assert!(res.is_ok(), "{:?}", res.err().unwrap());
     }
 
-    fn test_correct_add_mul_gate<
+    fn test_correct_add_mul_gate<E, P>()
+    where
         E: PairingEngine,
         P: TEModelParameters<BaseField = E::Fr>,
-    >() {
+    {
         let res = gadget_tester(
             |composer: &mut StandardComposer<E, P>| {
                 // Verify that (4+5+5) * (6+7+7) = 280
@@ -529,10 +531,11 @@ mod arithmetic_gates_tests {
         assert!(res.is_ok(), "{:?}", res.err().unwrap());
     }
 
-    fn test_correct_add_gate<
+    fn test_correct_add_gate<E, P>()
+    where
         E: PairingEngine,
         P: TEModelParameters<BaseField = E::Fr>,
-    >() {
+    {
         let res = gadget_tester(
             |composer: &mut StandardComposer<E, P>| {
                 let zero = composer.zero_var();
@@ -551,10 +554,11 @@ mod arithmetic_gates_tests {
         assert!(res.is_ok(), "{:?}", res.err().unwrap());
     }
 
-    fn test_correct_big_add_mul_gate<
+    fn test_correct_big_add_mul_gate<E, P>()
+    where
         E: PairingEngine,
         P: TEModelParameters<BaseField = E::Fr>,
-    >() {
+    {
         let res = gadget_tester(
             |composer: &mut StandardComposer<E, P>| {
                 // Verify that (4+5+5) * (6+7+7) + (8*9) = 352
@@ -599,10 +603,11 @@ mod arithmetic_gates_tests {
         assert!(res.is_ok());
     }
 
-    fn test_correct_big_arith_gate<
+    fn test_correct_big_arith_gate<E, P>()
+    where
         E: PairingEngine,
         P: TEModelParameters<BaseField = E::Fr>,
-    >() {
+    {
         let res = gadget_tester(
             |composer: &mut StandardComposer<E, P>| {
                 // Verify that (4*5)*6 + 4*7 + 5*8 + 9*10 + 11 = 289
@@ -637,10 +642,11 @@ mod arithmetic_gates_tests {
         assert!(res.is_ok());
     }
 
-    fn test_incorrect_big_arith_gate<
+    fn test_incorrect_big_arith_gate<E, P>()
+    where
         E: PairingEngine,
         P: TEModelParameters<BaseField = E::Fr>,
-    >() {
+    {
         let res = gadget_tester(
             |composer: &mut StandardComposer<E, P>| {
                 // Verify that (4*5)*6 + 4*7 + 5*8 + 9*12 + 11 != 289
@@ -675,10 +681,11 @@ mod arithmetic_gates_tests {
         assert!(res.is_err());
     }
 
-    fn test_incorrect_add_mul_gate<
+    fn test_incorrect_add_mul_gate<E, P>()
+    where
         E: PairingEngine,
         P: TEModelParameters<BaseField = E::Fr>,
-    >() {
+    {
         let res = gadget_tester(
             |composer: &mut StandardComposer<E, P>| {
                 // Verify that (5+5) * (6+7) != 117
@@ -721,34 +728,36 @@ mod arithmetic_gates_tests {
     }
 
     // Bls12-381 tests
-    batch_test!([
-        test_public_inputs,
-        test_correct_add_mul_gate,
-        test_correct_add_gate,
-        test_correct_big_add_mul_gate,
-        test_correct_big_arith_gate,
-        test_incorrect_add_mul_gate,
-        test_incorrect_big_arith_gate
-    ],
+    batch_test!(
+        [
+            test_public_inputs,
+            test_correct_add_mul_gate,
+            test_correct_add_gate,
+            test_correct_big_add_mul_gate,
+            test_correct_big_arith_gate,
+            test_incorrect_add_mul_gate,
+            test_incorrect_big_arith_gate
+        ],
         [] => (
-        Bls12_381,
-        ark_ed_on_bls12_381::EdwardsParameters
+            Bls12_381,
+            ark_ed_on_bls12_381::EdwardsParameters
         )
     );
 
     // Bls12-377 tests
-    batch_test!([
-        test_public_inputs,
-        test_correct_add_mul_gate,
-        test_correct_add_gate,
-        test_correct_big_add_mul_gate,
-        test_correct_big_arith_gate,
-        test_incorrect_add_mul_gate,
-        test_incorrect_big_arith_gate
-    ],
+    batch_test!(
+        [
+            test_public_inputs,
+            test_correct_add_mul_gate,
+            test_correct_add_gate,
+            test_correct_big_add_mul_gate,
+            test_correct_big_arith_gate,
+            test_incorrect_add_mul_gate,
+            test_incorrect_big_arith_gate
+        ],
         [] => (
-        Bls12_377,
-        ark_ed_on_bls12_377::EdwardsParameters
+            Bls12_377,
+            ark_ed_on_bls12_377::EdwardsParameters
         )
     );
 }

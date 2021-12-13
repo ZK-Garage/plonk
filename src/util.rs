@@ -5,31 +5,30 @@
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
 use ark_ec::{AffineCurve, ModelParameters, PairingEngine, TEModelParameters};
-use ark_ff::{BigInteger, FftField, FpParameters, PrimeField};
+use ark_ff::{BigInteger, FftField, Field, FpParameters, PrimeField};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, GeneralEvaluationDomain,
     Polynomial, UVPolynomial,
 };
 use ark_poly_commit::kzg10::Commitment;
 
-/// Returns a vector of scalars of increasing powers of x from x^0 to x^d.
-pub(crate) fn powers_of<F: PrimeField>(
-    scalar: &F,
-    max_degree: usize,
-) -> Vec<F> {
-    let mut powers = Vec::with_capacity(max_degree + 1);
-    powers.push(F::one());
-    for i in 0..max_degree {
-        powers.push(powers[i] * scalar);
-    }
-    powers
+/// Returns an iterator over increasing powers of the given `scalar` starting
+/// at `0`.
+#[inline]
+pub fn powers_of<F>(scalar: F) -> impl Iterator<Item = F>
+where
+    F: Field,
+{
+    core::iter::successors(Some(F::one()), move |p| Some(*p * scalar))
 }
 
-pub fn ruffini<F: PrimeField>(
-    poly: DensePolynomial<F>,
-    z: F,
-) -> DensePolynomial<F> {
-    let mut quotient: Vec<F> = Vec::with_capacity(poly.degree());
+/// Performs polynomial division by `(x - z)` with `x` indeterminant using
+/// Ruffini's algorithm.
+pub fn ruffini<F>(poly: DensePolynomial<F>, z: F) -> DensePolynomial<F>
+where
+    F: PrimeField,
+{
+    let mut quotient = Vec::with_capacity(poly.degree());
     let mut k = F::zero();
 
     // Reverse the results and use Ruffini's method to compute the quotient
@@ -37,8 +36,8 @@ pub fn ruffini<F: PrimeField>(
     // starts with the leading coefficient, while Polynomials
     // are stored in increasing order i.e. the leading coefficient is the
     // last element
-    for coeff in poly.coeffs.iter().rev() {
-        let t = *coeff + k;
+    for coeff in poly.coeffs.into_iter().rev() {
+        let t = coeff + k;
         quotient.push(t);
         k = z * t;
     }
@@ -124,28 +123,28 @@ where
 /// curve. Panics if the embedded scalar is greater than the modulus of the
 /// pairing firendly curve scalar field
 #[allow(dead_code)]
-pub(crate) fn from_embedded_curve_scalar<
+pub(crate) fn from_embedded_curve_scalar<E, P>(
+    embedded_scalar: <P as ModelParameters>::ScalarField,
+) -> E::Fr
+where
     E: PairingEngine,
     P: TEModelParameters<BaseField = E::Fr>,
->(
-    embedded_scalar: <P as ModelParameters>::ScalarField,
-) -> E::Fr {
+{
     let scalar_repr = embedded_scalar.into_repr();
     let modulus = <<E::Fr as PrimeField>::Params as FpParameters>::MODULUS;
     if modulus.num_bits() >= scalar_repr.num_bits() {
         let s = <<E::Fr as PrimeField>::BigInt as BigInteger>::from_bits_le(
             &scalar_repr.to_bits_le(),
         );
-        assert!( s < modulus,
+        assert!(s < modulus,
             "The embedded scalar exceeds the capacity representation of the outter curve scalar");
     } else {
         let m = <<P::ScalarField as PrimeField>::BigInt as BigInteger>::from_bits_le(
             &modulus.to_bits_le(),
         );
-        assert!( scalar_repr < m,
+        assert!(scalar_repr < m,
             "The embedded scalar exceeds the capacity representation of the outter curve scalar");
     }
-
     E::Fr::from_le_bytes_mod_order(&scalar_repr.to_bytes_le())
 }
 
@@ -153,12 +152,13 @@ pub(crate) fn from_embedded_curve_scalar<
 /// friendly curve. Panics if the pairing frindly curve scalar is greater than
 /// the modulus of the embedded curve scalar field
 #[allow(dead_code)]
-pub(crate) fn to_embedded_curve_scalar<
+pub(crate) fn to_embedded_curve_scalar<E, P>(
+    pfc_scalar: E::Fr,
+) -> P::ScalarField
+where
     E: PairingEngine,
     P: TEModelParameters<BaseField = E::Fr>,
->(
-    pfc_scalar: E::Fr,
-) -> P::ScalarField {
+{
     let scalar_repr = pfc_scalar.into_repr();
     let modulus =
         <<P::ScalarField as PrimeField>::Params as FpParameters>::MODULUS;
@@ -166,36 +166,37 @@ pub(crate) fn to_embedded_curve_scalar<
         let s = <<P::ScalarField as PrimeField>::BigInt as BigInteger>::from_bits_le(
             &scalar_repr.to_bits_le(),
         );
-        assert!( s < modulus,
+        assert!(s < modulus,
             "The embedded scalar exceeds the capacity representation of the outter curve scalar");
     } else {
         let m = <<E::Fr as PrimeField>::BigInt as BigInteger>::from_bits_le(
             &modulus.to_bits_le(),
         );
-        assert!( scalar_repr < m,
+        assert!(scalar_repr < m,
             "The embedded scalar exceeds the capacity representation of the outter curve scalar");
     }
-
     P::ScalarField::from_le_bytes_mod_order(&scalar_repr.to_bytes_le())
 }
 
-// Computes a linear combination of the polynomial evaluations and polynomial
-// commitments provided a challenge.
-// TODO complete doc
-pub fn linear_combination<E: PairingEngine>(
+/// Computes a linear combination of the polynomial evaluations and polynomial
+/// commitments provided a challenge.
+// TODO: complete doc
+pub fn linear_combination<E>(
     evals: &[E::Fr],
     commitments: &[Commitment<E>],
     challenge: E::Fr,
-) -> (Commitment<E>, E::Fr) {
+) -> (Commitment<E>, E::Fr)
+where
+    E: PairingEngine,
+{
     assert_eq!(evals.len(), commitments.len());
-    // Generate a challenge to generate a linear combination of the proofs
-    let powers: Vec<E::Fr> = powers_of(&challenge, evals.len() - 1);
-    let combined_eval: E::Fr = evals
+    let powers = powers_of(challenge).take(evals.len()).collect::<Vec<_>>();
+    let combined_eval = evals
         .iter()
         .zip(powers.iter())
         .map(|(&eval, power)| eval * power)
         .sum();
-    let combined_commitment: Commitment<E> = Commitment(
+    let combined_commitment = Commitment(
         commitments
             .iter()
             .zip(powers.iter())

@@ -20,6 +20,7 @@
 //!
 //! If you want to see library usage examples, please check:
 //! <https://github.com/dusk-network/plonk/tree/v0.1.0/examples>
+
 // Bitshift/Bitwise ops are allowed to gain performance.
 #![allow(clippy::suspicious_arithmetic_impl)]
 // Some structs do not have AddAssign or MulAssign impl.
@@ -34,16 +35,20 @@
 #![deny(rustdoc::broken_intra_doc_links)]
 #![deny(missing_docs)]
 
-pub mod circuit;
-pub mod constraint_system;
+extern crate alloc;
+
 mod permutation;
-mod tests;
+mod transcript;
 mod util;
 
+pub mod circuit;
+pub mod constraint_system;
 pub mod error;
 pub mod prelude;
 pub mod proof_system;
-mod transcript;
+
+#[cfg(test)]
+mod test;
 
 #[doc = include_str!("../docs/notes-intro.md")]
 pub mod notes {

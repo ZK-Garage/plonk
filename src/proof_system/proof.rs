@@ -10,7 +10,12 @@
 //! This module contains the implementation of the `StandardComposer`s
 //! `Proof` structure and it's methods.
 
-use super::linearisation_poly::ProofEvaluations;
+use crate::proof_system::ecc::CurveAddition;
+use crate::proof_system::ecc::FixedBaseScalarMul;
+use crate::proof_system::linearisation_poly::ProofEvaluations;
+use crate::proof_system::logic::Logic;
+use crate::proof_system::range::Range;
+use crate::proof_system::GateConstraint;
 use crate::proof_system::VerifierKey as PlonkVerifierKey;
 use crate::transcript::TranscriptProtocol;
 use crate::util;
@@ -39,22 +44,28 @@ use rand_core::OsRng;
 /// [`Verifier`](super::Verifier) have in common succintly and without any
 /// capabilities of adquiring any kind of knowledge about the witness used to
 /// construct the Proof.
-#[derive(
-    CanonicalDeserialize,
-    CanonicalSerialize,
-    Clone,
-    Debug,
-    Default,
-    Eq,
-    PartialEq,
+#[derive(CanonicalDeserialize, CanonicalSerialize, derivative::Derivative)]
+#[derivative(
+    Clone(bound = ""),
+    Debug(bound = ""),
+    Default(bound = ""),
+    Eq(bound = ""),
+    PartialEq(bound = "")
 )]
-pub struct Proof<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> {
+pub struct Proof<E, P>
+where
+    E: PairingEngine,
+    P: TEModelParameters<BaseField = E::Fr>,
+{
     /// Commitment to the witness polynomial for the left wires.
     pub(crate) a_comm: Commitment<E>,
+
     /// Commitment to the witness polynomial for the right wires.
     pub(crate) b_comm: Commitment<E>,
+
     /// Commitment to the witness polynomial for the output wires.
     pub(crate) c_comm: Commitment<E>,
+
     /// Commitment to the witness polynomial for the fourth wires.
     pub(crate) d_comm: Commitment<E>,
 
@@ -63,23 +74,34 @@ pub struct Proof<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> {
 
     /// Commitment to the quotient polynomial.
     pub(crate) t_1_comm: Commitment<E>,
+
     /// Commitment to the quotient polynomial.
     pub(crate) t_2_comm: Commitment<E>,
+
     /// Commitment to the quotient polynomial.
     pub(crate) t_3_comm: Commitment<E>,
+
     /// Commitment to the quotient polynomial.
     pub(crate) t_4_comm: Commitment<E>,
 
     /// Commitment to the opening proof polynomial.
     pub(crate) w_z_comm: Commitment<E>,
+
     /// Commitment to the shifted opening proof polynomial.
     pub(crate) w_zw_comm: Commitment<E>,
+
     /// Subset of all of the evaluations added to the proof.
     pub(crate) evaluations: ProofEvaluations<E::Fr>,
-    pub(crate) _marker: PhantomData<P>,
+
+    /// Type Parameter Marker
+    pub(crate) __: PhantomData<P>,
 }
 
-impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Proof<E, P> {
+impl<E, P> Proof<E, P>
+where
+    E: PairingEngine,
+    P: TEModelParameters<BaseField = E::Fr>,
+{
     /// Performs the verification of a [`Proof`] returning a boolean result.
     pub(crate) fn verify(
         &self,
@@ -111,6 +133,9 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Proof<E, P> {
         let beta = transcript.challenge_scalar(b"beta");
         transcript.append_scalar(b"beta", &beta);
         let gamma = transcript.challenge_scalar(b"gamma");
+
+        assert!(beta != gamma, "challenges must be different");
+
         // Add commitment to permutation polynomial to transcript
         transcript.append_commitment(b"z", &self.z_comm);
 
@@ -151,7 +176,7 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Proof<E, P> {
             z_challenge,
             z_h_eval,
             l1_eval,
-            self.evaluations.perm_eval,
+            self.evaluations.permutation_eval,
         );
 
         // Compute commitment to quotient polynomial
@@ -181,22 +206,23 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Proof<E, P> {
         transcript.append_scalar(b"q_c_eval", &self.evaluations.q_c_eval);
         transcript.append_scalar(b"q_l_eval", &self.evaluations.q_l_eval);
         transcript.append_scalar(b"q_r_eval", &self.evaluations.q_r_eval);
-        transcript.append_scalar(b"perm_eval", &self.evaluations.perm_eval);
-        assert!(beta != gamma);
+        transcript
+            .append_scalar(b"perm_eval", &self.evaluations.permutation_eval);
         transcript.append_scalar(b"t_eval", &t_eval);
-        transcript.append_scalar(b"r_eval", &self.evaluations.lin_poly_eval);
+        transcript.append_scalar(
+            b"r_eval",
+            &self.evaluations.linearisation_polynomial_eval,
+        );
 
         // Compute linearisation commitment
         let r_comm = self.compute_linearisation_commitment(
             alpha,
             beta,
             gamma,
-            (
-                range_sep_challenge,
-                logic_sep_challenge,
-                fixed_base_sep_challenge,
-                var_base_sep_challenge,
-            ),
+            range_sep_challenge,
+            logic_sep_challenge,
+            fixed_base_sep_challenge,
+            var_base_sep_challenge,
             z_challenge,
             l1_eval,
             plonk_verifier_key,
@@ -246,7 +272,7 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Proof<E, P> {
 
         let group_gen = domain.group_gen();
 
-        match KZG10::<E, DensePolynomial<E::Fr>>::batch_check(
+        match KZG10::<_, DensePolynomial<_>>::batch_check(
             verifier_key,
             &[aggregate_proof_commitment, aggregate_shift_proof_commitment],
             &[z_challenge, (z_challenge * group_gen)],
@@ -269,13 +295,11 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Proof<E, P> {
         plonk_verifier_key: &PlonkVerifierKey<E, P>,
         transcript: &mut TranscriptWrapper<E>,
     ) -> (Commitment<E>, E::Fr) {
-        let challenge: E::Fr =
-            transcript.challenge_scalar(b"aggregate_witness");
-
+        let challenge = transcript.challenge_scalar(b"aggregate_witness");
         util::linear_combination(
             &[
                 t_eval,
-                self.evaluations.lin_poly_eval,
+                self.evaluations.linearisation_polynomial_eval,
                 self.evaluations.a_eval,
                 self.evaluations.b_eval,
                 self.evaluations.c_eval,
@@ -304,11 +328,10 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Proof<E, P> {
         &self,
         transcript: &mut TranscriptWrapper<E>,
     ) -> (Commitment<E>, E::Fr) {
-        let challenge: E::Fr =
-            transcript.challenge_scalar(b"aggregate_witness");
+        let challenge = transcript.challenge_scalar(b"aggregate_witness");
         util::linear_combination(
             &[
-                self.evaluations.perm_eval,
+                self.evaluations.permutation_eval,
                 self.evaluations.a_next_eval,
                 self.evaluations.b_next_eval,
                 self.evaluations.d_next_eval,
@@ -336,7 +359,7 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Proof<E, P> {
 
         let alpha_sq = alpha.square();
         // r + PI(z)
-        let a = self.evaluations.lin_poly_eval + pi_eval;
+        let a = self.evaluations.linearisation_polynomial_eval + pi_eval;
 
         // a + beta * sigma_1 + gamma
         let beta_sig1 = beta * self.evaluations.left_sigma_eval;
@@ -362,6 +385,7 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Proof<E, P> {
         (a - b - c) * z_h_eval.inverse().unwrap()
     }
 
+    /// Computes the quotient polynomial commitment at `z_challenge`.
     fn compute_quotient_commitment(
         &self,
         z_challenge: &E::Fr,
@@ -378,24 +402,22 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Proof<E, P> {
         Commitment(t_comm.into_affine())
     }
 
-    // Commitment to [r]_1
+    /// Computes the commitment to `[r]_1`.
     fn compute_linearisation_commitment(
         &self,
         alpha: E::Fr,
         beta: E::Fr,
         gamma: E::Fr,
-        (
-            range_sep_challenge,
-            logic_sep_challenge,
-            fixed_base_sep_challenge,
-            var_base_sep_challenge,
-        ): (E::Fr, E::Fr, E::Fr, E::Fr),
+        range_sep_challenge: E::Fr,
+        logic_sep_challenge: E::Fr,
+        fixed_base_sep_challenge: E::Fr,
+        var_base_sep_challenge: E::Fr,
         z_challenge: E::Fr,
         l1_eval: E::Fr,
         plonk_verifier_key: &PlonkVerifierKey<E, P>,
     ) -> Commitment<E> {
-        let mut scalars: Vec<_> = Vec::with_capacity(6);
-        let mut points: Vec<E::G1Affine> = Vec::with_capacity(6);
+        let mut scalars = Vec::with_capacity(6);
+        let mut points = Vec::with_capacity(6);
 
         plonk_verifier_key
             .arithmetic
@@ -405,37 +427,37 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Proof<E, P> {
                 &self.evaluations,
             );
 
-        plonk_verifier_key.range.compute_linearisation_commitment(
+        Range::extend_linearisation_commitment::<E>(
+            plonk_verifier_key.range_selector_commitment,
             range_sep_challenge,
+            &self.evaluations,
             &mut scalars,
             &mut points,
-            &self.evaluations,
         );
 
-        plonk_verifier_key.logic.compute_linearisation_commitment(
+        Logic::extend_linearisation_commitment::<E>(
+            plonk_verifier_key.logic_selector_commitment,
             logic_sep_challenge,
+            &self.evaluations,
             &mut scalars,
             &mut points,
-            &self.evaluations,
         );
 
-        plonk_verifier_key
-            .fixed_base
-            .compute_linearisation_commitment(
-                fixed_base_sep_challenge,
-                &mut scalars,
-                &mut points,
-                &self.evaluations,
-            );
+        FixedBaseScalarMul::<_, P>::extend_linearisation_commitment::<E>(
+            plonk_verifier_key.fixed_group_add_selector_commitment,
+            fixed_base_sep_challenge,
+            &self.evaluations,
+            &mut scalars,
+            &mut points,
+        );
 
-        plonk_verifier_key
-            .variable_base
-            .compute_linearisation_commitment(
-                var_base_sep_challenge,
-                &mut scalars,
-                &mut points,
-                &self.evaluations,
-            );
+        CurveAddition::<_, P>::extend_linearisation_commitment::<E>(
+            plonk_verifier_key.variable_group_add_selector_commitment,
+            var_base_sep_challenge,
+            &self.evaluations,
+            &mut scalars,
+            &mut points,
+        );
 
         plonk_verifier_key
             .permutation
@@ -449,8 +471,8 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Proof<E, P> {
                 self.z_comm.0,
             );
 
-        let scalars_repr: Vec<<E::Fr as PrimeField>::BigInt> =
-            scalars.iter().map(|s| s.into_repr()).collect();
+        let scalars_repr =
+            scalars.iter().map(E::Fr::into_repr).collect::<Vec<_>>();
 
         Commitment(
             VariableBaseMSM::multi_scalar_mul(&points, &scalars_repr).into(),
@@ -458,52 +480,66 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Proof<E, P> {
     }
 }
 
-// The first lagrange polynomial has the expression
-// L_0(X) = mul_from_1_to_(n-1) [(X - g^i) / (1 - g^i)]
-// with g being the generator of the domain (the nth root of unity)
-// We use two equalities:
-//   1. mul_from_2_to_(n-1)[ 1 / (1 - g^i)]  =  1 / n
-//   2. mul_from_2_to_(n-1)[ (X - g^i)] = (X^n -1) / (X - 1)
-// to obtain the expression:
-// L_0(X) = (X^n -1) / n * (X -1)
-fn compute_first_lagrange_evaluation<F: PrimeField>(
+/// The first lagrange polynomial has the expression:
+///
+/// ```text
+/// L_0(X) = mul_from_1_to_(n-1) [(X - omega^i) / (1 - omega^i)]
+/// ```
+///
+/// with `omega` being the generator of the domain (the `n`th root of unity).
+///
+/// We use two equalities:
+///   1. `mul_from_2_to_(n-1) [1 / (1 - omega^i)] = 1 / n`
+///   2. `mul_from_2_to_(n-1) [(X - omega^i)] = (X^n - 1) / (X - 1)`
+/// to obtain the expression:
+///
+/// ```text
+/// L_0(X) = (X^n - 1) / n * (X - 1)
+/// ```
+fn compute_first_lagrange_evaluation<F>(
     domain: &GeneralEvaluationDomain<F>,
     z_h_eval: &F,
     z_challenge: &F,
-) -> F {
+) -> F
+where
+    F: PrimeField,
+{
     let n_fr = F::from(domain.size() as u64);
     let denom = n_fr * (*z_challenge - F::one());
     *z_h_eval * denom.inverse().unwrap()
 }
 
-fn compute_barycentric_eval<F: PrimeField>(
+fn compute_barycentric_eval<F>(
     evaluations: &[F],
     point: F,
     domain: &GeneralEvaluationDomain<F>,
-) -> F {
+) -> F
+where
+    F: PrimeField,
+{
     let numerator =
         domain.evaluate_vanishing_polynomial(point) * domain.size_inv();
     let range = 0..evaluations.len();
 
-    let non_zero_evaluations: Vec<usize> = range
+    let non_zero_evaluations = range
         .filter(|&i| {
             let evaluation = &evaluations[i];
             evaluation != &F::zero()
         })
-        .collect();
+        .collect::<Vec<_>>();
 
     // Only compute the denominators with non-zero evaluations
     let range = 0..non_zero_evaluations.len();
 
     let group_gen_inv = domain.group_gen_inv();
-    let mut denominators: Vec<F> = range
+    let mut denominators = range
         .clone()
         .map(|i| {
             // index of non-zero evaluation
             let index = non_zero_evaluations[i];
             (group_gen_inv.pow(&[index as u64, 0, 0, 0]) * point) - F::one()
         })
-        .collect();
+        .collect::<Vec<_>>();
     batch_inversion(&mut denominators);
 
     let result: F = range
@@ -518,32 +554,31 @@ fn compute_barycentric_eval<F: PrimeField>(
 }
 
 #[cfg(test)]
-mod proof_tests {
-    use crate::batch_test;
-
+mod test {
     use super::*;
+    use crate::batch_test;
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
     use ark_ff::UniformRand;
-    use ark_poly_commit::kzg10::Commitment;
     use rand_core::OsRng;
 
-    fn test_serde_proof<
+    fn test_serde_proof<E, P>()
+    where
         E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr> + PartialEq,
-    >() {
+        P: TEModelParameters<BaseField = E::Fr>,
+    {
         let proof = Proof::<E, P> {
-            a_comm: Commitment::<E>::default(),
-            b_comm: Commitment::<E>::default(),
-            c_comm: Commitment::<E>::default(),
-            d_comm: Commitment::<E>::default(),
-            z_comm: Commitment::<E>::default(),
-            t_1_comm: Commitment::<E>::default(),
-            t_2_comm: Commitment::<E>::default(),
-            t_3_comm: Commitment::<E>::default(),
-            t_4_comm: Commitment::<E>::default(),
-            w_z_comm: Commitment::<E>::default(),
-            w_zw_comm: Commitment::<E>::default(),
+            a_comm: Default::default(),
+            b_comm: Default::default(),
+            c_comm: Default::default(),
+            d_comm: Default::default(),
+            z_comm: Default::default(),
+            t_1_comm: Default::default(),
+            t_2_comm: Default::default(),
+            t_3_comm: Default::default(),
+            t_4_comm: Default::default(),
+            w_z_comm: Default::default(),
+            w_zw_comm: Default::default(),
             evaluations: ProofEvaluations {
                 a_eval: E::Fr::rand(&mut OsRng),
                 b_eval: E::Fr::rand(&mut OsRng),
@@ -559,16 +594,16 @@ mod proof_tests {
                 left_sigma_eval: E::Fr::rand(&mut OsRng),
                 right_sigma_eval: E::Fr::rand(&mut OsRng),
                 out_sigma_eval: E::Fr::rand(&mut OsRng),
-                lin_poly_eval: E::Fr::rand(&mut OsRng),
-                perm_eval: E::Fr::rand(&mut OsRng),
+                linearisation_polynomial_eval: E::Fr::rand(&mut OsRng),
+                permutation_eval: E::Fr::rand(&mut OsRng),
             },
-            _marker: PhantomData,
+            __: PhantomData,
         };
 
         let mut proof_bytes = vec![];
         proof.serialize(&mut proof_bytes).unwrap();
 
-        let obtained_proof: Proof<E, P> =
+        let obtained_proof =
             Proof::deserialize(proof_bytes.as_slice()).unwrap();
 
         assert!(proof == obtained_proof);
@@ -576,23 +611,19 @@ mod proof_tests {
 
     // Bls12-381 tests
     batch_test!(
-        [
-        test_serde_proof
-        ],
+        [test_serde_proof],
         [] => (
-        Bls12_381,
-        ark_ed_on_bls12_381::EdwardsParameters
+            Bls12_381,
+            ark_ed_on_bls12_381::EdwardsParameters
         )
     );
 
     // Bls12-377 tests
     batch_test!(
-        [
-        test_serde_proof
-        ],
+        [test_serde_proof],
         [] => (
-        Bls12_377,
-        ark_ed_on_bls12_377::EdwardsParameters
+            Bls12_377,
+            ark_ed_on_bls12_377::EdwardsParameters
         )
     );
 }

@@ -4,19 +4,22 @@
 //
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
+//! Fixed-base Scalar Multiplication Gate
+
 use crate::constraint_system::ecc::Point;
 use crate::constraint_system::{variable::Variable, StandardComposer};
 use ark_ec::models::twisted_edwards_extended::{GroupAffine, GroupProjective};
 use ark_ec::models::TEModelParameters;
-use ark_ec::{ModelParameters, PairingEngine, ProjectiveCurve};
+use ark_ec::{PairingEngine, ProjectiveCurve};
 use ark_ff::{BigInteger, FpParameters, PrimeField};
 use num_traits::{One, Zero};
 
-fn compute_wnaf_point_multiples<P: TEModelParameters>(
+fn compute_wnaf_point_multiples<P>(
     base_point: GroupProjective<P>,
 ) -> Vec<GroupAffine<P>>
 where
-    <P as ModelParameters>::BaseField: PrimeField,
+    P: TEModelParameters,
+    P::BaseField: PrimeField,
 {
     let mut multiples = vec![
         GroupProjective::<P>::default();
@@ -27,14 +30,15 @@ where
     for i in 1..<P::BaseField as PrimeField>::Params::MODULUS_BITS as usize {
         multiples[i] = multiples[i - 1].double();
     }
-
     ProjectiveCurve::batch_normalization_into_affine(&multiples)
 }
 
-impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
-    StandardComposer<E, P>
+impl<E, P> StandardComposer<E, P>
+where
+    E: PairingEngine,
+    P: TEModelParameters<BaseField = E::Fr>,
 {
-    /// Adds an elliptic curve Scalar multiplication gate to the circuit
+    /// Adds an elliptic curve scalar multiplication gate to the circuit
     /// description.
     ///
     /// # Note
@@ -44,7 +48,7 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
     /// the generator or basepoint of the curve over which we are operating.
     pub fn fixed_base_scalar_mul(
         &mut self,
-        jubjub_scalar: Variable,
+        scalar: Variable,
         base_point: GroupAffine<P>,
     ) -> Point<E, P> {
         let num_bits =
@@ -54,16 +58,11 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
             compute_wnaf_point_multiples(base_point.into());
         point_multiples.reverse();
 
-        // Fetch the raw scalar value as bls scalar, then convert to a jubjub
-        // scalar
-        // XXX: Not very Tidy, impl From function in JubJub
-        let jubjub_scalar_value = self.variables.get(&jubjub_scalar).unwrap();
+        let scalar_value = self.variables.get(&scalar).unwrap();
 
         // Convert scalar to wnaf_2(k)
-        let wnaf_entries = jubjub_scalar_value
-            .into_repr()
-            .find_wnaf(2)
-            .unwrap_or_else(|| panic!("Fix this!"));
+        let wnaf_entries =
+            scalar_value.into_repr().find_wnaf(2).expect("Fix this!");
         // wnaf_entries.extend(vec![0i64; num_bits - wnaf_entries.len()]);
         assert!(wnaf_entries.len() <= num_bits);
 
@@ -164,28 +163,27 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
         );
 
         // Constrain the last element in the accumulator to be equal to the
-        // input jubjub scalar
-        self.assert_equal(last_accumulated_bit, jubjub_scalar);
+        // input scalar.
+        self.assert_equal(last_accumulated_bit, scalar);
 
-        Point::<E, P>::new(acc_x, acc_y)
+        Point::new(acc_x, acc_y)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::util;
-    use crate::{batch_test, constraint_system::helper::*};
+    use crate::{batch_test, constraint_system::helper::*, util};
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
     use ark_ec::{group::Group, AffineCurve};
     use ark_ff::PrimeField;
-    use num_traits::Zero;
 
-    fn test_ecc_constraint<
+    fn test_ecc_constraint<E, P>()
+    where
         E: PairingEngine,
         P: TEModelParameters<BaseField = E::Fr>,
-    >() {
+    {
         let res = gadget_tester(
             |composer: &mut StandardComposer<E, P>| {
                 let scalar = E::Fr::from_le_bytes_mod_order(&[
@@ -216,10 +214,11 @@ mod tests {
         assert!(res.is_ok());
     }
 
-    fn test_ecc_constraint_zero<
+    fn test_ecc_constraint_zero<E, P>()
+    where
         E: PairingEngine,
         P: TEModelParameters<BaseField = E::Fr>,
-    >() {
+    {
         let res = gadget_tester(
             |composer: &mut StandardComposer<E, P>| {
                 let scalar = E::Fr::zero();
@@ -244,10 +243,11 @@ mod tests {
         assert!(res.is_ok());
     }
 
-    fn test_ecc_constraint_should_fail<
+    fn test_ecc_constraint_should_fail<E, P>()
+    where
         E: PairingEngine,
         P: TEModelParameters<BaseField = E::Fr>,
-    >() {
+    {
         let res = gadget_tester(
             |composer: &mut StandardComposer<E, P>| {
                 let scalar = E::Fr::from(100u64);
@@ -276,10 +276,11 @@ mod tests {
         assert!(res.is_err());
     }
 
-    fn test_point_addition<
+    fn test_point_addition<E, P>()
+    where
         E: PairingEngine,
         P: TEModelParameters<BaseField = E::Fr>,
-    >() {
+    {
         let res = gadget_tester(
             |composer: &mut StandardComposer<E, P>| {
                 let (x, y) = P::AFFINE_GENERATOR_COEFFS;
@@ -312,10 +313,11 @@ mod tests {
         assert!(res.is_ok());
     }
 
-    fn test_pedersen_hash<
+    fn test_pedersen_hash<E, P>()
+    where
         E: PairingEngine,
         P: TEModelParameters<BaseField = E::Fr>,
-    >() {
+    {
         let res = gadget_tester(
             |composer: &mut StandardComposer<E, P>| {
                 let (x, y) = P::AFFINE_GENERATOR_COEFFS;
@@ -385,10 +387,11 @@ mod tests {
         assert!(res.is_ok());
     }
 
-    fn test_pedersen_balance<
+    fn test_pedersen_balance<E, P>()
+    where
         E: PairingEngine,
         P: TEModelParameters<BaseField = E::Fr>,
-    >() {
+    {
         let res = gadget_tester(
             |composer: &mut StandardComposer<E, P>| {
                 let (x, y) = P::AFFINE_GENERATOR_COEFFS;
@@ -450,32 +453,32 @@ mod tests {
     // Bls12-381 tests
     batch_test!(
         [
-        test_ecc_constraint,
-        test_ecc_constraint_zero,
-        test_ecc_constraint_should_fail,
-        test_point_addition,
-        test_pedersen_hash,
-        test_pedersen_balance
+            test_ecc_constraint,
+            test_ecc_constraint_zero,
+            test_ecc_constraint_should_fail,
+            test_point_addition,
+            test_pedersen_hash,
+            test_pedersen_balance
         ],
         [] => (
-        Bls12_381,
-        ark_ed_on_bls12_381::EdwardsParameters
+            Bls12_381,
+            ark_ed_on_bls12_381::EdwardsParameters
         )
     );
 
     // Bls12-377 tests
     batch_test!(
         [
-        test_ecc_constraint,
-        test_ecc_constraint_zero,
-        test_ecc_constraint_should_fail,
-        test_point_addition,
-        test_pedersen_hash,
-        test_pedersen_balance
+            test_ecc_constraint,
+            test_ecc_constraint_zero,
+            test_ecc_constraint_should_fail,
+            test_point_addition,
+            test_pedersen_hash,
+            test_pedersen_balance
         ],
         [] => (
-        Bls12_377,
-        ark_ed_on_bls12_377::EdwardsParameters
+            Bls12_377,
+            ark_ed_on_bls12_377::EdwardsParameters
         )
     );
 }

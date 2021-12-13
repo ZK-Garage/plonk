@@ -5,6 +5,7 @@
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
 //! This module holds the components needed in the Constraint System.
+//!
 //! The two components used are Variables and Wires.
 
 /// The value is a reference to the actual value that was added to the

@@ -4,7 +4,7 @@
 //
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
-//! Methods to preprocess the constraint system for use in a proof
+//! Methods to preprocess the constraint system for use in a proof.
 
 use crate::constraint_system::StandardComposer;
 use crate::error::Error;
@@ -21,7 +21,10 @@ use num_traits::{One, Zero};
 /// PLONK.
 ///
 /// [`Polynomial`]: DensePolynomial
-pub(crate) struct SelectorPolynomials<F: PrimeField> {
+pub struct SelectorPolynomials<F>
+where
+    F: PrimeField,
+{
     q_m: DensePolynomial<F>,
     q_l: DensePolynomial<F>,
     q_r: DensePolynomial<F>,
@@ -39,8 +42,10 @@ pub(crate) struct SelectorPolynomials<F: PrimeField> {
     fourth_sigma: DensePolynomial<F>,
 }
 
-impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
-    StandardComposer<E, P>
+impl<E, P> StandardComposer<E, P>
+where
+    E: PairingEngine,
+    P: TEModelParameters<BaseField = E::Fr>,
 {
     /// Pads the circuit to the next power of two.
     ///
@@ -194,8 +199,8 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
             (selectors.q_4, q_4_eval_4n),
             (selectors.q_c, q_c_eval_4n),
             (selectors.q_arith, q_arith_eval_4n),
-            (selectors.q_logic, q_logic_eval_4n),
             (selectors.q_range, q_range_eval_4n),
+            (selectors.q_logic, q_logic_eval_4n),
             (selectors.q_fixed_group_add, q_fixed_group_add_eval_4n),
             (selectors.q_variable_group_add, q_variable_group_add_eval_4n),
             (selectors.left_sigma, left_sigma_eval_4n),
@@ -380,25 +385,24 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
                 None,
             )?;
 
-        let verifier_key: widget::VerifierKey<E, P> =
-            widget::VerifierKey::from_polynomial_commitments(
-                self.circuit_size(),
-                q_m_poly_commit.0,
-                q_l_poly_commit.0,
-                q_r_poly_commit.0,
-                q_o_poly_commit.0,
-                q_4_poly_commit.0,
-                q_c_poly_commit.0,
-                q_arith_poly_commit.0,
-                q_logic_poly_commit.0,
-                q_range_poly_commit.0,
-                q_fixed_group_add_poly_commit.0,
-                q_variable_group_add_poly_commit.0,
-                left_sigma_poly_commit.0,
-                right_sigma_poly_commit.0,
-                out_sigma_poly_commit.0,
-                fourth_sigma_poly_commit.0,
-            );
+        let verifier_key = widget::VerifierKey::from_polynomial_commitments(
+            self.circuit_size(),
+            q_m_poly_commit.0,
+            q_l_poly_commit.0,
+            q_r_poly_commit.0,
+            q_o_poly_commit.0,
+            q_4_poly_commit.0,
+            q_c_poly_commit.0,
+            q_arith_poly_commit.0,
+            q_range_poly_commit.0,
+            q_logic_poly_commit.0,
+            q_fixed_group_add_poly_commit.0,
+            q_variable_group_add_poly_commit.0,
+            left_sigma_poly_commit.0,
+            right_sigma_poly_commit.0,
+            out_sigma_poly_commit.0,
+            fourth_sigma_poly_commit.0,
+        );
 
         let selectors = SelectorPolynomials {
             q_m: q_m_poly,
@@ -428,13 +432,14 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
 /// Given that the domain size is `D`
 /// This function computes the `D` evaluation points for
 /// the vanishing polynomial of degree `n` over a coset
-pub(crate) fn compute_vanishing_poly_over_coset<
-    F: PrimeField,
-    D: EvaluationDomain<F>,
->(
+pub fn compute_vanishing_poly_over_coset<F, D>(
     domain: D,        // domain to evaluate over
     poly_degree: u64, // degree of the vanishing polynomial
-) -> Evaluations<F, D> {
+) -> Evaluations<F, D>
+where
+    F: PrimeField,
+    D: EvaluationDomain<F>,
+{
     assert!(
         (domain.size() as u64) > poly_degree,
         "domain_size = {}, poly_degree = {}",
@@ -459,9 +464,13 @@ mod test {
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
 
-    /// Tests that the circuit gets padded to the correct length
-    /// XXX: We can do this test without dummy_gadget method
-    fn test_pad<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>() {
+    /// Tests that the circuit gets padded to the correct length.
+    // FIXME: We can do this test without dummy_gadget method.
+    fn test_pad<E, P>()
+    where
+        E: PairingEngine,
+        P: TEModelParameters<BaseField = E::Fr>,
+    {
         let mut composer: StandardComposer<E, P> = StandardComposer::new();
         dummy_gadget(100, &mut composer);
 
@@ -488,23 +497,19 @@ mod test {
 
     // Bls12-381 tests
     batch_test!(
-        [
-        test_pad
-        ],
+        [test_pad],
         [] => (
-        Bls12_381,
-        ark_ed_on_bls12_381::EdwardsParameters
+            Bls12_381,
+            ark_ed_on_bls12_381::EdwardsParameters
         )
     );
 
     // Bls12-377 tests
     batch_test!(
-        [
-        test_pad
-        ],
+        [test_pad],
         [] => (
-        Bls12_377,
-        ark_ed_on_bls12_377::EdwardsParameters
+            Bls12_377,
+            ark_ed_on_bls12_377::EdwardsParameters
         )
     );
 }

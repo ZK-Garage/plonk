@@ -4,5 +4,10 @@
 //
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
-pub(crate) mod curve_addition;
-pub(crate) mod scalar_mul;
+//! Elliptic Curve Cryptography Gates
+
+mod curve_addition;
+mod fixed_base_scalar_mul;
+
+pub use curve_addition::*;
+pub use fixed_base_scalar_mul::*;

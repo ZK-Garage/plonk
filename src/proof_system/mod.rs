@@ -4,20 +4,19 @@
 //
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
-//! Proving system
+//! PLONK Proving System
+
+mod linearisation_poly;
+mod permutation;
 mod preprocess;
-/// Represents a PLONK Prover
+mod quotient_poly;
+mod widget;
+
+pub mod proof;
 pub mod prover;
-pub use proof::*;
-pub(crate) mod quotient_poly;
-/// Represents a PLONK Verifier
 pub mod verifier;
+
+pub use proof::*;
 pub use prover::Prover;
 pub use verifier::Verifier;
 pub use widget::*;
-/// Represents a PLONK Proof
-pub mod proof;
-pub(crate) mod widget;
-pub use proof::Proof;
-pub use widget::VerifierKey;
-pub(crate) mod linearisation_poly;

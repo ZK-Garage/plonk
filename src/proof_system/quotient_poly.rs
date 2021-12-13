@@ -4,6 +4,12 @@
 //
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
+use crate::proof_system::ecc::CurveAddition;
+use crate::proof_system::ecc::FixedBaseScalarMul;
+use crate::proof_system::logic::Logic;
+use crate::proof_system::range::Range;
+use crate::proof_system::widget::GateConstraint;
+use crate::proof_system::GateValues;
 use crate::{error::Error, proof_system::ProverKey};
 use ark_ec::TEModelParameters;
 use ark_ff::PrimeField;
@@ -13,48 +19,49 @@ use ark_poly::{
 };
 
 /// Computes the Quotient [`DensePolynomial`] given the [`EvaluationDomain`], a
-/// [`ProverKey`] and some other info.
-pub(crate) fn compute<F: PrimeField, P: TEModelParameters<BaseField = F>>(
+/// [`ProverKey`], and some other info.
+pub fn compute<F, P>(
     domain: &GeneralEvaluationDomain<F>,
     prover_key: &ProverKey<F, P>,
     z_poly: &DensePolynomial<F>,
-    (w_l_poly, w_r_poly, w_o_poly, w_4_poly): (
-        &DensePolynomial<F>,
-        &DensePolynomial<F>,
-        &DensePolynomial<F>,
-        &DensePolynomial<F>,
-    ),
+    w_l_poly: &DensePolynomial<F>,
+    w_r_poly: &DensePolynomial<F>,
+    w_o_poly: &DensePolynomial<F>,
+    w_4_poly: &DensePolynomial<F>,
     public_inputs_poly: &DensePolynomial<F>,
-    (
-        alpha,
-        beta,
-        gamma,
-        range_challenge,
-        logic_challenge,
-        fixed_base_challenge,
-        var_base_challenge,
-    ): &(F, F, F, F, F, F, F),
-) -> Result<DensePolynomial<F>, Error> {
-    // Compute 4n eval of z(X)
+    alpha: &F,
+    beta: &F,
+    gamma: &F,
+    range_challenge: &F,
+    logic_challenge: &F,
+    fixed_base_challenge: &F,
+    var_base_challenge: &F,
+) -> Result<DensePolynomial<F>, Error>
+where
+    F: PrimeField,
+    P: TEModelParameters<BaseField = F>,
+{
     let domain_4n =
         GeneralEvaluationDomain::<F>::new(4 * domain.size()).unwrap();
+
     let mut z_eval_4n = domain_4n.coset_fft(z_poly);
     z_eval_4n.push(z_eval_4n[0]);
     z_eval_4n.push(z_eval_4n[1]);
     z_eval_4n.push(z_eval_4n[2]);
     z_eval_4n.push(z_eval_4n[3]);
 
-    // Compute 4n evaluations of the wire Densepolynomials
     let mut wl_eval_4n = domain_4n.coset_fft(w_l_poly);
     wl_eval_4n.push(wl_eval_4n[0]);
     wl_eval_4n.push(wl_eval_4n[1]);
     wl_eval_4n.push(wl_eval_4n[2]);
     wl_eval_4n.push(wl_eval_4n[3]);
+
     let mut wr_eval_4n = domain_4n.coset_fft(w_r_poly);
     wr_eval_4n.push(wr_eval_4n[0]);
     wr_eval_4n.push(wr_eval_4n[1]);
     wr_eval_4n.push(wr_eval_4n[2]);
     wr_eval_4n.push(wr_eval_4n[3]);
+
     let wo_eval_4n = domain_4n.coset_fft(w_o_poly);
 
     let mut w4_eval_4n = domain_4n.coset_fft(w_4_poly);
@@ -63,147 +70,150 @@ pub(crate) fn compute<F: PrimeField, P: TEModelParameters<BaseField = F>>(
     w4_eval_4n.push(w4_eval_4n[2]);
     w4_eval_4n.push(w4_eval_4n[3]);
 
-    let t_1 = compute_circuit_satisfiability_equation(
+    let gate_constraints = compute_gate_constraint_satisfiability(
         domain,
-        (
-            *range_challenge,
-            *logic_challenge,
-            *fixed_base_challenge,
-            *var_base_challenge,
-        ),
+        *range_challenge,
+        *logic_challenge,
+        *fixed_base_challenge,
+        *var_base_challenge,
         prover_key,
-        (&wl_eval_4n, &wr_eval_4n, &wo_eval_4n, &w4_eval_4n),
+        &wl_eval_4n,
+        &wr_eval_4n,
+        &wo_eval_4n,
+        &w4_eval_4n,
         public_inputs_poly,
     );
 
-    let t_2 = compute_permutation_checks(
+    let permutation = compute_permutation_checks(
         domain,
         prover_key,
-        (&wl_eval_4n, &wr_eval_4n, &wo_eval_4n, &w4_eval_4n),
+        &wl_eval_4n,
+        &wr_eval_4n,
+        &wo_eval_4n,
+        &w4_eval_4n,
         &z_eval_4n,
-        (*alpha, *beta, *gamma),
+        *alpha,
+        *beta,
+        *gamma,
     );
-    let range = 0..domain_4n.size();
 
-    let quotient: Vec<_> = range
+    let quotient = (0..domain_4n.size())
         .map(|i| {
-            let numerator = t_1[i] + t_2[i];
+            let numerator = gate_constraints[i] + permutation[i];
             let denominator = prover_key.v_h_coset_4n()[i];
             numerator * denominator.inverse().unwrap()
         })
-        .collect();
+        .collect::<Vec<_>>();
 
     Ok(DensePolynomial {
         coeffs: domain_4n.coset_ifft(&quotient),
     })
 }
 
-// Ensures that the circuit is satisfied
-fn compute_circuit_satisfiability_equation<
+/// Ensures that the gate constraints are satisfied.
+fn compute_gate_constraint_satisfiability<F, P>(
+    domain: &GeneralEvaluationDomain<F>,
+    range_challenge: F,
+    logic_challenge: F,
+    fixed_base_challenge: F,
+    var_base_challenge: F,
+    prover_key: &ProverKey<F, P>,
+    wl_eval_4n: &[F],
+    wr_eval_4n: &[F],
+    wo_eval_4n: &[F],
+    w4_eval_4n: &[F],
+    pi_poly: &DensePolynomial<F>,
+) -> Vec<F>
+where
     F: PrimeField,
     P: TEModelParameters<BaseField = F>,
->(
-    domain: &GeneralEvaluationDomain<F>,
-    (
-        range_challenge,
-        logic_challenge,
-        fixed_base_challenge,
-        var_base_challenge,
-    ): (F, F, F, F),
-    prover_key: &ProverKey<F, P>,
-    (wl_eval_4n, wr_eval_4n, wo_eval_4n, w4_eval_4n): (&[F], &[F], &[F], &[F]),
-    pi_poly: &DensePolynomial<F>,
-) -> Vec<F> {
+{
     let domain_4n =
         GeneralEvaluationDomain::<F>::new(4 * domain.size()).unwrap();
     let pi_eval_4n = domain_4n.coset_fft(pi_poly);
 
-    let range = 0..domain_4n.size();
-
-    let t: Vec<_> = range
+    (0..domain_4n.size())
         .map(|i| {
-            let wl = wl_eval_4n[i];
-            let wr = wr_eval_4n[i];
-            let wo = wo_eval_4n[i];
-            let w4 = w4_eval_4n[i];
-            let wl_next = wl_eval_4n[i + 4];
-            let wr_next = wr_eval_4n[i + 4];
-            let w4_next = w4_eval_4n[i + 4];
-            let pi = pi_eval_4n[i];
+            let values = GateValues {
+                left: wl_eval_4n[i],
+                right: wr_eval_4n[i],
+                output: wo_eval_4n[i],
+                fourth: w4_eval_4n[i],
+                left_next: wl_eval_4n[i + 4],
+                right_next: wr_eval_4n[i + 4],
+                fourth_next: w4_eval_4n[i + 4],
+                left_selector: prover_key.arithmetic.q_l.1[i],
+                right_selector: prover_key.arithmetic.q_r.1[i],
+                constant_selector: prover_key.arithmetic.q_c.1[i],
+            };
 
-            let a = prover_key.arithmetic.compute_quotient_i(i, wl, wr, wo, w4);
-
-            let b = prover_key.range.compute_quotient_i(
+            let arithmetic = prover_key.arithmetic.compute_quotient_i(
                 i,
+                values.left,
+                values.right,
+                values.output,
+                values.fourth,
+            );
+
+            let range = Range::quotient_term(
+                prover_key.range_selector.1[i],
                 range_challenge,
-                wl,
-                wr,
-                wo,
-                w4,
-                w4_next,
+                values,
             );
 
-            let c = prover_key.logic.compute_quotient_i(
-                i,
+            let logic = Logic::quotient_term(
+                prover_key.logic_selector.1[i],
                 logic_challenge,
-                wl,
-                wl_next,
-                wr,
-                wr_next,
-                wo,
-                w4,
-                w4_next,
+                values,
             );
 
-            let d = prover_key.fixed_base.compute_quotient_i(
-                i,
-                fixed_base_challenge,
-                wl,
-                wl_next,
-                wr,
-                wr_next,
-                wo,
-                w4,
-                w4_next,
-            );
+            let fixed_base_scalar_mul =
+                FixedBaseScalarMul::<_, P>::quotient_term(
+                    prover_key.fixed_group_add_selector.1[i],
+                    fixed_base_challenge,
+                    values,
+                );
 
-            let e = prover_key.variable_base.compute_quotient_i(
-                i,
+            let curve_addition = CurveAddition::<_, P>::quotient_term(
+                prover_key.variable_group_add_selector.1[i],
                 var_base_challenge,
-                wl,
-                wl_next,
-                wr,
-                wr_next,
-                wo,
-                w4,
-                w4_next,
+                values,
             );
 
-            (a + pi) + b + c + d + e
+            (arithmetic + pi_eval_4n[i])
+                + range
+                + logic
+                + fixed_base_scalar_mul
+                + curve_addition
         })
-        .collect();
-    t
+        .collect()
 }
 
-fn compute_permutation_checks<
-    F: PrimeField,
-    P: TEModelParameters<BaseField = F>,
->(
+/// Computes the permutation contribution to the quotient polynomial over
+/// `domain`.
+fn compute_permutation_checks<F, P>(
     domain: &GeneralEvaluationDomain<F>,
     prover_key: &ProverKey<F, P>,
-    (wl_eval_4n, wr_eval_4n, wo_eval_4n, w4_eval_4n): (&[F], &[F], &[F], &[F]),
+    wl_eval_4n: &[F],
+    wr_eval_4n: &[F],
+    wo_eval_4n: &[F],
+    w4_eval_4n: &[F],
     z_eval_4n: &[F],
-    (alpha, beta, gamma): (F, F, F),
-) -> Vec<F> {
+    alpha: F,
+    beta: F,
+    gamma: F,
+) -> Vec<F>
+where
+    F: PrimeField,
+    P: TEModelParameters<BaseField = F>,
+{
     let domain_4n =
         GeneralEvaluationDomain::<F>::new(4 * domain.size()).unwrap();
     let l1_poly_alpha =
         compute_first_lagrange_poly_scaled(domain, alpha.square());
     let l1_alpha_sq_evals = domain_4n.coset_fft(&l1_poly_alpha.coeffs);
 
-    let range = 0..domain_4n.size();
-
-    let t: Vec<_> = range
+    (0..domain_4n.size())
         .map(|i| {
             prover_key.permutation.compute_quotient_i(
                 i,
@@ -219,13 +229,17 @@ fn compute_permutation_checks<
                 gamma,
             )
         })
-        .collect();
-    t
+        .collect()
 }
-fn compute_first_lagrange_poly_scaled<F: PrimeField>(
+
+/// Computes the first lagrange polynomial with the given `scale` over `domain`.
+fn compute_first_lagrange_poly_scaled<F>(
     domain: &GeneralEvaluationDomain<F>,
     scale: F,
-) -> DensePolynomial<F> {
+) -> DensePolynomial<F>
+where
+    F: PrimeField,
+{
     let mut x_evals = vec![F::zero(); domain.size()];
     x_evals[0] = scale;
     domain.ifft_in_place(&mut x_evals);
