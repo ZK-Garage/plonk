@@ -16,15 +16,16 @@ use crate::{
     util,
 };
 use ark_ec::{PairingEngine, TEModelParameters};
-use ark_ff::Field;
+use ark_ff::{Field, UniformRand};
 use ark_poly::{
-    univariate::DensePolynomial, EvaluationDomain, GeneralEvaluationDomain,
-    UVPolynomial,
+    univariate::{DensePolynomial, SparsePolynomial},
+    EvaluationDomain, GeneralEvaluationDomain, Polynomial, UVPolynomial,
 };
 use ark_poly_commit::kzg10::{Powers, KZG10};
 use core::marker::PhantomData;
 use core::ops::Add;
 use num_traits::Zero;
+use rand_core::OsRng;
 
 /// Abstraction structure designed to construct a circuit and generate
 /// [`Proof`]s for it.
@@ -92,7 +93,8 @@ where
         Ok(())
     }
 
-    /// Split `t(X)` poly into 4 degree `n` polynomials.
+    /// Split `t(X)` poly into 4 polynomials.
+    /// The first 3 polynomials have degree n, the 4th has degree n+6
     #[allow(clippy::type_complexity)] // NOTE: This is an ok type for internal use.
     fn split_tx_poly(
         &self,
@@ -182,6 +184,37 @@ where
                 .fold(Zero::zero(), Add::add),
             *point,
         )
+    }
+
+    /// Adds to a given polynomial a blinder term of the form:
+    /// (b0 + b1 X + ...+ bk X^k) Z_h
+    /// where k is the hiding_degree and Z_h = X^n - 1, the vanishing
+    /// polynomial.
+    fn add_blinder(
+        polynomial: &DensePolynomial<E::Fr>,
+        n: usize,
+        hiding_degree: usize,
+    ) -> DensePolynomial<E::Fr> {
+        assert!(
+            hiding_degree > n / 2,
+            "The hidding degree must be less than n/2"
+        );
+        let mut sparse_blinder_vec: Vec<(usize, E::Fr)> =
+            Vec::with_capacity(hiding_degree + 1);
+
+        // Computes the multiplication of (b0 + b1X + ..+ bk X^k) (X^n -1)
+        // = (- b0 -b1 X ... -bk X^k  ..., b0 X^n + b1 X^(n+1) + ... bk X^(n+k)
+        // as long as k< n/2
+        for i in 0..hiding_degree + 1 {
+            let random_blinder = E::Fr::rand(&mut OsRng);
+            sparse_blinder_vec[i] = (i, -random_blinder);
+            sparse_blinder_vec[hiding_degree + 1 + i] = (n + i, random_blinder);
+        }
+
+        let blinder_poly =
+            SparsePolynomial::from_coefficients_vec(sparse_blinder_vec);
+
+        polynomial + &blinder_poly
     }
 
     /// Creates a [`Proof]` that demonstrates that a circuit is satisfied.
