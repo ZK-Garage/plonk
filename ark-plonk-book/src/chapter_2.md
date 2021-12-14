@@ -207,7 +207,7 @@ From the left side we get
         r' \cdot \sum_{i=1}^{t_1} \gamma'^{i-1}
         \frac{f'_i(x) - f'_i(z')}{x-z'} , [x]_2)
         $$
-:::
+
 
 
 

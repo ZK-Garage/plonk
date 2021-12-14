@@ -26,7 +26,9 @@ ARK-PLONK's implementation is an optimization of the original PLONK protocol as 
 Our implementation also uses custom gates similarly to [TurboPolnk](https://docs.zkproof.org/pages/standards/accepted-workshop3/proposal-turbo_plonk.pdf) which allow us to define our own custom bit arithmetic operations like efficient Poseidon or MIMC hashes which are extremely efficient to evaluate inside of a snark. 
 
 
-  
+### Proof generation
+### Prover
+### Verifier
 
 ### Gadgets
 
@@ -120,4 +122,33 @@ We define three checks that our circuit relies on:
 
 
 ## Performance: 
-benchmarks for prover and verifier 
+To run the benchmarks and get a full report on the performance using your machine 
+
+```RUSTFLAGS='-C target-cpu=native' cargo bench```
+
+The benchmarks for prover and verifier are done using the [Criterion.rs](https://bheisler.github.io/criterion.rs/book/criterion_rs.html) micro-benchmarking tool. Benchmarks are repeated 10 times each and so far only been run with Bls12_381. Benchmarks taken on Intel(R) Core(TM) i9-10885H. Results are in the following table:
+
+
+
+| Circuit size    | Prover speed | Verifier speed| 
+|-----------------|--------------| --------------|            
+|    $2^5$        |    9.5398ms  |    4.2881ms   |               
+|    $2^6$        |    13.013ms  |    4.2781ms   |                   
+|    $2^7$        |    18.137ms  |    4.2973ms   |                      
+|    $2^8$        |    29.914ms  |    4.2593ms   |                       
+|    $2^9$        |    50.221ms  |    4.3023ms   |                          
+|    $2^{10}$     |    68.704ms  |    4.2228ms   |               
+|    $2^{11}$     |    127.49ms  |    4.1379ms   |               
+|    $2^{12}$     |    245.48ms  |    4.1467ms   |               
+|    $2^{13}$     |    440.64ms  |    4.1770ms   |               
+|    $2^{14}$     |    869.66ms  |    4.1870ms   |               
+|    $2^{15}$     |    1.7712s   |    4.3390ms   |               
+|    $2^{16}$     |    3.4499s   |    4.5020ms   |               
+|    $2^{17}$     |    6.7577s   |    5.1572ms   |              
+|    $2^{18}$     |    13.704s   |    6.8124ms   |                                     
+
+
+The ark-plonk benchmarks are outperforming those of dusk-plonk library. For example, in dusk-plonk the results are taken with Intel(R) Core(TM) i9-9900X for a circuit of size $2^{16}$ are:
+
+* Prover time: $5.46s$ which is higher than $3.44s$ in the case of ark-plonk 
+* Verifier time: $9.34ms$ which is higher than $4.50ms$ in the case of Plonk.
