@@ -10,21 +10,20 @@ use crate::constraint_system::StandardComposer;
 use crate::error::Error;
 use crate::proof_system::widget::VerifierKey as PlonkVerifierKey;
 use crate::proof_system::Proof;
-use crate::transcript::TranscriptWrapper;
 use ark_ec::{PairingEngine, TEModelParameters};
 use ark_poly_commit::kzg10::{Powers, VerifierKey};
+use merlin::Transcript;
 
 /// Abstraction structure designed verify [`Proof`]s.
-pub struct Verifier<E, P>
+pub struct Verifier<E>
 where
     E: PairingEngine,
-    P: TEModelParameters<BaseField = E::Fr>,
 {
     /// VerificationKey which is used to verify a specific PLONK circuit
-    pub verifier_key: Option<PlonkVerifierKey<E, P>>,
+    pub verifier_key: Option<PlonkVerifierKey<E>>,
 
     /// Circuit Description
-    pub(crate) cs: StandardComposer<E, P>,
+    pub(crate) cs: StandardComposer<E::Fr>,
 
     /// Store the messages exchanged during the preprocessing stage.
     ///
@@ -32,20 +31,19 @@ where
     /// verifier to verify multiple proofs from the same circuit. If this is
     /// not copied, then the verification procedure will modify the transcript,
     /// making it unusable for future proofs.
-    pub preprocessed_transcript: TranscriptWrapper<E>,
+    pub preprocessed_transcript: Transcript,
 }
 
-impl<E, P> Verifier<E, P>
+impl<E> Verifier<E>
 where
     E: PairingEngine,
-    P: TEModelParameters<BaseField = E::Fr>,
 {
     /// Creates a new `Verifier` instance.
     pub fn new(label: &'static [u8]) -> Self {
         Self {
             verifier_key: None,
             cs: StandardComposer::new(),
-            preprocessed_transcript: TranscriptWrapper::new(label),
+            preprocessed_transcript: Transcript::new(label),
         }
     }
 
@@ -54,7 +52,7 @@ where
         Self {
             verifier_key: None,
             cs: StandardComposer::with_expected_size(size),
-            preprocessed_transcript: TranscriptWrapper::new(label),
+            preprocessed_transcript: Transcript::new(label),
         }
     }
 
@@ -64,7 +62,7 @@ where
     }
 
     /// Returns a mutable copy of the underlying composer.
-    pub fn mut_cs(&mut self) -> &mut StandardComposer<E, P> {
+    pub fn mut_cs(&mut self) -> &mut StandardComposer<E::Fr> {
         &mut self.cs
     }
 
@@ -87,19 +85,20 @@ where
     /// [`Transcript`]: merlin::Transcript
     /// [`Transcript::append_message`]: merlin::Transcript::append_message
     pub fn key_transcript(&mut self, label: &'static [u8], message: &[u8]) {
-        self.preprocessed_transcript
-            .transcript
-            .append_message(label, message);
+        self.preprocessed_transcript.append_message(label, message);
     }
 
     /// Verifies a [`Proof`] using `pc_verifier_key` and `public_inputs`.
-    pub fn verify(
+    pub fn verify<P>(
         &self,
-        proof: &Proof<E, P>,
+        proof: &Proof<E>,
         pc_verifier_key: &VerifierKey<E>,
         public_inputs: &[E::Fr],
-    ) -> Result<(), Error> {
-        proof.verify(
+    ) -> Result<(), Error>
+    where
+        P: TEModelParameters<BaseField = E::Fr>,
+    {
+        proof.verify::<P>(
             self.verifier_key.as_ref().unwrap(),
             &mut self.preprocessed_transcript.clone(),
             pc_verifier_key,
@@ -108,13 +107,12 @@ where
     }
 }
 
-impl<E, P> Default for Verifier<E, P>
+impl<E> Default for Verifier<E>
 where
     E: PairingEngine,
-    P: TEModelParameters<BaseField = E::Fr>,
 {
     #[inline]
-    fn default() -> Verifier<E, P> {
+    fn default() -> Verifier<E> {
         Verifier::new(b"plonk")
     }
 }

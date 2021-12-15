@@ -8,7 +8,7 @@
 
 use crate::proof_system::linearisation_poly::ProofEvaluations;
 use ark_ec::PairingEngine;
-use ark_ff::PrimeField;
+use ark_ff::FftField;
 use ark_poly::polynomial::univariate::DensePolynomial;
 use ark_poly::Evaluations;
 use ark_poly_commit::sonic_pc::Commitment;
@@ -19,7 +19,7 @@ use ark_serialize::*;
 #[derivative(Clone, Debug, Eq, PartialEq)]
 pub struct ProverKey<F>
 where
-    F: PrimeField,
+    F: FftField,
 {
     /// Multiplication Selector
     pub q_m: (DensePolynomial<F>, Evaluations<F>),
@@ -45,7 +45,7 @@ where
 
 impl<F> ProverKey<F>
 where
-    F: PrimeField,
+    F: FftField,
 {
     /// Computes the arithmetic gate contribution to the quotient polynomial at
     /// the element of the domain at the given `index`.

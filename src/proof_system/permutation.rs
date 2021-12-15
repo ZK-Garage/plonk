@@ -9,8 +9,8 @@
 use crate::permutation::constants::{K1, K2, K3};
 use crate::proof_system::linearisation_poly::ProofEvaluations;
 use ark_ec::PairingEngine;
+use ark_ff::FftField;
 use ark_ff::Field;
-use ark_ff::PrimeField;
 use ark_poly::polynomial::univariate::DensePolynomial;
 use ark_poly::{
     EvaluationDomain, Evaluations, GeneralEvaluationDomain, Polynomial,
@@ -28,7 +28,7 @@ use ark_serialize::*;
 )]
 pub struct ProverKey<F>
 where
-    F: PrimeField,
+    F: FftField,
 {
     /// Left Permutation
     pub left_sigma: (DensePolynomial<F>, Evaluations<F>),
@@ -54,7 +54,7 @@ where
 
 impl<F> ProverKey<F>
 where
-    F: PrimeField,
+    F: FftField,
 {
     /// Computes the quotient polynomial at the `i`th domain point.
     pub fn compute_quotient_i(

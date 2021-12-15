@@ -10,6 +10,7 @@
 //! This module contains the implementation of the `StandardComposer`s
 //! `Proof` structure and it's methods.
 
+use crate::error::Error;
 use crate::proof_system::ecc::CurveAddition;
 use crate::proof_system::ecc::FixedBaseScalarMul;
 use crate::proof_system::linearisation_poly::ProofEvaluations;
@@ -20,7 +21,6 @@ use crate::proof_system::VerifierKey as PlonkVerifierKey;
 use crate::transcript::TranscriptProtocol;
 use crate::util;
 use crate::util::EvaluationDomainExt;
-use crate::{error::Error, transcript::TranscriptWrapper};
 use ark_ec::{msm::VariableBaseMSM, AffineCurve, TEModelParameters};
 use ark_ec::{PairingEngine, ProjectiveCurve};
 use ark_ff::{fields::batch_inversion, Field, PrimeField};
@@ -31,7 +31,7 @@ use ark_poly_commit::kzg10::{Commitment, VerifierKey, KZG10};
 use ark_serialize::{
     CanonicalDeserialize, CanonicalSerialize, Read, SerializationError, Write,
 };
-use core::marker::PhantomData;
+use merlin::Transcript;
 use rand_core::OsRng;
 
 /// A Proof is a composition of `Commitment`s to the Witness, Permutation,
@@ -52,10 +52,9 @@ use rand_core::OsRng;
     Eq(bound = ""),
     PartialEq(bound = "")
 )]
-pub struct Proof<E, P>
+pub struct Proof<E>
 where
     E: PairingEngine,
-    P: TEModelParameters<BaseField = E::Fr>,
 {
     /// Commitment to the witness polynomial for the left wires.
     pub(crate) a_comm: Commitment<E>,
@@ -92,24 +91,23 @@ where
 
     /// Subset of all of the evaluations added to the proof.
     pub(crate) evaluations: ProofEvaluations<E::Fr>,
-
-    /// Type Parameter Marker
-    pub(crate) __: PhantomData<P>,
 }
 
-impl<E, P> Proof<E, P>
+impl<E> Proof<E>
 where
     E: PairingEngine,
-    P: TEModelParameters<BaseField = E::Fr>,
 {
     /// Performs the verification of a [`Proof`] returning a boolean result.
-    pub(crate) fn verify(
+    pub(crate) fn verify<P>(
         &self,
-        plonk_verifier_key: &PlonkVerifierKey<E, P>,
-        transcript: &mut TranscriptWrapper<E>,
+        plonk_verifier_key: &PlonkVerifierKey<E>,
+        transcript: &mut Transcript,
         verifier_key: &VerifierKey<E>,
         pub_inputs: &[E::Fr],
-    ) -> Result<(), Error> {
+    ) -> Result<(), Error>
+    where
+        P: TEModelParameters<BaseField = E::Fr>,
+    {
         let domain =
             GeneralEvaluationDomain::<E::Fr>::new(plonk_verifier_key.n)
                 .unwrap();
@@ -124,20 +122,20 @@ where
         // same challenges
         //
         // Add commitment to witness polynomials to transcript
-        transcript.append_commitment(b"w_l", &self.a_comm);
-        transcript.append_commitment(b"w_r", &self.b_comm);
-        transcript.append_commitment(b"w_o", &self.c_comm);
-        transcript.append_commitment(b"w_4", &self.d_comm);
+        transcript.append(b"w_l", &self.a_comm);
+        transcript.append(b"w_r", &self.b_comm);
+        transcript.append(b"w_o", &self.c_comm);
+        transcript.append(b"w_4", &self.d_comm);
 
         // Compute beta and gamma challenges
         let beta = transcript.challenge_scalar(b"beta");
-        transcript.append_scalar(b"beta", &beta);
+        transcript.append(b"beta", &beta);
         let gamma = transcript.challenge_scalar(b"gamma");
 
         assert!(beta != gamma, "challenges must be different");
 
         // Add commitment to permutation polynomial to transcript
-        transcript.append_commitment(b"z", &self.z_comm);
+        transcript.append(b"z", &self.z_comm);
 
         // Compute quotient challenge
         let alpha = transcript.challenge_scalar(b"alpha");
@@ -151,10 +149,10 @@ where
             transcript.challenge_scalar(b"variable base separation challenge");
 
         // Add commitment to quotient polynomial to transcript
-        transcript.append_commitment(b"t_1", &self.t_1_comm);
-        transcript.append_commitment(b"t_2", &self.t_2_comm);
-        transcript.append_commitment(b"t_3", &self.t_3_comm);
-        transcript.append_commitment(b"t_4", &self.t_4_comm);
+        transcript.append(b"t_1", &self.t_1_comm);
+        transcript.append(b"t_2", &self.t_2_comm);
+        transcript.append(b"t_3", &self.t_3_comm);
+        transcript.append(b"t_4", &self.t_4_comm);
 
         // Compute evaluation point challenge
         let z_challenge = transcript.challenge_scalar(b"z");
@@ -186,36 +184,28 @@ where
             self.compute_quotient_commitment(&z_challenge, domain.size());
 
         // Add evaluations to transcript
-        transcript.append_scalar(b"a_eval", &self.evaluations.a_eval);
-        transcript.append_scalar(b"b_eval", &self.evaluations.b_eval);
-        transcript.append_scalar(b"c_eval", &self.evaluations.c_eval);
-        transcript.append_scalar(b"d_eval", &self.evaluations.d_eval);
-        transcript.append_scalar(b"a_next_eval", &self.evaluations.a_next_eval);
-        transcript.append_scalar(b"b_next_eval", &self.evaluations.b_next_eval);
-        transcript.append_scalar(b"d_next_eval", &self.evaluations.d_next_eval);
+        transcript.append(b"a_eval", &self.evaluations.a_eval);
+        transcript.append(b"b_eval", &self.evaluations.b_eval);
+        transcript.append(b"c_eval", &self.evaluations.c_eval);
+        transcript.append(b"d_eval", &self.evaluations.d_eval);
+        transcript.append(b"a_next_eval", &self.evaluations.a_next_eval);
+        transcript.append(b"b_next_eval", &self.evaluations.b_next_eval);
+        transcript.append(b"d_next_eval", &self.evaluations.d_next_eval);
+        transcript.append(b"left_sig_eval", &self.evaluations.left_sigma_eval);
         transcript
-            .append_scalar(b"left_sig_eval", &self.evaluations.left_sigma_eval);
-        transcript.append_scalar(
-            b"right_sig_eval",
-            &self.evaluations.right_sigma_eval,
-        );
+            .append(b"right_sig_eval", &self.evaluations.right_sigma_eval);
+        transcript.append(b"out_sig_eval", &self.evaluations.out_sigma_eval);
+        transcript.append(b"q_arith_eval", &self.evaluations.q_arith_eval);
+        transcript.append(b"q_c_eval", &self.evaluations.q_c_eval);
+        transcript.append(b"q_l_eval", &self.evaluations.q_l_eval);
+        transcript.append(b"q_r_eval", &self.evaluations.q_r_eval);
+        transcript.append(b"perm_eval", &self.evaluations.permutation_eval);
+        transcript.append(b"t_eval", &t_eval);
         transcript
-            .append_scalar(b"out_sig_eval", &self.evaluations.out_sigma_eval);
-        transcript
-            .append_scalar(b"q_arith_eval", &self.evaluations.q_arith_eval);
-        transcript.append_scalar(b"q_c_eval", &self.evaluations.q_c_eval);
-        transcript.append_scalar(b"q_l_eval", &self.evaluations.q_l_eval);
-        transcript.append_scalar(b"q_r_eval", &self.evaluations.q_r_eval);
-        transcript
-            .append_scalar(b"perm_eval", &self.evaluations.permutation_eval);
-        transcript.append_scalar(b"t_eval", &t_eval);
-        transcript.append_scalar(
-            b"r_eval",
-            &self.evaluations.linearisation_polynomial_eval,
-        );
+            .append(b"r_eval", &self.evaluations.linearisation_polynomial_eval);
 
         // Compute linearisation commitment
-        let r_comm = self.compute_linearisation_commitment(
+        let r_comm = self.compute_linearisation_commitment::<P>(
             alpha,
             beta,
             gamma,
@@ -267,8 +257,8 @@ where
         };
 
         // Add commitment to openings to transcript
-        transcript.append_commitment(b"w_z", &self.w_z_comm);
-        transcript.append_commitment(b"w_z_w", &self.w_zw_comm);
+        transcript.append(b"w_z", &self.w_z_comm);
+        transcript.append(b"w_z_w", &self.w_zw_comm);
 
         let group_gen = domain.group_gen();
 
@@ -292,8 +282,8 @@ where
         t_eval: E::Fr,
         t_comm: Commitment<E>,
         r_comm: Commitment<E>,
-        plonk_verifier_key: &PlonkVerifierKey<E, P>,
-        transcript: &mut TranscriptWrapper<E>,
+        plonk_verifier_key: &PlonkVerifierKey<E>,
+        transcript: &mut Transcript,
     ) -> (Commitment<E>, E::Fr) {
         let challenge = transcript.challenge_scalar(b"aggregate_witness");
         util::linear_combination(
@@ -326,7 +316,7 @@ where
     // TODO: Doc this
     fn gen_shift_aggregate_proof(
         &self,
-        transcript: &mut TranscriptWrapper<E>,
+        transcript: &mut Transcript,
     ) -> (Commitment<E>, E::Fr) {
         let challenge = transcript.challenge_scalar(b"aggregate_witness");
         util::linear_combination(
@@ -403,7 +393,7 @@ where
     }
 
     /// Computes the commitment to `[r]_1`.
-    fn compute_linearisation_commitment(
+    fn compute_linearisation_commitment<P>(
         &self,
         alpha: E::Fr,
         beta: E::Fr,
@@ -414,8 +404,11 @@ where
         var_base_sep_challenge: E::Fr,
         z_challenge: E::Fr,
         l1_eval: E::Fr,
-        plonk_verifier_key: &PlonkVerifierKey<E, P>,
-    ) -> Commitment<E> {
+        plonk_verifier_key: &PlonkVerifierKey<E>,
+    ) -> Commitment<E>
+    where
+        P: TEModelParameters<BaseField = E::Fr>,
+    {
         let mut scalars = Vec::with_capacity(6);
         let mut points = Vec::with_capacity(6);
 
@@ -556,18 +549,17 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::batch_test;
+    use crate::batch_test_engine;
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
     use ark_ff::UniformRand;
     use rand_core::OsRng;
 
-    fn test_serde_proof<E, P>()
+    fn test_serde_proof<E>()
     where
         E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
     {
-        let proof = Proof::<E, P> {
+        let proof = Proof::<E> {
             a_comm: Default::default(),
             b_comm: Default::default(),
             c_comm: Default::default(),
@@ -597,7 +589,6 @@ mod test {
                 linearisation_polynomial_eval: E::Fr::rand(&mut OsRng),
                 permutation_eval: E::Fr::rand(&mut OsRng),
             },
-            __: PhantomData,
         };
 
         let mut proof_bytes = vec![];
@@ -610,20 +601,18 @@ mod test {
     }
 
     // Bls12-381 tests
-    batch_test!(
+    batch_test_engine!(
         [test_serde_proof],
         [] => (
-            Bls12_381,
-            ark_ed_on_bls12_381::EdwardsParameters
+            Bls12_381
         )
     );
 
     // Bls12-377 tests
-    batch_test!(
+    batch_test_engine!(
         [test_serde_proof],
         [] => (
-            Bls12_377,
-            ark_ed_on_bls12_377::EdwardsParameters
+            Bls12_377
         )
     );
 }

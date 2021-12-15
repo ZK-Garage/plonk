@@ -12,8 +12,8 @@ use crate::proof_system::GateValues;
 use crate::proof_system::ProverKey;
 use crate::util::EvaluationDomainExt;
 use ark_ec::TEModelParameters;
+use ark_ff::FftField;
 use ark_ff::Field;
-use ark_ff::PrimeField;
 use ark_poly::{
     univariate::DensePolynomial, GeneralEvaluationDomain, Polynomial,
 };
@@ -27,7 +27,7 @@ use ark_serialize::{
 /// * w` where `w` is a root of unit.
 pub struct Evaluations<F>
 where
-    F: PrimeField,
+    F: Field,
 {
     /// Proof-relevant Evaluations
     pub proof: ProofEvaluations<F>,
@@ -100,7 +100,7 @@ where
 /// Compute the linearisation polynomial.
 pub fn compute<F, P>(
     domain: &GeneralEvaluationDomain<F>,
-    prover_key: &ProverKey<F, P>,
+    prover_key: &ProverKey<F>,
     alpha: &F,
     beta: &F,
     gamma: &F,
@@ -117,7 +117,7 @@ pub fn compute<F, P>(
     z_poly: &DensePolynomial<F>,
 ) -> (DensePolynomial<F>, Evaluations<F>)
 where
-    F: PrimeField,
+    F: FftField,
     P: TEModelParameters<BaseField = F>,
 {
     let quot_eval = t_x_poly.evaluate(z_challenge);
@@ -144,7 +144,7 @@ where
     let d_next_eval = w_4_poly.evaluate(&shifted_z_challenge);
     let permutation_eval = z_poly.evaluate(&shifted_z_challenge);
 
-    let gate_constraints = compute_gate_constraint_satisfiability(
+    let gate_constraints = compute_gate_constraint_satisfiability::<F, P>(
         range_separation_challenge,
         logic_separation_challenge,
         fixed_base_separation_challenge,
@@ -220,10 +220,10 @@ fn compute_gate_constraint_satisfiability<F, P>(
     q_c_eval: F,
     q_l_eval: F,
     q_r_eval: F,
-    prover_key: &ProverKey<F, P>,
+    prover_key: &ProverKey<F>,
 ) -> DensePolynomial<F>
 where
-    F: PrimeField,
+    F: FftField,
     P: TEModelParameters<BaseField = F>,
 {
     let values = GateValues {

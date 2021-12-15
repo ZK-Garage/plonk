@@ -26,7 +26,7 @@ where
 /// Ruffini's algorithm.
 pub fn ruffini<F>(poly: DensePolynomial<F>, z: F) -> DensePolynomial<F>
 where
-    F: PrimeField,
+    F: FftField,
 {
     let mut quotient = Vec::with_capacity(poly.degree());
     let mut k = F::zero();
@@ -123,17 +123,17 @@ where
 /// curve. Panics if the embedded scalar is greater than the modulus of the
 /// pairing firendly curve scalar field
 #[allow(dead_code)]
-pub(crate) fn from_embedded_curve_scalar<E, P>(
+pub(crate) fn from_embedded_curve_scalar<F, P>(
     embedded_scalar: <P as ModelParameters>::ScalarField,
-) -> E::Fr
+) -> F
 where
-    E: PairingEngine,
-    P: TEModelParameters<BaseField = E::Fr>,
+    F: FftField + PrimeField,
+    P: TEModelParameters<BaseField = F>,
 {
     let scalar_repr = embedded_scalar.into_repr();
-    let modulus = <<E::Fr as PrimeField>::Params as FpParameters>::MODULUS;
+    let modulus = <<F as PrimeField>::Params as FpParameters>::MODULUS;
     if modulus.num_bits() >= scalar_repr.num_bits() {
-        let s = <<E::Fr as PrimeField>::BigInt as BigInteger>::from_bits_le(
+        let s = <<F as PrimeField>::BigInt as BigInteger>::from_bits_le(
             &scalar_repr.to_bits_le(),
         );
         assert!(s < modulus,
@@ -145,19 +145,17 @@ where
         assert!(scalar_repr < m,
             "The embedded scalar exceeds the capacity representation of the outter curve scalar");
     }
-    E::Fr::from_le_bytes_mod_order(&scalar_repr.to_bytes_le())
+    F::from_le_bytes_mod_order(&scalar_repr.to_bytes_le())
 }
 
 /// Get a embedded curve scalar `P::ScalarField` from a scalar of the pariring
 /// friendly curve. Panics if the pairing frindly curve scalar is greater than
 /// the modulus of the embedded curve scalar field
 #[allow(dead_code)]
-pub(crate) fn to_embedded_curve_scalar<E, P>(
-    pfc_scalar: E::Fr,
-) -> P::ScalarField
+pub(crate) fn to_embedded_curve_scalar<F, P>(pfc_scalar: F) -> P::ScalarField
 where
-    E: PairingEngine,
-    P: TEModelParameters<BaseField = E::Fr>,
+    F: PrimeField,
+    P: TEModelParameters<BaseField = F>,
 {
     let scalar_repr = pfc_scalar.into_repr();
     let modulus =
@@ -169,7 +167,7 @@ where
         assert!(s < modulus,
             "The embedded scalar exceeds the capacity representation of the outter curve scalar");
     } else {
-        let m = <<E::Fr as PrimeField>::BigInt as BigInteger>::from_bits_le(
+        let m = <<F as PrimeField>::BigInt as BigInteger>::from_bits_le(
             &modulus.to_bits_le(),
         );
         assert!(scalar_repr < m,

@@ -3,6 +3,7 @@
 use ark_bls12_381::{Bls12_381, Fr as BlsScalar};
 use ark_ec::{PairingEngine, TEModelParameters};
 use ark_ed_on_bls12_381::EdwardsParameters;
+use ark_ff::FftField;
 use ark_plonk::prelude::*;
 use ark_poly::univariate::DensePolynomial;
 use ark_poly_commit::kzg10::KZG10;
@@ -13,44 +14,29 @@ use rand_core::OsRng;
 /// Benchmark Circuit
 #[derive(derivative::Derivative)]
 #[derivative(Debug, Default)]
-pub struct BenchCircuit<E, P>
-where
-    E: PairingEngine,
-    P: TEModelParameters<BaseField = E::Fr>,
-{
+pub struct BenchCircuit {
     /// Circuit Size
     size: usize,
-
-    /// Type Parameter Marker
-    __: PhantomData<(E, P)>,
 }
 
-impl<E, P> BenchCircuit<E, P>
-where
-    E: PairingEngine,
-    P: TEModelParameters<BaseField = E::Fr>,
-{
+impl BenchCircuit {
     /// Builds a new circuit with a constraint count of `2^degree`.
     #[inline]
     pub fn new(degree: usize) -> Self {
-        Self {
-            size: 1 << degree,
-            __: PhantomData,
-        }
+        Self { size: 1 << degree }
     }
 }
 
-impl<E, P> Circuit<E, P> for BenchCircuit<E, P>
+impl<F> Circuit<F> for BenchCircuit
 where
-    E: PairingEngine,
-    P: TEModelParameters<BaseField = E::Fr>,
+    F: FftField,
 {
     const CIRCUIT_ID: [u8; 32] = [0xff; 32];
 
     #[inline]
     fn gadget(
         &mut self,
-        composer: &mut StandardComposer<E, P>,
+        composer: &mut StandardComposer<F>,
     ) -> Result<(), Error> {
         while composer.circuit_size() < self.size - 1 {
             composer.add_dummy_constraints();
@@ -80,7 +66,7 @@ fn constraint_system_benchmark(c: &mut Criterion) {
 
     let mut compiling_benchmarks = c.benchmark_group("compile");
     for degree in MINIMUM_DEGREE..MAXIMUM_DEGREE {
-        let mut circuit = BenchCircuit::<_, EdwardsParameters>::new(degree);
+        let mut circuit = BenchCircuit::new(degree);
         compiling_benchmarks.bench_with_input(
             BenchmarkId::from_parameter(degree),
             &degree,
@@ -95,14 +81,22 @@ fn constraint_system_benchmark(c: &mut Criterion) {
 
     let mut proving_benchmarks = c.benchmark_group("prove");
     for degree in MINIMUM_DEGREE..MAXIMUM_DEGREE {
-        let mut circuit = BenchCircuit::<_, EdwardsParameters>::new(degree);
+        let mut circuit = BenchCircuit::new(degree);
         let (pk_p, _) =
             circuit.compile(&pp).expect("Unable to compile circuit.");
         proving_benchmarks.bench_with_input(
             BenchmarkId::from_parameter(degree),
             &degree,
             |b, _| {
-                b.iter(|| circuit.gen_proof(&pp, pk_p.clone(), &label).unwrap())
+                b.iter(|| {
+                    circuit
+                        .gen_proof::<Bls12_381, EdwardsParameters>(
+                            &pp,
+                            pk_p.clone(),
+                            &label,
+                        )
+                        .unwrap()
+                })
             },
         );
     }
@@ -110,23 +104,27 @@ fn constraint_system_benchmark(c: &mut Criterion) {
 
     let mut verifying_benchmarks = c.benchmark_group("verify");
     for degree in MINIMUM_DEGREE..MAXIMUM_DEGREE {
-        let mut circuit = BenchCircuit::<_, EdwardsParameters>::new(degree);
+        let mut circuit = BenchCircuit::new(degree);
         let (pk_p, verifier_data) =
             circuit.compile(&pp).expect("Unable to compile circuit.");
-        let proof = circuit.gen_proof(&pp, pk_p.clone(), &label).unwrap();
+        let proof = circuit
+            .gen_proof::<Bls12_381, EdwardsParameters>(
+                &pp,
+                pk_p.clone(),
+                &label,
+            )
+            .unwrap();
         let VerifierData { key, pi_pos } = verifier_data;
         verifying_benchmarks.bench_with_input(
             BenchmarkId::from_parameter(degree),
             &degree,
             |b, _| {
                 b.iter(|| {
-                    ark_plonk::circuit::verify_proof(
-                        &pp,
-                        key.clone(),
-                        &proof,
-                        &[],
-                        &pi_pos,
-                        &label,
+                    ark_plonk::circuit::verify_proof::<
+                        Bls12_381,
+                        EdwardsParameters,
+                    >(
+                        &pp, key.clone(), &proof, &[], &pi_pos, &label
                     )
                     .expect("Unable to verify benchmark circuit.");
                 })

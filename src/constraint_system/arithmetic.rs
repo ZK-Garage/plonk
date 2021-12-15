@@ -8,13 +8,11 @@
 
 use crate::constraint_system::StandardComposer;
 use crate::constraint_system::Variable;
-use ark_ec::{PairingEngine, TEModelParameters};
-use num_traits::{One, Zero};
+use ark_ff::FftField;
 
-impl<E, P> StandardComposer<E, P>
+impl<F> StandardComposer<F>
 where
-    E: PairingEngine,
-    P: TEModelParameters<BaseField = E::Fr>,
+    F: FftField,
 {
     /// Adds a width-3 add gate to the circuit, linking the addition of the
     /// provided inputs, scaled by the selector coefficients with the output
@@ -24,13 +22,13 @@ where
         a: Variable,
         b: Variable,
         c: Variable,
-        q_l: E::Fr,
-        q_r: E::Fr,
-        q_o: E::Fr,
-        q_c: E::Fr,
-        pi: Option<E::Fr>,
+        q_l: F,
+        q_r: F,
+        q_o: F,
+        q_c: F,
+        pi: Option<F>,
     ) -> Variable {
-        self.big_add_gate(a, b, c, None, q_l, q_r, q_o, E::Fr::zero(), q_c, pi)
+        self.big_add_gate(a, b, c, None, q_l, q_r, q_o, F::zero(), q_c, pi)
     }
 
     /// Adds a width-4 add gate to the circuit and it's corresponding
@@ -46,12 +44,12 @@ where
         b: Variable,
         c: Variable,
         d: Option<Variable>,
-        q_l: E::Fr,
-        q_r: E::Fr,
-        q_o: E::Fr,
-        q_4: E::Fr,
-        q_c: E::Fr,
-        pi: Option<E::Fr>,
+        q_l: F,
+        q_r: F,
+        q_o: F,
+        q_4: F,
+        q_c: F,
+        pi: Option<F>,
     ) -> Variable {
         // Check if advice wire has a value
         let d = match d {
@@ -65,7 +63,7 @@ where
         self.w_4.push(d);
 
         // For an add gate, q_m is zero
-        self.q_m.push(E::Fr::zero());
+        self.q_m.push(F::zero());
 
         // Add selector vectors
         self.q_l.push(q_l);
@@ -73,11 +71,11 @@ where
         self.q_o.push(q_o);
         self.q_c.push(q_c);
         self.q_4.push(q_4);
-        self.q_arith.push(E::Fr::one());
-        self.q_range.push(E::Fr::zero());
-        self.q_logic.push(E::Fr::zero());
-        self.q_fixed_group_add.push(E::Fr::zero());
-        self.q_variable_group_add.push(E::Fr::zero());
+        self.q_arith.push(F::one());
+        self.q_range.push(F::zero());
+        self.q_logic.push(F::zero());
+        self.q_fixed_group_add.push(F::zero());
+        self.q_variable_group_add.push(F::zero());
 
         if let Some(pi) = pi {
             assert!(self.public_inputs_sparse_store.insert(self.n, pi).is_none(),"The invariant of already having a PI inserted for this position should never exist");
@@ -100,12 +98,12 @@ where
         a: Variable,
         b: Variable,
         c: Variable,
-        q_m: E::Fr,
-        q_o: E::Fr,
-        q_c: E::Fr,
-        pi: Option<E::Fr>,
+        q_m: F,
+        q_o: F,
+        q_c: F,
+        pi: Option<F>,
     ) -> Variable {
-        self.big_mul_gate(a, b, c, None, q_m, q_o, q_c, E::Fr::zero(), pi)
+        self.big_mul_gate(a, b, c, None, q_m, q_o, q_c, F::zero(), pi)
     }
 
     /// Adds a width-4 `big_mul_gate` with the left, right and fourth inputs
@@ -125,11 +123,11 @@ where
         b: Variable,
         c: Variable,
         d: Option<Variable>,
-        q_m: E::Fr,
-        q_o: E::Fr,
-        q_c: E::Fr,
-        q_4: E::Fr,
-        pi: Option<E::Fr>,
+        q_m: F,
+        q_o: F,
+        q_c: F,
+        q_4: F,
+        pi: Option<F>,
     ) -> Variable {
         // Check if advice wire has a value
         let d = match d {
@@ -143,20 +141,20 @@ where
         self.w_4.push(d);
 
         // For a mul gate q_L and q_R is zero
-        self.q_l.push(E::Fr::zero());
-        self.q_r.push(E::Fr::zero());
+        self.q_l.push(F::zero());
+        self.q_r.push(F::zero());
 
         // Add selector vectors
         self.q_m.push(q_m);
         self.q_o.push(q_o);
         self.q_c.push(q_c);
         self.q_4.push(q_4);
-        self.q_arith.push(E::Fr::one());
+        self.q_arith.push(F::one());
 
-        self.q_range.push(E::Fr::zero());
-        self.q_logic.push(E::Fr::zero());
-        self.q_fixed_group_add.push(E::Fr::zero());
-        self.q_variable_group_add.push(E::Fr::zero());
+        self.q_range.push(F::zero());
+        self.q_logic.push(F::zero());
+        self.q_fixed_group_add.push(F::zero());
+        self.q_variable_group_add.push(F::zero());
 
         if let Some(pi) = pi {
             assert!(
@@ -191,13 +189,13 @@ where
         b: Variable,
         c: Variable,
         d: Option<Variable>,
-        q_m: E::Fr,
-        q_l: E::Fr,
-        q_r: E::Fr,
-        q_o: E::Fr,
-        q_c: E::Fr,
-        q_4: E::Fr,
-        pi: Option<E::Fr>,
+        q_m: F,
+        q_l: F,
+        q_r: F,
+        q_o: F,
+        q_c: F,
+        q_4: F,
+        pi: Option<F>,
     ) -> Variable {
         // Check if advice wire has a value
         let d = match d {
@@ -217,12 +215,12 @@ where
         self.q_4.push(q_4);
         self.q_l.push(q_l);
         self.q_r.push(q_r);
-        self.q_arith.push(E::Fr::one());
+        self.q_arith.push(F::one());
 
-        self.q_range.push(E::Fr::zero());
-        self.q_logic.push(E::Fr::zero());
-        self.q_fixed_group_add.push(E::Fr::zero());
-        self.q_variable_group_add.push(E::Fr::zero());
+        self.q_range.push(F::zero());
+        self.q_logic.push(F::zero());
+        self.q_fixed_group_add.push(F::zero());
+        self.q_variable_group_add.push(F::zero());
 
         if let Some(pi) = pi {
             assert!(
@@ -250,10 +248,10 @@ where
     /// Forces `q_l * w_l + q_r * w_r + q_c + PI = w_o(computed by the gate)`.
     pub fn add(
         &mut self,
-        q_l_a: (E::Fr, Variable),
-        q_r_b: (E::Fr, Variable),
-        q_c: E::Fr,
-        pi: Option<E::Fr>,
+        q_l_a: (F, Variable),
+        q_r_b: (F, Variable),
+        q_c: F,
+        pi: Option<F>,
     ) -> Variable {
         self.big_add(q_l_a, q_r_b, None, q_c, pi)
     }
@@ -272,22 +270,22 @@ where
     /// the gate)`.
     pub fn big_add(
         &mut self,
-        q_l_a: (E::Fr, Variable),
-        q_r_b: (E::Fr, Variable),
-        q_4_d: Option<(E::Fr, Variable)>,
-        q_c: E::Fr,
-        pi: Option<E::Fr>,
+        q_l_a: (F, Variable),
+        q_r_b: (F, Variable),
+        q_4_d: Option<(F, Variable)>,
+        q_c: F,
+        pi: Option<F>,
     ) -> Variable {
         // Check if advice wire is available
         let (q_4, d) = match q_4_d {
             Some((q_4, var)) => (q_4, var),
-            None => (E::Fr::zero(), self.zero_var),
+            None => (F::zero(), self.zero_var),
         };
 
         let (q_l, a) = q_l_a;
         let (q_r, b) = q_r_b;
 
-        let q_o = -E::Fr::one();
+        let q_o = -F::one();
 
         // Compute the output wire
         let a_eval = self.variables[&a];
@@ -319,11 +317,11 @@ where
     /// `{w_l, w_r, w_4} = {a, b, d}`
     pub fn mul(
         &mut self,
-        q_m: E::Fr,
+        q_m: F,
         a: Variable,
         b: Variable,
-        q_c: E::Fr,
-        pi: Option<E::Fr>,
+        q_c: F,
+        pi: Option<F>,
     ) -> Variable {
         self.big_mul(q_m, a, b, None, q_c, pi)
     }
@@ -344,19 +342,19 @@ where
     /// `{w_l, w_r, w_4} = {a, b, d}`
     pub fn big_mul(
         &mut self,
-        q_m: E::Fr,
+        q_m: F,
         a: Variable,
         b: Variable,
-        q_4_d: Option<(E::Fr, Variable)>,
-        q_c: E::Fr,
-        pi: Option<E::Fr>,
+        q_4_d: Option<(F, Variable)>,
+        q_c: F,
+        pi: Option<F>,
     ) -> Variable {
-        let q_o = -E::Fr::one();
+        let q_o = -F::one();
 
         // Check if advice wire is available
         let (q_4, d) = match q_4_d {
             Some((q_4, var)) => (q_4, var),
-            None => (E::Fr::zero(), self.zero_var),
+            None => (F::zero(), self.zero_var),
         };
 
         // Compute output wire
@@ -386,19 +384,19 @@ where
     /// `c`
     pub fn big_arith(
         &mut self,
-        q_m: E::Fr,
+        q_m: F,
         a: Variable,
         b: Variable,
-        q_l: E::Fr,
-        q_r: E::Fr,
-        q_4_d: Option<(E::Fr, Variable)>,
-        q_c: E::Fr,
-        pi: Option<E::Fr>,
+        q_l: F,
+        q_r: F,
+        q_4_d: Option<(F, Variable)>,
+        q_c: F,
+        pi: Option<F>,
     ) -> Variable {
         // check if advice wire is available
         let (q_4, d) = match q_4_d {
             Some((q_4, d)) => (q_4, d),
-            None => (E::Fr::zero(), self.zero_var),
+            None => (F::zero(), self.zero_var),
         };
 
         // compute output wire
@@ -423,7 +421,7 @@ where
             q_m,
             q_l,
             q_r,
-            -E::Fr::one(),
+            -F::one(),
             q_c,
             q_4,
             pi,
@@ -438,14 +436,16 @@ mod test {
     use crate::constraint_system::helper::*;
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
+    use ark_ec::{PairingEngine, TEModelParameters};
+    use ark_ff::{One, Zero};
 
     fn test_public_inputs<E, P>()
     where
         E: PairingEngine,
         P: TEModelParameters<BaseField = E::Fr>,
     {
-        let res = gadget_tester(
-            |composer: &mut StandardComposer<E, P>| {
+        let res = gadget_tester::<E, P>(
+            |composer: &mut StandardComposer<E::Fr>| {
                 let var_one = composer.add_input(E::Fr::one());
                 let should_be_three = composer.big_add(
                     (E::Fr::one(), var_one),
@@ -482,8 +482,8 @@ mod test {
         E: PairingEngine,
         P: TEModelParameters<BaseField = E::Fr>,
     {
-        let res = gadget_tester(
-            |composer: &mut StandardComposer<E, P>| {
+        let res = gadget_tester::<E, P>(
+            |composer: &mut StandardComposer<E::Fr>| {
                 // Verify that (4+5+5) * (6+7+7) = 280
                 let four = composer.add_input(E::Fr::from(4u64));
                 let five = composer.add_input(E::Fr::from(5u64));
@@ -536,8 +536,8 @@ mod test {
         E: PairingEngine,
         P: TEModelParameters<BaseField = E::Fr>,
     {
-        let res = gadget_tester(
-            |composer: &mut StandardComposer<E, P>| {
+        let res = gadget_tester::<E, P>(
+            |composer: &mut StandardComposer<E::Fr>| {
                 let zero = composer.zero_var();
                 let one = composer.add_input(E::Fr::one());
 
@@ -559,8 +559,8 @@ mod test {
         E: PairingEngine,
         P: TEModelParameters<BaseField = E::Fr>,
     {
-        let res = gadget_tester(
-            |composer: &mut StandardComposer<E, P>| {
+        let res = gadget_tester::<E, P>(
+            |composer: &mut StandardComposer<E::Fr>| {
                 // Verify that (4+5+5) * (6+7+7) + (8*9) = 352
                 let four = composer.add_input(E::Fr::from(4u64));
                 let five = composer.add_input(E::Fr::from(5u64));
@@ -608,8 +608,8 @@ mod test {
         E: PairingEngine,
         P: TEModelParameters<BaseField = E::Fr>,
     {
-        let res = gadget_tester(
-            |composer: &mut StandardComposer<E, P>| {
+        let res = gadget_tester::<E, P>(
+            |composer: &mut StandardComposer<E::Fr>| {
                 // Verify that (4*5)*6 + 4*7 + 5*8 + 9*10 + 11 = 289
                 let a = composer.add_input(E::Fr::from(4u64));
                 let b = composer.add_input(E::Fr::from(5u64));
@@ -647,8 +647,8 @@ mod test {
         E: PairingEngine,
         P: TEModelParameters<BaseField = E::Fr>,
     {
-        let res = gadget_tester(
-            |composer: &mut StandardComposer<E, P>| {
+        let res = gadget_tester::<E, P>(
+            |composer: &mut StandardComposer<E::Fr>| {
                 // Verify that (4*5)*6 + 4*7 + 5*8 + 9*12 + 11 != 289
                 let a = composer.add_input(E::Fr::from(4u64));
                 let b = composer.add_input(E::Fr::from(5u64));
@@ -686,8 +686,8 @@ mod test {
         E: PairingEngine,
         P: TEModelParameters<BaseField = E::Fr>,
     {
-        let res = gadget_tester(
-            |composer: &mut StandardComposer<E, P>| {
+        let res = gadget_tester::<E, P>(
+            |composer: &mut StandardComposer<E::Fr>| {
                 // Verify that (5+5) * (6+7) != 117
                 let five = composer.add_input(E::Fr::from(5u64));
                 let six = composer.add_input(E::Fr::from(6u64));
@@ -739,8 +739,7 @@ mod test {
             test_incorrect_big_arith_gate
         ],
         [] => (
-            Bls12_381,
-            ark_ed_on_bls12_381::EdwardsParameters
+            Bls12_381, ark_ed_on_bls12_381::EdwardsParameters
         )
     );
 
@@ -756,8 +755,7 @@ mod test {
             test_incorrect_big_arith_gate
         ],
         [] => (
-            Bls12_377,
-            ark_ed_on_bls12_377::EdwardsParameters
+            Bls12_377, ark_ed_on_bls12_377::EdwardsParameters
         )
     );
 }

@@ -9,12 +9,17 @@
 use crate::constraint_system::StandardComposer;
 use crate::error::Error;
 use crate::proof_system::{Proof, Prover, ProverKey, Verifier, VerifierKey};
-use ark_ec::models::TEModelParameters;
+use ark_ec::models::{SWModelParameters, TEModelParameters};
 use ark_ec::{
-    twisted_edwards_extended::{GroupAffine, GroupProjective},
+    short_weierstrass_jacobian::{
+        GroupAffine as SWGroupAffine, GroupProjective as SWGroupProjective,
+    },
+    twisted_edwards_extended::{
+        GroupAffine as TEGroupAffine, GroupProjective as TEGroupProjective,
+    },
     PairingEngine, ProjectiveCurve,
 };
-use ark_ff::PrimeField;
+use ark_ff::{FftField, Field, PrimeField};
 use ark_poly::univariate::DensePolynomial;
 use ark_poly_commit::kzg10::{self, Powers, UniversalParams};
 use ark_poly_commit::sonic_pc::SonicKZG10;
@@ -60,42 +65,72 @@ pub trait GeIntoPubInput<T> {
 /// scalar representation.
 #[derive(CanonicalDeserialize, CanonicalSerialize, derivative::Derivative)]
 #[derivative(Clone, Debug, Default)]
-pub struct PublicInputValue<P>
+pub struct PublicInputValue<F>
 where
-    P: TEModelParameters,
+    F: Field,
 {
     /// Field Values
-    pub(crate) values: Vec<P::BaseField>,
+    pub(crate) values: Vec<F>,
 }
-
-impl<P> FeIntoPubInput<PublicInputValue<P>> for P::BaseField
+/*
+impl<F> FeIntoPubInput<PublicInputValue<F>> for F
 where
-    P: TEModelParameters,
+    F : Field,
 {
     #[inline]
-    fn into_pi(self) -> PublicInputValue<P> {
+    fn into_pi(self) -> PublicInputValue<F> {
         PublicInputValue { values: vec![self] }
+    }
+}*/
+
+impl<F> From<F> for PublicInputValue<F>
+where
+    F: Field,
+{
+    fn from(p: F) -> PublicInputValue<F> {
+        PublicInputValue { values: vec![p] }
     }
 }
 
-impl<P> GeIntoPubInput<PublicInputValue<P>> for GroupAffine<P>
+impl<P> GeIntoPubInput<PublicInputValue<P::BaseField>> for TEGroupAffine<P>
 where
     P: TEModelParameters,
 {
     #[inline]
-    fn into_pi(self) -> PublicInputValue<P> {
+    fn into_pi(self) -> PublicInputValue<P::BaseField> {
         PublicInputValue {
             values: vec![self.x, self.y],
         }
     }
 }
 
-impl<P> GeIntoPubInput<PublicInputValue<P>> for GroupProjective<P>
+impl<P> GeIntoPubInput<PublicInputValue<P::BaseField>> for TEGroupProjective<P>
 where
     P: TEModelParameters,
 {
     #[inline]
-    fn into_pi(self) -> PublicInputValue<P> {
+    fn into_pi(self) -> PublicInputValue<P::BaseField> {
+        GeIntoPubInput::into_pi(self.into_affine())
+    }
+}
+impl<P> GeIntoPubInput<PublicInputValue<P::BaseField>> for SWGroupAffine<P>
+where
+    P: SWModelParameters,
+{
+    #[inline]
+    fn into_pi(self) -> PublicInputValue<P::BaseField> {
+        PublicInputValue {
+            values: vec![self.x, self.y],
+        }
+    }
+}
+
+impl<P> GeIntoPubInput<PublicInputValue<P::BaseField>> for SWGroupProjective<P>
+where
+    P: SWModelParameters,
+{
+    #[inline]
+    fn into_pi(self) -> PublicInputValue<P::BaseField> {
         GeIntoPubInput::into_pi(self.into_affine())
     }
 }
@@ -111,31 +146,29 @@ where
     Eq(bound = ""),
     PartialEq(bound = "")
 )]
-pub struct VerifierData<E, P>
+pub struct VerifierData<E>
 where
     E: PairingEngine,
-    P: TEModelParameters<BaseField = E::Fr>,
 {
     /// Verifier Key
-    pub key: VerifierKey<E, P>,
+    pub key: VerifierKey<E>,
 
     /// Public Input Positions
     pub pi_pos: Vec<usize>,
 }
 
-impl<E, P> VerifierData<E, P>
+impl<E> VerifierData<E>
 where
     E: PairingEngine,
-    P: TEModelParameters<BaseField = E::Fr>,
 {
     /// Creates a new `VerifierData` from a [`VerifierKey`] and the public
     /// input positions of the circuit that it represents.
-    pub fn new(key: VerifierKey<E, P>, pi_pos: Vec<usize>) -> Self {
+    pub fn new(key: VerifierKey<E>, pi_pos: Vec<usize>) -> Self {
         Self { key, pi_pos }
     }
 
     /// Returns a reference to the contained [`VerifierKey`].
-    pub fn key(&self) -> &VerifierKey<E, P> {
+    pub fn key(&self) -> &VerifierKey<E> {
         &self.key
     }
 
@@ -160,7 +193,7 @@ where
 ///     EdwardsAffine as JubjubAffine, EdwardsParameters as JubjubParameters,
 ///     EdwardsProjective as JubjubProjective, Fr as JubjubScalar,
 /// };
-/// use ark_ff::{PrimeField, BigInteger};
+/// use ark_ff::{FftField, PrimeField, BigInteger};
 /// use ark_plonk::circuit::{Circuit, PublicInputValue, verify_proof, GeIntoPubInput, FeIntoPubInput};
 /// use ark_plonk::constraint_system::StandardComposer;
 /// use ark_plonk::error::Error;
@@ -178,55 +211,55 @@ where
 /// // 4) a * b = d where D is a PI
 /// // 5) JubJub::GENERATOR * e(JubJubScalar) = f where F is a PI
 /// #[derive(Debug)]
-/// pub struct TestCircuit<E, P>
+/// pub struct TestCircuit<F, P>
 /// where
-///     E: PairingEngine,
-///     P: TEModelParameters<BaseField = E::Fr>,
+///     F: FftField,
+///     P: TEModelParameters<BaseField = F>,
 /// {
-///     a: E::Fr,
-///     b: E::Fr,
-///     c: E::Fr,
-///     d: E::Fr,
+///     a: F,
+///     b: F,
+///     c: F,
+///     d: F,
 ///     e: P::ScalarField,
 ///     f: GroupAffine<P>,
 /// }
 ///
-/// impl<E, P> Default for TestCircuit<E, P>
+/// impl<F, P> Default for TestCircuit<F, P>
 /// where
-///     E: PairingEngine,
-///     P: TEModelParameters<BaseField = E::Fr>
+///     F: FftField,
+///     P: TEModelParameters<BaseField = F>
 /// {
 ///     fn default() -> Self {
 ///         Self {
-///             a: E::Fr::zero(),
-///             b: E::Fr::zero(),
-///             c: E::Fr::zero(),
-///             d: E::Fr::zero(),
+///             a: F::zero(),
+///             b: F::zero(),
+///             c: F::zero(),
+///             d: F::zero(),
 ///             e: P::ScalarField::zero(),
 ///             f: GroupAffine::<P>::zero(),
 ///         }
 ///     }
 /// }
 ///
-/// impl<E, P> Circuit<E, P> for TestCircuit<E, P>
+/// impl<F, P> Circuit<F> for TestCircuit<F, P>
 /// where
-///     E: PairingEngine,
-///     P: TEModelParameters<BaseField = E::Fr>,
+///     F: FftField + PrimeField,
+///     P: TEModelParameters<BaseField = F>,
 /// {
 ///     const CIRCUIT_ID: [u8; 32] = [0xff; 32];
 ///
 ///     fn gadget(
 ///         &mut self,
-///         composer: &mut StandardComposer<E, P>,
+///         composer: &mut StandardComposer<F>,
 ///     ) -> Result<(), Error> {
 ///         // Add fixed witness zero
 ///         let a = composer.add_input(self.a);
 ///         let b = composer.add_input(self.b);
 ///         // Make first constraint a + b = c
 ///         let add_result = composer.add(
-///           (E::Fr::one(), a),
-///           (E::Fr::one(), b),
-///           E::Fr::zero(),
+///           (F::one(), a),
+///           (F::one(), b),
+///           F::zero(),
 ///           Some(-self.c),
 ///         );
 ///         composer.assert_equal(add_result, composer.zero_var());
@@ -236,13 +269,13 @@ where
 ///         composer.range_gate(b, 1 << 5);
 ///
 ///         // Make second constraint a * b = d
-///         let mul_result = composer.mul(E::Fr::one(), a, b, E::Fr::zero(), Some(-self.d));
+///         let mul_result = composer.mul(F::one(), a, b, F::zero(), Some(-self.d));
 ///         composer.assert_equal(mul_result, composer.zero_var());
 ///
 ///         let e_repr = self.e.into_repr().to_bytes_le();
-///         let e = composer.add_input(E::Fr::from_le_bytes_mod_order(&e_repr));
+///         let e = composer.add_input(F::from_le_bytes_mod_order(&e_repr));
 ///         let (x, y) = P::AFFINE_GENERATOR_COEFFS;
-///         let generator = GroupAffine::new(x, y);
+///         let generator = GroupAffine::<P>::new(x, y);
 ///         let scalar_mul_result =
 ///             composer.fixed_base_scalar_mul(e, generator);
 ///         // Apply the constraint
@@ -261,10 +294,10 @@ where
 ///  )?;
 ///
 /// // Initialize the circuit
-/// let mut circuit = TestCircuit::<Bls12_381, JubjubParameters>::default();
+/// let mut circuit = TestCircuit::<BlsScalar, JubjubParameters>::default();
 ///
 /// // Compile the circuit
-/// let (pk, vd) = circuit.compile(&pp)?;
+/// let (pk, vd) = circuit.compile::<Bls12_381>(&pp)?;
 ///
 /// // Prover POV
 /// let (x, y) = JubjubParameters::AFFINE_GENERATOR_COEFFS;
@@ -283,17 +316,17 @@ where
 ///         e: JubjubScalar::from(2u64),
 ///         f: point_f_pi,
 ///     };
-///     circuit.gen_proof(&pp, pk, b"Test")
+///     circuit.gen_proof::<Bls12_381, JubjubParameters>(&pp, pk, b"Test")
 /// }?;
 ///
 /// // Verifier POV
-/// let public_inputs: Vec<PublicInputValue<JubjubParameters>> = vec![
-///     BlsScalar::from(25u64).into_pi(),
-///     BlsScalar::from(100u64).into_pi(),
+/// let public_inputs: Vec<PublicInputValue<BlsScalar>> = vec![
+///     BlsScalar::from(25u64).into(),
+///     BlsScalar::from(100u64).into(),
 ///     GeIntoPubInput::into_pi(point_f_pi),
 /// ];
 /// let VerifierData { key, pi_pos } = vd;
-/// verify_proof(
+/// verify_proof::<Bls12_381,JubjubParameters>(
 ///     &pp,
 ///     key,
 ///     &proof,
@@ -303,10 +336,9 @@ where
 /// )
 /// }
 /// ```
-pub trait Circuit<E, P>
+pub trait Circuit<F>
 where
-    E: PairingEngine,
-    P: TEModelParameters<BaseField = E::Fr>,
+    F: FftField,
 {
     /// Circuit identifier associated constant.
     const CIRCUIT_ID: [u8; 32];
@@ -314,16 +346,19 @@ where
     /// Gadget implementation used to fill the composer.
     fn gadget(
         &mut self,
-        composer: &mut StandardComposer<E, P>,
+        composer: &mut StandardComposer<F>,
     ) -> Result<(), Error>;
 
     /// Compiles the circuit by using a function that returns a `Result`
     /// with the `ProverKey`, `VerifierKey` and the circuit size.
     #[allow(clippy::type_complexity)] // NOTE: Clippy is too hash here.
-    fn compile(
+    fn compile<E: PairingEngine<Fr = F>>(
         &mut self,
         u_params: &UniversalParams<E>,
-    ) -> Result<(ProverKey<E::Fr, P>, VerifierData<E, P>), Error> {
+    ) -> Result<(ProverKey<E::Fr>, VerifierData<E>), Error>
+    where
+        F: PrimeField,
+    {
         // Setup PublicParams
         // XXX: KZG10 does not have a trim function so we use sonics and
         // then do a transformation between sonic CommiterKey to KZG10
@@ -365,12 +400,17 @@ where
 
     /// Generates a proof using the provided `CircuitInputs` & `ProverKey`
     /// instances.
-    fn gen_proof(
+    fn gen_proof<E, P>(
         &mut self,
         u_params: &UniversalParams<E>,
-        prover_key: ProverKey<E::Fr, P>,
+        prover_key: ProverKey<F>,
         transcript_init: &'static [u8],
-    ) -> Result<Proof<E, P>, Error> {
+    ) -> Result<Proof<E>, Error>
+    where
+        F: PrimeField,
+        E: PairingEngine<Fr = F>,
+        P: TEModelParameters<BaseField = F>,
+    {
         // XXX: KZG10 does not have a trim function so we use sonics and
         // then do a transformation between sonic CommiterKey to KZG10
         // powers
@@ -382,7 +422,7 @@ where
             None,
         )
         .unwrap();
-        let powers = Powers {
+        let powers = Powers::<E> {
             powers_of_g: ck.powers_of_g.into(),
             powers_of_gamma_g: ck.powers_of_gamma_g.into(),
         };
@@ -392,7 +432,7 @@ where
         self.gadget(prover.mut_cs())?;
         // Add ProverKey to Prover
         prover.prover_key = Some(prover_key);
-        prover.prove(&powers)
+        prover.prove::<E, P>(&powers)
     }
 
     /// Returns the Circuit size padded to the next power of two.
@@ -403,9 +443,9 @@ where
 /// instances.
 pub fn verify_proof<E, P>(
     u_params: &UniversalParams<E>,
-    plonk_verifier_key: VerifierKey<E, P>,
-    proof: &Proof<E, P>,
-    pub_inputs_values: &[PublicInputValue<P>],
+    plonk_verifier_key: VerifierKey<E>,
+    proof: &Proof<E>,
+    pub_inputs_values: &[PublicInputValue<E::Fr>],
     pub_inputs_positions: &[usize],
     transcript_init: &'static [u8],
 ) -> Result<(), Error>
@@ -413,7 +453,7 @@ where
     E: PairingEngine,
     P: TEModelParameters<BaseField = E::Fr>,
 {
-    let mut verifier: Verifier<E, P> = Verifier::new(transcript_init);
+    let mut verifier: Verifier<E> = Verifier::new(transcript_init);
     let padded_circuit_size = plonk_verifier_key.padded_circuit_size();
     // let key: VerifierKey<E, P> = *plonk_verifier_key;
     verifier.verifier_key = Some(plonk_verifier_key);
@@ -434,7 +474,7 @@ where
         prepared_beta_h: sonic_vk.prepared_beta_h,
     };
 
-    verifier.verify(
+    verifier.verify::<P>(
         proof,
         &vk,
         build_pi(pub_inputs_values, pub_inputs_positions, padded_circuit_size)
@@ -443,14 +483,13 @@ where
 }
 
 /// Build PI vector for Proof verifications.
-fn build_pi<F, P>(
-    pub_input_values: &[PublicInputValue<P>],
+fn build_pi<F>(
+    pub_input_values: &[PublicInputValue<F>],
     pub_input_pos: &[usize],
     trim_size: usize,
 ) -> Vec<F>
 where
-    F: PrimeField,
-    P: TEModelParameters<BaseField = F>,
+    F: Field,
 {
     let mut pi = vec![F::zero(); trim_size];
     pub_input_values
@@ -471,8 +510,8 @@ mod test {
     use ark_bls12_381::Bls12_381;
     use ark_ec::twisted_edwards_extended::GroupAffine;
     use ark_ec::AffineCurve;
+    use ark_ff::{FftField, PrimeField};
     use ark_poly_commit::kzg10::KZG10;
-    use num_traits::{One, Zero};
 
     // Implements a circuit that checks:
     // 1) a + b = c where C is a PI
@@ -482,37 +521,34 @@ mod test {
     // 5) JubJub::GENERATOR * e(JubJubScalar) = f where F is a PI
     #[derive(derivative::Derivative)]
     #[derivative(Debug(bound = ""), Default(bound = ""))]
-    pub struct TestCircuit<
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
-    > {
-        a: E::Fr,
-        b: E::Fr,
-        c: E::Fr,
-        d: E::Fr,
+    pub struct TestCircuit<F: FftField, P: TEModelParameters<BaseField = F>> {
+        a: F,
+        b: F,
+        c: F,
+        d: F,
         e: P::ScalarField,
         f: GroupAffine<P>,
     }
 
-    impl<E, P> Circuit<E, P> for TestCircuit<E, P>
+    impl<F, P> Circuit<F> for TestCircuit<F, P>
     where
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
+        F: FftField + PrimeField,
+        P: TEModelParameters<BaseField = F>,
     {
         const CIRCUIT_ID: [u8; 32] = [0xff; 32];
 
         fn gadget(
             &mut self,
-            composer: &mut StandardComposer<E, P>,
+            composer: &mut StandardComposer<F>,
         ) -> Result<(), Error> {
             let a = composer.add_input(self.a);
             let b = composer.add_input(self.b);
 
             // Make first constraint a + b = c (as public input)
             let add_result = composer.add(
-                (E::Fr::one(), a),
-                (E::Fr::one(), b),
-                E::Fr::zero(),
+                (F::one(), a),
+                (F::one(), b),
+                F::zero(),
                 Some(-self.c),
             );
             composer.assert_equal(add_result, composer.zero_var());
@@ -522,11 +558,11 @@ mod test {
             composer.range_gate(b, 1 << 5);
             // Make second constraint a * b = d
             let mul_result =
-                composer.mul(E::Fr::one(), a, b, E::Fr::zero(), Some(-self.d));
+                composer.mul(F::one(), a, b, F::zero(), Some(-self.d));
             composer.assert_equal(mul_result, composer.zero_var());
 
             let e = composer
-                .add_input(util::from_embedded_curve_scalar::<E, P>(self.e));
+                .add_input(util::from_embedded_curve_scalar::<F, P>(self.e));
             let (x, y) = P::AFFINE_GENERATOR_COEFFS;
             let generator = GroupAffine::new(x, y);
             let scalar_mul_result =
@@ -553,7 +589,7 @@ mod test {
             &mut OsRng,
         )?;
 
-        let mut circuit = TestCircuit::<E, P>::default();
+        let mut circuit = TestCircuit::<E::Fr, P>::default();
 
         // Compile the circuit
         let (pk_p, verifier_data) = circuit.compile(&pp)?;
@@ -568,7 +604,7 @@ mod test {
 
         // Prover POV
         let proof = {
-            let mut circuit: TestCircuit<E, P> = TestCircuit {
+            let mut circuit: TestCircuit<E::Fr, P> = TestCircuit {
                 a: E::Fr::from(20u64),
                 b: E::Fr::from(5u64),
                 c: E::Fr::from(25u64),
@@ -577,22 +613,22 @@ mod test {
                 f: point_f_pi,
             };
 
-            circuit.gen_proof(&pp, pk_p, b"Test")?
+            circuit.gen_proof::<E, P>(&pp, pk_p, b"Test")?
         };
 
         // Test serialisation for verifier_data
         let mut verifier_data_bytes = Vec::new();
         verifier_data.serialize(&mut verifier_data_bytes).unwrap();
 
-        let verif_data: VerifierData<E, P> =
+        let verif_data: VerifierData<E> =
             VerifierData::deserialize(verifier_data_bytes.as_slice()).unwrap();
 
         assert!(verif_data == verifier_data);
 
         // Verifier POV
-        let public_inputs: Vec<PublicInputValue<P>> = vec![
-            E::Fr::from(25u64).into_pi(),
-            E::Fr::from(100u64).into_pi(),
+        let public_inputs: Vec<PublicInputValue<E::Fr>> = vec![
+            E::Fr::from(25u64).into(),
+            E::Fr::from(100u64).into(),
             GeIntoPubInput::into_pi(point_f_pi),
         ];
 

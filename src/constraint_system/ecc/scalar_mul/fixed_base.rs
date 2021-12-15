@@ -10,9 +10,9 @@ use crate::constraint_system::ecc::Point;
 use crate::constraint_system::{variable::Variable, StandardComposer};
 use ark_ec::models::twisted_edwards_extended::{GroupAffine, GroupProjective};
 use ark_ec::models::TEModelParameters;
-use ark_ec::{PairingEngine, ProjectiveCurve};
-use ark_ff::{BigInteger, FpParameters, PrimeField};
-use num_traits::{One, Zero};
+use ark_ec::ProjectiveCurve;
+use ark_ff::{BigInteger, FftField, FpParameters, PrimeField};
+use num_traits::Zero;
 
 fn compute_wnaf_point_multiples<P>(
     base_point: GroupProjective<P>,
@@ -33,10 +33,9 @@ where
     ProjectiveCurve::batch_normalization_into_affine(&multiples)
 }
 
-impl<E, P> StandardComposer<E, P>
+impl<F> StandardComposer<F>
 where
-    E: PairingEngine,
-    P: TEModelParameters<BaseField = E::Fr>,
+    F: FftField + PrimeField,
 {
     /// Adds an elliptic curve scalar multiplication gate to the circuit
     /// description.
@@ -46,11 +45,14 @@ where
     /// This function is optimized for fixed base ops **ONLY** and therefore,
     /// the **ONLY** input that should be passed to the function as a point is
     /// the generator or basepoint of the curve over which we are operating.
-    pub fn fixed_base_scalar_mul(
+    pub fn fixed_base_scalar_mul<P>(
         &mut self,
         scalar: Variable,
         base_point: GroupAffine<P>,
-    ) -> Point<E, P> {
+    ) -> Point<P>
+    where
+        P: TEModelParameters<BaseField = F>,
+    {
         let num_bits =
             <P::BaseField as PrimeField>::Params::MODULUS_BITS as usize;
         // compute 2^iG
@@ -68,7 +70,7 @@ where
 
         // Initialise the accumulators
         let mut scalar_acc = Vec::with_capacity(num_bits);
-        scalar_acc.push(E::Fr::zero());
+        scalar_acc.push(F::zero());
         let mut point_acc = Vec::with_capacity(num_bits);
         point_acc.push(GroupAffine::<P>::zero());
 
@@ -76,9 +78,9 @@ where
         let mut xy_alphas = Vec::with_capacity(num_bits);
 
         let n_trailing_zeros = num_bits - wnaf_entries.len();
-        scalar_acc.extend(vec![E::Fr::zero(); n_trailing_zeros]);
+        scalar_acc.extend(vec![F::zero(); n_trailing_zeros]);
         point_acc.extend(vec![GroupAffine::<P>::zero(); n_trailing_zeros]);
-        xy_alphas.extend(vec![E::Fr::zero(); n_trailing_zeros]);
+        xy_alphas.extend(vec![F::zero(); n_trailing_zeros]);
 
         // Load values into accumulators based on wnaf entries
         for (i, entry) in wnaf_entries.iter().rev().enumerate() {
@@ -87,14 +89,14 @@ where
             // Based on the WNAF, we decide what scalar and point to add
             let (scalar_to_add, point_to_add) =
                 match entry {
-                    0 => { (E::Fr::zero(), GroupAffine::<P>::zero())},
-                    -1 => {(-E::Fr::one(), -point_multiples[index])},
-                    1 => {(E::Fr::one(), point_multiples[index])},
+                    0 => { (F::zero(), GroupAffine::<P>::zero())},
+                    -1 => {(-F::one(), -point_multiples[index])},
+                    1 => {(F::one(), point_multiples[index])},
                     _ => unreachable!("Currently WNAF_2(k) is supported.
                         The possible values are 1, -1 and 0. Current entry is {}", entry),
                 };
 
-            let prev_accumulator = E::Fr::from(2u64) * scalar_acc[index];
+            let prev_accumulator = F::from(2u64) * scalar_acc[index];
             scalar_acc.push(prev_accumulator + scalar_to_add);
             point_acc.push(point_acc[index] + point_to_add);
 
@@ -113,13 +115,9 @@ where
             // We constrain the point accumulator to start from the Identity
             // point and the Scalar accumulator to start from zero
             if i == 0 {
-                self.constrain_to_constant(acc_x, E::Fr::zero(), None);
-                self.constrain_to_constant(acc_y, E::Fr::one(), None);
-                self.constrain_to_constant(
-                    accumulated_bit,
-                    E::Fr::zero(),
-                    None,
-                );
+                self.constrain_to_constant(acc_x, F::zero(), None);
+                self.constrain_to_constant(acc_y, F::one(), None);
+                self.constrain_to_constant(accumulated_bit, F::zero(), None);
             }
 
             let x_beta = point_multiples[i].x;
@@ -129,7 +127,7 @@ where
 
             let xy_beta = x_beta * y_beta;
 
-            let wnaf_round = StandardComposer::<E, P>::new_wnaf(
+            let wnaf_round = StandardComposer::<F>::new_wnaf::<P>(
                 acc_x,
                 acc_y,
                 accumulated_bit,
@@ -154,11 +152,11 @@ where
             acc_y,
             xy_alpha,
             Some(last_accumulated_bit),
-            E::Fr::zero(),
-            E::Fr::zero(),
-            E::Fr::zero(),
-            E::Fr::zero(),
-            E::Fr::zero(),
+            F::zero(),
+            F::zero(),
+            F::zero(),
+            F::zero(),
+            F::zero(),
             None,
         );
 
@@ -176,7 +174,7 @@ mod tests {
     use crate::{batch_test, constraint_system::helper::*, util};
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
-    use ark_ec::{group::Group, AffineCurve};
+    use ark_ec::{group::Group, AffineCurve, PairingEngine};
     use ark_ff::PrimeField;
 
     fn test_ecc_constraint<E, P>()
@@ -184,8 +182,8 @@ mod tests {
         E: PairingEngine,
         P: TEModelParameters<BaseField = E::Fr>,
     {
-        let res = gadget_tester(
-            |composer: &mut StandardComposer<E, P>| {
+        let res = gadget_tester::<E, P>(
+            |composer: &mut StandardComposer<E::Fr>| {
                 let scalar = E::Fr::from_le_bytes_mod_order(&[
                     182, 44, 247, 214, 94, 14, 151, 208, 130, 16, 200, 204,
                     147, 32, 104, 166, 0, 59, 52, 1, 1, 59, 103, 6, 169, 175,
@@ -199,7 +197,7 @@ mod tests {
                 let generator = GroupAffine::new(x, y);
                 let expected_point: GroupAffine<P> = AffineCurve::mul(
                     &generator,
-                    util::to_embedded_curve_scalar::<E, P>(scalar),
+                    util::to_embedded_curve_scalar::<E::Fr, P>(scalar),
                 )
                 .into();
 
@@ -219,8 +217,8 @@ mod tests {
         E: PairingEngine,
         P: TEModelParameters<BaseField = E::Fr>,
     {
-        let res = gadget_tester(
-            |composer: &mut StandardComposer<E, P>| {
+        let res = gadget_tester::<E, P>(
+            |composer: &mut StandardComposer<E::Fr>| {
                 let scalar = E::Fr::zero();
                 let secret_scalar = composer.add_input(scalar);
 
@@ -228,7 +226,7 @@ mod tests {
                 let generator = GroupAffine::new(x, y);
                 let expected_point: GroupAffine<P> = AffineCurve::mul(
                     &generator,
-                    util::to_embedded_curve_scalar::<E, P>(scalar),
+                    util::to_embedded_curve_scalar::<E::Fr, P>(scalar),
                 )
                 .into();
 
@@ -248,8 +246,8 @@ mod tests {
         E: PairingEngine,
         P: TEModelParameters<BaseField = E::Fr>,
     {
-        let res = gadget_tester(
-            |composer: &mut StandardComposer<E, P>| {
+        let res = gadget_tester::<E, P>(
+            |composer: &mut StandardComposer<E::Fr>| {
                 let scalar = E::Fr::from(100u64);
                 let secret_scalar = composer.add_input(scalar);
                 // Fails because we are not multiplying by the GENERATOR, it is
@@ -260,7 +258,7 @@ mod tests {
 
                 let expected_point: GroupAffine<P> = AffineCurve::mul(
                     &double_gen,
-                    util::to_embedded_curve_scalar::<E, P>(scalar),
+                    util::to_embedded_curve_scalar::<E::Fr, P>(scalar),
                 )
                 .into();
 
@@ -281,8 +279,8 @@ mod tests {
         E: PairingEngine,
         P: TEModelParameters<BaseField = E::Fr>,
     {
-        let res = gadget_tester(
-            |composer: &mut StandardComposer<E, P>| {
+        let res = gadget_tester::<E, P>(
+            |composer: &mut StandardComposer<E::Fr>| {
                 let (x, y) = P::AFFINE_GENERATOR_COEFFS;
                 let generator = GroupAffine::new(x, y);
 
@@ -296,10 +294,10 @@ mod tests {
 
                 let var_point_a_x = composer.add_input(affine_point_a.x);
                 let var_point_a_y = composer.add_input(affine_point_a.y);
-                let point_a = Point::<E, P>::new(var_point_a_x, var_point_a_y);
+                let point_a = Point::<P>::new(var_point_a_x, var_point_a_y);
                 let var_point_b_x = composer.add_input(affine_point_b.x);
                 let var_point_b_y = composer.add_input(affine_point_b.y);
-                let point_b = Point::<E, P>::new(var_point_b_x, var_point_b_y);
+                let point_b = Point::<P>::new(var_point_b_x, var_point_b_y);
                 let new_point = composer.point_addition_gate(point_a, point_b);
 
                 composer.assert_equal_public_point(
@@ -318,8 +316,8 @@ mod tests {
         E: PairingEngine,
         P: TEModelParameters<BaseField = E::Fr>,
     {
-        let res = gadget_tester(
-            |composer: &mut StandardComposer<E, P>| {
+        let res = gadget_tester::<E, P>(
+            |composer: &mut StandardComposer<E::Fr>| {
                 let (x, y) = P::AFFINE_GENERATOR_COEFFS;
                 let generator = GroupAffine::new(x, y);
                 // First component
@@ -328,7 +326,7 @@ mod tests {
                 let point_a = generator;
                 let expected_component_a: GroupAffine<P> = AffineCurve::mul(
                     &point_a,
-                    util::to_embedded_curve_scalar::<E, P>(scalar_a),
+                    util::to_embedded_curve_scalar::<E::Fr, P>(scalar_a),
                 )
                 .into();
 
@@ -338,17 +336,17 @@ mod tests {
                 let point_b = point_a.double() + point_a;
                 let expected_component_b: GroupAffine<P> = AffineCurve::mul(
                     &point_b,
-                    util::to_embedded_curve_scalar::<E, P>(scalar_b),
+                    util::to_embedded_curve_scalar::<E::Fr, P>(scalar_b),
                 )
                 .into();
 
                 // Expected pedersen hash
                 let expected_point: GroupAffine<P> = (AffineCurve::mul(
                     &point_a,
-                    util::to_embedded_curve_scalar::<E, P>(scalar_a),
+                    util::to_embedded_curve_scalar::<E::Fr, P>(scalar_a),
                 ) + AffineCurve::mul(
                     &point_b,
-                    util::to_embedded_curve_scalar::<E, P>(scalar_b),
+                    util::to_embedded_curve_scalar::<E::Fr, P>(scalar_b),
                 ))
                 .into();
 
@@ -392,8 +390,8 @@ mod tests {
         E: PairingEngine,
         P: TEModelParameters<BaseField = E::Fr>,
     {
-        let res = gadget_tester(
-            |composer: &mut StandardComposer<E, P>| {
+        let res = gadget_tester::<E, P>(
+            |composer: &mut StandardComposer<E::Fr>| {
                 let (x, y) = P::AFFINE_GENERATOR_COEFFS;
                 let generator = GroupAffine::new(x, y);
 
@@ -415,12 +413,16 @@ mod tests {
 
                 let expected_lhs: GroupAffine<P> = AffineCurve::mul(
                     &gen,
-                    util::to_embedded_curve_scalar::<E, P>(scalar_a + scalar_b),
+                    util::to_embedded_curve_scalar::<E::Fr, P>(
+                        scalar_a + scalar_b,
+                    ),
                 )
                 .into();
                 let expected_rhs: GroupAffine<P> = AffineCurve::mul(
                     &gen,
-                    util::to_embedded_curve_scalar::<E, P>(scalar_c + scalar_d),
+                    util::to_embedded_curve_scalar::<E::Fr, P>(
+                        scalar_c + scalar_d,
+                    ),
                 )
                 .into();
 

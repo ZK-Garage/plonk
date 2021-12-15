@@ -17,13 +17,11 @@
 use crate::constraint_system::Variable;
 use crate::permutation::Permutation;
 use alloc::collections::BTreeMap;
-use ark_ec::models::TEModelParameters;
-use ark_ec::PairingEngine;
+
 #[cfg(feature = "trace")]
-use ark_ff::{BigInteger, PrimeField};
-use core::marker::PhantomData;
+use ark_ff::BigInteger;
+use ark_ff::FftField;
 use hashbrown::HashMap;
-use num_traits::{One, Zero};
 
 /// The StandardComposer is the circuit-builder tool that the `dusk-plonk`
 /// repository provides so that circuit descriptions can be written, stored and
@@ -52,41 +50,40 @@ use num_traits::{One, Zero};
 /// the StandardComposer as a builder.
 #[derive(derivative::Derivative)]
 #[derivative(Debug)]
-pub struct StandardComposer<E, P>
+pub struct StandardComposer<F>
 where
-    E: PairingEngine,
-    P: TEModelParameters<BaseField = E::Fr>,
+    F: FftField,
 {
     /// Number of arithmetic gates in the circuit
     pub(crate) n: usize,
 
     // Selector vectors
     /// Multiplier selector
-    pub(crate) q_m: Vec<E::Fr>,
+    pub(crate) q_m: Vec<F>,
     /// Left wire selector
-    pub(crate) q_l: Vec<E::Fr>,
+    pub(crate) q_l: Vec<F>,
     /// Right wire selector
-    pub(crate) q_r: Vec<E::Fr>,
+    pub(crate) q_r: Vec<F>,
     /// Output wire selector
-    pub(crate) q_o: Vec<E::Fr>,
+    pub(crate) q_o: Vec<F>,
     /// Fourth wire selector
-    pub(crate) q_4: Vec<E::Fr>,
+    pub(crate) q_4: Vec<F>,
     /// Constant wire selector
-    pub(crate) q_c: Vec<E::Fr>,
+    pub(crate) q_c: Vec<F>,
     /// Arithmetic wire selector
-    pub(crate) q_arith: Vec<E::Fr>,
+    pub(crate) q_arith: Vec<F>,
     /// Range selector
-    pub(crate) q_range: Vec<E::Fr>,
+    pub(crate) q_range: Vec<F>,
     /// Logic selector
-    pub(crate) q_logic: Vec<E::Fr>,
+    pub(crate) q_logic: Vec<F>,
     /// Fixed base group addition selector
-    pub(crate) q_fixed_group_add: Vec<E::Fr>,
+    pub(crate) q_fixed_group_add: Vec<F>,
     /// Variable base group addition selector
-    pub(crate) q_variable_group_add: Vec<E::Fr>,
+    pub(crate) q_variable_group_add: Vec<F>,
 
     /// Sparse representation of the Public Inputs linking the positions of the
     /// non-zero ones to it's actual values.
-    pub(crate) public_inputs_sparse_store: BTreeMap<usize, E::Fr>,
+    pub(crate) public_inputs_sparse_store: BTreeMap<usize, F>,
 
     // Witness vectors
     /// Left wire witness vector.
@@ -105,19 +102,15 @@ where
     pub(crate) zero_var: Variable,
 
     /// These are the actual variable values.
-    pub(crate) variables: HashMap<Variable, E::Fr>,
+    pub(crate) variables: HashMap<Variable, F>,
 
     /// Permutation argument.
-    pub(crate) perm: Permutation<E::Fr>,
-
-    /// Type Parameter Marker
-    __: PhantomData<P>,
+    pub(crate) perm: Permutation,
 }
 
-impl<E, P> StandardComposer<E, P>
+impl<F> StandardComposer<F>
 where
-    E: PairingEngine,
-    P: TEModelParameters<BaseField = E::Fr>,
+    F: FftField,
 {
     /// Returns the number of gates in the circuit
     pub fn circuit_size(&self) -> usize {
@@ -126,8 +119,8 @@ where
 
     /// Constructs a dense vector of the Public Inputs from the positions and
     /// the sparse vector that contains the values.
-    pub fn construct_dense_pi_vec(&self) -> Vec<E::Fr> {
-        let mut pi = vec![E::Fr::zero(); self.n];
+    pub fn construct_dense_pi_vec(&self) -> Vec<F> {
+        let mut pi = vec![F::zero(); self.n];
         self.public_inputs_sparse_store
             .iter()
             .for_each(|(pos, value)| {
@@ -145,10 +138,9 @@ where
     }
 }
 
-impl<E, P> Default for StandardComposer<E, P>
+impl<F> Default for StandardComposer<F>
 where
-    E: PairingEngine,
-    P: TEModelParameters<BaseField = E::Fr>,
+    F: FftField,
 {
     #[inline]
     fn default() -> Self {
@@ -156,10 +148,9 @@ where
     }
 }
 
-impl<E, P> StandardComposer<E, P>
+impl<F> StandardComposer<F>
 where
-    E: PairingEngine,
-    P: TEModelParameters<BaseField = E::Fr>,
+    F: FftField,
 {
     /// Generates a new empty `StandardComposer` with all of it's fields
     /// set to hold an initial capacity of 0.
@@ -169,16 +160,13 @@ where
     /// The usage of this may cause lots of re-allocations since the `Composer`
     /// holds `Vec` for every polynomial, and these will need to be re-allocated
     /// each time the circuit grows considerably.
-    pub fn new() -> StandardComposer<E, P> {
+    pub fn new() -> Self {
         StandardComposer::with_expected_size(0)
     }
 
     /// Fixes a [`Variable`] in the witness to be a part of the circuit
     /// description.
-    pub fn add_witness_to_circuit_description(
-        &mut self,
-        value: E::Fr,
-    ) -> Variable {
+    pub fn add_witness_to_circuit_description(&mut self, value: F) -> Variable {
         let var = self.add_input(value);
         self.constrain_to_constant(var, value, None);
         var
@@ -210,12 +198,11 @@ where
             zero_var: Variable(0),
             variables: HashMap::with_capacity(expected_size),
             perm: Permutation::new(),
-            __: PhantomData,
         };
 
         // Reserve the first variable to be zero
         composer.zero_var =
-            composer.add_witness_to_circuit_description(E::Fr::zero());
+            composer.add_witness_to_circuit_description(F::zero());
 
         // Add dummy constraints
         composer.add_dummy_constraints();
@@ -231,14 +218,14 @@ where
     /// Add Input first calls the Permutation
     /// to generate and allocate a new [`Variable`] `var`.
     ///
-    /// The Composer then links the variable to the [`E::Fr`]
+    /// The Composer then links the variable to the [`F`]
     /// and returns it for its use in the system.
     ///
-    /// [`E::Fr`]: PairingEngine::Fr
-    pub fn add_input(&mut self, s: E::Fr) -> Variable {
+    /// [`F`]: Field
+    pub fn add_input(&mut self, s: F) -> Variable {
         // Get a new Variable from the permutation
         let var = self.perm.new_variable();
-        // The composer now links the E::Fr to the Variable returned from
+        // The composer now links the F to the Variable returned from
         // the Permutation
         self.variables.insert(var, s);
 
@@ -259,12 +246,12 @@ where
         a: Variable,
         b: Variable,
         c: Variable,
-        q_m: E::Fr,
-        q_l: E::Fr,
-        q_r: E::Fr,
-        q_o: E::Fr,
-        q_c: E::Fr,
-        pi: Option<E::Fr>,
+        q_m: F,
+        q_l: F,
+        q_r: F,
+        q_o: F,
+        q_c: F,
+        pi: Option<F>,
     ) -> (Variable, Variable, Variable) {
         self.w_l.push(a);
         self.w_r.push(b);
@@ -277,13 +264,13 @@ where
         self.q_m.push(q_m);
         self.q_o.push(q_o);
         self.q_c.push(q_c);
-        self.q_4.push(E::Fr::zero());
-        self.q_arith.push(E::Fr::one());
+        self.q_4.push(F::zero());
+        self.q_arith.push(F::one());
 
-        self.q_range.push(E::Fr::zero());
-        self.q_logic.push(E::Fr::zero());
-        self.q_fixed_group_add.push(E::Fr::zero());
-        self.q_variable_group_add.push(E::Fr::zero());
+        self.q_range.push(F::zero());
+        self.q_logic.push(F::zero());
+        self.q_fixed_group_add.push(F::zero());
+        self.q_variable_group_add.push(F::zero());
 
         if let Some(pi) = pi {
             assert!(self
@@ -306,17 +293,17 @@ where
     pub fn constrain_to_constant(
         &mut self,
         a: Variable,
-        constant: E::Fr,
-        pi: Option<E::Fr>,
+        constant: F,
+        pi: Option<F>,
     ) {
         self.poly_gate(
             a,
             a,
             a,
-            E::Fr::zero(),
-            E::Fr::one(),
-            E::Fr::zero(),
-            E::Fr::zero(),
+            F::zero(),
+            F::one(),
+            F::zero(),
+            F::zero(),
             -constant,
             pi,
         );
@@ -329,11 +316,11 @@ where
             a,
             b,
             self.zero_var,
-            E::Fr::zero(),
-            E::Fr::one(),
-            -E::Fr::one(),
-            E::Fr::zero(),
-            E::Fr::zero(),
+            F::zero(),
+            F::one(),
+            -F::one(),
+            F::zero(),
+            F::zero(),
             None,
         );
     }
@@ -355,26 +342,25 @@ where
         choice_b: Variable,
     ) -> Variable {
         // bit * choice_a
-        let bit_times_a =
-            self.mul(E::Fr::one(), bit, choice_a, E::Fr::zero(), None);
+        let bit_times_a = self.mul(F::one(), bit, choice_a, F::zero(), None);
 
         // 1 - bit
         let one_min_bit = self.add(
-            (-E::Fr::one(), bit),
-            (E::Fr::zero(), self.zero_var),
-            E::Fr::one(),
+            (-F::one(), bit),
+            (F::zero(), self.zero_var),
+            F::one(),
             None,
         );
 
         // (1 - bit) * b
         let one_min_bit_choice_b =
-            self.mul(E::Fr::one(), one_min_bit, choice_b, E::Fr::zero(), None);
+            self.mul(F::one(), one_min_bit, choice_b, F::zero(), None);
 
         // [ (1 - bit) * b ] + [ bit * a ]
         self.add(
-            (E::Fr::one(), one_min_bit_choice_b),
-            (E::Fr::one(), bit_times_a),
-            E::Fr::zero(),
+            (F::one(), one_min_bit_choice_b),
+            (F::one(), bit_times_a),
+            F::zero(),
             None,
         )
     }
@@ -394,7 +380,7 @@ where
         value: Variable,
     ) -> Variable {
         // returns bit * value
-        self.mul(E::Fr::one(), bit, value, E::Fr::zero(), None)
+        self.mul(F::one(), bit, value, F::zero(), None)
     }
 
     /// Adds the polynomial f(x) = 1 - x + xa to the circuit description where
@@ -414,19 +400,18 @@ where
         let value_scalar = self.variables.get(&value).unwrap();
         let bit_scalar = self.variables.get(&bit).unwrap();
 
-        let f_x_scalar =
-            E::Fr::one() - bit_scalar + (*bit_scalar * value_scalar);
+        let f_x_scalar = F::one() - bit_scalar + (*bit_scalar * value_scalar);
         let f_x = self.add_input(f_x_scalar);
 
         self.poly_gate(
             bit,
             value,
             f_x,
-            E::Fr::one(),
-            -E::Fr::one(),
-            E::Fr::zero(),
-            -E::Fr::one(),
-            E::Fr::one(),
+            F::one(),
+            -F::one(),
+            F::zero(),
+            -F::one(),
+            F::one(),
             None,
         );
 
@@ -438,21 +423,21 @@ where
     /// description which are guaranteed to always satisfy the gate equation.
     pub fn add_dummy_constraints(&mut self) {
         // Add a dummy constraint so that we do not have zero polynomials
-        self.q_m.push(E::Fr::from(1u64));
-        self.q_l.push(E::Fr::from(2u64));
-        self.q_r.push(E::Fr::from(3u64));
-        self.q_o.push(E::Fr::from(4u64));
-        self.q_c.push(E::Fr::from(4u64));
-        self.q_4.push(E::Fr::one());
-        self.q_arith.push(E::Fr::one());
-        self.q_range.push(E::Fr::zero());
-        self.q_logic.push(E::Fr::zero());
-        self.q_fixed_group_add.push(E::Fr::zero());
-        self.q_variable_group_add.push(E::Fr::zero());
-        let var_six = self.add_input(E::Fr::from(6u64));
-        let var_one = self.add_input(E::Fr::from(1u64));
-        let var_seven = self.add_input(E::Fr::from(7u64));
-        let var_min_twenty = self.add_input(-E::Fr::from(20u64));
+        self.q_m.push(F::from(1u64));
+        self.q_l.push(F::from(2u64));
+        self.q_r.push(F::from(3u64));
+        self.q_o.push(F::from(4u64));
+        self.q_c.push(F::from(4u64));
+        self.q_4.push(F::one());
+        self.q_arith.push(F::one());
+        self.q_range.push(F::zero());
+        self.q_logic.push(F::zero());
+        self.q_fixed_group_add.push(F::zero());
+        self.q_variable_group_add.push(F::zero());
+        let var_six = self.add_input(F::from(6u64));
+        let var_one = self.add_input(F::from(1u64));
+        let var_seven = self.add_input(F::from(7u64));
+        let var_min_twenty = self.add_input(-F::from(20u64));
         self.w_l.push(var_six);
         self.w_r.push(var_seven);
         self.w_o.push(var_min_twenty);
@@ -467,17 +452,17 @@ where
         self.n += 1;
         //Add another dummy constraint so that we do not get the identity
         // permutation
-        self.q_m.push(E::Fr::from(1u64));
-        self.q_l.push(E::Fr::from(1u64));
-        self.q_r.push(E::Fr::from(1u64));
-        self.q_o.push(E::Fr::from(1u64));
-        self.q_c.push(E::Fr::from(127u64));
-        self.q_4.push(E::Fr::zero());
-        self.q_arith.push(E::Fr::one());
-        self.q_range.push(E::Fr::zero());
-        self.q_logic.push(E::Fr::zero());
-        self.q_fixed_group_add.push(E::Fr::zero());
-        self.q_variable_group_add.push(E::Fr::zero());
+        self.q_m.push(F::from(1u64));
+        self.q_l.push(F::from(1u64));
+        self.q_r.push(F::from(1u64));
+        self.q_o.push(F::from(1u64));
+        self.q_c.push(F::from(127u64));
+        self.q_4.push(F::zero());
+        self.q_arith.push(F::one());
+        self.q_range.push(F::zero());
+        self.q_logic.push(F::zero());
+        self.q_fixed_group_add.push(F::zero());
+        self.q_variable_group_add.push(F::zero());
         self.w_l.push(var_min_twenty);
         self.w_r.push(var_six);
         self.w_o.push(var_seven);
@@ -505,35 +490,35 @@ where
     /// the cause is an unsatisfied gate equation, the function will panic.
     #[cfg(feature = "trace")]
     pub fn check_circuit_satisfied(&self) {
-        let w_l: Vec<&E::Fr> = self
+        let w_l: Vec<&F> = self
             .w_l
             .iter()
             .map(|w_l_i| self.variables.get(w_l_i).unwrap())
             .collect();
-        let w_r: Vec<&E::Fr> = self
+        let w_r: Vec<&F> = self
             .w_r
             .iter()
             .map(|w_r_i| self.variables.get(w_r_i).unwrap())
             .collect();
-        let w_o: Vec<&E::Fr> = self
+        let w_o: Vec<&F> = self
             .w_o
             .iter()
             .map(|w_o_i| self.variables.get(w_o_i).unwrap())
             .collect();
-        let w_4: Vec<&E::Fr> = self
+        let w_4: Vec<&F> = self
             .w_4
             .iter()
             .map(|w_4_i| self.variables.get(w_4_i).unwrap())
             .collect();
         // Computes f(f-1)(f-2)(f-3)
-        let delta = |f: E::Fr| -> E::Fr {
-            let f_1 = f - E::Fr::one();
-            let f_2 = f - E::Fr::from(2u64);
-            let f_3 = f - E::Fr::from(3u64);
+        let delta = |f: F| -> F {
+            let f_1 = f - F::one();
+            let f_2 = f - F::from(2u64);
+            let f_3 = f - F::from(3u64);
             f * f_1 * f_2 * f_3
         };
         let pi_vec = self.construct_dense_pi_vec();
-        let four = E::Fr::from(4u64);
+        let four = F::from(4u64);
         for i in 0..self.n {
             let qm = self.q_m[i];
             let ql = self.q_l[i];
@@ -597,66 +582,66 @@ where
                 d
             );
 
-            let k =
-                qarith
-                    * ((qm * a * b)
-                        + (ql * a)
-                        + (qr * b)
-                        + (qo * c)
-                        + (q4 * d)
-                        + pi
-                        + qc)
-                    + qlogic
-                        * (((delta(*a_next - four * a)
-                            - delta(*b_next - four * b))
-                            * c)
-                            + delta(*a_next - four * a)
-                            + delta(*b_next - four * b)
-                            + delta(*d_next - four * d)
-                            + match (
-                                qlogic == E::Fr::one(),
-                                qlogic == -E::Fr::one(),
-                            ) {
-                                (true, false) => {
-                                    let a_bits = a.into_repr().to_bits_le();
-                                    let b_bits = b.into_repr().to_bits_le();
-                                    let a_and_b = a_bits
-                                        .iter()
-                                        .zip(b_bits)
-                                        .map(|(a_bit, b_bit)| a_bit & b_bit)
-                                        .collect::<Vec<bool>>();
+            let k = qarith
+                * ((qm * a * b)
+                    + (ql * a)
+                    + (qr * b)
+                    + (qo * c)
+                    + (q4 * d)
+                    + pi
+                    + qc)
+                + qlogic
+                    * (((delta(*a_next - four * a)
+                        - delta(*b_next - four * b))
+                        * c)
+                        + delta(*a_next - four * a)
+                        + delta(*b_next - four * b)
+                        + delta(*d_next - four * d)
+                        + match (qlogic == F::one(), qlogic == -F::one()) {
+                            (true, false) => {
+                                let a_bits = a.into_repr().to_bits_le();
+                                let b_bits = b.into_repr().to_bits_le();
+                                let a_and_b = a_bits
+                                    .iter()
+                                    .zip(b_bits)
+                                    .map(|(a_bit, b_bit)| a_bit & b_bit)
+                                    .collect::<Vec<bool>>();
 
-                                    E::Fr::from_repr(
-                                    <E::Fr as PrimeField>::BigInt::from_bits_le(
+                                F::from_repr(
+                                    <F as PrimeField>::BigInt::from_bits_le(
                                         &a_and_b,
                                     ),
-                                ).unwrap() - *d
-                                }
-                                (false, true) => {
-                                    let a_bits = a.into_repr().to_bits_le();
-                                    let b_bits = b.into_repr().to_bits_le();
-                                    let a_xor_b = a_bits
-                                        .iter()
-                                        .zip(b_bits)
-                                        .map(|(a_bit, b_bit)| a_bit ^ b_bit)
-                                        .collect::<Vec<bool>>();
+                                )
+                                .unwrap()
+                                    - *d
+                            }
+                            (false, true) => {
+                                let a_bits = a.into_repr().to_bits_le();
+                                let b_bits = b.into_repr().to_bits_le();
+                                let a_xor_b = a_bits
+                                    .iter()
+                                    .zip(b_bits)
+                                    .map(|(a_bit, b_bit)| a_bit ^ b_bit)
+                                    .collect::<Vec<bool>>();
 
-                                    E::Fr::from_repr(
-                                    <E::Fr as PrimeField>::BigInt::from_bits_le(
+                                F::from_repr(
+                                    <F as PrimeField>::BigInt::from_bits_le(
                                         &a_xor_b,
                                     ),
-                                ).unwrap() - *d
-                                }
-                                (false, false) => E::Fr::zero(),
-                                _ => unreachable!(),
-                            })
-                    + qrange
-                        * (delta(*c - four * d)
-                            + delta(*b - four * c)
-                            + delta(*a - four * b)
-                            + delta(*d_next - four * a));
+                                )
+                                .unwrap()
+                                    - *d
+                            }
+                            (false, false) => F::zero(),
+                            _ => unreachable!(),
+                        })
+                + qrange
+                    * (delta(*c - four * d)
+                        + delta(*b - four * c)
+                        + delta(*a - four * b)
+                        + delta(*d_next - four * a));
 
-            assert_eq!(k, E::Fr::zero(), "Check failed at gate {}", i,);
+            assert_eq!(k, F::zero(), "Check failed at gate {}", i,);
         }
     }
 }
@@ -664,23 +649,25 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::batch_test;
     use crate::constraint_system::helper::*;
     use crate::prelude::Prover;
     use crate::prelude::Verifier;
+    use crate::{batch_test, batch_test_field};
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
+    use ark_ec::models::TEModelParameters;
+    use ark_ec::PairingEngine;
     use ark_poly::univariate::DensePolynomial;
     use ark_poly_commit::kzg10::{self, Powers, UniversalParams, KZG10};
     use ark_poly_commit::sonic_pc::SonicKZG10;
     use ark_poly_commit::PolynomialCommitment;
+    use num_traits::One;
     use rand_core::OsRng;
 
     /// Tests that a circuit initially has 3 gates.
-    fn test_initial_circuit_size<E, P>()
+    fn test_initial_circuit_size<F>()
     where
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
+        F: FftField,
     {
         // NOTE: Circuit size is n+3 because
         // - We have an extra gate which forces the first witness to be zero.
@@ -689,7 +676,7 @@ mod test {
         //   not the identity and
         // - Another gate which ensures that the selector polynomials are not
         //   all zeroes
-        assert_eq!(3, StandardComposer::<E, P>::new().circuit_size())
+        assert_eq!(3, StandardComposer::<F>::new().circuit_size())
     }
 
     /// Tests that an empty circuit proof passes.
@@ -699,7 +686,8 @@ mod test {
         P: TEModelParameters<BaseField = E::Fr>,
     {
         // NOTE: Does nothing except add the dummy constraints.
-        let res = gadget_tester(|_: &mut StandardComposer<E, P>| {}, 200);
+        let res =
+            gadget_tester::<E, P>(|_: &mut StandardComposer<E::Fr>| {}, 200);
         assert!(res.is_ok());
     }
 
@@ -708,8 +696,8 @@ mod test {
         E: PairingEngine,
         P: TEModelParameters<BaseField = E::Fr>,
     {
-        let res = gadget_tester(
-            |composer: &mut StandardComposer<E, P>| {
+        let res = gadget_tester::<E, P>(
+            |composer: &mut StandardComposer<E::Fr>| {
                 let bit_1 = composer.add_input(E::Fr::one());
                 let bit_0 = composer.zero_var();
 
@@ -744,7 +732,7 @@ mod test {
             .unwrap();
 
         // Create a prover struct
-        let mut prover: Prover<E, P> = Prover::new(b"demo");
+        let mut prover: Prover<E::Fr> = Prover::new(b"demo");
 
         // Add gadgets
         dummy_gadget(10, prover.mut_cs());
@@ -771,7 +759,7 @@ mod test {
 
         // Compute multiple proofs
         for _ in 0..3 {
-            proofs.push(prover.prove(&powers).unwrap());
+            proofs.push(prover.prove::<E, P>(&powers).unwrap());
 
             // Add another witness instance
             dummy_gadget(10, prover.mut_cs());
@@ -779,7 +767,7 @@ mod test {
 
         // Verifier
         //
-        let mut verifier: Verifier<E, P> = Verifier::new(b"demo");
+        let mut verifier: Verifier<E> = Verifier::new(b"demo");
 
         // Add gadgets
         dummy_gadget(10, verifier.mut_cs());
@@ -811,35 +799,50 @@ mod test {
         verifier.preprocess(&powers).unwrap();
 
         for proof in proofs {
-            assert!(verifier.verify(&proof, &vk, &public_inputs).is_ok());
+            assert!(verifier.verify::<P>(&proof, &vk, &public_inputs).is_ok());
         }
     }
 
     // Tests for Bls12_381
-    batch_test!(
+    batch_test_field!(
         [
-            test_initial_circuit_size,
-            test_prove_verify,
-            test_conditional_select,
-            test_multiple_proofs
+            test_initial_circuit_size
         ],
         [] => (
-            Bls12_381,
-            ark_ed_on_bls12_381::EdwardsParameters
+            Bls12_381
+        )
+    );
+
+    // Tests for Bls12_377
+    batch_test_field!(
+        [
+            test_initial_circuit_size
+        ],
+        [] => (
+            Bls12_377
+        )
+    );
+
+    // Tests for Bls12_381
+    batch_test!(
+        [
+            test_prove_verify,
+            test_multiple_proofs,
+            test_conditional_select        ],
+        [] => (
+            Bls12_381, ark_ed_on_bls12_381::EdwardsParameters
         )
     );
 
     // Tests for Bls12_377
     batch_test!(
         [
-            test_initial_circuit_size,
             test_prove_verify,
-            test_conditional_select,
-            test_multiple_proofs
-        ],
+            test_multiple_proofs,
+            test_conditional_select
+                    ],
         [] => (
-            Bls12_377,
-            ark_ed_on_bls12_377::EdwardsParameters
+            Bls12_377, ark_ed_on_bls12_377::EdwardsParameters
         )
     );
 }

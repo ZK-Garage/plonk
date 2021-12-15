@@ -14,12 +14,11 @@ pub mod range;
 use crate::proof_system::linearisation_poly::ProofEvaluations;
 use crate::proof_system::permutation;
 use crate::transcript::TranscriptProtocol;
-use ark_ec::{PairingEngine, TEModelParameters};
-use ark_ff::{Field, PrimeField};
+use ark_ec::PairingEngine;
+use ark_ff::{FftField, Field};
 use ark_poly::{univariate::DensePolynomial, Evaluations};
 use ark_poly_commit::sonic_pc::Commitment;
 use ark_serialize::*;
-use core::marker::PhantomData;
 
 /// Gate Values
 ///
@@ -145,10 +144,9 @@ where
     Eq(bound = ""),
     PartialEq(bound = "")
 )]
-pub struct VerifierKey<E, P>
+pub struct VerifierKey<E>
 where
     E: PairingEngine,
-    P: TEModelParameters<BaseField = E::Fr>,
 {
     /// Circuit size (not padded to a power of two).
     pub(crate) n: usize,
@@ -170,15 +168,11 @@ where
 
     /// VerifierKey for permutation checks
     pub(crate) permutation: permutation::VerifierKey<E>,
-
-    /// Type Parameter Marker
-    __: PhantomData<P>,
 }
 
-impl<E, P> VerifierKey<E, P>
+impl<E> VerifierKey<E>
 where
     E: PairingEngine,
-    P: TEModelParameters<BaseField = E::Fr>,
 {
     /// Constructs a [`VerifierKey`] from the widget VerifierKey's that are
     /// constructed based on the selector polynomial commitments and the
@@ -222,7 +216,6 @@ where
                 out_sigma,
                 fourth_sigma,
             },
-            __: PhantomData,
         }
     }
 
@@ -232,42 +225,36 @@ where
     }
 }
 
-impl<E, P> VerifierKey<E, P>
+impl<E> VerifierKey<E>
 where
     E: PairingEngine,
-    P: TEModelParameters<BaseField = E::Fr>,
 {
     /// Adds the circuit description to the transcript.
     pub(crate) fn seed_transcript<T>(&self, transcript: &mut T)
     where
-        T: TranscriptProtocol<E>,
+        T: TranscriptProtocol,
     {
-        transcript.append_commitment(b"q_m", &self.arithmetic.q_m);
-        transcript.append_commitment(b"q_l", &self.arithmetic.q_l);
-        transcript.append_commitment(b"q_r", &self.arithmetic.q_r);
-        transcript.append_commitment(b"q_o", &self.arithmetic.q_o);
-        transcript.append_commitment(b"q_c", &self.arithmetic.q_c);
-        transcript.append_commitment(b"q_4", &self.arithmetic.q_4);
-        transcript.append_commitment(b"q_arith", &self.arithmetic.q_arith);
-        transcript
-            .append_commitment(b"q_range", &self.range_selector_commitment);
-        transcript
-            .append_commitment(b"q_logic", &self.logic_selector_commitment);
-        transcript.append_commitment(
+        transcript.append(b"q_m", &self.arithmetic.q_m);
+        transcript.append(b"q_l", &self.arithmetic.q_l);
+        transcript.append(b"q_r", &self.arithmetic.q_r);
+        transcript.append(b"q_o", &self.arithmetic.q_o);
+        transcript.append(b"q_c", &self.arithmetic.q_c);
+        transcript.append(b"q_4", &self.arithmetic.q_4);
+        transcript.append(b"q_arith", &self.arithmetic.q_arith);
+        transcript.append(b"q_range", &self.range_selector_commitment);
+        transcript.append(b"q_logic", &self.logic_selector_commitment);
+        transcript.append(
             b"q_variable_group_add",
             &self.variable_group_add_selector_commitment,
         );
-        transcript.append_commitment(
+        transcript.append(
             b"q_fixed_group_add",
             &self.fixed_group_add_selector_commitment,
         );
-        transcript
-            .append_commitment(b"left_sigma", &self.permutation.left_sigma);
-        transcript
-            .append_commitment(b"right_sigma", &self.permutation.right_sigma);
-        transcript.append_commitment(b"out_sigma", &self.permutation.out_sigma);
-        transcript
-            .append_commitment(b"fourth_sigma", &self.permutation.fourth_sigma);
+        transcript.append(b"left_sigma", &self.permutation.left_sigma);
+        transcript.append(b"right_sigma", &self.permutation.right_sigma);
+        transcript.append(b"out_sigma", &self.permutation.out_sigma);
+        transcript.append(b"fourth_sigma", &self.permutation.fourth_sigma);
         transcript.circuit_domain_sep(self.n as u64);
     }
 }
@@ -283,10 +270,9 @@ where
     Eq(bound = ""),
     PartialEq(bound = "")
 )]
-pub struct ProverKey<F, P>
+pub struct ProverKey<F>
 where
-    F: PrimeField,
-    P: TEModelParameters<BaseField = F>,
+    F: FftField,
 {
     /// Circuit size
     pub(crate) n: usize,
@@ -317,15 +303,11 @@ where
     /// in their evaluation phase and divide by the quotient
     /// polynomial without having to perform IFFT
     pub(crate) v_h_coset_4n: Evaluations<F>,
-
-    /// Type Parameter Marker
-    __: PhantomData<P>,
 }
 
-impl<F, P> ProverKey<F, P>
+impl<F> ProverKey<F>
 where
-    F: PrimeField,
-    P: TEModelParameters<BaseField = F>,
+    F: FftField,
 {
     pub(crate) fn v_h_coset_4n(&self) -> &Evaluations<F> {
         &self.v_h_coset_4n
@@ -377,7 +359,6 @@ where
                 linear_evaluations,
             },
             v_h_coset_4n,
-            __: PhantomData,
         }
     }
 }
@@ -388,7 +369,6 @@ mod test {
     use ark_bls12_381::Bls12_381;
     use ark_bls12_381::Fr as BlsScalar;
     use ark_bls12_381::G1Affine;
-    use ark_ed_on_bls12_381::EdwardsParameters;
     use ark_ff::{Fp256, UniformRand};
     use ark_poly::polynomial::univariate::DensePolynomial;
     use ark_poly::{EvaluationDomain, GeneralEvaluationDomain, UVPolynomial};
@@ -466,11 +446,9 @@ mod test {
             .serialize_unchecked(&mut prover_key_bytes)
             .unwrap();
 
-        let obtained_pk: ProverKey<
-            Fp256<ark_bls12_381::FrParameters>,
-            ark_ed_on_bls12_381::EdwardsParameters,
-        > = ProverKey::deserialize_unchecked(prover_key_bytes.as_slice())
-            .unwrap();
+        let obtained_pk: ProverKey<Fp256<ark_bls12_381::FrParameters>> =
+            ProverKey::deserialize_unchecked(prover_key_bytes.as_slice())
+                .unwrap();
 
         assert!(prover_key == obtained_pk);
     }
@@ -520,7 +498,7 @@ mod test {
             .serialize_unchecked(&mut verifier_key_bytes)
             .unwrap();
 
-        let obtained_vk: VerifierKey<Bls12_381, EdwardsParameters> =
+        let obtained_vk: VerifierKey<Bls12_381> =
             VerifierKey::deserialize_unchecked(verifier_key_bytes.as_slice())
                 .unwrap();
 

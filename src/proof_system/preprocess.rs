@@ -9,13 +9,13 @@
 use crate::constraint_system::StandardComposer;
 use crate::error::Error;
 use crate::proof_system::{widget, ProverKey};
-use crate::transcript::TranscriptWrapper;
-use ark_ec::{PairingEngine, TEModelParameters};
+use ark_ec::PairingEngine;
+use ark_ff::FftField;
 use ark_ff::PrimeField;
 use ark_poly::polynomial::univariate::DensePolynomial;
 use ark_poly::{EvaluationDomain, Evaluations, GeneralEvaluationDomain};
 use ark_poly_commit::kzg10::{Powers, KZG10};
-use num_traits::{One, Zero};
+use merlin::Transcript;
 
 /// Struct that contains all of the selector and permutation [`Polynomial`]s in
 /// PLONK.
@@ -23,7 +23,7 @@ use num_traits::{One, Zero};
 /// [`Polynomial`]: DensePolynomial
 pub struct SelectorPolynomials<F>
 where
-    F: PrimeField,
+    F: FftField,
 {
     q_m: DensePolynomial<F>,
     q_l: DensePolynomial<F>,
@@ -42,10 +42,9 @@ where
     fourth_sigma: DensePolynomial<F>,
 }
 
-impl<E, P> StandardComposer<E, P>
+impl<F> StandardComposer<F>
 where
-    E: PairingEngine,
-    P: TEModelParameters<BaseField = E::Fr>,
+    F: FftField,
 {
     /// Pads the circuit to the next power of two.
     ///
@@ -53,7 +52,7 @@ where
     /// `diff` is the difference between circuit size and next power of two.
     fn pad(&mut self, diff: usize) {
         // Add a zero variable to circuit
-        let zero_scalar = E::Fr::zero();
+        let zero_scalar = F::zero();
         let zero_var = self.zero_var();
 
         let zeroes_scalar = vec![zero_scalar; diff];
@@ -109,11 +108,14 @@ where
     /// Although the prover does not need the verification key, he must compute
     /// the commitments in order to seed the transcript, allowing both the
     /// prover and verifier to have the same view
-    pub fn preprocess_prover(
+    pub fn preprocess_prover<E: PairingEngine<Fr = F>>(
         &mut self,
         commit_key: &Powers<E>,
-        transcript: &mut TranscriptWrapper<E>,
-    ) -> Result<ProverKey<E::Fr, P>, Error> {
+        transcript: &mut Transcript,
+    ) -> Result<ProverKey<F>, Error>
+    where
+        F: PrimeField,
+    {
         let (_, selectors, domain) =
             self.preprocess_shared(commit_key, transcript)?;
 
@@ -215,11 +217,14 @@ where
     /// The verifier only requires the commitments in order to verify a
     /// [`Proof`](super::Proof) We can therefore speed up preprocessing for the
     /// verifier by skipping the FFTs needed to compute the 4n evaluations.
-    pub fn preprocess_verifier(
+    pub fn preprocess_verifier<E: PairingEngine<Fr = F>>(
         &mut self,
         commit_key: &Powers<E>,
-        transcript: &mut TranscriptWrapper<E>,
-    ) -> Result<widget::VerifierKey<E, P>, Error> {
+        transcript: &mut Transcript,
+    ) -> Result<widget::VerifierKey<E>, Error>
+    where
+        F: PrimeField,
+    {
         let (verifier_key, _, _) =
             self.preprocess_shared(commit_key, transcript)?;
         Ok(verifier_key)
@@ -230,18 +235,21 @@ where
     /// polynomials in order to commit to them and have the same transcript
     /// view.
     #[allow(clippy::type_complexity)] // FIXME: Add struct for prover side (last two tuple items).
-    fn preprocess_shared(
+    fn preprocess_shared<E: PairingEngine<Fr = F>>(
         &mut self,
         commit_key: &Powers<E>,
-        transcript: &mut TranscriptWrapper<E>,
+        transcript: &mut Transcript,
     ) -> Result<
         (
-            widget::VerifierKey<E, P>,
+            widget::VerifierKey<E>,
             SelectorPolynomials<E::Fr>,
             GeneralEvaluationDomain<E::Fr>,
         ),
         Error,
-    > {
+    >
+    where
+        F: PrimeField,
+    {
         let domain = GeneralEvaluationDomain::new(self.circuit_size()).unwrap();
 
         // Check that the length of the wires is consistent.
@@ -437,7 +445,7 @@ pub fn compute_vanishing_poly_over_coset<F, D>(
     poly_degree: u64, // degree of the vanishing polynomial
 ) -> Evaluations<F, D>
 where
-    F: PrimeField,
+    F: FftField,
     D: EvaluationDomain<F>,
 {
     assert!(
@@ -460,18 +468,17 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::{batch_test, constraint_system::helper::*};
+    use crate::{batch_test_field, constraint_system::helper::*};
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
 
     /// Tests that the circuit gets padded to the correct length.
     // FIXME: We can do this test without dummy_gadget method.
-    fn test_pad<E, P>()
+    fn test_pad<F>()
     where
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
+        F: FftField,
     {
-        let mut composer: StandardComposer<E, P> = StandardComposer::new();
+        let mut composer: StandardComposer<F> = StandardComposer::new();
         dummy_gadget(100, &mut composer);
 
         // Pad the circuit to next power of two
@@ -496,20 +503,18 @@ mod test {
     }
 
     // Bls12-381 tests
-    batch_test!(
+    batch_test_field!(
         [test_pad],
         [] => (
-            Bls12_381,
-            ark_ed_on_bls12_381::EdwardsParameters
+            Bls12_381
         )
     );
 
     // Bls12-377 tests
-    batch_test!(
+    batch_test_field!(
         [test_pad],
         [] => (
-            Bls12_377,
-            ark_ed_on_bls12_377::EdwardsParameters
+            Bls12_377
         )
     );
 }

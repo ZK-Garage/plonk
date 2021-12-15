@@ -9,14 +9,11 @@
 use crate::constraint_system::ecc::Point;
 use crate::constraint_system::{variable::Variable, StandardComposer};
 use ark_ec::models::TEModelParameters;
-use ark_ec::PairingEngine;
-use ark_ff::{BigInteger, Field, FpParameters, PrimeField};
-use num_traits::{One, Zero};
+use ark_ff::{BigInteger, FftField, FpParameters, PrimeField};
 
-impl<E, P> StandardComposer<E, P>
+impl<F> StandardComposer<F>
 where
-    E: PairingEngine,
-    P: TEModelParameters<BaseField = E::Fr>,
+    F: FftField + PrimeField,
 {
     /// Adds a variable-base scalar multiplication to the circuit description.
     ///
@@ -25,11 +22,14 @@ where
     /// If you're planning to multiply always by the generator of the scalar
     /// field, you should use [`StandardComposer::fixed_base_scalar_mul`]
     /// which is optimized for fixed_base ops.
-    pub fn variable_base_scalar_mul(
+    pub fn variable_base_scalar_mul<P>(
         &mut self,
         curve_var: Variable,
-        point: Point<E, P>,
-    ) -> Point<E, P> {
+        point: Point<P>,
+    ) -> Point<P>
+    where
+        P: TEModelParameters<BaseField = F>,
+    {
         // Turn scalar into bits
         let raw_scalar = *self
             .variables
@@ -57,7 +57,7 @@ where
     fn scalar_decomposition(
         &mut self,
         witness_var: Variable,
-        witness_scalar: E::Fr,
+        witness_scalar: F,
     ) -> Vec<Variable> {
         // Decompose the bits
         let scalar_bits_iter = witness_scalar.into_repr().to_bits_le();
@@ -65,31 +65,31 @@ where
         // Add all the bits into the composer
         let scalar_bits_var: Vec<Variable> = scalar_bits_iter
             .iter()
-            .map(|bit| self.add_input(E::Fr::from(*bit as u64)))
+            .map(|bit| self.add_input(F::from(*bit as u64)))
             .collect();
 
         // Take the first 252 bits
         let scalar_bits_var = scalar_bits_var
-            [..<P::BaseField as PrimeField>::Params::MODULUS_BITS as usize]
+            [..<F as PrimeField>::Params::MODULUS_BITS as usize]
             .to_vec();
 
         // Now ensure that the bits correctly accumulate to the witness given
         let mut accumulator_var = self.zero_var;
-        let mut accumulator_scalar = E::Fr::zero();
+        let mut accumulator_scalar = F::zero();
 
         for (power, bit) in scalar_bits_var.iter().enumerate() {
             self.boolean_gate(*bit);
 
-            let two_pow = E::Fr::from(2u64).pow([power as u64, 0, 0, 0]);
+            let two_pow = F::from(2u64).pow([power as u64, 0, 0, 0]);
 
             let q_l_a = (two_pow, *bit);
-            let q_r_b = (E::Fr::one(), accumulator_var);
-            let q_c = E::Fr::zero();
+            let q_r_b = (F::one(), accumulator_var);
+            let q_c = F::zero();
 
             accumulator_var = self.add(q_l_a, q_r_b, q_c, None);
 
             accumulator_scalar +=
-                two_pow * E::Fr::from(scalar_bits_iter[power] as u64);
+                two_pow * F::from(scalar_bits_iter[power] as u64);
         }
         self.assert_equal(accumulator_var, witness_var);
 
@@ -103,15 +103,17 @@ mod test {
     use crate::{batch_test, constraint_system::helper::*, util};
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
-    use ark_ec::{twisted_edwards_extended::GroupAffine, AffineCurve};
+    use ark_ec::{
+        twisted_edwards_extended::GroupAffine, AffineCurve, PairingEngine,
+    };
 
     fn test_var_base_scalar_mul<E, P>()
     where
         E: PairingEngine,
         P: TEModelParameters<BaseField = E::Fr>,
     {
-        let res = gadget_tester(
-            |composer: &mut StandardComposer<E, P>| {
+        let res = gadget_tester::<E, P>(
+            |composer: &mut StandardComposer<E::Fr>| {
                 let scalar = E::Fr::from_le_bytes_mod_order(&[
                     182, 44, 247, 214, 94, 14, 151, 208, 130, 16, 200, 204,
                     147, 32, 104, 166, 0, 59, 52, 1, 1, 59, 103, 6, 169, 175,
@@ -126,7 +128,7 @@ mod test {
 
                 let expected_point: GroupAffine<P> = AffineCurve::mul(
                     &generator,
-                    util::to_embedded_curve_scalar::<E, P>(scalar),
+                    util::to_embedded_curve_scalar::<E::Fr, P>(scalar),
                 )
                 .into();
 

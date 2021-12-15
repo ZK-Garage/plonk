@@ -12,26 +12,24 @@ use ark_poly::univariate::DensePolynomial;
 use ark_poly_commit::kzg10::{self, Powers, KZG10};
 use ark_poly_commit::sonic_pc::SonicKZG10;
 use ark_poly_commit::PolynomialCommitment;
-use num_traits::{One, Zero};
 use rand_core::OsRng;
+
+use ark_ff::FftField;
 
 /// Adds dummy constraints using arithmetic gates.
 #[allow(dead_code)]
-pub(crate) fn dummy_gadget<E, P>(
-    n: usize,
-    composer: &mut StandardComposer<E, P>,
-) where
-    E: PairingEngine,
-    P: TEModelParameters<BaseField = E::Fr>,
+pub(crate) fn dummy_gadget<F>(n: usize, composer: &mut StandardComposer<F>)
+where
+    F: FftField,
 {
-    let one = E::Fr::one();
+    let one = F::one();
     let var_one = composer.add_input(one);
     for _ in 0..n {
         composer.big_add(
-            (E::Fr::one(), var_one),
-            (E::Fr::one(), var_one),
+            (F::one(), var_one),
+            (F::one(), var_one),
             None,
-            E::Fr::zero(),
+            F::zero(),
             None,
         );
     }
@@ -41,7 +39,7 @@ pub(crate) fn dummy_gadget<E, P>(
 /// passes an end-to-end test.
 #[allow(dead_code)]
 pub(crate) fn gadget_tester<E, P>(
-    gadget: fn(&mut StandardComposer<E, P>),
+    gadget: fn(&mut StandardComposer<E::Fr>),
     n: usize,
 ) -> Result<(), Error>
 where
@@ -70,7 +68,7 @@ where
             None,
         )
         .unwrap();
-        let powers = Powers {
+        let powers = Powers::<E> {
             powers_of_g: ck.powers_of_g.into(),
             powers_of_gamma_g: ck.powers_of_gamma_g.into(),
         };
@@ -82,7 +80,7 @@ where
         let public_inputs = prover.cs.construct_dense_pi_vec();
 
         // Compute Proof
-        (prover.prove(&powers)?, public_inputs)
+        (prover.prove::<E, P>(&powers)?, public_inputs)
     };
     // Verifiers view
     //
@@ -120,5 +118,5 @@ where
     verifier.preprocess(&powers)?;
 
     // Verify proof
-    verifier.verify(&proof, &vk, &public_inputs)
+    verifier.verify::<P>(&proof, &vk, &public_inputs)
 }

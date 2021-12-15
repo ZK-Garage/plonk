@@ -10,23 +10,21 @@ use crate::constraint_system::ecc::Point;
 use crate::constraint_system::StandardComposer;
 use ark_ec::models::twisted_edwards_extended::GroupAffine;
 use ark_ec::models::TEModelParameters;
-use ark_ec::PairingEngine;
-use num_traits::{One, Zero};
+use ark_ff::PrimeField;
 
-impl<E, P> StandardComposer<E, P>
+impl<F> StandardComposer<F>
 where
-    E: PairingEngine,
-    P: TEModelParameters<BaseField = E::Fr>,
+    F: PrimeField,
 {
     /// Adds two curve points together using a curve addition gate
     /// Note that since the points are not fixed the generator is not a part of
     /// the circuit description, however it is less efficient for a program
     /// width of 4.
-    pub fn point_addition_gate(
+    pub fn point_addition_gate<P: TEModelParameters<BaseField = F>>(
         &mut self,
-        point_a: Point<E, P>,
-        point_b: Point<E, P>,
-    ) -> Point<E, P> {
+        point_a: Point<P>,
+        point_b: Point<P>,
+    ) -> Point<P> {
         // In order to verify that two points were correctly added
         // without going over a degree 4 polynomial, we will need
         // x_1, y_1, x_2, y_2
@@ -61,7 +59,7 @@ where
         self.w_r.extend(&[y_1, y_3]);
         self.w_o.extend(&[x_2, self.zero_var]);
         self.w_4.extend(&[y_2, x_1_y_2]);
-        let zeros = [E::Fr::zero(), E::Fr::zero()];
+        let zeros = [F::zero(), F::zero()];
 
         self.q_l.extend(&zeros);
         self.q_r.extend(&zeros);
@@ -74,8 +72,8 @@ where
         self.q_logic.extend(&zeros);
         self.q_fixed_group_add.extend(&zeros);
 
-        self.q_variable_group_add.push(E::Fr::one());
-        self.q_variable_group_add.push(E::Fr::zero());
+        self.q_variable_group_add.push(F::one());
+        self.q_variable_group_add.push(F::zero());
 
         self.perm.add_variables_to_map(x_1, y_1, x_2, y_2, self.n);
         self.n += 1;
@@ -89,7 +87,7 @@ where
         );
         self.n += 1;
 
-        Point::<E, P>::new(x_3, y_3)
+        Point::<P>::new(x_3, y_3)
     }
 }
 
@@ -99,20 +97,19 @@ mod test {
     use crate::{batch_test, constraint_system::helper::*};
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
-    use ark_ff::Field;
+    use ark_ec::PairingEngine;
 
     /// Adds two curve points together using the classical point addition
     /// algorithm. This method is slower than WNAF and is just meant to be the
     /// source of truth to test the WNAF method.
-    pub fn classical_point_addition<E, P>(
-        composer: &mut StandardComposer<E, P>,
-        point_a: Point<E, P>,
-        point_b: Point<E, P>,
-    ) -> Point<E, P>
-    where
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
-    {
+    pub fn classical_point_addition<
+        P: TEModelParameters<BaseField = F>,
+        F: PrimeField,
+    >(
+        composer: &mut StandardComposer<P::BaseField>,
+        point_a: Point<P>,
+        point_b: Point<P>,
+    ) -> Point<P> {
         let x1 = point_a.x;
         let y1 = point_a.y;
 
@@ -120,38 +117,62 @@ mod test {
         let y2 = point_b.y;
 
         // x1 * y2
-        let x1_y2 = composer.mul(E::Fr::one(), x1, y2, E::Fr::zero(), None);
+        let x1_y2 = composer.mul(
+            P::BaseField::one(),
+            x1,
+            y2,
+            P::BaseField::zero(),
+            None,
+        );
         // y1 * x2
-        let y1_x2 = composer.mul(E::Fr::one(), y1, x2, E::Fr::zero(), None);
+        let y1_x2 = composer.mul(
+            P::BaseField::one(),
+            y1,
+            x2,
+            P::BaseField::zero(),
+            None,
+        );
         // y1 * y2
-        let y1_y2 = composer.mul(E::Fr::one(), y1, y2, E::Fr::zero(), None);
+        let y1_y2 = composer.mul(
+            P::BaseField::one(),
+            y1,
+            y2,
+            P::BaseField::zero(),
+            None,
+        );
         // x1 * x2
-        let x1_x2 = composer.mul(E::Fr::one(), x1, x2, E::Fr::zero(), None);
+        let x1_x2 = composer.mul(
+            P::BaseField::one(),
+            x1,
+            x2,
+            P::BaseField::zero(),
+            None,
+        );
         // d x1x2 * y1y2
         let d_x1_x2_y1_y2 =
-            composer.mul(P::COEFF_D, x1_x2, y1_y2, E::Fr::zero(), None);
+            composer.mul(P::COEFF_D, x1_x2, y1_y2, P::BaseField::zero(), None);
 
         // x1y2 + y1x2
         let x_numerator = composer.add(
-            (E::Fr::one(), x1_y2),
-            (E::Fr::one(), y1_x2),
-            E::Fr::zero(),
+            (P::BaseField::one(), x1_y2),
+            (P::BaseField::one(), y1_x2),
+            P::BaseField::zero(),
             None,
         );
 
         // y1y2 - a * x1x2 (a=-1) => y1y2 + x1x2
         let y_numerator = composer.add(
-            (E::Fr::one(), y1_y2),
-            (E::Fr::one(), x1_x2),
-            E::Fr::zero(),
+            (P::BaseField::one(), y1_y2),
+            (P::BaseField::one(), x1_x2),
+            P::BaseField::zero(),
             None,
         );
 
         // 1 + dx1x2y1y2
         let x_denominator = composer.add(
-            (E::Fr::one(), d_x1_x2_y1_y2),
-            (E::Fr::zero(), composer.zero_var),
-            E::Fr::one(),
+            (P::BaseField::one(), d_x1_x2_y1_y2),
+            (P::BaseField::zero(), composer.zero_var),
+            P::BaseField::one(),
             None,
         );
 
@@ -170,17 +191,17 @@ mod test {
             x_denominator,
             inv_x_denom,
             composer.zero_var,
-            E::Fr::one(),
-            E::Fr::zero(),
-            -E::Fr::one(),
+            P::BaseField::one(),
+            P::BaseField::zero(),
+            -P::BaseField::one(),
             None,
         );
 
         // 1 - dx1x2y1y2
         let y_denominator = composer.add(
-            (-E::Fr::one(), d_x1_x2_y1_y2),
-            (E::Fr::zero(), composer.zero_var),
-            E::Fr::one(),
+            (-P::BaseField::one(), d_x1_x2_y1_y2),
+            (P::BaseField::zero(), composer.zero_var),
+            P::BaseField::one(),
             None,
         );
         let inv_y_denom = composer
@@ -196,26 +217,26 @@ mod test {
             y_denominator,
             inv_y_denom,
             composer.zero_var,
-            E::Fr::one(),
-            E::Fr::zero(),
-            -E::Fr::one(),
+            P::BaseField::one(),
+            P::BaseField::zero(),
+            -P::BaseField::one(),
             None,
         );
 
         // We can now use the inverses
 
         let x_3 = composer.mul(
-            E::Fr::one(),
+            P::BaseField::one(),
             inv_x_denom,
             x_numerator,
-            E::Fr::zero(),
+            P::BaseField::zero(),
             None,
         );
         let y_3 = composer.mul(
-            E::Fr::one(),
+            P::BaseField::one(),
             inv_y_denom,
             y_numerator,
-            E::Fr::zero(),
+            P::BaseField::zero(),
             None,
         );
 
@@ -227,10 +248,10 @@ mod test {
         E: PairingEngine,
         P: TEModelParameters<BaseField = E::Fr>,
     {
-        let res = gadget_tester(
-            |composer: &mut StandardComposer<E, P>| {
+        let res = gadget_tester::<E, P>(
+            |composer: &mut StandardComposer<E::Fr>| {
                 let (x, y) = P::AFFINE_GENERATOR_COEFFS;
-                let generator = GroupAffine::new(x, y);
+                let generator = GroupAffine::<P>::new(x, y);
                 let x_var = composer.add_input(x);
                 let y_var = composer.add_input(y);
                 let expected_point = generator + generator;

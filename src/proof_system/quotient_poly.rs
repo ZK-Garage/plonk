@@ -12,7 +12,7 @@ use crate::proof_system::widget::GateConstraint;
 use crate::proof_system::GateValues;
 use crate::{error::Error, proof_system::ProverKey};
 use ark_ec::TEModelParameters;
-use ark_ff::PrimeField;
+use ark_ff::{FftField, PrimeField};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, GeneralEvaluationDomain,
     UVPolynomial,
@@ -22,7 +22,7 @@ use ark_poly::{
 /// [`ProverKey`], and some other info.
 pub fn compute<F, P>(
     domain: &GeneralEvaluationDomain<F>,
-    prover_key: &ProverKey<F, P>,
+    prover_key: &ProverKey<F>,
     z_poly: &DensePolynomial<F>,
     w_l_poly: &DensePolynomial<F>,
     w_r_poly: &DensePolynomial<F>,
@@ -38,7 +38,7 @@ pub fn compute<F, P>(
     var_base_challenge: &F,
 ) -> Result<DensePolynomial<F>, Error>
 where
-    F: PrimeField,
+    F: FftField + PrimeField,
     P: TEModelParameters<BaseField = F>,
 {
     let domain_4n =
@@ -70,7 +70,7 @@ where
     w4_eval_4n.push(w4_eval_4n[2]);
     w4_eval_4n.push(w4_eval_4n[3]);
 
-    let gate_constraints = compute_gate_constraint_satisfiability(
+    let gate_constraints = compute_gate_constraint_satisfiability::<F, P>(
         domain,
         *range_challenge,
         *logic_challenge,
@@ -84,7 +84,7 @@ where
         public_inputs_poly,
     );
 
-    let permutation = compute_permutation_checks(
+    let permutation = compute_permutation_checks::<F>(
         domain,
         prover_key,
         &wl_eval_4n,
@@ -117,7 +117,7 @@ fn compute_gate_constraint_satisfiability<F, P>(
     logic_challenge: F,
     fixed_base_challenge: F,
     var_base_challenge: F,
-    prover_key: &ProverKey<F, P>,
+    prover_key: &ProverKey<F>,
     wl_eval_4n: &[F],
     wr_eval_4n: &[F],
     wo_eval_4n: &[F],
@@ -125,7 +125,7 @@ fn compute_gate_constraint_satisfiability<F, P>(
     pi_poly: &DensePolynomial<F>,
 ) -> Vec<F>
 where
-    F: PrimeField,
+    F: FftField + PrimeField,
     P: TEModelParameters<BaseField = F>,
 {
     let domain_4n =
@@ -191,9 +191,9 @@ where
 
 /// Computes the permutation contribution to the quotient polynomial over
 /// `domain`.
-fn compute_permutation_checks<F, P>(
+fn compute_permutation_checks<F>(
     domain: &GeneralEvaluationDomain<F>,
-    prover_key: &ProverKey<F, P>,
+    prover_key: &ProverKey<F>,
     wl_eval_4n: &[F],
     wr_eval_4n: &[F],
     wo_eval_4n: &[F],
@@ -204,8 +204,7 @@ fn compute_permutation_checks<F, P>(
     gamma: F,
 ) -> Vec<F>
 where
-    F: PrimeField,
-    P: TEModelParameters<BaseField = F>,
+    F: FftField,
 {
     let domain_4n =
         GeneralEvaluationDomain::<F>::new(4 * domain.size()).unwrap();
@@ -238,7 +237,7 @@ fn compute_first_lagrange_poly_scaled<F>(
     scale: F,
 ) -> DensePolynomial<F>
 where
-    F: PrimeField,
+    F: FftField,
 {
     let mut x_evals = vec![F::zero(); domain.size()];
     x_evals[0] = scale;
