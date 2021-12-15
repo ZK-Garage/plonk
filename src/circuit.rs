@@ -210,54 +210,52 @@ where
 ///     }
 /// }
 ///
-/// impl<E, P> Circuit<E, P> for TestCircuit<E, P>
-/// where
-///     E: PairingEngine,
-///     P: TEModelParameters<BaseField = E::Fr>,
-/// {
-///     const CIRCUIT_ID: [u8; 32] = [0xff; 32];
+/// impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
+///        Circuit<E, P> for TestCircuit<E, P>
+///    {
+///        const CIRCUIT_ID: [u8; 32] = [0xff; 32];
+///        fn gadget(
+///            &mut self,
+///            composer: &mut StandardComposer<E, P>,
+///        ) -> Result<(), Error> {
+///            let a = composer.add_input(self.a);
+///            let b = composer.add_input(self.b);
 ///
-///     fn gadget(
-///         &mut self,
-///         composer: &mut StandardComposer<E, P>,
-///     ) -> Result<(), Error> {
-///         // Add fixed witness zero
-///         let a = composer.add_input(self.a);
-///         let b = composer.add_input(self.b);
-///         // Make first constraint a + b = c
-///         let add_result = composer.add(
-///           (E::Fr::one(), a),
-///           (E::Fr::one(), b),
-///           E::Fr::zero(),
-///           Some(-self.c),
-///         );
-///         composer.assert_equal(add_result, composer.zero_var());
+///            // Make first constraint a + b = c (as public input)
+///            let add_result = composer.arithmetic_gate(|gate| {
+///                gate.witness((a, b, None))
+///                    .add((E::Fr::one(), E::Fr::one()))
+///                    .pi(-self.c)
+///            });
 ///
-///         // Check that a and b are in range
-///         composer.range_gate(a, 1 << 6);
-///         composer.range_gate(b, 1 << 5);
+///            composer.assert_equal(add_result, composer.zero_var());
 ///
-///         // Make second constraint a * b = d
-///         let mul_result = composer.mul(E::Fr::one(), a, b, E::Fr::zero(), Some(-self.d));
-///         composer.assert_equal(mul_result, composer.zero_var());
+///            // Check that a and b are in range
+///            composer.range_gate(a, 1 << 6);
+///            composer.range_gate(b, 1 << 5);
+///            // Make second constraint a * b = d
+///            let mul_result = composer.arithmetic_gate(|gate| {
+///                gate.witness((a, b, None)).mul(E::Fr::one()).pi(-self.d)
+///            });
 ///
-///         let e_repr = self.e.into_repr().to_bytes_le();
-///         let e = composer.add_input(E::Fr::from_le_bytes_mod_order(&e_repr));
-///         let (x, y) = P::AFFINE_GENERATOR_COEFFS;
-///         let generator = GroupAffine::new(x, y);
-///         let scalar_mul_result =
-///             composer.fixed_base_scalar_mul(e, generator);
-///         // Apply the constraint
-///         composer
-///             .assert_equal_public_point(scalar_mul_result, self.f.clone());
-///         Ok(())
-///     }
+///            composer.assert_equal(mul_result, composer.zero_var());
 ///
-///     fn padded_circuit_size(&self) -> usize {
-///         1 << 11
-///     }
+///            let e = composer
+///                .add_input(util::from_embedded_curve_scalar::<E, P>(self.e));
+///            let (x, y) = P::AFFINE_GENERATOR_COEFFS;
+///            let generator = GroupAffine::new(x, y);
+///            let scalar_mul_result =
+///                composer.fixed_base_scalar_mul(e, generator);
+///
+///            // Apply the constrain
+///            composer.assert_equal_public_point(scalar_mul_result, self.f);
+///            Ok(())
+///        }
+///        fn padded_circuit_size(&self) -> usize {
+///            1 << 11
+///        }
+///    }
 /// }
-///
 /// let pp = KZG10::<Bls12_381,DensePolynomial<BlsScalar>,>::setup(
 ///     1 << 12, false, &mut OsRng
 ///  )?;
@@ -511,20 +509,22 @@ mod test {
             let b = composer.add_input(self.b);
 
             // Make first constraint a + b = c (as public input)
-            let add_result = composer.add(
-                (E::Fr::one(), a),
-                (E::Fr::one(), b),
-                E::Fr::zero(),
-                Some(-self.c),
-            );
+            let add_result = composer.arithmetic_gate(|gate| {
+                gate.witness((a, b, None))
+                    .add((E::Fr::one(), E::Fr::one()))
+                    .pi(-self.c)
+            });
+
             composer.assert_equal(add_result, composer.zero_var());
 
             // Check that a and b are in range
             composer.range_gate(a, 1 << 6);
             composer.range_gate(b, 1 << 5);
             // Make second constraint a * b = d
-            let mul_result =
-                composer.mul(E::Fr::one(), a, b, E::Fr::zero(), Some(-self.d));
+            let mul_result = composer.arithmetic_gate(|gate| {
+                gate.witness((a, b, None)).mul(E::Fr::one()).pi(-self.d)
+            });
+
             composer.assert_equal(mul_result, composer.zero_var());
 
             let e = composer
