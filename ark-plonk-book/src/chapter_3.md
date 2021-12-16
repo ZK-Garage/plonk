@@ -21,33 +21,10 @@ FRI-based ZK-STARKs algorithm provides both quantum-resistance and does not requ
 Plonky2 claims a 100x speed up for ethereum for $170ms$ comparing to Plonky which takes $15s$ for proving times. 
 ARK-PLONK is an optimization of the original PLONK protocol and guarantees $3.44s$ for proving time and $4.50ms$ for verifier speed comparing to $60$ proof times in the original PLONK design.
 
+A differentiating factor ARK-PLONK has is the fact that it uses Arkworks generic backend, a rust library that abstracts over the curves and over the fields so you can use any algorithm in a generic way. This makes ARK-PLONK valid for any curve implementation for pairing curves, for edwards twisted curves….etc.  
+ARK-PLONK also uses a generic polynomial commitment based on [ark-poly-commit](https://docs.rs/ark-poly-commit/0.3.0/ark_poly_commit/) which provides various constructions of polynomial commitment schemes. This will allow ARK-PLONK to use other commitment schemes like quantum resistent FRI and not be restricted only to KZG10.
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-| Library     | Description | Prover speed| Verifier speed| Proof size | Setup     |
-|             |             |             |               |            |           |
-| ----------- | ----------- |-------------|-------------  | -----------|-----------|
-|             |             |             |               |            |           |
-|             |             |             |               |            |           |
-|             |             |             |               |            |           |
-|             |             |             |               |            |           |
-|             |             |             |               |            |           |
-
+There is no other library right which allows you to have the preedom of using generic parameters. Zcash's Halo2 and Plonky use HALO commitment scheme while plonky2 uses only FRI scheme. In terms of elliptic curves, Aztek's implementation of PLonk is based on bn256, duskPlonk is based on bls12-281.
 ## Circuit implementation
 
 ARK-PLONK's implementation is an optimization of the original PLONK protocol as it enables lookup table to the PLONK circuit. This optimization allows for precomputation of some of the operations that are not snark friendly like bit operations (see [PLOOKUP](https://eprint.iacr.org/2020/315.pdf) for further explanation on PLONK + LOOKUP tables).
@@ -60,6 +37,7 @@ Our implementation also uses custom gates similarly to [TurboPolnk](https://docs
 ### Verifier
 
 ### Gadgets
+
 
 
 
@@ -91,7 +69,7 @@ Circuits in ARK-PLONK depend on two generic parameters:
 
   Currently tests are only run with two pairing friendly curves [Bls12_381](https://lib.rs/crates/ark-bls12-381) and 
   [Bls12_377](https://docs.rs/ark-ed-on-bls12-377/0.3.0/ark_ed_on_bls12_377/#) in order to check that the library is generic and can in fact work 
-  correctly with different parameters and also to measure performance when   changing the used curve.
+  correctly with different parameters and also to measure performance when changing the used curve.
   
 
          
