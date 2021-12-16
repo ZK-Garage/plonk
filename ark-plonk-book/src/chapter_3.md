@@ -32,6 +32,42 @@ ARK-PLONK's implementation is an optimization of the original PLONK protocol as 
 Our implementation also uses custom gates similarly to [TurboPolnk](https://docs.zkproof.org/pages/standards/accepted-workshop3/proposal-turbo_plonk.pdf) which allow us to define our own custom bit arithmetic operations like efficient Poseidon or MIMC hashes which are extremely efficient to evaluate inside of a snark. 
 
 
+### Modules
+* circuit: Tools & traits for PLONK circuits (ark_plonk::circuit)
+  1. Structs
+     - `PublicInputValue`: structure that represents a PLONK Circuit Public Input converted into its scalar representation.
+     - `VerifierData`: Collection of structs/objects that the Verifier will use in order to de/serialize data needed for Circuit proof verification. This structure can be seen as a link between the Circuit public input positions and the VerifierKey that the Verifier needs to use.
+     - `TestCircuit`: structure of a circuit that checks the following:
+       1) $a + b = c$ where $c$ is a PI
+       2) Checks $a$ and $b$ are in range
+       3) $a * b = d$ where $d$ is a PI
+       4) JubJub::GENERATOR * $e$(JubJubScalar)= $f$ where $f$ is a PI
+  2. Traits 
+     - `Circuit`: Allows to automatically being able to generate, and verify proofs as  well as compile the circuit.
+     - `FeIntoPubInput`: Field Element Into Public Input
+     - `GeIntoPubInput`: Group Element Into Public Input
+
+        The two traits `FeIntoPubInput` and `GeIntoPubInput` are helper traits used as a way to have a workaround for not being able to implement `From<_> for Values` for both `PrimeField` and `GroupAffine` since they are external to the crate, and therefore the compiler cannot be sure that `PrimeField` will never be implemented for `GroupAffine`. In which case, the two implementations would be inconsistent. 
+
+
+* constraint_system
+* error: Defines all possible errors that can be encountered in PLONK
+* prelude: ark_plonk::prelude
+* transcript
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ### Proof generation
 ### Prover
 ### Verifier
