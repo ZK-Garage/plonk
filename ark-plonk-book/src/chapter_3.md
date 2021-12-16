@@ -10,6 +10,35 @@ ARK-PLONK is however the only generic implementation which allows any curve impl
 
 ## State of the art
 
+In 2020, AZTEC team has developed PLONK which uses KZG's pairing-based polynomial commitment scheme in order to bring a universal zkSNARK setup. 
+Since then, PLONK has become very popular and lots of projects like Dusk Network, Zcash's Halo 2, Mina, Mir...etc started using it and developing their own variations of it. 
+Both Mir and Zcash use PLONK combined with [Halo’s polynomial commitment scheme](https://eprint.iacr.org/2019/1021.pdf) for their libraries [Plonky](https://github.com/mir-protocol/plonky) and Halo2. Halo based schemes do recursive proofs without pairings using elliptic curves that are not pairing friendly and can run without the need for trusted setups. In a recursive proof, the verifier is written inside the circuit which allows us to verify a proof inside of another proof while in a standard proof system there is a prover and a verifier. 
+In a KZG system, the proof size is very small (less than a kilobyte) and it's constant and also the verification time is constant, it’s also easy to verify on Ethereum but recursion is hard to do with pairings. 
+Halo based schemes have decent proof size and prover time, but take linear time to verify and it’s not possible to verify on Ethereum.
+
+Mir has recently developed a more optimized proving system Plonky2 based on PLONK and FRI. 
+FRI-based ZK-STARKs algorithm provides both quantum-resistance and does not require any trusted setups while the KZG scheme uses elliptic curve pairing which is not quantum resistant and requires a third-party trusted setup. FRI has a blowup factor which measures how much redundancy a polynomial needs to add before the commitment is generated and thus makes the prover faster. 
+Plonky2 claims a 100x speed up for ethereum for $170ms$ comparing to Plonky which takes $15s$ for proving times. 
+ARK-PLONK is an optimization of the original PLONK protocol and guarantees $3.44s$ for proving time and $4.50ms$ for verifier speed comparing to $60$ proof times in the original PLONK design.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 | Library     | Description | Prover speed| Verifier speed| Proof size | Setup     |
 |             |             |             |               |            |           |
 | ----------- | ----------- |-------------|-------------  | -----------|-----------|
@@ -113,7 +142,7 @@ fn gadget(
 
 ```
 We define three checks that our circuit relies on:
-* **Range checks:** $a<26 and b<25$
+* **Range checks:** $a<26$ and $b<25$
 * **Addition checks:** $a+b=c$
 * **Elliptic curve multiplication** 
  
