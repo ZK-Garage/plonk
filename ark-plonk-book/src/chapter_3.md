@@ -50,10 +50,26 @@ Our implementation also uses custom gates similarly to [TurboPolnk](https://docs
         The two traits `FeIntoPubInput` and `GeIntoPubInput` are helper traits used as a way to have a workaround for not being able to implement `From<_> for Values` for both `PrimeField` and `GroupAffine` since they are external to the crate, and therefore the compiler cannot be sure that `PrimeField` will never be implemented for `GroupAffine`. In which case, the two implementations would be inconsistent. 
 
 
-* constraint_system
+* constraint_system: The constraint System module stores the implementation of the PLONK Standard Composer, as well as the circuit tools and abstractions, used by the Composer to generate, build, preprocess circuits.
+* proof_system: Proving system
 * error: Defines all possible errors that can be encountered in PLONK
-* prelude: ark_plonk::prelude
-* transcript
+* prelude: collection of functions needed to use ark-plonk library.
+  - Structs:
+     - `Circuit`
+     - `PublicInputValue`
+     - `VerifierData`
+     - `StandardComposer`: A StandardComposer stores all of the circuit information (values, positions in the circuits, gates and Wires that occupy, public inputs, Permutation argument...etc)
+     - `Proof`: A Proof is a composition of Commitments to the Witness, Permutation, Quotient, Shifted and Opening polynomials as well as the ProofEvaluations.
+     - `VerifierKey`: PLONK circuit Verification Key.
+     - `Prover`: Abstraction structure designed to construct a circuit and generate Proofs for it.
+     - `ProverKey`: 	PLONK circuit Proving Key.
+     - `Verifier`: Abstraction structure designed verify Proofs.
+
+* transcript: an extension over the Merlin Transcript which adds a few extra functionalities.
+   1. Structs:
+      - `TranscriptWrapper`: Wrapper around Transcript
+   2. Traits:
+      - TranscriptProtocol`: 	Transcript adds an abstraction over the Merlin transcript For convenience
 
 
 
