@@ -24,7 +24,7 @@ ARK-PLONK is an optimization of the original PLONK protocol and guarantees $3.44
 A differentiating factor ARK-PLONK has is the fact that it uses Arkworks generic backend, a rust library that abstracts over the curves and over the fields so you can use any algorithm in a generic way. This makes ARK-PLONK valid for any curve implementation for pairing curves, for edwards twisted curves….etc.  
 ARK-PLONK also uses a generic polynomial commitment based on [ark-poly-commit](https://docs.rs/ark-poly-commit/0.3.0/ark_poly_commit/) which provides various constructions of polynomial commitment schemes. This will allow ARK-PLONK to use other commitment schemes like quantum resistent FRI and not be restricted only to KZG10.
 
-There is no other library right which allows you to have the preedom of using generic parameters. Zcash's Halo2 and Plonky use HALO commitment scheme while plonky2 uses only FRI scheme. In terms of elliptic curves, Aztek's implementation of PLonk is based on bn256, duskPlonk is based on bls12-281.
+There is no other library right which allows you to have the freedom of using generic parameters. Zcash's Halo2 and Plonky use HALO commitment scheme while plonky2 uses only FRI scheme. In terms of elliptic curves, Aztek's implementation of PLonk is based on bn256, duskPlonk is based on bls12-281.
 ## Circuit implementation
 
 ARK-PLONK's implementation is an optimization of the original PLONK protocol as it enables lookup table to the PLONK circuit. This optimization allows for precomputation of some of the operations that are not snark friendly like bit operations (see [PLOOKUP](https://eprint.iacr.org/2020/315.pdf) for further explanation on PLONK + LOOKUP tables).
@@ -35,6 +35,27 @@ Our implementation also uses custom gates similarly to [TurboPolnk](https://docs
 ### Proof generation
 ### Prover
 ### Verifier
+The Verification does not require a Circuit instance and can be executed solely using `verifier_data` after the circuit is compiled. 
+```rust 
+// Compile the circuit
+let (pk_p, verifier_data) = circuit.compile(&pp)?;
+```
+The Verifier's data is created from a `VerifierKey` and the public circuit inputs.
+
+```rust 
+pub struct VerifierData<E, P>
+where
+    E: PairingEngine,
+    P: TEModelParameters<BaseField = E::Fr>,
+{
+    /// Verifier Key
+    pub key: VerifierKey<E, P>,
+
+    /// Public Input Positions
+    pub pi_pos: Vec<usize>,
+}
+```
+
 
 ### Gadgets
 
@@ -78,7 +99,9 @@ Circuits in ARK-PLONK depend on two generic parameters:
 
 
 * Signature scheme: 
+TBD
 * Hash function:
+TBD
 
 
 
