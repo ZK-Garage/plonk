@@ -85,6 +85,30 @@ Our implementation also uses custom gates similarly to [TurboPolnk](https://docs
 
 
 ### Proof generation
+The proof is generated using `CircuitInputs` and `ProverKey` as follow:
+```rust
+    fn gen_proof(
+        &mut self,
+        u_params: &UniversalParams<E>,
+        prover_key: ProverKey<E::Fr, P>,
+        transcript_init: &'static [u8],
+    ) 
+  ```
+After the circuit is compiled, the prover calls  `gen_proof()` 
+```rust
+ let proof = {
+            let mut circuit: TestCircuit<E, P> = TestCircuit {
+                a: E::Fr::from(20u64),
+                b: E::Fr::from(5u64),
+                c: E::Fr::from(25u64),
+                d: E::Fr::from(100u64),
+                e: P::ScalarField::from(2u64),
+                f: point_f_pi,
+            };
+
+            circuit.gen_proof(&pp, pk_p, b"Test")?
+        };
+``
 ### Prover
 ### Verifier
 The Verification does not require a Circuit instance and can be executed solely using `verifier_data` after the circuit is compiled. 
