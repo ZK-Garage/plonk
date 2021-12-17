@@ -67,9 +67,9 @@ Our implementation also uses custom gates similarly to [TurboPolnk](https://docs
 
 * transcript: an extension over the Merlin Transcript which adds a few extra functionalities.
    1. Structs:
-      - `TranscriptWrapper`: Wrapper around Transcript
+    - `TranscriptWrapper`: Wrapper around Transcript
    2. Traits:
-      - TranscriptProtocol`: 	Transcript adds an abstraction over the Merlin transcript For convenience
+    - `TranscriptProtocol`: 	Transcript adds an abstraction over the Merlin transcript For convenience
 
 
 
@@ -107,11 +107,6 @@ where
     pub pi_pos: Vec<usize>,
 }
 ```
-
-
-### Gadgets
-
-
 
 
 ## Parameters
@@ -155,9 +150,14 @@ TBD
 * Hash function:
 TBD
 
+### Gadgets
+
+In order to translate a high level code into an arithmetic circuit we need to use gadgets. Gadgets provide modular and reusable abstractions for circuits as well as abstracting functions, elliptic curve points or integers of specific sizes. Some of the most famous zksnarks gadget libraries are Libsnark in C++ and Bellman in Rust.
 
 
-### Simple example
+Every single gadget in ARK-PLONK takes mutable reference or a pointer to the composer which then generates the proof and defines the circuit. 
+
+#### Simple example
 
 In order to show how our implementation works, we will take a simple example of a gadget $a+b=c$. The gadget proves the knowledge of two private inputs $a$ and $b$ while taking $c$ as a public input.
 ```rust
