@@ -2,7 +2,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 //
-// Copyright (c) DUSK NETWORK. All rights reserved.
+// Copyright (c) ZK-INFRA. All rights reserved.
 
 //! The constraint system module stores the implementation of the PLONK
 //! [`StandardComposer`], as well as the circuit tools and abstractions, used by
