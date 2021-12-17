@@ -108,7 +108,7 @@ After the circuit is compiled, the prover calls  `gen_proof()`
 
             circuit.gen_proof(&pp, pk_p, b"Test")?
         };
-``
+```
 ### Prover
 ### Verifier
 The Verification does not require a Circuit instance and can be executed solely using `verifier_data` after the circuit is compiled. 
