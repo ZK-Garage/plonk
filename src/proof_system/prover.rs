@@ -19,12 +19,12 @@ use ark_ec::{PairingEngine, TEModelParameters};
 use ark_ff::{Field, UniformRand};
 use ark_poly::{
     univariate::{DensePolynomial, SparsePolynomial},
-    EvaluationDomain, GeneralEvaluationDomain, Polynomial, UVPolynomial,
+    EvaluationDomain, GeneralEvaluationDomain, UVPolynomial,
 };
 use ark_poly_commit::kzg10::{Powers, KZG10};
 use core::marker::PhantomData;
 use core::ops::Add;
-use num_traits::Zero;
+use num_traits::{One, Zero};
 use rand_core::OsRng;
 
 /// Abstraction structure designed to construct a circuit and generate
@@ -195,26 +195,41 @@ where
         n: usize,
         hiding_degree: usize,
     ) -> DensePolynomial<E::Fr> {
-        assert!(
-            hiding_degree < n / 2,
-            "The hidding degree must be less than n/2"
-        );
-        let mut sparse_blinder_vec =
-            vec![(0 as usize, E::Fr::zero()); 2 * (hiding_degree + 1)];
+        if hiding_degree < n / 2 {
+            let z_h: DensePolynomial<E::Fr> =
+                SparsePolynomial::from_coefficients_slice(&[
+                    (0 as usize, -E::Fr::one()),
+                    (n, E::Fr::one()),
+                ])
+                .into();
+            let rand_poly = DensePolynomial::from_coefficients_vec(vec![
+                    E::Fr::rand(
+                        &mut OsRng
+                    );
+                    hiding_degree + 1
+                ]);
+            let blinder_poly = &rand_poly * &z_h;
+            return polynomial + &blinder_poly;
+        } else {
+            let mut sparse_blinder_vec =
+                vec![(0 as usize, E::Fr::zero()); 2 * (hiding_degree + 1)];
 
-        // Computes the multiplication of (b0 + b1X + ..+ bk X^k) (X^n -1)
-        // = (- b0 -b1 X ... -bk X^k  ..., b0 X^n + b1 X^(n+1) + ... bk X^(n+k)
-        // as long as k< n/2
-        for i in 0..=hiding_degree {
-            let random_blinder = E::Fr::rand(&mut OsRng);
-            sparse_blinder_vec[i] = (i, -random_blinder);
-            sparse_blinder_vec[hiding_degree + 1 + i] = (n + i, random_blinder);
+            // Computes the multiplication of (b0 + b1X + ..+ bk X^k) (X^n -1)
+            // = (- b0 -b1 X ... -bk X^k  ..., b0 X^n + b1 X^(n+1) + ... bk
+            // X^(n+k) as long as k< n/2
+            for i in 0..=hiding_degree {
+                let random_blinder = E::Fr::rand(&mut OsRng);
+                sparse_blinder_vec[i] = (i, -random_blinder);
+                sparse_blinder_vec[hiding_degree + 1 + i] =
+                    (n + i, random_blinder);
+            }
+
+            let blinder_poly =
+                SparsePolynomial::from_coefficients_vec(sparse_blinder_vec);
+            // panic!("The blinder poly is {:?}", blinder_poly);
+
+            return polynomial + &blinder_poly;
         }
-
-        let blinder_poly =
-            SparsePolynomial::from_coefficients_vec(sparse_blinder_vec);
-
-        polynomial + &blinder_poly
     }
 
     /// Creates a [`Proof]` that demonstrates that a circuit is satisfied.
@@ -350,7 +365,7 @@ where
 
         // Split quotient polynomial into 4 degree `n` polynomials
         let (t_1_poly, t_2_poly, t_3_poly, t_4_poly) =
-            self.split_tx_poly(domain.size(), &t_poly);
+            self.split_tx_poly(n, &t_poly);
 
         // Commit to splitted quotient polynomial
         let t_1_commit = KZG10::commit(commit_key, &t_1_poly, None, None)?;
@@ -427,7 +442,7 @@ where
         // We merge the quotient polynomial using the `z_challenge` so the SRS
         // is linear in the circuit size `n`
         let quot = Self::compute_quotient_opening_poly(
-            domain.size(),
+            n,
             &t_1_poly,
             &t_2_poly,
             &t_3_poly,
