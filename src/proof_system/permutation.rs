@@ -175,7 +175,7 @@ where
             (alpha, beta, gamma),
             &self.fourth_sigma.0,
         );
-        let domain = GeneralEvaluationDomain::new(z_poly.degree()).unwrap();
+        let domain = GeneralEvaluationDomain::new(z_poly.degree() - 2).unwrap();
         let c = self.compute_lineariser_check_is_one(
             &domain,
             z_challenge,
