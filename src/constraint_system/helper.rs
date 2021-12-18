@@ -49,8 +49,11 @@ where
     P: TEModelParameters<BaseField = E::Fr>,
 {
     // Common View
-    let universal_params =
-        KZG10::<E, DensePolynomial<E::Fr>>::setup(2 * n, false, &mut OsRng)?;
+    let universal_params = KZG10::<E, DensePolynomial<E::Fr>>::setup(
+        2 * n + 7,
+        false,
+        &mut OsRng,
+    )?;
     // Provers View
     let (proof, public_inputs) = {
         // Create a prover struct
@@ -98,7 +101,7 @@ where
     // Compute Commit and Verifier Key
     let (sonic_ck, sonic_vk) = SonicKZG10::<E, DensePolynomial<E::Fr>>::trim(
         &universal_params,
-        verifier.circuit_size().next_power_of_two(),
+        verifier.circuit_size().next_power_of_two() + 7,
         0,
         None,
     )
