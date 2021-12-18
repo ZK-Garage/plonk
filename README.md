@@ -112,7 +112,13 @@ Verify 2^18 = 262144 gates/18 time:   [6.7577 ms 6.8124 ms 6.8925 ms]
 
 ## Licensing
 
-This code is licensed under Mozilla Public License Version 2.0 (MPL-2.0). Please see [LICENSE](https://github.com/rust-zkp/ark-plonk/blob/master/LICENSE) for further info.
+
+This software is distributed under the 
+terms of both the MIT license and 
+theApache License (Version 2.0). Please 
+see [LICENSE-MIT](https://github.com/rust-zkp/ark-plonk/blob/master/LICENSE-MIT) 
+and [LICENSE-APACHE](https://github.com/rust-zkp/ark-plonk/blob/master/LICENSE-APACHE) 
+for further info.
 
 ## Contributing
 
