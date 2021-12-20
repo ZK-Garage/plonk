@@ -198,7 +198,7 @@ where
         if hiding_degree < n / 2 {
             let z_h: DensePolynomial<E::Fr> =
                 SparsePolynomial::from_coefficients_slice(&[
-                    (0 as usize, -E::Fr::one()),
+                    (0, -E::Fr::one()),
                     (n, E::Fr::one()),
                 ])
                 .into();
@@ -209,10 +209,10 @@ where
                     hiding_degree + 1
                 ]);
             let blinder_poly = &rand_poly * &z_h;
-            return polynomial + &blinder_poly;
+            polynomial + &blinder_poly
         } else {
             let mut sparse_blinder_vec =
-                vec![(0 as usize, E::Fr::zero()); 2 * (hiding_degree + 1)];
+                vec![(0, E::Fr::zero()); 2 * (hiding_degree + 1)];
 
             // Computes the multiplication of (b0 + b1X + ..+ bk X^k) (X^n -1)
             // = (- b0 -b1 X ... -bk X^k  ..., b0 X^n + b1 X^(n+1) + ... bk
@@ -228,7 +228,7 @@ where
                 SparsePolynomial::from_coefficients_vec(sparse_blinder_vec);
             // panic!("The blinder poly is {:?}", blinder_poly);
 
-            return polynomial + &blinder_poly;
+            polynomial + &blinder_poly
         }
     }
 
