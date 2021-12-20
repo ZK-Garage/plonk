@@ -18,7 +18,6 @@ use ark_ec::PairingEngine;
 /// If the standard composer calls a plookup gate, then the user will define
 /// the length of the gate, measured in circuit size.
 
-
 /// This struct is a table, contaning a vector,
 /// of arity 4 where each of the values is a
 /// BlsScalar. The elements of the table are
@@ -191,7 +190,9 @@ impl<E: PairingEngine> LookupTable<E> {
     /// Takes in a table, which is a list of vectors containing
     /// 4 elements, and turns them into 4 distinct multisets for
     /// a, b, c and d.
-    pub fn vec_to_multiset(&self) -> (MultiSet<E>, MultiSet<E>, MultiSet<E>, MultiSet<E>) {
+    pub fn vec_to_multiset(
+        &self,
+    ) -> (MultiSet<E>, MultiSet<E>, MultiSet<E>, MultiSet<E>) {
         let mut multiset_a = MultiSet::new();
         let mut multiset_b = MultiSet::new();
         let mut multiset_c = MultiSet::new();
@@ -212,12 +213,7 @@ impl<E: PairingEngine> LookupTable<E> {
     /// element must be predetermined to be between -1 and 2 depending on
     /// the type of table used. If the element does not exist, it will
     /// return an error.
-    pub fn lookup(
-        &self,
-        a: E::Fr,
-        b: E::Fr,
-        d: E::Fr,
-    ) -> Result<E::Fr, Error> {
+    pub fn lookup(&self, a: E::Fr, b: E::Fr, d: E::Fr) -> Result<E::Fr, Error> {
         let pos = self
             .0
             .iter()
