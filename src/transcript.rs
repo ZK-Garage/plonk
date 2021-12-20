@@ -1,11 +1,14 @@
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE
+// or https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
 //
-// Copyright (c) DUSK NETWORK. All rights reserved.
+// Copyright (c) ZK-INFRA. All rights reserved.
 
-//! This is an extension over the [Merlin Transcript](Transcript)
-//! which adds a few extra functionalities.
+//! This is an extension over the [Merlin Transcript](Transcript) which adds a
+//! few extra functionalities.
+
 use ark_ec::PairingEngine;
 use ark_ff::{Field, PrimeField};
 use ark_poly_commit::kzg10::Commitment;
@@ -13,24 +16,40 @@ use ark_serialize::CanonicalSerialize;
 use core::marker::PhantomData;
 use merlin::Transcript;
 
-#[derive(Clone)]
-pub struct TranscriptWrapper<E: PairingEngine> {
+/// Wrapper around [`Transcript`]
+#[derive(derivative::Derivative)]
+#[derivative(Clone)]
+pub struct TranscriptWrapper<E>
+where
+    E: PairingEngine,
+{
+    /// Base Transcript
     pub transcript: Transcript,
-    _marker: PhantomData<E>,
+
+    /// Type Parameter Marker
+    __: PhantomData<E>,
 }
 
-impl<E: PairingEngine> TranscriptWrapper<E> {
-    pub fn new(label: &'static [u8]) -> TranscriptWrapper<E> {
-        TranscriptWrapper {
+impl<E> TranscriptWrapper<E>
+where
+    E: PairingEngine,
+{
+    /// Builds a new [`TranscriptWrapper`] with the given `label`.
+    #[inline]
+    pub fn new(label: &'static [u8]) -> Self {
+        Self {
             transcript: Transcript::new(label),
-            _marker: PhantomData,
+            __: PhantomData,
         }
     }
 }
 
 /// Transcript adds an abstraction over the Merlin transcript
 /// For convenience
-pub(crate) trait TranscriptProtocol<E: PairingEngine> {
+pub(crate) trait TranscriptProtocol<E>
+where
+    E: PairingEngine,
+{
     /// Append a `commitment` with the given `label`.
     fn append_commitment(&mut self, label: &'static [u8], comm: &Commitment<E>);
 
@@ -44,7 +63,10 @@ pub(crate) trait TranscriptProtocol<E: PairingEngine> {
     fn circuit_domain_sep(&mut self, n: u64);
 }
 
-impl<E: PairingEngine> TranscriptProtocol<E> for TranscriptWrapper<E> {
+impl<E> TranscriptProtocol<E> for TranscriptWrapper<E>
+where
+    E: PairingEngine,
+{
     fn append_commitment(
         &mut self,
         label: &'static [u8],
@@ -62,7 +84,8 @@ impl<E: PairingEngine> TranscriptProtocol<E> for TranscriptWrapper<E> {
     }
 
     fn challenge_scalar(&mut self, label: &'static [u8]) -> E::Fr {
-        // XXX: review this: assure from_random_bytes returnes a valid Field element
+        // XXX: review this: assure from_random_bytes returnes a valid Field
+        // element
         let size = E::Fr::size_in_bits() / 8;
         let mut buf = vec![0u8; size];
         self.transcript.challenge_bytes(label, &mut buf);

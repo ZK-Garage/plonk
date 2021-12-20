@@ -1,17 +1,25 @@
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE
+// or https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
 //
-// Copyright (c) DUSK NETWORK. All rights reserved.
+// Copyright (c) ZK-INFRA. All rights reserved.
 
-use crate::constraint_system::StandardComposer;
-use crate::constraint_system::{Variable, WireData};
+//! Logic Gates
+//!
+//! This module includes a generic logic gate that can either be an `XOR` or an
+//! `AND` gate.
+
+use crate::constraint_system::{StandardComposer, Variable, WireData};
 use ark_ec::{PairingEngine, TEModelParameters};
 use ark_ff::{BigInteger, PrimeField};
 use num_traits::{One, Zero};
 
-impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
-    StandardComposer<E, P>
+impl<E, P> StandardComposer<E, P>
+where
+    E: PairingEngine,
+    P: TEModelParameters<BaseField = E::Fr>,
 {
     /// Performs a logical AND or XOR op between the inputs provided for the
     /// specified number of bits.
@@ -339,18 +347,18 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
 }
 
 #[cfg(test)]
-mod logic_gate_tests {
+mod test {
+    use super::*;
+    use crate::constraint_system::helper::*;
     use crate::{batch_test, constraint_system::StandardComposer};
-
-    use super::super::helper::*;
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
-    use ark_ec::{PairingEngine, TEModelParameters};
 
-    fn test_logic_xor_and_constraint<
+    fn test_logic_xor_and_constraint<E, P>()
+    where
         E: PairingEngine,
         P: TEModelParameters<BaseField = E::Fr>,
-    >() {
+    {
         // Should pass since the XOR result is correct and the bit-num is even.
         let res = gadget_tester(
             |composer: &mut StandardComposer<E, P>| {
@@ -421,10 +429,11 @@ mod logic_gate_tests {
         assert!(res.is_err());
     }
 
-    fn test_logical_gate_odd_bit_num<
+    fn test_logical_gate_odd_bit_num<E, P>()
+    where
         E: PairingEngine,
         P: TEModelParameters<BaseField = E::Fr>,
-    >() {
+    {
         // Should fail since the bit-num is odd.
         let _ = gadget_tester(
             |composer: &mut StandardComposer<E, P>| {
@@ -444,27 +453,21 @@ mod logic_gate_tests {
 
     // Test for Bls12_381
     batch_test!(
-        [
-        test_logic_xor_and_constraint
-        ],
-        [
-        test_logical_gate_odd_bit_num
-        ] => (
-        Bls12_381,
-        ark_ed_on_bls12_381::EdwardsParameters
+        [test_logic_xor_and_constraint],
+        [test_logical_gate_odd_bit_num]
+        => (
+            Bls12_381,
+            ark_ed_on_bls12_381::EdwardsParameters
         )
     );
 
     // Test for Bls12_377
     batch_test!(
-        [
-        test_logic_xor_and_constraint
-        ],
-        [
-        test_logical_gate_odd_bit_num
-        ] => (
-        Bls12_377,
-        ark_ed_on_bls12_377::EdwardsParameters
+        [test_logic_xor_and_constraint],
+        [test_logical_gate_odd_bit_num]
+        => (
+            Bls12_377,
+            ark_ed_on_bls12_377::EdwardsParameters
         )
     );
 }

@@ -1,31 +1,27 @@
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE
+// or https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
 //
-// Copyright (c) DUSK NETWORK. All rights reserved.
+// Copyright (c) ZK-INFRA. All rights reserved.
 
-//! The constraint System module stores the implementation
-//! of the PLONK Standard Composer, as well as the circuit
-//! tools and abstractions, used by the Composer to generate,
-//! build, preprocess circuits.
+//! The constraint system module stores the implementation of the PLONK
+//! [`StandardComposer`], as well as the circuit tools and abstractions, used by
+//! the Composer to generate, build, preprocess circuits.
+
+mod arithmetic;
+mod boolean;
+mod logic;
+mod range;
+
 pub(crate) mod composer;
+pub(crate) mod helper;
 pub(crate) mod variable;
 
-/// Simple Arithmetic gates
-mod arithmetic;
-/// Boolean gate
-mod boolean;
-/// Elliptic Curve Crypto gates
 pub mod ecc;
 
-//#[cfg(test)]
-pub(crate) mod helper;
-/// XOR and AND gates
-pub mod logic;
-/// Range gate
-pub mod range;
+pub(crate) use variable::WireData;
 
 pub use composer::StandardComposer;
-pub use ecc::Point;
 pub use variable::Variable;
-pub(crate) use variable::WireData;

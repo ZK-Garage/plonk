@@ -3,6 +3,8 @@ name: CI checks
 on: 
   pull_request:
     types: [synchronize, opened, reopened, ready_for_review]
+env: 
+  RUSTFLAGS: "-D warnings"
 
 ## `actions-rs/toolchain@v1` overwrite set to false so that 
 ## `rust-toolchain` is always used and the only source of truth.
@@ -28,7 +30,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
-          args: --verbose --release --all --all-features
+          args: --verbose --release --workspace --all-features
 
   build:
     if: github.event.pull_request.draft == false
@@ -76,7 +78,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: doc
-          args: --all --document-private-items
+          args: --workspace --document-private-items --all-features
 
   fmt:
     if: github.event.pull_request.draft == false
@@ -94,3 +96,21 @@ jobs:
         with:
           command: fmt
           args: --all -- --check
+
+  clippy:
+    if: github.event.pull_request.draft == false
+
+    name: Clippy lint checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          override: false
+          components: clippy
+      - name: Run clippy
+        uses: actions-rs/cargo@v1
+        with:
+          command: clippy
+          args: --verbose --release --workspace --examples --tests --all-features

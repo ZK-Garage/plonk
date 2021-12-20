@@ -1,8 +1,10 @@
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE
+// or https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
 //
-// Copyright (c) DUSK NETWORK. All rights reserved.
+// Copyright (c) ZK-INFRA. All rights reserved.
 
 //! A `Composer` could be understood as some sort of Trait that is actually
 //! defining some kind of Circuit Builder for PLONK.
@@ -14,19 +16,16 @@
 //! It allows us not only to build Add and Mul constraints but also to build
 //! ECC op. gates, Range checks, Logical gates (Bitwise ops) etc.
 
-// Gate fn's have a large number of attributes but
-// it is intended to be like this in order to provide
-// maximum performance and minimum circuit sizes.
-
 use crate::constraint_system::Variable;
 use crate::permutation::Permutation;
+use alloc::collections::BTreeMap;
 use ark_ec::models::TEModelParameters;
 use ark_ec::PairingEngine;
+#[cfg(feature = "trace")]
 use ark_ff::{BigInteger, PrimeField};
 use core::marker::PhantomData;
 use hashbrown::HashMap;
 use num_traits::{One, Zero};
-use std::collections::BTreeMap;
 
 /// The StandardComposer is the circuit-builder tool that the `dusk-plonk`
 /// repository provides so that circuit descriptions can be written, stored and
@@ -53,12 +52,13 @@ use std::collections::BTreeMap;
 /// Each gate or group of gates adds an specific functionallity or operation to
 /// the circuit description, and so, that's why we can understand
 /// the StandardComposer as a builder.
-
-#[derive(Debug)]
-pub struct StandardComposer<
+#[derive(derivative::Derivative)]
+#[derivative(Debug)]
+pub struct StandardComposer<E, P>
+where
     E: PairingEngine,
     P: TEModelParameters<BaseField = E::Fr>,
-> {
+{
     /// Number of arithmetic gates in the circuit
     pub(crate) n: usize,
 
@@ -113,12 +113,14 @@ pub struct StandardComposer<
     /// Permutation argument.
     pub(crate) perm: Permutation<E::Fr>,
 
-    // Markers
-    _marker: PhantomData<P>,
+    /// Type Parameter Marker
+    __: PhantomData<P>,
 }
 
-impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
-    StandardComposer<E, P>
+impl<E, P> StandardComposer<E, P>
+where
+    E: PairingEngine,
+    P: TEModelParameters<BaseField = E::Fr>,
 {
     /// Returns the number of gates in the circuit
     pub fn circuit_size(&self) -> usize {
@@ -139,26 +141,28 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
 
     /// Returns the positions that the Public Inputs occupy in this Composer
     /// instance.
-    // TODO: Find a more performant solution which can return a ref to a Vec or
-    // Iterator.
     pub fn pi_positions(&self) -> Vec<usize> {
-        self.public_inputs_sparse_store
-            .keys()
-            .copied()
-            .collect::<Vec<usize>>()
+        // TODO: Find a more performant solution which can return a ref to a Vec
+        // or Iterator.
+        self.public_inputs_sparse_store.keys().copied().collect()
     }
 }
 
-impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Default
-    for StandardComposer<E, P>
+impl<E, P> Default for StandardComposer<E, P>
+where
+    E: PairingEngine,
+    P: TEModelParameters<BaseField = E::Fr>,
 {
+    #[inline]
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
-    StandardComposer<E, P>
+impl<E, P> StandardComposer<E, P>
+where
+    E: PairingEngine,
+    P: TEModelParameters<BaseField = E::Fr>,
 {
     /// Generates a new empty `StandardComposer` with all of it's fields
     /// set to hold an initial capacity of 0.
@@ -190,7 +194,6 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
     pub fn with_expected_size(expected_size: usize) -> Self {
         let mut composer = StandardComposer {
             n: 0,
-
             q_m: Vec::with_capacity(expected_size),
             q_l: Vec::with_capacity(expected_size),
             q_r: Vec::with_capacity(expected_size),
@@ -203,19 +206,14 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
             q_fixed_group_add: Vec::with_capacity(expected_size),
             q_variable_group_add: Vec::with_capacity(expected_size),
             public_inputs_sparse_store: BTreeMap::new(),
-
             w_l: Vec::with_capacity(expected_size),
             w_r: Vec::with_capacity(expected_size),
             w_o: Vec::with_capacity(expected_size),
             w_4: Vec::with_capacity(expected_size),
-
             zero_var: Variable(0),
-
             variables: HashMap::with_capacity(expected_size),
-
             perm: Permutation::new(),
-
-            _marker: PhantomData,
+            __: PhantomData,
         };
 
         // Reserve the first variable to be zero
@@ -238,6 +236,8 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
     ///
     /// The Composer then links the variable to the [`E::Fr`]
     /// and returns it for its use in the system.
+    ///
+    /// [`E::Fr`]: PairingEngine::Fr
     pub fn add_input(&mut self, s: E::Fr) -> Variable {
         // Get a new Variable from the permutation
         let var = self.perm.new_variable();
@@ -511,22 +511,22 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
         let w_l: Vec<&E::Fr> = self
             .w_l
             .iter()
-            .map(|w_l_i| self.variables.get(&w_l_i).unwrap())
+            .map(|w_l_i| self.variables.get(w_l_i).unwrap())
             .collect();
         let w_r: Vec<&E::Fr> = self
             .w_r
             .iter()
-            .map(|w_r_i| self.variables.get(&w_r_i).unwrap())
+            .map(|w_r_i| self.variables.get(w_r_i).unwrap())
             .collect();
         let w_o: Vec<&E::Fr> = self
             .w_o
             .iter()
-            .map(|w_o_i| self.variables.get(&w_o_i).unwrap())
+            .map(|w_o_i| self.variables.get(w_o_i).unwrap())
             .collect();
         let w_4: Vec<&E::Fr> = self
             .w_4
             .iter()
-            .map(|w_4_i| self.variables.get(&w_4_i).unwrap())
+            .map(|w_4_i| self.variables.get(w_4_i).unwrap())
             .collect();
         // Computes f(f-1)(f-2)(f-3)
         let delta = |f: E::Fr| -> E::Fr {
@@ -547,7 +547,9 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
             let qarith = self.q_arith[i];
             let qrange = self.q_range[i];
             let qlogic = self.q_logic[i];
+            #[cfg(all(feature = "trace-print", feature = "std"))]
             let qfixed = self.q_fixed_group_add[i];
+            #[cfg(all(feature = "trace-print", feature = "std"))]
             let qvar = self.q_variable_group_add[i];
             let pi = pi_vec[i];
 
@@ -663,62 +665,52 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
 }
 
 #[cfg(test)]
-mod general_composer_tests {
+mod test {
+    use super::*;
     use crate::batch_test;
     use crate::constraint_system::helper::*;
-    use crate::constraint_system::StandardComposer;
     use crate::prelude::Prover;
     use crate::prelude::Verifier;
-
-    use super::*;
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
     use ark_poly::univariate::DensePolynomial;
-    use ark_poly_commit::kzg10;
-    use ark_poly_commit::kzg10::Powers;
-    use ark_poly_commit::kzg10::UniversalParams;
-    use ark_poly_commit::kzg10::KZG10;
+    use ark_poly_commit::kzg10::{self, Powers, UniversalParams, KZG10};
     use ark_poly_commit::sonic_pc::SonicKZG10;
     use ark_poly_commit::PolynomialCommitment;
     use rand_core::OsRng;
-    // use rand_core::OsRng;
 
-    /// Tests that a circuit initially has 3 gates
-    fn test_initial_circuit_size<
+    /// Tests that a circuit initially has 3 gates.
+    fn test_initial_circuit_size<E, P>()
+    where
         E: PairingEngine,
         P: TEModelParameters<BaseField = E::Fr>,
-    >() {
-        let composer: StandardComposer<E, P> = StandardComposer::new();
-        // Circuit size is n+3 because
+    {
+        // NOTE: Circuit size is n+3 because
         // - We have an extra gate which forces the first witness to be zero.
         //   This is used when the advice wire is not being used.
         // - We have two gates which ensure that the permutation polynomial is
         //   not the identity and
         // - Another gate which ensures that the selector polynomials are not
         //   all zeroes
-        assert_eq!(3, composer.circuit_size())
+        assert_eq!(3, StandardComposer::<E, P>::new().circuit_size())
     }
 
-    #[allow(unused_variables)]
-    #[ignore]
-    /// Tests that an empty circuit proof passes
-    fn test_prove_verify<
+    /// Tests that an empty circuit proof passes.
+    fn test_prove_verify<E, P>()
+    where
         E: PairingEngine,
         P: TEModelParameters<BaseField = E::Fr>,
-    >() {
-        let res = gadget_tester(
-            |composer: &mut StandardComposer<E, P>| {
-                // do nothing except add the dummy constraints
-            },
-            200,
-        );
+    {
+        // NOTE: Does nothing except add the dummy constraints.
+        let res = gadget_tester(|_: &mut StandardComposer<E, P>| {}, 200);
         assert!(res.is_ok());
     }
 
-    fn test_conditional_select<
+    fn test_conditional_select<E, P>()
+    where
         E: PairingEngine,
         P: TEModelParameters<BaseField = E::Fr>,
-    >() {
+    {
         let res = gadget_tester(
             |composer: &mut StandardComposer<E, P>| {
                 let bit_1 = composer.add_input(E::Fr::one());
@@ -740,11 +732,12 @@ mod general_composer_tests {
         assert!(res.is_ok(), "{:?}", res.err().unwrap());
     }
 
-    // XXX: Move this to integration tests
-    fn test_multiple_proofs<
+    // FIXME: Move this to integration tests
+    fn test_multiple_proofs<E, P>()
+    where
         E: PairingEngine,
         P: TEModelParameters<BaseField = E::Fr>,
-    >() {
+    {
         let u_params: UniversalParams<E> =
             KZG10::<E, DensePolynomial<E::Fr>>::setup(
                 2 * 30,

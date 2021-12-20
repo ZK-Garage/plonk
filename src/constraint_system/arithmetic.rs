@@ -1,16 +1,22 @@
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE
+// or https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
 //
-// Copyright (c) DUSK NETWORK. All rights reserved.
+// Copyright (c) ZK-INFRA. All rights reserved.
+
+//! Simple Arithmetic Gates
 
 use crate::constraint_system::StandardComposer;
 use crate::constraint_system::Variable;
 use ark_ec::{PairingEngine, TEModelParameters};
 use num_traits::{One, Zero};
 
-impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
-    StandardComposer<E, P>
+impl<E, P> StandardComposer<E, P>
+where
+    E: PairingEngine,
+    P: TEModelParameters<BaseField = E::Fr>,
 {
     /// Adds a width-3 add gate to the circuit, linking the addition of the
     /// provided inputs, scaled by the selector coefficients with the output
@@ -113,9 +119,7 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
     /// possible. Since it allows the end-user to setup all of the selector
     /// coefficients.
     ///
-    /// Forces `q_m * (w_l * w_r) + w_4 * q_4 + q_c + PI = q_o * w_o`.
-    ///
-    /// `{w_l, w_r, w_o, w_4} = {a, b, c, d}`
+    /// Forces `q_m * (a * b) + q_4 * d + q_c + q_o * c = 0`
     // XXX: Maybe make these tuples instead of individual field?
     pub fn big_mul_gate(
         &mut self,
@@ -149,6 +153,72 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
         self.q_o.push(q_o);
         self.q_c.push(q_c);
         self.q_4.push(q_4);
+        self.q_arith.push(E::Fr::one());
+
+        self.q_range.push(E::Fr::zero());
+        self.q_logic.push(E::Fr::zero());
+        self.q_fixed_group_add.push(E::Fr::zero());
+        self.q_variable_group_add.push(E::Fr::zero());
+
+        if let Some(pi) = pi {
+            assert!(
+                self.public_inputs_sparse_store.insert(self.n, pi).is_none(),"The invariant of already having a PI inserted for this position should never exist"
+            );
+        }
+
+        self.perm.add_variables_to_map(a, b, c, d, self.n);
+
+        self.n += 1;
+
+        c
+    }
+
+    /// This gates turns on all the selctor polynomials to give users,
+    /// in some situations, the ability to use the extra selector for
+    /// more variables into additions.
+    ///
+    /// This type of gate is usually used when we need to have
+    /// the largest amount of performance and the minimum circuit-size
+    /// possible. Since it allows the end-user to setup all of the selector
+    /// coefficients.
+    ///
+    /// Equation: `(a*b)*q_m + a*q_l + b*q_r + d*q_4 + q_c + PI + q_o * c = 0`.
+    /// `d` will be set to zero if not provided.
+    ///
+    /// ### Returns
+    /// `c`
+    pub fn big_arith_gate(
+        &mut self,
+        a: Variable,
+        b: Variable,
+        c: Variable,
+        d: Option<Variable>,
+        q_m: E::Fr,
+        q_l: E::Fr,
+        q_r: E::Fr,
+        q_o: E::Fr,
+        q_c: E::Fr,
+        q_4: E::Fr,
+        pi: Option<E::Fr>,
+    ) -> Variable {
+        // Check if advice wire has a value
+        let d = match d {
+            Some(var) => var,
+            None => self.zero_var,
+        };
+
+        self.w_l.push(a);
+        self.w_r.push(b);
+        self.w_o.push(c);
+        self.w_4.push(d);
+
+        // Add selector vectors
+        self.q_m.push(q_m);
+        self.q_o.push(q_o);
+        self.q_c.push(q_c);
+        self.q_4.push(q_4);
+        self.q_l.push(q_l);
+        self.q_r.push(q_r);
         self.q_arith.push(E::Fr::one());
 
         self.q_range.push(E::Fr::zero());
@@ -303,28 +373,82 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
 
         self.big_mul_gate(a, b, c, Some(d), q_m, q_o, q_c, q_4, pi)
     }
+
+    /// Adds a [`StandardComposer::big_arith_gate`] with the left, right
+    /// , fourth inputs and corresponding coefficients, computing & returning
+    /// the output (result) [`Variable`] and adding the corresponding arith
+    /// constraint.
+    ///
+    /// This type of gate is usually used when we don't need to have
+    /// the largest amount of performance and the minimum circuit-size
+    /// possible, since it defaults set `q_o` to `-1` to reduce the verbosity.
+    ///
+    /// Equation: `(a*b)*q_m + a*q_l + b*q_r + d*q_4 + q_c + PI = c`
+    /// ### Returns
+    /// `c`
+    pub fn big_arith(
+        &mut self,
+        q_m: E::Fr,
+        a: Variable,
+        b: Variable,
+        q_l: E::Fr,
+        q_r: E::Fr,
+        q_4_d: Option<(E::Fr, Variable)>,
+        q_c: E::Fr,
+        pi: Option<E::Fr>,
+    ) -> Variable {
+        // check if advice wire is available
+        let (q_4, d) = match q_4_d {
+            Some((q_4, d)) => (q_4, d),
+            None => (E::Fr::zero(), self.zero_var),
+        };
+
+        // compute output wire
+        let a_eval = self.variables[&a];
+        let b_eval = self.variables[&b];
+        let d_eval = self.variables[&d];
+
+        let c_eval = (q_m * a_eval * b_eval)
+            + (q_l * a_eval)
+            + (q_r * b_eval)
+            + (q_4 * d_eval)
+            + q_c
+            + pi.unwrap_or_default();
+
+        let c = self.add_input(c_eval);
+
+        self.big_arith_gate(
+            a,
+            b,
+            c,
+            Some(d),
+            q_m,
+            q_l,
+            q_r,
+            -E::Fr::one(),
+            q_c,
+            q_4,
+            pi,
+        )
+    }
 }
 
 #[cfg(test)]
-mod arithmetic_gates_tests {
+mod test {
+    use super::*;
     use crate::batch_test;
     use crate::constraint_system::helper::*;
-    use crate::constraint_system::StandardComposer;
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
-    use ark_ec::PairingEngine;
-    use ark_ec::ProjectiveCurve;
-    use ark_ec::TEModelParameters;
-    use num_traits::{One, Zero};
 
-    fn test_public_inputs<
+    fn test_public_inputs<E, P>()
+    where
         E: PairingEngine,
         P: TEModelParameters<BaseField = E::Fr>,
-    >() {
+    {
         let res = gadget_tester(
             |composer: &mut StandardComposer<E, P>| {
                 let var_one = composer.add_input(E::Fr::one());
-
                 let should_be_three = composer.big_add(
                     (E::Fr::one(), var_one),
                     (E::Fr::one(), var_one),
@@ -355,10 +479,11 @@ mod arithmetic_gates_tests {
         assert!(res.is_ok(), "{:?}", res.err().unwrap());
     }
 
-    fn test_correct_add_mul_gate<
+    fn test_correct_add_mul_gate<E, P>()
+    where
         E: PairingEngine,
         P: TEModelParameters<BaseField = E::Fr>,
-    >() {
+    {
         let res = gadget_tester(
             |composer: &mut StandardComposer<E, P>| {
                 // Verify that (4+5+5) * (6+7+7) = 280
@@ -408,10 +533,11 @@ mod arithmetic_gates_tests {
         assert!(res.is_ok(), "{:?}", res.err().unwrap());
     }
 
-    fn test_correct_add_gate<
+    fn test_correct_add_gate<E, P>()
+    where
         E: PairingEngine,
         P: TEModelParameters<BaseField = E::Fr>,
-    >() {
+    {
         let res = gadget_tester(
             |composer: &mut StandardComposer<E, P>| {
                 let zero = composer.zero_var();
@@ -430,10 +556,11 @@ mod arithmetic_gates_tests {
         assert!(res.is_ok(), "{:?}", res.err().unwrap());
     }
 
-    fn test_correct_big_add_mul_gate<
+    fn test_correct_big_add_mul_gate<E, P>()
+    where
         E: PairingEngine,
         P: TEModelParameters<BaseField = E::Fr>,
-    >() {
+    {
         let res = gadget_tester(
             |composer: &mut StandardComposer<E, P>| {
                 // Verify that (4+5+5) * (6+7+7) + (8*9) = 352
@@ -478,10 +605,89 @@ mod arithmetic_gates_tests {
         assert!(res.is_ok());
     }
 
-    fn test_incorrect_add_mul_gate<
+    fn test_correct_big_arith_gate<E, P>()
+    where
         E: PairingEngine,
         P: TEModelParameters<BaseField = E::Fr>,
-    >() {
+    {
+        let res = gadget_tester(
+            |composer: &mut StandardComposer<E, P>| {
+                // Verify that (4*5)*6 + 4*7 + 5*8 + 9*10 + 11 = 289
+                let a = composer.add_input(E::Fr::from(4u64));
+                let b = composer.add_input(E::Fr::from(5u64));
+                let q_m = E::Fr::from(6u64);
+                let q_l = E::Fr::from(7u64);
+                let q_r = E::Fr::from(8u64);
+                let d = composer.add_input(E::Fr::from(9u64));
+                let q_4 = E::Fr::from(10u64);
+                let q_c = E::Fr::from(11u64);
+
+                let output = composer.big_arith(
+                    q_m,
+                    a,
+                    b,
+                    q_l,
+                    q_r,
+                    Some((q_4, d)),
+                    q_c,
+                    None,
+                );
+
+                composer.constrain_to_constant(
+                    output,
+                    E::Fr::from(289u64),
+                    None,
+                );
+            },
+            200,
+        );
+        assert!(res.is_ok());
+    }
+
+    fn test_incorrect_big_arith_gate<E, P>()
+    where
+        E: PairingEngine,
+        P: TEModelParameters<BaseField = E::Fr>,
+    {
+        let res = gadget_tester(
+            |composer: &mut StandardComposer<E, P>| {
+                // Verify that (4*5)*6 + 4*7 + 5*8 + 9*12 + 11 != 289
+                let a = composer.add_input(E::Fr::from(4u64));
+                let b = composer.add_input(E::Fr::from(5u64));
+                let q_m = E::Fr::from(6u64);
+                let q_l = E::Fr::from(7u64);
+                let q_r = E::Fr::from(8u64);
+                let d = composer.add_input(E::Fr::from(9u64));
+                let q_4 = E::Fr::from(12u64);
+                let q_c = E::Fr::from(11u64);
+
+                let output = composer.big_arith(
+                    q_m,
+                    a,
+                    b,
+                    q_l,
+                    q_r,
+                    Some((q_4, d)),
+                    q_c,
+                    None,
+                );
+
+                composer.constrain_to_constant(
+                    output,
+                    E::Fr::from(289u64),
+                    None,
+                );
+            },
+            200,
+        );
+        assert!(res.is_err());
+    }
+
+    fn test_incorrect_add_mul_gate<E, P>()
+    where
+        E: PairingEngine,
+        P: TEModelParameters<BaseField = E::Fr>,
+    {
         let res = gadget_tester(
             |composer: &mut StandardComposer<E, P>| {
                 // Verify that (5+5) * (6+7) != 117
@@ -524,30 +730,36 @@ mod arithmetic_gates_tests {
     }
 
     // Bls12-381 tests
-    batch_test!([
-        test_public_inputs,
-        test_correct_add_mul_gate,
-        test_correct_add_gate,
-        test_correct_big_add_mul_gate,
-        test_incorrect_add_mul_gate
-    ],
+    batch_test!(
+        [
+            test_public_inputs,
+            test_correct_add_mul_gate,
+            test_correct_add_gate,
+            test_correct_big_add_mul_gate,
+            test_correct_big_arith_gate,
+            test_incorrect_add_mul_gate,
+            test_incorrect_big_arith_gate
+        ],
         [] => (
-        Bls12_381,
-        ark_ed_on_bls12_381::EdwardsParameters
+            Bls12_381,
+            ark_ed_on_bls12_381::EdwardsParameters
         )
     );
 
     // Bls12-377 tests
-    batch_test!([
-        test_public_inputs,
-        test_correct_add_mul_gate,
-        test_correct_add_gate,
-        test_correct_big_add_mul_gate,
-        test_incorrect_add_mul_gate
-    ],
+    batch_test!(
+        [
+            test_public_inputs,
+            test_correct_add_mul_gate,
+            test_correct_add_gate,
+            test_correct_big_add_mul_gate,
+            test_correct_big_arith_gate,
+            test_incorrect_add_mul_gate,
+            test_incorrect_big_arith_gate
+        ],
         [] => (
-        Bls12_377,
-        ark_ed_on_bls12_377::EdwardsParameters
+            Bls12_377,
+            ark_ed_on_bls12_377::EdwardsParameters
         )
     );
 }

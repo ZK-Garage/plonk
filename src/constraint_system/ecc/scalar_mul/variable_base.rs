@@ -1,8 +1,12 @@
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE
+// or https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
 //
-// Copyright (c) DUSK NETWORK. All rights reserved.
+// Copyright (c) ZK-INFRA. All rights reserved.
+
+//! Variable-base Scalar Multiplication Gate
 
 use crate::constraint_system::ecc::Point;
 use crate::constraint_system::{variable::Variable, StandardComposer};
@@ -11,13 +15,16 @@ use ark_ec::PairingEngine;
 use ark_ff::{BigInteger, Field, FpParameters, PrimeField};
 use num_traits::{One, Zero};
 
-impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
-    StandardComposer<E, P>
+impl<E, P> StandardComposer<E, P>
+where
+    E: PairingEngine,
+    P: TEModelParameters<BaseField = E::Fr>,
 {
     /// Adds a variable-base scalar multiplication to the circuit description.
     ///
     /// # Note
-    /// If you're planning to multiply always by the generator of the Scalar
+    ///
+    /// If you're planning to multiply always by the generator of the scalar
     /// field, you should use [`StandardComposer::fixed_base_scalar_mul`]
     /// which is optimized for fixed_base ops.
     pub fn variable_base_scalar_mul(
@@ -26,7 +33,7 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
         point: Point<E, P>,
     ) -> Point<E, P> {
         // Turn scalar into bits
-        let raw_bls_scalar = *self
+        let raw_scalar = *self
             .variables
             .get(&curve_var)
             // We can unwrap safely here since it should be impossible to obtain
@@ -35,8 +42,7 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
             // the `get()` fn fails now, somethig is going really
             // bad.
             .expect("Variable in existance without referenced scalar");
-        let scalar_bits_var =
-            self.scalar_decomposition(curve_var, raw_bls_scalar);
+        let scalar_bits_var = self.scalar_decomposition(curve_var, raw_scalar);
 
         let identity = Point::identity(self);
         let mut result = identity;
@@ -94,17 +100,18 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
     use super::*;
     use crate::{batch_test, constraint_system::helper::*, util};
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
     use ark_ec::{twisted_edwards_extended::GroupAffine, AffineCurve};
 
-    fn test_var_base_scalar_mul<
+    fn test_var_base_scalar_mul<E, P>()
+    where
         E: PairingEngine,
         P: TEModelParameters<BaseField = E::Fr>,
-    >() {
+    {
         let res = gadget_tester(
             |composer: &mut StandardComposer<E, P>| {
                 let scalar = E::Fr::from_le_bytes_mod_order(&[
@@ -117,7 +124,7 @@ mod tests {
                 let secret_scalar = composer.add_input(scalar);
 
                 let (x, y) = P::AFFINE_GENERATOR_COEFFS;
-                let generator: GroupAffine<P> = GroupAffine::new(x, y);
+                let generator = GroupAffine::new(x, y);
 
                 let expected_point: GroupAffine<P> = AffineCurve::mul(
                     &generator,
@@ -140,19 +147,19 @@ mod tests {
 
     // Tests for Bls12_381
     batch_test!(
-    [test_var_base_scalar_mul],
+        [test_var_base_scalar_mul],
         [] => (
-        Bls12_381,
-        ark_ed_on_bls12_381::EdwardsParameters
+            Bls12_381,
+            ark_ed_on_bls12_381::EdwardsParameters
         )
     );
 
     // Tests for Bls12_377
     batch_test!(
-    [test_var_base_scalar_mul],
+        [test_var_base_scalar_mul],
         [] => (
-        Bls12_377,
-        ark_ed_on_bls12_377::EdwardsParameters
+            Bls12_377,
+            ark_ed_on_bls12_377::EdwardsParameters
         )
     );
 }

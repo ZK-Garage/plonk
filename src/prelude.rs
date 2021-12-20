@@ -1,21 +1,20 @@
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE
+// or https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
 //
-// Copyright (c) DUSK NETWORK. All rights reserved.
+// Copyright (c) ZK-INFRA. All rights reserved.
 
-//! Collection of functions needed to use plonk library.
+//! Collection of functions needed to build and use PLONK circuits.
 //!
-//! Use this as the only import that you need to interact
-//! with the principal data structures of the plonk library.
+//! Use this as the only import that you need to interact with the principal
+//! data structures of the plonk library.
 
 pub use crate::{
     circuit::{self, Circuit, PublicInputValue, VerifierData},
-    constraint_system::{Point, StandardComposer, Variable},
+    constraint_system::{ecc::Point, StandardComposer, Variable},
+    error::Error,
+    proof_system::{Proof, VerifierKey},
     proof_system::{Prover, ProverKey, Verifier},
 };
-
-pub use crate::proof_system::{Proof, VerifierKey};
-
-/// Collection of errors that the library exposes/uses.
-pub use crate::error::Error;

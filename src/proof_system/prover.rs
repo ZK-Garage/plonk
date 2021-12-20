@@ -1,8 +1,12 @@
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE
+// or https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
 //
-// Copyright (c) DUSK NETWORK. All rights reserved.
+// Copyright (c) ZK-INFRA. All rights reserved.
+
+//! Prover-side of the PLONK Proving System
 
 use crate::{
     constraint_system::{StandardComposer, Variable},
@@ -21,32 +25,61 @@ use ark_poly::{
 };
 use ark_poly_commit::kzg10::{Powers, KZG10};
 use core::marker::PhantomData;
+use core::ops::Add;
 use num_traits::Zero;
 
 /// Abstraction structure designed to construct a circuit and generate
 /// [`Proof`]s for it.
-#[allow(missing_debug_implementations)]
-pub struct Prover<
+pub struct Prover<E, P>
+where
     E: PairingEngine,
     P: TEModelParameters<BaseField = E::Fr>,
-> {
-    /// ProverKey which is used to create proofs about a specific PLONK circuit
+{
+    /// Proving Key which is used to create proofs about a specific PLONK
+    /// circuit.
     pub prover_key: Option<ProverKey<E::Fr, P>>,
 
+    /// Circuit Description
     pub(crate) cs: StandardComposer<E, P>,
-    /// Store the messages exchanged during the preprocessing stage
-    /// This is copied each time, we make a proof
+
+    /// Store the messages exchanged during the preprocessing stage.
+    ///
+    /// This is copied each time, we make a proof.
     pub preprocessed_transcript: TranscriptWrapper<E>,
 }
 
-impl<
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
-    > Prover<E, P>
+impl<E, P> Prover<E, P>
+where
+    E: PairingEngine,
+    P: TEModelParameters<BaseField = E::Fr>,
 {
+    /// Creates a new `Prover` instance.
+    pub fn new(label: &'static [u8]) -> Self {
+        Self {
+            prover_key: None,
+            cs: StandardComposer::new(),
+            preprocessed_transcript: TranscriptWrapper::new(label),
+        }
+    }
+
+    /// Creates a new `Prover` object with some expected size.
+    pub fn with_expected_size(label: &'static [u8], size: usize) -> Self {
+        Self {
+            prover_key: None,
+            cs: StandardComposer::with_expected_size(size),
+            preprocessed_transcript: TranscriptWrapper::new(label),
+        }
+    }
+
     /// Returns a mutable copy of the underlying [`StandardComposer`].
     pub fn mut_cs(&mut self) -> &mut StandardComposer<E, P> {
         &mut self.cs
+    }
+
+    /// Returns the number of gates in the circuit thet the `Prover` actually
+    /// stores inside.
+    pub fn circuit_size(&self) -> usize {
+        self.cs.circuit_size()
     }
 
     /// Preprocesses the underlying constraint system.
@@ -60,52 +93,10 @@ impl<
         self.prover_key = Some(pk);
         Ok(())
     }
-}
-
-impl<
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
-    > Default for Prover<E, P>
-{
-    fn default() -> Prover<E, P> {
-        Prover::new(b"plonk")
-    }
-}
-
-impl<
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
-    > Prover<E, P>
-{
-    /// Creates a new `Prover` instance.
-    pub fn new(label: &'static [u8]) -> Prover<E, P> {
-        Prover {
-            prover_key: None,
-            cs: StandardComposer::new(),
-            preprocessed_transcript: TranscriptWrapper::new(label),
-        }
-    }
-
-    /// Creates a new `Prover` object with some expected size.
-    pub fn with_expected_size(
-        label: &'static [u8],
-        size: usize,
-    ) -> Prover<E, P> {
-        Prover {
-            prover_key: None,
-            cs: StandardComposer::with_expected_size(size),
-            preprocessed_transcript: TranscriptWrapper::new(label),
-        }
-    }
-
-    /// Returns the number of gates in the circuit thet the `Prover` actually
-    /// stores inside.
-    pub fn circuit_size(&self) -> usize {
-        self.cs.circuit_size()
-    }
 
     /// Split `t(X)` poly into 4 degree `n` polynomials.
-    pub(crate) fn split_tx_poly(
+    #[allow(clippy::type_complexity)] // NOTE: This is an ok type for internal use.
+    fn split_tx_poly(
         &self,
         n: usize,
         t_x: &DensePolynomial<E::Fr>,
@@ -136,21 +127,20 @@ impl<
         let z_n = z_challenge.pow(&[n as u64, 0, 0, 0]);
         let z_two_n = z_challenge.pow(&[2 * n as u64, 0, 0, 0]);
         let z_three_n = z_challenge.pow(&[3 * n as u64, 0, 0, 0]);
-
         let a = t_1_poly;
         let b = t_2_poly * z_n;
         let c = t_3_poly * z_two_n;
         let d = t_4_poly * z_three_n;
-        let abc = &(a + &b) + &c;
-        &abc + &d
+        a + &b + c + d
     }
 
     /// Convert variables to their actual witness values.
-    pub(crate) fn to_scalars(&self, vars: &[Variable]) -> Vec<E::Fr> {
+    fn to_scalars(&self, vars: &[Variable]) -> Vec<E::Fr> {
         vars.iter().map(|var| self.cs.variables[var]).collect()
     }
 
     /// Resets the witnesses in the prover object.
+    ///
     /// This function is used when the user wants to make multiple proofs with
     /// the same circuit.
     pub fn clear_witness(&mut self) {
@@ -158,6 +148,7 @@ impl<
     }
 
     /// Clears all data in the `Prover` instance.
+    ///
     /// This function is used when the user wants to use the same `Prover` to
     /// make a [`Proof`] regarding a different circuit.
     pub fn clear(&mut self) {
@@ -168,6 +159,9 @@ impl<
 
     /// Keys the [`Transcript`] with additional seed information
     /// Wrapper around [`Transcript::append_message`].
+    ///
+    /// [`Transcript`]: merlin::Transcript
+    /// [`Transcript::append_message`]: merlin::Transcript::append_message
     pub fn key_transcript(&mut self, label: &'static [u8], message: &[u8]) {
         self.preprocessed_transcript
             .transcript
@@ -176,26 +170,20 @@ impl<
 
     /// Computes a single witness for multiple polynomials at the same point, by
     /// taking a random linear combination of the individual witnesses.
-    /// The result does not depend on z, thus we can remove the term f(z).
-    pub(crate) fn compute_aggregate_witness(
+    ///
+    /// The result does not depend on `z`, thus we can remove the term `f(z)`.
+    fn compute_aggregate_witness(
         polynomials: &[DensePolynomial<E::Fr>],
         point: &E::Fr,
         challenge: E::Fr,
     ) -> DensePolynomial<E::Fr> {
-        let powers = util::powers_of(&challenge, polynomials.len() - 1);
-        assert_eq!(powers.len(), polynomials.len());
-
-        let numerator_terms: Vec<DensePolynomial<E::Fr>> = polynomials
-            .iter()
-            .zip(powers.iter())
-            .map(|(poly, challenge_power)| poly * *challenge_power)
-            .collect();
-
-        let mut numerator = DensePolynomial::zero();
-        for term in numerator_terms.iter() {
-            numerator += term;
-        }
-        util::ruffini(numerator, *point)
+        util::ruffini(
+            util::powers_of(challenge)
+                .zip(polynomials)
+                .map(|(challenge, poly)| poly * challenge)
+                .fold(Zero::zero(), Add::add),
+            *point,
+        )
     }
 
     /// Creates a [`Proof]` that demonstrates that a circuit is satisfied.
@@ -217,9 +205,9 @@ impl<
         // Commitments
         let mut transcript = self.preprocessed_transcript.clone();
 
-        //1. Compute witness Polynomials
+        // 1. Compute witness Polynomials
         //
-        // Convert Variables to BlsScalars padding them to the
+        // Convert Variables to scalars padding them to the
         // correct domain size.
         let pad = vec![E::Fr::zero(); domain.size() - self.cs.w_l.len()];
         let w_l_scalar = &[&self.to_scalars(&self.cs.w_l)[..], &pad].concat();
@@ -228,7 +216,7 @@ impl<
         let w_4_scalar = &[&self.to_scalars(&self.cs.w_4)[..], &pad].concat();
 
         // Witnesses are now in evaluation form, convert them to coefficients
-        // So that we may commit to them
+        // so that we may commit to them.
         let w_l_poly =
             DensePolynomial::from_coefficients_vec(domain.ifft(w_l_scalar));
         let w_r_poly =
@@ -238,23 +226,13 @@ impl<
         let w_4_poly =
             DensePolynomial::from_coefficients_vec(domain.ifft(w_4_scalar));
 
-        // Commit to witness polynomials
-        let w_l_poly_commit = KZG10::<E, DensePolynomial<E::Fr>>::commit(
-            commit_key, &w_l_poly, None, None,
-        )?;
-        let w_r_poly_commit = KZG10::<E, DensePolynomial<E::Fr>>::commit(
-            commit_key, &w_r_poly, None, None,
-        )?;
+        // Commit to witness polynomials.
+        let w_l_poly_commit = KZG10::commit(commit_key, &w_l_poly, None, None)?;
+        let w_r_poly_commit = KZG10::commit(commit_key, &w_r_poly, None, None)?;
+        let w_o_poly_commit = KZG10::commit(commit_key, &w_o_poly, None, None)?;
+        let w_4_poly_commit = KZG10::commit(commit_key, &w_4_poly, None, None)?;
 
-        let w_o_poly_commit = KZG10::<E, DensePolynomial<E::Fr>>::commit(
-            commit_key, &w_o_poly, None, None,
-        )?;
-
-        let w_4_poly_commit = KZG10::<E, DensePolynomial<E::Fr>>::commit(
-            commit_key, &w_4_poly, None, None,
-        )?;
-
-        // Add witness polynomial commitments to transcript
+        // Add witness polynomial commitments to transcript.
         transcript.append_commitment(b"w_l", &w_l_poly_commit.0);
         transcript.append_commitment(b"w_r", &w_r_poly_commit.0);
         transcript.append_commitment(b"w_o", &w_o_poly_commit.0);
@@ -262,8 +240,7 @@ impl<
 
         // 2. Compute permutation polynomial
         //
-        //
-        // Compute permutation challenges; `beta` and `gamma`
+        // Compute permutation challenges; `beta` and `gamma`.
         let beta = transcript.challenge_scalar(b"beta");
         transcript.append_scalar(b"beta", &beta);
         let gamma = transcript.challenge_scalar(b"gamma");
@@ -273,7 +250,7 @@ impl<
         let z_poly = DensePolynomial::from_coefficients_slice(
             &self.cs.perm.compute_permutation_poly(
                 &domain,
-                (&w_l_scalar, &w_r_scalar, &w_o_scalar, &w_4_scalar),
+                (w_l_scalar, w_r_scalar, w_o_scalar, w_4_scalar),
                 beta,
                 gamma,
                 (
@@ -285,23 +262,23 @@ impl<
             ),
         );
 
-        // Commit to permutation polynomial
-        //
+        // Commit to permutation polynomial.
         let z_poly_commit = KZG10::<E, DensePolynomial<E::Fr>>::commit(
             commit_key, &z_poly, None, None,
         )?;
 
-        // Add permutation polynomial commitment to transcript
+        // Add permutation polynomial commitment to transcript.
         transcript.append_commitment(b"z", &z_poly_commit.0);
 
-        // 3. Compute public inputs polynomial
+        // 3. Compute public inputs polynomial.
         let pi_poly = DensePolynomial::from_coefficients_vec(
             domain.ifft(&self.cs.construct_dense_pi_vec()),
         );
 
         // 4. Compute quotient polynomial
         //
-        // Compute quotient challenge; `alpha`
+        // Compute quotient challenge; `alpha`, and gate-specific separation
+        // challenges.
         let alpha = transcript.challenge_scalar(b"alpha");
         let range_sep_challenge =
             transcript.challenge_scalar(b"range separation challenge");
@@ -314,19 +291,20 @@ impl<
 
         let t_poly = quotient_poly::compute(
             &domain,
-            &prover_key,
+            prover_key,
             &z_poly,
-            (&w_l_poly, &w_r_poly, &w_o_poly, &w_4_poly),
+            &w_l_poly,
+            &w_r_poly,
+            &w_o_poly,
+            &w_4_poly,
             &pi_poly,
-            &(
-                alpha,
-                beta,
-                gamma,
-                range_sep_challenge,
-                logic_sep_challenge,
-                fixed_base_sep_challenge,
-                var_base_sep_challenge,
-            ),
+            &alpha,
+            &beta,
+            &gamma,
+            &range_sep_challenge,
+            &logic_sep_challenge,
+            &fixed_base_sep_challenge,
+            &var_base_sep_challenge,
         )?;
 
         // Split quotient polynomial into 4 degree `n` polynomials
@@ -334,18 +312,10 @@ impl<
             self.split_tx_poly(domain.size(), &t_poly);
 
         // Commit to splitted quotient polynomial
-        let t_1_commit = KZG10::<E, DensePolynomial<E::Fr>>::commit(
-            commit_key, &t_1_poly, None, None,
-        )?;
-        let t_2_commit = KZG10::<E, DensePolynomial<E::Fr>>::commit(
-            commit_key, &t_2_poly, None, None,
-        )?;
-        let t_3_commit = KZG10::<E, DensePolynomial<E::Fr>>::commit(
-            commit_key, &t_3_poly, None, None,
-        )?;
-        let t_4_commit = KZG10::<E, DensePolynomial<E::Fr>>::commit(
-            commit_key, &t_4_poly, None, None,
-        )?;
+        let t_1_commit = KZG10::commit(commit_key, &t_1_poly, None, None)?;
+        let t_2_commit = KZG10::commit(commit_key, &t_2_poly, None, None)?;
+        let t_3_commit = KZG10::commit(commit_key, &t_3_poly, None, None)?;
+        let t_4_commit = KZG10::commit(commit_key, &t_4_poly, None, None)?;
 
         // Add quotient polynomial commitments to transcript
         transcript.append_commitment(b"t_1", &t_1_commit.0);
@@ -355,22 +325,20 @@ impl<
 
         // 4. Compute linearisation polynomial
         //
-        // Compute evaluation challenge; `z`
+        // Compute evaluation challenge; `z`.
         let z_challenge = transcript.challenge_scalar(b"z");
 
-        let (lin_poly, evaluations) = linearisation_poly::compute::<E, P>(
+        let (lin_poly, evaluations) = linearisation_poly::compute(
             &domain,
-            &prover_key,
-            &(
-                alpha,
-                beta,
-                gamma,
-                range_sep_challenge,
-                logic_sep_challenge,
-                fixed_base_sep_challenge,
-                var_base_sep_challenge,
-                z_challenge,
-            ),
+            prover_key,
+            &alpha,
+            &beta,
+            &gamma,
+            &range_sep_challenge,
+            &logic_sep_challenge,
+            &fixed_base_sep_challenge,
+            &var_base_sep_challenge,
+            &z_challenge,
             &w_l_poly,
             &w_r_poly,
             &w_o_poly,
@@ -379,7 +347,7 @@ impl<
             &z_poly,
         );
 
-        // Add evaluations to transcript
+        // Add evaluations to transcript.
         transcript.append_scalar(b"a_eval", &evaluations.proof.a_eval);
         transcript.append_scalar(b"b_eval", &evaluations.proof.b_eval);
         transcript.append_scalar(b"c_eval", &evaluations.proof.c_eval);
@@ -405,9 +373,13 @@ impl<
         transcript.append_scalar(b"q_c_eval", &evaluations.proof.q_c_eval);
         transcript.append_scalar(b"q_l_eval", &evaluations.proof.q_l_eval);
         transcript.append_scalar(b"q_r_eval", &evaluations.proof.q_r_eval);
-        transcript.append_scalar(b"perm_eval", &evaluations.proof.perm_eval);
+        transcript
+            .append_scalar(b"perm_eval", &evaluations.proof.permutation_eval);
         transcript.append_scalar(b"t_eval", &evaluations.quot_eval);
-        transcript.append_scalar(b"r_eval", &evaluations.proof.lin_poly_eval);
+        transcript.append_scalar(
+            b"r_eval",
+            &evaluations.proof.linearisation_polynomial_eval,
+        );
 
         // 5. Compute Openings using KZG10
         //
@@ -457,32 +429,27 @@ impl<
             &(z_challenge * domain.element(1)),
             saw_challenge,
         );
-        let w_zx_comm = KZG10::<E, DensePolynomial<E::Fr>>::commit(
+        let w_zw_comm = KZG10::<E, DensePolynomial<E::Fr>>::commit(
             commit_key,
             &shifted_aggregate_witness,
             None,
             None,
         )?;
 
-        // Create Proof
         Ok(Proof {
             a_comm: w_l_poly_commit.0,
             b_comm: w_r_poly_commit.0,
             c_comm: w_o_poly_commit.0,
             d_comm: w_4_poly_commit.0,
-
             z_comm: z_poly_commit.0,
-
             t_1_comm: t_1_commit.0,
             t_2_comm: t_2_commit.0,
             t_3_comm: t_3_commit.0,
             t_4_comm: t_4_commit.0,
-
             w_z_comm: w_z_comm.0,
-            w_zw_comm: w_zx_comm.0,
-
+            w_zw_comm: w_zw_comm.0,
             evaluations: evaluations.proof,
-            _marker: PhantomData,
+            __: PhantomData,
         })
     }
 
@@ -493,19 +460,16 @@ impl<
         &mut self,
         commit_key: &Powers<E>,
     ) -> Result<Proof<E, P>, Error> {
-        let prover_key: &ProverKey<E::Fr, P>;
-
         if self.prover_key.is_none() {
-            // Preprocess circuit
-            let prover_key = self.cs.preprocess_prover(
+            // Preprocess circuit and store preprocessed circuit and transcript
+            // in the Prover.
+            self.prover_key = Some(self.cs.preprocess_prover(
                 commit_key,
                 &mut self.preprocessed_transcript,
-            )?;
-            // Store preprocessed circuit and transcript in the Prover
-            self.prover_key = Some(prover_key);
+            )?);
         }
 
-        prover_key = self.prover_key.as_ref().unwrap();
+        let prover_key = self.prover_key.as_ref().unwrap();
 
         let proof = self.prove_with_preprocessed(commit_key, prover_key)?;
 
@@ -513,5 +477,16 @@ impl<
         self.clear_witness();
 
         Ok(proof)
+    }
+}
+
+impl<E, P> Default for Prover<E, P>
+where
+    E: PairingEngine,
+    P: TEModelParameters<BaseField = E::Fr>,
+{
+    #[inline]
+    fn default() -> Self {
+        Prover::new(b"plonk")
     }
 }

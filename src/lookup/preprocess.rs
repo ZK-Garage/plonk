@@ -1,51 +1,55 @@
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE
+// or https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
 //
-// Copyright (c) DUSK NETWORK. All rights reserved.
+// Copyright (c) ZK-INFRA. All rights reserved.
 
-use ark_ec::PairingEngine;
-
-use crate::commitment_scheme::kzg10::{CommitKey, Commitment};
-use ark_poly_commit::PolynomialCommitment;
 use crate::error::Error;
-use crate::fft::{EvaluationDomain, Polynomial};
-use crate::lookup::{MultiSet, LookupTable};
-
-
-//! Module containing the lookup functionality
+use crate::lookup::{LookupTable, MultiSet};
+use ark_ec::PairingEngine;
+use ark_poly::domain::EvaluationDomain;
+use ark_poly::polynomial::univariate::DensePolynomial;
+use ark_poly_commit::kzg10::{Commitment, Powers, KZG10};
 
 /// This table will be the preprocessed version of the
 /// precomputed table, T, with arity 4. This structure
 /// is passed to the proof alongside the table of witness
 /// values.
 #[derive(Clone, Eq, PartialEq, Debug)]
-pub struct PreprocessedLookupTable {
+pub struct PreprocessedLookupTable<E>
+where
+    E: PairingEngine,
+{
     /// This is the circuit size
     pub n: u32,
 
     /// This is the first column in the preprocessed
     /// table containing a MultiSet, Commitments to the
     /// MultiSet and the coefficients as a Polynomial
-    pub(crate) t_1: (MultiSet, Commitment, Polynomial),
+    pub(crate) t_1: (MultiSet<E::Fr>, Commitment<E>, DensePolynomial<E::Fr>),
 
     /// This is the second column in the preprocessed
     /// table containing a MultiSet, Commitments to the
     /// MultiSet and the coefficients as a Polynomial
-    pub(crate) t_2: (MultiSet, Commitment, Polynomial),
+    pub(crate) t_2: (MultiSet<E::Fr>, Commitment<E>, DensePolynomial<E::Fr>),
 
     /// This is the third column in the preprocessed
     /// table containing a MultiSet, Commitments to the
     /// MultiSet and the coefficients as a Polynomial
-    pub(crate) t_3: (MultiSet, Commitment, Polynomial),
+    pub(crate) t_3: (MultiSet<E::Fr>, Commitment<E>, DensePolynomial<E::Fr>),
 
     /// This is the fourth column in the preprocessed
     /// table containing a MultiSet, Commitments to the
     /// MultiSet and the coefficients as a Polynomial
-    pub(crate) t_4: (MultiSet, Commitment, Polynomial),
+    pub(crate) t_4: (MultiSet<E::Fr>, Commitment<E>, DensePolynomial<E::Fr>),
 }
 
-impl<E: PairingEngine> PreprocessedLookupTable {
+impl<E> PreprocessedLookupTable<E>
+where
+    E: PairingEngine,
+{
     /// This function takes in a precomputed look up table and
     /// pads it to the length of the circuit entries, as a power
     /// of 2. The function then interpolates a polynomial from the
@@ -53,12 +57,11 @@ impl<E: PairingEngine> PreprocessedLookupTable {
     /// outputted struct will be used in the proof alongside our
     /// circuit witness table.
     pub fn preprocess(
-        table: &LookupTable,
-        commit_key: &CommitKey,
+        table: &LookupTable<E::Fr>,
+        commit_key: &Powers<E>,
         n: u32,
     ) -> Result<Self, Error> {
-        let domain: EvaluationDomain =
-            EvaluationDomain::new(n as usize).unwrap();
+        let domain = EvaluationDomain::new(n as usize).unwrap();
 
         let columned_table = table.vec_to_multiset();
         let mut t_1 = columned_table.0;
@@ -76,12 +79,12 @@ impl<E: PairingEngine> PreprocessedLookupTable {
         let t_3_poly = t_3.to_polynomial(&domain);
         let t_4_poly = t_4.to_polynomial(&domain);
 
-        let t_1_commit = commit_key.commit(&t_1_poly)?;
-        let t_2_commit = commit_key.commit(&t_2_poly)?;
-        let t_3_commit = commit_key.commit(&t_3_poly)?;
-        let t_4_commit = commit_key.commit(&t_4_poly)?;
+        let t_1_commit = KZG10::commit(commit_key, &t_1_poly, None, None)?.0;
+        let t_2_commit = KZG10::commit(commit_key, &t_2_poly, None, None)?.0;
+        let t_3_commit = KZG10::commit(commit_key, &t_3_poly, None, None)?.0;
+        let t_4_commit = KZG10::commit(commit_key, &t_4_poly, None, None)?.0;
 
-        Ok(PreprocessedTable {
+        Ok(Self {
             n,
             t_1: (t_1, t_1_commit, t_1_poly),
             t_2: (t_2, t_2_commit, t_2_poly),

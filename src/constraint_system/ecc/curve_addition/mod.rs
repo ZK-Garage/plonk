@@ -1,10 +1,12 @@
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE
+// or https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
 //
-// Copyright (c) DUSK NETWORK. All rights reserved.
+// Copyright (c) ZK-INFRA. All rights reserved.
 
-/// A fixed base curve addition gate
-pub(crate) mod fixed_base_gate;
-/// A variable base curve addition gate
-pub(crate) mod variable_base_gate;
+//! Curve Addition Gates
+
+mod fixed_base_gate;
+mod variable_base_gate;

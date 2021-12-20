@@ -1,8 +1,12 @@
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE
+// or https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
 //
-// Copyright (c) DUSK NETWORK. All rights reserved.
+// Copyright (c) ZK-INFRA. All rights reserved.
+
+//! Variable-base Curve Addition Gate
 
 use crate::constraint_system::ecc::Point;
 use crate::constraint_system::StandardComposer;
@@ -11,8 +15,10 @@ use ark_ec::models::TEModelParameters;
 use ark_ec::PairingEngine;
 use num_traits::{One, Zero};
 
-impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
-    StandardComposer<E, P>
+impl<E, P> StandardComposer<E, P>
+where
+    E: PairingEngine,
+    P: TEModelParameters<BaseField = E::Fr>,
 {
     /// Adds two curve points together using a curve addition gate
     /// Note that since the points are not fixed the generator is not a part of
@@ -90,25 +96,25 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
 }
 
 #[cfg(test)]
-mod variable_base_gate_tests {
+mod test {
     use super::*;
     use crate::{batch_test, constraint_system::helper::*};
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
-    use ark_ec::models::twisted_edwards_extended::GroupAffine;
     use ark_ff::Field;
-    use num_traits::{One, Zero};
+
     /// Adds two curve points together using the classical point addition
-    /// algorithm. This method is slower than WNaf and is just meant to be the
-    /// source of truth to test the WNaf method.
-    pub fn classical_point_addition<
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
-    >(
+    /// algorithm. This method is slower than WNAF and is just meant to be the
+    /// source of truth to test the WNAF method.
+    pub fn classical_point_addition<E, P>(
         composer: &mut StandardComposer<E, P>,
         point_a: Point<E, P>,
         point_b: Point<E, P>,
-    ) -> Point<E, P> {
+    ) -> Point<E, P>
+    where
+        E: PairingEngine,
+        P: TEModelParameters<BaseField = E::Fr>,
+    {
         let x1 = point_a.x;
         let y1 = point_a.y;
 
@@ -218,18 +224,18 @@ mod variable_base_gate_tests {
         Point::new(x_3, y_3)
     }
 
-    fn test_curve_addition<
+    fn test_curve_addition<E, P>()
+    where
         E: PairingEngine,
         P: TEModelParameters<BaseField = E::Fr>,
-    >() {
+    {
         let res = gadget_tester(
             |composer: &mut StandardComposer<E, P>| {
                 let (x, y) = P::AFFINE_GENERATOR_COEFFS;
-                let generator: GroupAffine<P> = GroupAffine::new(x, y);
+                let generator = GroupAffine::new(x, y);
                 let x_var = composer.add_input(x);
                 let y_var = composer.add_input(y);
-                let expected_point: GroupAffine<P> =
-                    (generator + generator).into();
+                let expected_point = generator + generator;
                 let point_a = Point::new(x_var, y_var);
                 let point_b = Point::new(x_var, y_var);
 
@@ -239,8 +245,7 @@ mod variable_base_gate_tests {
 
                 composer.assert_equal_point(point, point2);
 
-                composer
-                    .assert_equal_public_point(point.into(), expected_point);
+                composer.assert_equal_public_point(point, expected_point);
             },
             2000,
         );
@@ -251,16 +256,16 @@ mod variable_base_gate_tests {
         [test_curve_addition],
         []
         => (
-        Bls12_381,
-        ark_ed_on_bls12_381::EdwardsParameters
+            Bls12_381,
+            ark_ed_on_bls12_381::EdwardsParameters
         )
     );
 
     batch_test!(
         [test_curve_addition],
         [] => (
-        Bls12_377,
-        ark_ed_on_bls12_377::EdwardsParameters
+            Bls12_377,
+            ark_ed_on_bls12_377::EdwardsParameters
         )
     );
 }

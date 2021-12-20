@@ -1,13 +1,15 @@
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE
+// or https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
 //
-// Copyright (c) DUSK NETWORK. All rights reserved.
+// Copyright (c) ZK-INFRA. All rights reserved.
 
 //! A collection of all possible errors encountered in PLONK.
 
 /// Defines all possible errors that can be encountered in PLONK.
-#[derive(core::fmt::Debug)]
+#[derive(Debug)]
 pub enum Error {
     // FFT errors
     /// This error occurs when an error triggers on any of the fft module

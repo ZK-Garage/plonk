@@ -6,10 +6,14 @@
 //
 // Copyright (c) ZK-INFRA. All rights reserved.
 
-//! Elliptic Curve Cryptography Gates
+//! Module containing the lookups.
 
-mod curve_addition;
-mod fixed_base_scalar_mul;
+pub(crate) mod multiset;
+pub(crate) mod witness_table;
+pub(crate) mod lookup_table;
+pub(crate) mod preprocess;
 
-pub use curve_addition::*;
-pub use fixed_base_scalar_mul::*;
+pub use multiset::MultiSet;
+pub use witness_table::WitnessTable;
+pub use lookup_table::LookupTable;
+pub use preprocess::PreprocessedLookupTable;

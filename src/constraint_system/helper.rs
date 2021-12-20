@@ -1,9 +1,10 @@
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE
+// or https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
 //
-// Copyright (c) DUSK NETWORK. All rights reserved.
-
+// Copyright (c) ZK-INFRA. All rights reserved.
 use super::StandardComposer;
 use crate::error::Error;
 use crate::proof_system::{Prover, Verifier};
@@ -15,18 +16,17 @@ use ark_poly_commit::PolynomialCommitment;
 use num_traits::{One, Zero};
 use rand_core::OsRng;
 
-/// Adds dummy constraints using arithmetic gates
-pub(crate) fn dummy_gadget<
-    E: PairingEngine,
-    P: TEModelParameters<BaseField = E::Fr>,
->(
+/// Adds dummy constraints using arithmetic gates.
+#[allow(dead_code)]
+pub(crate) fn dummy_gadget<E, P>(
     n: usize,
     composer: &mut StandardComposer<E, P>,
-) {
+) where
+    E: PairingEngine,
+    P: TEModelParameters<BaseField = E::Fr>,
+{
     let one = E::Fr::one();
-
     let var_one = composer.add_input(one);
-
     for _ in 0..n {
         composer.big_add(
             (E::Fr::one(), var_one),
@@ -38,15 +38,17 @@ pub(crate) fn dummy_gadget<
     }
 }
 
-/// Takes a generic gadget function with no auxillary input and
-/// tests whether it passes an end-to-end test
-pub(crate) fn gadget_tester<
+/// Takes a generic gadget function with no auxillary input and tests whether it
+/// passes an end-to-end test.
+#[allow(dead_code)]
+pub(crate) fn gadget_tester<E, P>(
+    gadget: fn(&mut StandardComposer<E, P>),
+    n: usize,
+) -> Result<(), Error>
+where
     E: PairingEngine,
     P: TEModelParameters<BaseField = E::Fr>,
->(
-    gadget: fn(composer: &mut StandardComposer<E, P>),
-    n: usize,
-) -> Result<(), Error> {
+{
     // Common View
     let universal_params =
         KZG10::<E, DensePolynomial<E::Fr>>::setup(2 * n, false, &mut OsRng)?;
@@ -59,12 +61,12 @@ pub(crate) fn gadget_tester<
         prover.key_transcript(b"key", b"additional seed information");
 
         // Add gadgets
-        gadget(&mut prover.mut_cs());
+        gadget(prover.mut_cs());
 
         // Commit Key
         let (ck, _) = SonicKZG10::<E, DensePolynomial<E::Fr>>::trim(
             &universal_params,
-            prover.cs.circuit_size().next_power_of_two(),
+            prover.circuit_size().next_power_of_two(),
             0,
             None,
         )
@@ -92,12 +94,12 @@ pub(crate) fn gadget_tester<
     verifier.key_transcript(b"key", b"additional seed information");
 
     // Add gadgets
-    gadget(&mut verifier.mut_cs());
+    gadget(verifier.mut_cs());
 
     // Compute Commit and Verifier Key
     let (sonic_ck, sonic_vk) = SonicKZG10::<E, DensePolynomial<E::Fr>>::trim(
         &universal_params,
-        verifier.cs.circuit_size().next_power_of_two(),
+        verifier.circuit_size().next_power_of_two(),
         0,
         None,
     )

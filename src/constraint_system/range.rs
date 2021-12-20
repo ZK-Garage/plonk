@@ -1,17 +1,22 @@
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE
+// or https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
 //
-// Copyright (c) DUSK NETWORK. All rights reserved.
+// Copyright (c) ZK-INFRA. All rights reserved.
 
-use crate::constraint_system::StandardComposer;
-use crate::constraint_system::{Variable, WireData};
+//! Range Gate
+
+use crate::constraint_system::{StandardComposer, Variable, WireData};
 use ark_ec::{PairingEngine, TEModelParameters};
 use ark_ff::{BigInteger, PrimeField};
 use num_traits::{One, Zero};
 
-impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
-    StandardComposer<E, P>
+impl<E, P> StandardComposer<E, P>
+where
+    E: PairingEngine,
+    P: TEModelParameters<BaseField = E::Fr>,
 {
     /// Adds a range-constraint gate that checks and constrains a
     /// [`Variable`] to be inside of the range \[0,num_bits\].
@@ -193,17 +198,17 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
 }
 
 #[cfg(test)]
-mod range_gate_tests {
-    use crate::constraint_system::StandardComposer;
+mod test {
+    use super::*;
     use crate::{batch_test, constraint_system::helper::*};
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
-    use ark_ec::{PairingEngine, TEModelParameters};
 
-    fn test_range_constraint<
+    fn test_range_constraint<E, P>()
+    where
         E: PairingEngine,
         P: TEModelParameters<BaseField = E::Fr>,
-    >() {
+    {
         // Should fail as the number is not 32 bits
         let res = gadget_tester(
             |composer: &mut StandardComposer<E, P>| {
@@ -236,10 +241,11 @@ mod range_gate_tests {
         assert!(res.is_ok());
     }
 
-    fn test_odd_bit_range<
+    fn test_odd_bit_range<E, P>()
+    where
         E: PairingEngine,
         P: TEModelParameters<BaseField = E::Fr>,
-    >() {
+    {
         // Should fail as the number we we need a even number of bits
         let _ok = gadget_tester(
             |composer: &mut StandardComposer<E, P>| {
@@ -256,8 +262,8 @@ mod range_gate_tests {
         [test_range_constraint],
         [test_odd_bit_range]
         => (
-        Bls12_381,
-        ark_ed_on_bls12_381::EdwardsParameters
+            Bls12_381,
+            ark_ed_on_bls12_381::EdwardsParameters
         )
     );
 
@@ -266,8 +272,8 @@ mod range_gate_tests {
         [test_range_constraint],
         [test_odd_bit_range]
         => (
-        Bls12_377,
-        ark_ed_on_bls12_377::EdwardsParameters
+            Bls12_377,
+            ark_ed_on_bls12_377::EdwardsParameters
         )
     );
 }

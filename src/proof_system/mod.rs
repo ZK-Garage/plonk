@@ -1,23 +1,24 @@
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE
+// or https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
 //
-// Copyright (c) DUSK NETWORK. All rights reserved.
+// Copyright (c) ZK-INFRA. All rights reserved.
 
-//! Proving system
+//! PLONK Proving System
+
+mod linearisation_poly;
+mod permutation;
 mod preprocess;
-/// Represents a PLONK Prover
+mod quotient_poly;
+mod widget;
+
+pub mod proof;
 pub mod prover;
-pub use proof::*;
-pub(crate) mod quotient_poly;
-/// Represents a PLONK Verifier
 pub mod verifier;
+
+pub use proof::*;
 pub use prover::Prover;
 pub use verifier::Verifier;
 pub use widget::*;
-/// Represents a PLONK Proof
-pub mod proof;
-pub(crate) mod widget;
-pub use proof::Proof;
-pub use widget::VerifierKey;
-pub(crate) mod linearisation_poly;

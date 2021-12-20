@@ -1,8 +1,10 @@
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE
+// or https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
 //
-// Copyright (c) DUSK NETWORK. All rights reserved.
+// Copyright (c) ZK-INFRA. All rights reserved.
 
 //#![doc = include_str!("../README.md")]
 //! Permutations over Lagrange-bases for Oecumenical Noninteractive
@@ -13,13 +15,14 @@
 //! - Zachary J. Williamson (Aztec Protocol)
 //! - Oana Ciobotaru
 //!
-//! This crate contains a pure-rust implementation of this algorithm using
+//! This crate contains a pure Rust implementation of this algorithm using
 //! code done by the creators of the protocol as a reference implementation:
 //!
 //! <https://github.com/AztecProtocol/barretenberg/blob/master/barretenberg/src/aztec/plonk/>
 //!
 //! If you want to see library usage examples, please check:
 //! <https://github.com/dusk-network/plonk/tree/v0.1.0/examples>
+
 // Bitshift/Bitwise ops are allowed to gain performance.
 #![allow(clippy::suspicious_arithmetic_impl)]
 // Some structs do not have AddAssign or MulAssign impl.
@@ -34,17 +37,22 @@
 #![deny(rustdoc::broken_intra_doc_links)]
 #![deny(missing_docs)]
 
-pub mod circuit;
-pub mod constraint_system;
+extern crate alloc;
+
 mod permutation;
-mod tests;
+mod transcript;
 mod util;
 
+pub mod circuit;
+pub mod constraint_system;
 pub mod error;
 pub mod prelude;
 pub mod proof_system;
 pub mod lookup;
-mod transcript;
+
+
+#[cfg(test)]
+mod test;
 
 #[doc = include_str!("../docs/notes-intro.md")]
 pub mod notes {
