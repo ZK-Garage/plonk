@@ -110,7 +110,11 @@ mod test {
         composer: &mut StandardComposer<E, P>,
         point_a: Point<E, P>,
         point_b: Point<E, P>,
-    ) -> Point<E, P> {
+    ) -> Point<E, P>
+    where
+        E: PairingEngine,
+        P: TEModelParameters<BaseField = E::Fr>,
+    {
         let zero = composer.zero_var;
         let x1 = point_a.x;
         let y1 = point_a.y;
@@ -178,7 +182,7 @@ mod test {
         // 1 - dx1x2y1y2
         let y_denominator = composer.arithmetic_gate(|gate| {
             gate.witness((d_x1_x2_y1_y2, zero, None))
-                .add((E::Fr::one(), E::Fr::zero()))
+                .add((-E::Fr::one(), E::Fr::zero()))
                 .const_sel(E::Fr::one())
         });
 
@@ -188,12 +192,13 @@ mod test {
             .unwrap()
             .inverse()
             .unwrap();
+
         let inv_y_denom = composer.add_input(inv_y_denom);
         // Assert that we actually have the inverse
         // inv_y * y = 1
         composer.arithmetic_gate(|gate| {
             gate.mul(E::Fr::one())
-                .witness((y_denominator, inv_y_denom, None))
+                .witness((y_denominator, inv_y_denom, Some(zero)))
                 .const_sel(-E::Fr::one())
         });
 

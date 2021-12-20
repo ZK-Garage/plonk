@@ -365,7 +365,8 @@ where
         // 1 - bit
         let one_min_bit = self.arithmetic_gate(|gate| {
             gate.witness((bit, zero, None))
-                .add((-E::Fr::one(), E::Fr::one()))
+                .add((-E::Fr::one(), E::Fr::zero()))
+                .const_sel(E::Fr::one())
         });
 
         // (1 - bit) * b

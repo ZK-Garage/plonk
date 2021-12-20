@@ -114,6 +114,8 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
         };
 
         let gate_witness = gate.witness.unwrap();
+        self.w_l.push(gate_witness.0);
+        self.w_r.push(gate_witness.1);
         self.q_l.push(gate.add_selectors.0);
         self.q_r.push(gate.add_selectors.1);
 
@@ -143,7 +145,7 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
                     + gate.const_selector
                     + q4 * self.variables[&w4]
                     + gate.pi)
-                    * gate.out_selector,
+                    * (-gate.out_selector),
             )
         });
         self.w_o.push(c);
@@ -225,7 +227,7 @@ mod test {
                 let fourteen = composer.arithmetic_gate(|gate| {
                     gate.witness((four, five, None))
                         .add((E::Fr::one(), E::Fr::one()))
-                        .pi(E::Fr::from(2u64))
+                        .pi(E::Fr::from(5u64))
                 });
 
                 let twenty = composer.arithmetic_gate(|gate| {
@@ -339,16 +341,13 @@ mod test {
                 let q_4 = E::Fr::from(10u64);
                 let q_c = E::Fr::from(11u64);
 
-                let output = composer.big_arith(
-                    q_m,
-                    a,
-                    b,
-                    q_l,
-                    q_r,
-                    Some((q_4, d)),
-                    q_c,
-                    None,
-                );
+                let output = composer.arithmetic_gate(|gate| {
+                    gate.witness((a, b, None))
+                        .mul(q_m)
+                        .add((q_l, q_r))
+                        .fan_in_3((q_4, d))
+                        .const_sel(q_c)
+                });
 
                 composer.constrain_to_constant(
                     output,
@@ -378,16 +377,13 @@ mod test {
                 let q_4 = E::Fr::from(12u64);
                 let q_c = E::Fr::from(11u64);
 
-                let output = composer.big_arith(
-                    q_m,
-                    a,
-                    b,
-                    q_l,
-                    q_r,
-                    Some((q_4, d)),
-                    q_c,
-                    None,
-                );
+                let output = composer.arithmetic_gate(|gate| {
+                    gate.witness((a, b, None))
+                        .mul(q_m)
+                        .add((q_l, q_r))
+                        .fan_in_3((q_4, d))
+                        .const_sel(q_c)
+                });
 
                 composer.constrain_to_constant(
                     output,

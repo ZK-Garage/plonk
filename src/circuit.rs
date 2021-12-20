@@ -472,7 +472,7 @@ mod test {
     use ark_ec::twisted_edwards_extended::GroupAffine;
     use ark_ec::AffineCurve;
     use ark_poly_commit::kzg10::KZG10;
-    use num_traits::{One, Zero};
+    use num_traits::One;
 
     // Implements a circuit that checks:
     // 1) a + b = c where C is a PI
@@ -507,26 +507,24 @@ mod test {
         ) -> Result<(), Error> {
             let a = composer.add_input(self.a);
             let b = composer.add_input(self.b);
+            let zero = composer.zero_var;
 
             // Make first constraint a + b = c (as public input)
-            let add_result = composer.arithmetic_gate(|gate| {
-                gate.witness((a, b, None))
+            composer.arithmetic_gate(|gate| {
+                gate.witness((a, b, Some(zero)))
                     .add((E::Fr::one(), E::Fr::one()))
                     .pi(-self.c)
             });
-
-            composer.assert_equal(add_result, composer.zero_var());
 
             // Check that a and b are in range
             composer.range_gate(a, 1 << 6);
             composer.range_gate(b, 1 << 5);
             // Make second constraint a * b = d
-            let mul_result = composer.arithmetic_gate(|gate| {
-                gate.witness((a, b, None)).mul(E::Fr::one()).pi(-self.d)
+            composer.arithmetic_gate(|gate| {
+                gate.witness((a, b, Some(zero)))
+                    .mul(E::Fr::one())
+                    .pi(-self.d)
             });
-
-            composer.assert_equal(mul_result, composer.zero_var());
-
             let e = composer
                 .add_input(util::from_embedded_curve_scalar::<E, P>(self.e));
             let (x, y) = P::AFFINE_GENERATOR_COEFFS;
