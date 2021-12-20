@@ -9,10 +9,11 @@ use crate::error::Error;
 //use crate::fft::{EvaluationDomain, Polynomial};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, GeneralEvaluationDomain,
-    UVPolynomial,
+    UVPolynomial, Polynomial,
 };
 use core::ops::{Add, Mul};
 use ark_ec::PairingEngine;
+
 
 /// MultiSet is struct containing vectors of scalars, which
 /// individually represents either a wire value or an index
