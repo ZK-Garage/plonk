@@ -50,7 +50,8 @@ where
 {
     // Common View
     let universal_params = KZG10::<E, DensePolynomial<E::Fr>>::setup(
-        2 * n + 7,
+        // +1 per wire, +2 for the permutation poly
+        2 * n + 6,
         false,
         &mut OsRng,
     )?;
@@ -68,7 +69,8 @@ where
         // Commit Key
         let (ck, _) = SonicKZG10::<E, DensePolynomial<E::Fr>>::trim(
             &universal_params,
-            prover.circuit_size().next_power_of_two() + 7,
+            // +1 per wire, +2 for the permutation poly
+            prover.circuit_size().next_power_of_two() + 6,
             0,
             None,
         )
@@ -101,7 +103,7 @@ where
     // Compute Commit and Verifier Key
     let (sonic_ck, sonic_vk) = SonicKZG10::<E, DensePolynomial<E::Fr>>::trim(
         &universal_params,
-        verifier.circuit_size().next_power_of_two() + 7,
+        verifier.circuit_size().next_power_of_two() + 6,
         0,
         None,
     )
