@@ -125,7 +125,7 @@ where
 /// curve. Panics if the embedded scalar is greater than the modulus of the
 /// pairing firendly curve scalar field
 #[allow(dead_code)]
-pub(crate) fn from_embedded_curve_scalar<E, P>(
+pub fn from_embedded_curve_scalar<E, P>(
     embedded_scalar: <P as ModelParameters>::ScalarField,
 ) -> E::Fr
 where

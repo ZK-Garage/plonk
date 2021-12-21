@@ -45,8 +45,8 @@ use num_traits::{One, Zero};
 /// The StandardComposer also contains as associated functions all the
 /// neccessary tools to be able to istrument the circuits that the user needs
 /// through the addition of gates. There are functions that may add a single
-/// gate to the circuit as for example [`StandardComposer::add_gate`] and others
-/// that can add several gates to the circuit description such as
+/// arithmetic gate to the circuit [`StandardComposer::arithmetic_gate`] and
+/// others that can add several gates to the circuit description such as
 /// [`StandardComposer::conditional_select`].
 ///
 /// Each gate or group of gates adds an specific functionallity or operation to
@@ -359,26 +359,25 @@ where
         let zero = self.zero_var;
         // bit * choice_a
         let bit_times_a = self.arithmetic_gate(|gate| {
-            gate.witness((bit, choice_a, None)).mul(E::Fr::one())
+            gate.witness(bit, choice_a, None).mul(E::Fr::one())
         });
 
         // 1 - bit
         let one_min_bit = self.arithmetic_gate(|gate| {
-            gate.witness((bit, zero, None))
-                .add((-E::Fr::one(), E::Fr::zero()))
-                .const_sel(E::Fr::one())
+            gate.witness(bit, zero, None)
+                .add(-E::Fr::one(), E::Fr::zero())
+                .constant(E::Fr::one())
         });
 
         // (1 - bit) * b
         let one_min_bit_choice_b = self.arithmetic_gate(|gate| {
-            gate.witness((one_min_bit, choice_b, None))
-                .mul(E::Fr::one())
+            gate.witness(one_min_bit, choice_b, None).mul(E::Fr::one())
         });
 
         // [ (1 - bit) * b ] + [ bit * a ]
         self.arithmetic_gate(|gate| {
-            gate.witness((one_min_bit_choice_b, bit_times_a, None))
-                .add((E::Fr::one(), E::Fr::one()))
+            gate.witness(one_min_bit_choice_b, bit_times_a, None)
+                .add(E::Fr::one(), E::Fr::one())
         })
     }
 
@@ -398,7 +397,7 @@ where
     ) -> Variable {
         // returns bit * value
         self.arithmetic_gate(|gate| {
-            gate.witness((bit, value, None)).mul(E::Fr::one())
+            gate.witness(bit, value, None).mul(E::Fr::one())
         })
     }
 
@@ -671,8 +670,7 @@ mod test {
     use super::*;
     use crate::batch_test;
     use crate::constraint_system::helper::*;
-    use crate::prelude::Prover;
-    use crate::prelude::Verifier;
+    use crate::proof_system::{Prover, Verifier};
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
     use ark_poly::univariate::DensePolynomial;

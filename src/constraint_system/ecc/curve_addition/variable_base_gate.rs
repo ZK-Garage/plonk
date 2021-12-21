@@ -124,42 +124,42 @@ mod test {
 
         // x1 * y2
         let x1_y2 = composer.arithmetic_gate(|gate| {
-            gate.mul(E::Fr::one()).witness((x1, y2, None))
+            gate.mul(E::Fr::one()).witness(x1, y2, None)
         });
         // y1 * x2
         let y1_x2 = composer.arithmetic_gate(|gate| {
-            gate.mul(E::Fr::one()).witness((y1, x2, None))
+            gate.mul(E::Fr::one()).witness(y1, x2, None)
         });
         // y1 * y2
         let y1_y2 = composer.arithmetic_gate(|gate| {
-            gate.mul(E::Fr::one()).witness((y1, y2, None))
+            gate.mul(E::Fr::one()).witness(y1, y2, None)
         });
         // x1 * x2
         let x1_x2 = composer.arithmetic_gate(|gate| {
-            gate.mul(E::Fr::one()).witness((x1, x2, None))
+            gate.mul(E::Fr::one()).witness(x1, x2, None)
         });
         // d x1x2 * y1y2
         let d_x1_x2_y1_y2 = composer.arithmetic_gate(|gate| {
-            gate.mul(P::COEFF_D).witness((x1_x2, y1_y2, None))
+            gate.mul(P::COEFF_D).witness(x1_x2, y1_y2, None)
         });
 
         // x1y2 + y1x2
         let x_numerator = composer.arithmetic_gate(|gate| {
-            gate.witness((x1_y2, y1_x2, None))
-                .add((E::Fr::one(), E::Fr::one()))
+            gate.witness(x1_y2, y1_x2, None)
+                .add(E::Fr::one(), E::Fr::one())
         });
 
         // y1y2 - a * x1x2 (a=-1) => y1y2 + x1x2
         let y_numerator = composer.arithmetic_gate(|gate| {
-            gate.witness((y1_y2, x1_x2, None))
-                .add((E::Fr::one(), E::Fr::one()))
+            gate.witness(y1_y2, x1_x2, None)
+                .add(E::Fr::one(), E::Fr::one())
         });
 
         // 1 + dx1x2y1y2
         let x_denominator = composer.arithmetic_gate(|gate| {
-            gate.witness((d_x1_x2_y1_y2, zero, None))
-                .add((E::Fr::one(), E::Fr::zero()))
-                .const_sel(E::Fr::one())
+            gate.witness(d_x1_x2_y1_y2, zero, None)
+                .add(E::Fr::one(), E::Fr::zero())
+                .constant(E::Fr::one())
         });
 
         // Compute the inverse
@@ -174,16 +174,16 @@ mod test {
         // Assert that we actually have the inverse
         // inv_x * x = 1
         composer.arithmetic_gate(|gate| {
-            gate.witness((x_denominator, inv_x_denom, Some(zero)))
+            gate.witness(x_denominator, inv_x_denom, Some(zero))
                 .mul(E::Fr::one())
-                .const_sel(-E::Fr::one())
+                .constant(-E::Fr::one())
         });
 
         // 1 - dx1x2y1y2
         let y_denominator = composer.arithmetic_gate(|gate| {
-            gate.witness((d_x1_x2_y1_y2, zero, None))
-                .add((-E::Fr::one(), E::Fr::zero()))
-                .const_sel(E::Fr::one())
+            gate.witness(d_x1_x2_y1_y2, zero, None)
+                .add(-E::Fr::one(), E::Fr::zero())
+                .constant(E::Fr::one())
         });
 
         let inv_y_denom = composer
@@ -198,20 +198,20 @@ mod test {
         // inv_y * y = 1
         composer.arithmetic_gate(|gate| {
             gate.mul(E::Fr::one())
-                .witness((y_denominator, inv_y_denom, Some(zero)))
-                .const_sel(-E::Fr::one())
+                .witness(y_denominator, inv_y_denom, Some(zero))
+                .constant(-E::Fr::one())
         });
 
         // We can now use the inverses
 
         let x_3 = composer.arithmetic_gate(|gate| {
             gate.mul(E::Fr::one())
-                .witness((inv_x_denom, x_numerator, None))
+                .witness(inv_x_denom, x_numerator, None)
         });
 
         let y_3 = composer.arithmetic_gate(|gate| {
             gate.mul(E::Fr::one())
-                .witness((inv_y_denom, y_numerator, None))
+                .witness(inv_y_denom, y_numerator, None)
         });
 
         Point::new(x_3, y_3)

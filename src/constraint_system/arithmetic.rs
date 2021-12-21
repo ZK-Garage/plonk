@@ -21,7 +21,7 @@ pub struct ArithmeticGate<E: PairingEngine> {
     pub(crate) add_selectors: (E::Fr, E::Fr),
     pub(crate) out_selector: E::Fr,
     pub(crate) const_selector: E::Fr,
-    pub(crate) pi: E::Fr,
+    pub(crate) pi: Option<E::Fr>,
 }
 
 impl<E: PairingEngine> Default for ArithmeticGate<E> {
@@ -33,7 +33,7 @@ impl<E: PairingEngine> Default for ArithmeticGate<E> {
             add_selectors: (E::Fr::zero(), E::Fr::zero()),
             out_selector: -E::Fr::one(),
             const_selector: E::Fr::zero(),
-            pi: E::Fr::zero(),
+            pi: None,
         }
     }
 }
@@ -45,14 +45,16 @@ impl<E: PairingEngine> ArithmeticGate<E> {
 
     pub fn witness(
         &mut self,
-        witness: (Variable, Variable, Option<Variable>),
+        w_l: Variable,
+        w_r: Variable,
+        w_o: Option<Variable>,
     ) -> &mut Self {
-        self.witness = Some(witness);
+        self.witness = Some((w_l, w_r, w_o));
         self
     }
 
-    pub fn fan_in_3(&mut self, sel_and_wit: (E::Fr, Variable)) -> &mut Self {
-        self.fan_in_3 = Some(sel_and_wit);
+    pub fn fan_in_3(&mut self, q_4: E::Fr, w_4: Variable) -> &mut Self {
+        self.fan_in_3 = Some((q_4, w_4));
         self
     }
 
@@ -61,8 +63,8 @@ impl<E: PairingEngine> ArithmeticGate<E> {
         self
     }
 
-    pub fn add(&mut self, selectors: (E::Fr, E::Fr)) -> &mut Self {
-        self.add_selectors = selectors;
+    pub fn add(&mut self, q_l: E::Fr, q_r: E::Fr) -> &mut Self {
+        self.add_selectors = (q_l, q_r);
         self
     }
 
@@ -71,13 +73,13 @@ impl<E: PairingEngine> ArithmeticGate<E> {
         self
     }
 
-    pub fn const_sel(&mut self, q_c: E::Fr) -> &mut Self {
+    pub fn constant(&mut self, q_c: E::Fr) -> &mut Self {
         self.const_selector = q_c;
         self
     }
 
     pub fn pi(&mut self, pi: E::Fr) -> &mut Self {
-        self.pi = pi;
+        self.pi = Some(pi);
         self
     }
 
@@ -98,6 +100,7 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
             let mut gate = ArithmeticGate::<E>::new();
             func(&mut gate).build()
         };
+
         if gate.witness.is_none() {
             panic!("Missing left and right wire witnesses")
         }
@@ -130,10 +133,13 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
         self.q_fixed_group_add.push(E::Fr::zero());
         self.q_variable_group_add.push(E::Fr::zero());
 
-        assert!(self
-            .public_inputs_sparse_store
-            .insert(self.n, gate.pi)
-            .is_none());
+        if let Some(pi) = gate.pi {
+            let insert_res = self.public_inputs_sparse_store.insert(self.n, pi);
+            assert!(
+                insert_res.is_none(),
+                "Attempting to overwrite an already existing PI"
+            )
+        };
 
         let c = gate_witness.2.unwrap_or_else(|| {
             self.add_input(
@@ -144,7 +150,7 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
                     + gate.add_selectors.1 * self.variables[&gate_witness.1]
                     + gate.const_selector
                     + q4 * self.variables[&w4]
-                    + gate.pi)
+                    + gate.pi.unwrap_or_default())
                     * (-gate.out_selector),
             )
         });
@@ -183,8 +189,8 @@ mod test {
                 let var_one = composer.add_input(E::Fr::one());
 
                 let should_be_three = composer.arithmetic_gate(|gate| {
-                    gate.witness((var_one, var_one, None))
-                        .add((E::Fr::one(), E::Fr::one()))
+                    gate.witness(var_one, var_one, None)
+                        .add(E::Fr::one(), E::Fr::one())
                         .pi(E::Fr::one())
                 });
 
@@ -195,8 +201,8 @@ mod test {
                 );
 
                 let should_be_four = composer.arithmetic_gate(|gate| {
-                    gate.witness((var_one, var_one, None))
-                        .add((E::Fr::one(), E::Fr::one()))
+                    gate.witness(var_one, var_one, None)
+                        .add(E::Fr::one(), E::Fr::one())
                         .pi(E::Fr::from(2u64))
                 });
 
@@ -225,15 +231,15 @@ mod test {
                 let seven = composer.add_input(E::Fr::from(7u64));
 
                 let fourteen = composer.arithmetic_gate(|gate| {
-                    gate.witness((four, five, None))
-                        .add((E::Fr::one(), E::Fr::one()))
+                    gate.witness(four, five, None)
+                        .add(E::Fr::one(), E::Fr::one())
                         .pi(E::Fr::from(5u64))
                 });
 
                 let twenty = composer.arithmetic_gate(|gate| {
-                    gate.witness((six, seven, None))
-                        .add((E::Fr::one(), E::Fr::one()))
-                        .fan_in_3((E::Fr::one(), seven))
+                    gate.witness(six, seven, None)
+                        .add(E::Fr::one(), E::Fr::one())
+                        .fan_in_3(E::Fr::one(), seven)
                 });
 
                 // There are quite a few ways to check the equation is correct,
@@ -244,7 +250,7 @@ mod test {
                 // is public, we can also constrain the output wire of the mul
                 // gate to it. This is what this test does
                 let output = composer.arithmetic_gate(|gate| {
-                    gate.witness((fourteen, twenty, None)).mul(E::Fr::one())
+                    gate.witness(fourteen, twenty, None).mul(E::Fr::one())
                 });
 
                 composer.constrain_to_constant(
@@ -269,9 +275,9 @@ mod test {
                 let one = composer.add_input(E::Fr::one());
 
                 let c = composer.arithmetic_gate(|gate| {
-                    gate.witness((one, zero, None))
-                        .add((E::Fr::one(), E::Fr::one()))
-                        .const_sel(E::Fr::from(2u64))
+                    gate.witness(one, zero, None)
+                        .add(E::Fr::one(), E::Fr::one())
+                        .constant(E::Fr::from(2u64))
                 });
 
                 composer.constrain_to_constant(c, E::Fr::from(3u64), None);
@@ -296,21 +302,21 @@ mod test {
                 let nine = composer.add_input(E::Fr::from(9u64));
 
                 let fourteen = composer.arithmetic_gate(|gate| {
-                    gate.witness((four, five, None))
-                        .add((E::Fr::one(), E::Fr::one()))
-                        .fan_in_3((E::Fr::one(), five))
+                    gate.witness(four, five, None)
+                        .add(E::Fr::one(), E::Fr::one())
+                        .fan_in_3(E::Fr::one(), five)
                 });
 
                 let twenty = composer.arithmetic_gate(|gate| {
-                    gate.witness((six, seven, None))
-                        .add((E::Fr::one(), E::Fr::one()))
-                        .fan_in_3((E::Fr::one(), seven))
+                    gate.witness(six, seven, None)
+                        .add(E::Fr::one(), E::Fr::one())
+                        .fan_in_3(E::Fr::one(), seven)
                 });
 
                 let output = composer.arithmetic_gate(|gate| {
-                    gate.witness((fourteen, twenty, None))
+                    gate.witness(fourteen, twenty, None)
                         .mul(E::Fr::one())
-                        .fan_in_3((E::Fr::from(8u64), nine))
+                        .fan_in_3(E::Fr::from(8u64), nine)
                 });
 
                 composer.constrain_to_constant(
@@ -342,11 +348,11 @@ mod test {
                 let q_c = E::Fr::from(11u64);
 
                 let output = composer.arithmetic_gate(|gate| {
-                    gate.witness((a, b, None))
+                    gate.witness(a, b, None)
                         .mul(q_m)
-                        .add((q_l, q_r))
-                        .fan_in_3((q_4, d))
-                        .const_sel(q_c)
+                        .add(q_l, q_r)
+                        .fan_in_3(q_4, d)
+                        .constant(q_c)
                 });
 
                 composer.constrain_to_constant(
@@ -378,11 +384,11 @@ mod test {
                 let q_c = E::Fr::from(11u64);
 
                 let output = composer.arithmetic_gate(|gate| {
-                    gate.witness((a, b, None))
+                    gate.witness(a, b, None)
                         .mul(q_m)
-                        .add((q_l, q_r))
-                        .fan_in_3((q_4, d))
-                        .const_sel(q_c)
+                        .add(q_l, q_r)
+                        .fan_in_3(q_4, d)
+                        .constant(q_c)
                 });
 
                 composer.constrain_to_constant(
@@ -409,18 +415,18 @@ mod test {
                 let seven = composer.add_input(E::Fr::from(7u64));
 
                 let five_plus_five = composer.arithmetic_gate(|gate| {
-                    gate.witness((five, five, None))
-                        .add((E::Fr::one(), E::Fr::one()))
+                    gate.witness(five, five, None)
+                        .add(E::Fr::one(), E::Fr::one())
                 });
 
                 let six_plus_seven = composer.arithmetic_gate(|gate| {
-                    gate.witness((six, seven, None))
-                        .add((E::Fr::one(), E::Fr::one()))
+                    gate.witness(six, seven, None)
+                        .add(E::Fr::one(), E::Fr::one())
                 });
 
                 let output = composer.arithmetic_gate(|gate| {
-                    gate.witness((five_plus_five, six_plus_seven, None))
-                        .add((E::Fr::one(), E::Fr::one()))
+                    gate.witness(five_plus_five, six_plus_seven, None)
+                        .add(E::Fr::one(), E::Fr::one())
                 });
 
                 composer.constrain_to_constant(

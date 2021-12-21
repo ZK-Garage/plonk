@@ -152,8 +152,8 @@ where
         let last_accumulated_bit = self.add_input(scalar_acc[num_bits]);
 
         self.arithmetic_gate(|gate| {
-            gate.witness((acc_x, acc_y, Some(xy_alpha)))
-                .fan_in_3((E::Fr::zero(), last_accumulated_bit))
+            gate.witness(acc_x, acc_y, Some(xy_alpha))
+                .fan_in_3(E::Fr::zero(), last_accumulated_bit)
                 .out(E::Fr::zero())
         });
 

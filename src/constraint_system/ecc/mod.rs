@@ -176,8 +176,8 @@ where
 
         // negation of point (x, y) is (-x, y)
         let x_neg = self.arithmetic_gate(|gate| {
-            gate.witness((x, zero, None))
-                .add((-E::Fr::one(), E::Fr::zero()))
+            gate.witness(x, zero, None)
+                .add(-E::Fr::one(), E::Fr::zero())
         });
 
         let x_updated = self.conditional_select(bit, x_neg, x);

@@ -85,8 +85,8 @@ where
             let two_pow = E::Fr::from(2u64).pow([power as u64, 0, 0, 0]);
 
             accumulator_var = self.arithmetic_gate(|gate| {
-                gate.witness((*bit, accumulator_var, None))
-                    .add((two_pow, E::Fr::one()))
+                gate.witness(*bit, accumulator_var, None)
+                    .add(two_pow, E::Fr::one())
             });
 
             accumulator_scalar +=

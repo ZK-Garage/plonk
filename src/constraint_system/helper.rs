@@ -29,8 +29,8 @@ pub(crate) fn dummy_gadget<E, P>(
     let var_one = composer.add_input(one);
     for _ in 0..n {
         composer.arithmetic_gate(|gate| {
-            gate.witness((var_one, var_one, None))
-                .add((E::Fr::one(), E::Fr::one()))
+            gate.witness(var_one, var_one, None)
+                .add(E::Fr::one(), E::Fr::one())
         });
     }
 }
