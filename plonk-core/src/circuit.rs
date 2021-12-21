@@ -163,13 +163,13 @@ where
 ///     EdwardsProjective as JubjubProjective, Fr as JubjubScalar,
 /// };
 /// use ark_ff::{PrimeField, BigInteger};
-/// use ark_plonk::circuit::{Circuit, PublicInputValue, verify_proof, GeIntoPubInput, FeIntoPubInput};
-/// use ark_plonk::constraint_system::StandardComposer;
-/// use ark_plonk::error::Error;
-/// use ark_plonk::prelude::VerifierData;
 /// use ark_poly::polynomial::univariate::DensePolynomial;
 /// use ark_poly_commit::kzg10::KZG10;
 /// use num_traits::{Zero, One};
+/// use plonk_core::circuit::{Circuit, PublicInputValue, verify_proof, GeIntoPubInput, FeIntoPubInput};
+/// use plonk_core::constraint_system::StandardComposer;
+/// use plonk_core::error::Error;
+/// use plonk_core::prelude::VerifierData;
 /// use rand_core::OsRng;
 ///
 /// fn main() -> Result<(), Error> {
@@ -258,9 +258,9 @@ where
 ///     }
 /// }
 ///
-/// let pp = KZG10::<Bls12_381,DensePolynomial<BlsScalar>,>::setup(
+/// let pp = KZG10::<Bls12_381, DensePolynomial<BlsScalar>>::setup(
 ///     1 << 12, false, &mut OsRng
-///  )?;
+/// )?;
 ///
 /// // Initialize the circuit
 /// let mut circuit = TestCircuit::<Bls12_381, JubjubParameters>::default();

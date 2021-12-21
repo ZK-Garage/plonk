@@ -14,16 +14,15 @@ repository = "https://github.com/zk-garage/plonk"
 keywords = ["cryptography", "plonk", "zk-snarks", "zero-knowledge", "crypto"]
 categories = ["algorithms", "cryptography", "science"]
 description = "A pure-Rust implementation of the PLONK ZK-Proof algorithm."
-exclude = [
-    "**/.gitignore",
-    ".gitignore",
-    "Cargo.lock",
-    "**/examples",
-    "benchmarks/",
-    ".github/"
-]
 license = "MIT OR Apache-2.0"
 edition = "2021"
+include = ["src", "LICENSE-*", "README.md"]
+
+[package.metadata.docs.rs]
+# To build locally:
+# RUSTDOCFLAGS="--cfg doc_cfg" cargo +nightly doc --all-features --open
+all-features = true
+rustdoc-args = ["--cfg", "doc_cfg"]
 
 [workspace]
 resolver = "2"
@@ -39,11 +38,16 @@ plonk-hashing = { path = "plonk-hashing" }
 [dev-dependencies]
 ark-bls12-377 = "0.3"
 ark-bls12-381 = "0.3"
+ark-ec = "0.3"
 ark-ed-on-bls12-377 = "0.3"
 ark-ed-on-bls12-381 = "0.3"
+ark-poly = "0.3"
+ark-poly-commit = "0.3"
 criterion = "0.3"
+derivative = "2.2.0"
 paste = "1.0.6"
 rand = "0.8.0"
+rand_core = "0.6"
 tempdir = "0.3"
 
 [[bench]]

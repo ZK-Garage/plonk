@@ -6,7 +6,6 @@
 //
 // Copyright (c) ZK-GARAGE. All rights reserved.
 
-//#![doc = include_str!("../README.md")]
 //! Permutations over Lagrange-bases for Oecumenical Noninteractive
 //! arguments of Knowledge (PLONK) is a zero knowledge proof system.
 //!
@@ -19,9 +18,6 @@
 //! code done by the creators of the protocol as a reference implementation:
 //!
 //! <https://github.com/AztecProtocol/barretenberg/blob/master/barretenberg/src/aztec/plonk/>
-//!
-//! If you want to see library usage examples, please check:
-//! <https://github.com/dusk-network/plonk/tree/v0.1.0/examples>
 
 // Bitshift/Bitwise ops are allowed to gain performance.
 #![allow(clippy::suspicious_arithmetic_impl)]
@@ -52,14 +48,14 @@ pub mod proof_system;
 #[cfg(test)]
 mod test;
 
-#[doc = include_str!("../docs/notes-intro.md")]
+#[doc = include_str!("../../docs/notes-intro.md")]
 pub mod notes {
-    #[doc = include_str!("../docs/notes-commitments.md")]
+    #[doc = include_str!("../../docs/notes-commitments.md")]
     pub mod commitment_schemes {}
-    #[doc = include_str!("../docs/notes-snark.md")]
+    #[doc = include_str!("../../docs/notes-snark.md")]
     pub mod snark_construction {}
-    #[doc = include_str!("../docs/notes-prove-verify.md")]
+    #[doc = include_str!("../../docs/notes-prove-verify.md")]
     pub mod prove_verify {}
-    #[doc = include_str!("../docs/notes-KZG10.md")]
-    pub mod kzg10_docs {}
+    #[doc = include_str!("../../docs/notes-KZG10.md")]
+    pub mod kzg10 {}
 }
