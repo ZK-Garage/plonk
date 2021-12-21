@@ -19,7 +19,6 @@
 //! Initial implementation created by [Kev](https://github.com/kevaundray), [Carlos](https://github.com/CPerezz) and [Luke](https://github.com/LukePearson1) at Dusk Network.
 //! Redesigned by the [rust zkp](https://github.com/rust-zkp) team to have a backend which is compatible with the [arkworks](https://github.com/arkworks-rs) suite. This allows us to leverage the multitude of curves
 //! and optimised algebra present in various arkworks repositories.
-//!
 #![doc = include_str!("../test_circuit.md")]
 // Bitshift/Bitwise ops are allowed to gain performance.
 #![allow(clippy::suspicious_arithmetic_impl)]

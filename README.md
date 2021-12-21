@@ -1,5 +1,5 @@
 # PLONK
-![Build Status](https://github.com/rust-zkp/ZK-Garage/workflows/Continuous%20integration/badge.svg)
+[![CI checks](https://github.com/ZK-Garage/plonk/actions/workflows/ci.yml/badge.svg)](https://github.com/ZK-Garage/plonk/actions/workflows/ci.yml)
 [![Repository](https://img.shields.io/badge/github-plonk-blueviolet?logo=github)](https://github.com/ZK-Garage/plonk)
 [![Documentation](https://img.shields.io/badge/docs-plonk-blue?logo=rust)](https://docs.rs/plonk/)
 
