@@ -1,69 +1,54 @@
 [package]
-name = "ark-plonk"
+name = "plonk"
 version = "0.8.2"
-authors = ["Kevaundray Wedderburn <kevtheappdev@gmail.com>",
-           "Luke Pearson <luke@polychain.capital>",
-           "Jules De Smit <jules@aleo.org>",
-           "Joshua Fitzgerald <joshua@heliax.dev>",
-           "Carlos Perez <carlos.perezbaro@iohk.io>",
-           "David Nevado <david.nevado@iohk.io>"]
-readme = "README.md"
-repository = "https://github.com/rust-zkp/ark-plonk"
-keywords = ["cryptography", "plonk", "zk-snarks", "zero-knowledge", "crypto"]
-categories =["algorithms", "cryptography", "science"]
-description = "A pure-Rust implementation of the PLONK ZK-Proof algorithm."
-exclude = [
-    "**/.gitignore",
-    ".gitignore",
-    "Cargo.lock",
-    "**/examples",
-    "benchmarks/",
-    ".github/"
+authors = [
+    "Kevaundray Wedderburn <kevtheappdev@gmail.com>",
+    "Luke Pearson <luke@polychain.capital>",
+    "Jules De Smit <jules@aleo.org>",
+    "Joshua Fitzgerald <joshua@heliax.dev>",
+    "Carlos Perez <carlos.perezbaro@iohk.io>",
+    "David Nevado <david.nevado@iohk.io>"
 ]
-license = "MPL-2.0"
+readme = "README.md"
+repository = "https://github.com/zk-garage/plonk"
+keywords = ["cryptography", "plonk", "zk-snarks", "zero-knowledge", "crypto"]
+categories = ["algorithms", "cryptography", "science"]
+description = "A pure-Rust implementation of the PLONK ZK-Proof algorithm."
+license = "MIT OR Apache-2.0"
 edition = "2021"
+include = ["src", "LICENSE-*", "README.md"]
+
+[package.metadata.docs.rs]
+# To build locally:
+# RUSTDOCFLAGS="--cfg doc_cfg" cargo +nightly doc --all-features --open
+all-features = true
+rustdoc-args = ["--cfg", "doc_cfg"]
+
+[workspace]
+resolver = "2"
+members = [
+    "plonk-core",
+    "plonk-hashing",
+]
 
 [dependencies]
-ark-ec = { version = "0.3", features = ["std"] }
-ark-ff = { version = "0.3", features = ["std"] }
-ark-poly = "0.3"
-ark-poly-commit = "0.3"
-ark-serialize = { version = "0.3", features = ["derive"] }
-derivative = { version = "2.2.0", default-features = false, features = ["use_core"] }
-hashbrown = { version = "0.11.2", default-features = false, features = ["ahash"] }
-itertools = { version = "0.10.1", default-features = false }
-merlin = { version = "3.0", default-features = false }
-num-traits = "0.2.14"
-rand_core = { version = "0.6", default-features = false, features = ["getrandom"] }
+plonk-core = { path = "plonk-core" }
+plonk-hashing = { path = "plonk-hashing" }
 
 [dev-dependencies]
 ark-bls12-377 = "0.3"
 ark-bls12-381 = "0.3"
+ark-ec = "0.3"
 ark-ed-on-bls12-377 = "0.3"
 ark-ed-on-bls12-381 = "0.3"
+ark-poly = "0.3"
+ark-poly-commit = "0.3"
 criterion = "0.3"
+derivative = "2.2.0"
 paste = "1.0.6"
 rand = "0.8.0"
+rand_core = "0.6"
 tempdir = "0.3"
-
-[features]
-default = [
-    "rand_core/std",
-    "itertools/default",
-    "parallel",
-    "asm"
-]
-parallel = [
-    "ark-ff/parallel",
-    "ark-poly/parallel",
-    "ark-ec/parallel",
-    "ark-poly-commit/parallel"
-]
-asm = [
-    "ark-ff/asm"
-]
-trace = []
-trace-print = ["trace"]
 
 [[bench]]
 name = "plonk"

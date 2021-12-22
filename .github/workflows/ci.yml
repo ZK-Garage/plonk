@@ -12,7 +12,6 @@ env:
 jobs:
   test:
     if: github.event.pull_request.draft == false
-
     name: Test on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
@@ -20,7 +19,6 @@ jobs:
         # We don't need to test across multiple platforms yet
         # os: [ubuntu-latest, windows-latest, macOS-latest]
         os: [ubuntu-latest]
-
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
@@ -31,10 +29,13 @@ jobs:
         with:
           command: test
           args: --verbose --release --workspace --all-features
-
+      - name: Check Benchmarks
+        uses: actions-rs/cargo@v1
+        with:
+          command: bench
+          args: --verbose --workspace --all-features --no-run
   build:
     if: github.event.pull_request.draft == false
-
     name: Build target ${{ matrix.target }}
     runs-on: ubuntu-latest
     strategy:
@@ -42,7 +43,6 @@ jobs:
         target:
           - wasm32-unknown-unknown
           - wasm32-wasi
-
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
@@ -55,13 +55,10 @@ jobs:
         with:
           command: build
           args: --all-features
-
   doc-links:
     if: github.event.pull_request.draft == false
-
     name: Intra-doc links
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
@@ -71,7 +68,6 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: fetch
-
       # Ensure intra-documentation links all resolve correctly
       # Requires #![deny(intra_doc_link_resolution_failure)] in crates.
       - name: Check intra-doc links
@@ -79,10 +75,8 @@ jobs:
         with:
           command: doc
           args: --workspace --document-private-items --all-features
-
   fmt:
     if: github.event.pull_request.draft == false
-    
     name: Rustfmt
     timeout-minutes: 30
     runs-on: ubuntu-latest
@@ -96,13 +90,10 @@ jobs:
         with:
           command: fmt
           args: --all -- --check
-
   clippy:
     if: github.event.pull_request.draft == false
-
     name: Clippy lint checks
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
