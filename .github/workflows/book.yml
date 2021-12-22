@@ -29,9 +29,12 @@ jobs:
       - name: Build plonk book
         run: mdbook build plonk-book/
 
+      - name: Move book to docs
+        run: |
+          mv ./target/doc ./docs
    
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./plonk-book/book
+          publish_dir: ./docs
