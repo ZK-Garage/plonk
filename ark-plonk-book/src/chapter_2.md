@@ -81,23 +81,37 @@ There are two types of constraints:
 
 ### Permutation checks
 
-We introduce a permutation argument  used to assure the correct execution of the circuit. It allows to check the connection between different wires inside of the circuit and make sure that the output of a certain is equal to the input of another for example $(c_2=b_3)$  where $c_2$ is the output of circuit $2$ and $b_3$ is the right input of circuit $3$.
+We introduce a permutation argument  used to assure the correct execution of the circuit. It allows to check the connection between different wires inside of the circuit and make sure that the output of a certain circuit is equal to the input of another for example $(c_2=b_3)$  where $c_2$ is the output of circuit $2$ and $b_3$ is the right input of circuit $3$.
 
-Let $\phi_1,..........,\phi_k \in F_{<d}[X]$ and $\sigma :[kn]\rightarrow [kn] $ for $k$ = number of wires. We say for a set of polynomials $(g_1,.......,g_k) \in (F_{<d}[X])^k$ that $$(g_1,g_2,........,g_k)=\sigma(f_1,...........,f_k)$$ if the following holds:
+Let $\phi_1,..........,\phi_k \in F_{<d}[X]$ and $\sigma :[kn]\rightarrow [kn] $ for $k$ = number of wires. We say for a set of polynomials $(g_1,.......,g_k) \in (F_{<d}[X])^k$ that $$(g_1,g_2,........,g_k)=\sigma(\phi_1,...........,\phi_k)$$ if the following holds:
 
 $g_{(l)}=\phi_{(\sigma(l))}$  for $l \in [kn]$  where $\phi_{((j-1).n+i)}=\phi_j(w^i), g_{((j-1).n+i)}=g_j(w^i)$
 
 for each $j\in [k], i\in [n]$
 
-We'll now describe how  is being used in the protocol. The protocol uses the following preprocessed polynomials: $S_{ID_1},.............,S_{ID_k}\in F_{<n}[X]$ defined by $S_{ID_j}(w^i)=(j-1).n+i$ for each $i\in [n]$. For each $j\in [k], S_{\sigma_j}\in F_{<n}[X]$, defined by 
-$S_{\sigma_j}(w^i)=\sigma((j-1).n+i)$ for each $i\in [n]$.
+The prover will be able to select an appropriate $\sigma$ for a set of wire connections and the
+verifier will be convinced that the connections are correct by checking the permutation argument on the set of polynomials with itself:
 
-The protocol is as follows:
+$$
+ (\phi_1,\dots,\phi_k) = \sigma((\phi_1,\dots,\phi_k))
+$$
 
-1. Verifier chooses random $\beta,\gamma \in F$ and sends them to Prover.
-2. Prover constructs two new sequences $\phi_j'$ and $g_j'$ such that:
-$$\phi_j'=\phi_j+\beta.S_{ID_j}+ \gamma  \;\;and\;\;  g_j'=g_j+\beta.S_{\sigma_j}+\gamma$$  
-for $j\in [k]$ and $i\in [n]$
+Note that if this equality holds, we can substitute $(\phi_1,\dots,\phi_k)$ in the right hand side indefinitely as so:
+
+$$
+ (\phi_1,\dots, \phi_k)=\\
+ \sigma((\phi_1,\dots, \phi_k)) =\\
+ \sigma( \sigma((\phi_1, \dots, \phi_k)) ) = \dots
+$$
+
+and therefore the check effectively assures that
+
+$$
+ (\phi_1, \dots, \phi_k) = \sigma^i((\phi_1, \dots, \phi_3))
+$$
+for all $i \in \mathbb{N}$.
+
+
 
 
 ### KZG10 Batched commitments:
