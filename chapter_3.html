@@ -1,0 +1,443 @@
+<!DOCTYPE HTML>
+<html lang="en" class="sidebar-visible no-js light">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Chapter 3: ARK-PLONK library - ARK-PLONK Book</title>
+        <!-- Custom HTML head -->
+        <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff" />
+
+        <link rel="icon" href="favicon.svg">
+        <link rel="shortcut icon" href="favicon.png">
+        <link rel="stylesheet" href="css/variables.css">
+        <link rel="stylesheet" href="css/general.css">
+        <link rel="stylesheet" href="css/chrome.css">
+        <link rel="stylesheet" href="css/print.css" media="print">
+        <!-- Fonts -->
+        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="fonts/fonts.css">
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="highlight.css">
+        <link rel="stylesheet" href="tomorrow-night.css">
+        <link rel="stylesheet" href="ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+    </head>
+    <body>
+        <!-- Provide site root to javascript -->
+        <script type="text/javascript">
+            var path_to_root = "";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script type="text/javascript">
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script type="text/javascript">
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('no-js')
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add('js');
+        </script>
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script type="text/javascript">
+            var html = document.querySelector('html');
+            var sidebar = 'hidden';
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            }
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded "><a href="chapter_1.html"><strong aria-hidden="true">1.</strong> Chapter 1: Background Material</a></li><li class="chapter-item expanded "><a href="chapter_2.html"><strong aria-hidden="true">2.</strong> Chapter 2: PLONK</a></li><li class="chapter-item expanded "><a href="chapter_3.html" class="active"><strong aria-hidden="true">3.</strong> Chapter 3: ARK-PLONK library</a></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky bordered">
+                    <div class="left-buttons">
+                        <button id="sidebar-toggle" class="icon-button" type="button" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </button>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light (default)</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">ARK-PLONK Book</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script type="text/javascript">
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="ark-plonk-library"><a class="header" href="#ark-plonk-library">ARK-PLONK library</a></h1>
+<p>ARK-PLONK is a generic Rust PLONK implementation using arkworks as a backend. ARK-PLONK is one of many projects implementing PLONK like: TurboPlonk, UltraPlonk. DuskPlonk, Plonky, ShPlonk, PLOOKUP, PLONKUP, halo2...etc.</p>
+<p>ARK-PLONK is however the only generic implementation which allows any curve implementation or commitment scheme to be used and isn’t restricted to only one implementation like other existing libraries (for example duskPlonk is based on bls12-281).</p>
+<h2 id="state-of-the-art"><a class="header" href="#state-of-the-art">State of the art</a></h2>
+<p>In 2020, AZTEC team has developed PLONK which uses KZG's pairing-based polynomial commitment scheme in order to bring a universal zkSNARK setup. 
+Since then, PLONK has become very popular and lots of projects like Dusk Network, Zcash's Halo 2, Mina, Mir...etc started using it and developing their own variations of it. 
+Both Mir and Zcash use PLONK combined with <a href="https://eprint.iacr.org/2019/1021.pdf">Halo’s polynomial commitment scheme</a> for their libraries <a href="https://github.com/mir-protocol/plonky">Plonky</a> and Halo2. Halo based schemes do recursive proofs without pairings using elliptic curves that are not pairing friendly and can run without the need for trusted setups. In a recursive proof, the verifier is written inside the circuit which allows us to verify a proof inside of another proof while in a standard proof system there is a prover and a verifier. 
+In a KZG system, the proof size is very small (less than a kilobyte) and it's constant and also the verification time is constant, it’s also easy to verify on Ethereum but recursion is hard to do with pairings. 
+Halo based schemes have decent proof size and prover time, but take linear time to verify and it’s not possible to verify on Ethereum.</p>
+<p>Mir has recently developed a more optimized proving system Plonky2 based on PLONK and FRI. 
+FRI-based ZK-STARKs algorithm provides both quantum-resistance and does not require any trusted setups while the KZG scheme uses elliptic curve pairing which is not quantum resistant and requires a third-party trusted setup. FRI has a blowup factor which measures how much redundancy a polynomial needs to add before the commitment is generated and thus makes the prover faster. 
+Plonky2 claims a 100x speed up for ethereum for $170ms$ comparing to Plonky which takes $15s$ for proving times. 
+ARK-PLONK is an optimization of the original PLONK protocol and guarantees $3.44s$ for proving time and $4.50ms$ for verifier speed comparing to $60$ proof times in the original PLONK design.</p>
+<p>A differentiating factor ARK-PLONK has is the fact that it uses Arkworks generic backend, a rust library that abstracts over the curves and over the fields so you can use any algorithm in a generic way. This makes ARK-PLONK valid for any curve implementation for pairing curves, for edwards twisted curves….etc.<br />
+ARK-PLONK also uses a generic polynomial commitment based on <a href="https://docs.rs/ark-poly-commit/0.3.0/ark_poly_commit/">ark-poly-commit</a> which provides various constructions of polynomial commitment schemes. This will allow ARK-PLONK to use other commitment schemes like quantum resistent FRI and not be restricted only to KZG10.</p>
+<p>There is no other library right which allows you to have the freedom of using generic parameters. Zcash's Halo2 and Plonky use HALO commitment scheme while plonky2 uses only FRI scheme. In terms of elliptic curves, Aztek's implementation of PLonk is based on bn256, duskPlonk is based on bls12-281.</p>
+<h2 id="circuit-implementation"><a class="header" href="#circuit-implementation">Circuit implementation</a></h2>
+<p>ARK-PLONK's implementation is an optimization of the original PLONK protocol as it enables lookup table to the PLONK circuit. This optimization allows for precomputation of some of the operations that are not snark friendly like bit operations (see <a href="https://eprint.iacr.org/2020/315.pdf">PLOOKUP</a> for further explanation on PLONK + LOOKUP tables).</p>
+<p>Our implementation also uses custom gates similarly to <a href="https://docs.zkproof.org/pages/standards/accepted-workshop3/proposal-turbo_plonk.pdf">TurboPolnk</a> which allow us to define our own custom bit arithmetic operations like efficient Poseidon or MIMC hashes which are extremely efficient to evaluate inside of a snark. </p>
+<h3 id="modules"><a class="header" href="#modules">Modules</a></h3>
+<ul>
+<li>
+<p>circuit: Tools &amp; traits for PLONK circuits (ark_plonk::circuit)</p>
+<ol>
+<li>Structs
+<ul>
+<li><code>PublicInputValue</code>: structure that represents a PLONK Circuit Public Input converted into its scalar representation.</li>
+<li><code>VerifierData</code>: Collection of structs/objects that the Verifier will use in order to de/serialize data needed for Circuit proof verification. This structure can be seen as a link between the Circuit public input positions and the VerifierKey that the Verifier needs to use.</li>
+<li><code>TestCircuit</code>: structure of a circuit that checks the following:
+<ol>
+<li>$a + b = c$ where $c$ is a PI</li>
+<li>Checks $a$ and $b$ are in range</li>
+<li>$a * b = d$ where $d$ is a PI</li>
+<li>JubJub::GENERATOR * $e$(JubJubScalar)= $f$ where $f$ is a PI</li>
+</ol>
+</li>
+</ul>
+</li>
+<li>Traits 
+<ul>
+<li>
+<p><code>Circuit</code>: Allows to automatically being able to generate, and verify proofs as  well as compile the circuit.</p>
+</li>
+<li>
+<p><code>FeIntoPubInput</code>: Field Element Into Public Input</p>
+</li>
+<li>
+<p><code>GeIntoPubInput</code>: Group Element Into Public Input</p>
+<p>The two traits <code>FeIntoPubInput</code> and <code>GeIntoPubInput</code> are helper traits used as a way to have a workaround for not being able to implement <code>From&lt;_&gt; for Values</code> for both <code>PrimeField</code> and <code>GroupAffine</code> since they are external to the crate, and therefore the compiler cannot be sure that <code>PrimeField</code> will never be implemented for <code>GroupAffine</code>. In which case, the two implementations would be inconsistent. </p>
+</li>
+</ul>
+</li>
+</ol>
+</li>
+<li>
+<p>constraint_system: The constraint System module stores the implementation of the PLONK Standard Composer, as well as the circuit tools and abstractions, used by the Composer to generate, build, preprocess circuits.</p>
+</li>
+<li>
+<p>proof_system: Proving system</p>
+</li>
+<li>
+<p>error: Defines all possible errors that can be encountered in PLONK</p>
+</li>
+<li>
+<p>prelude: collection of functions needed to use ark-plonk library.</p>
+<ul>
+<li>Structs:
+<ul>
+<li><code>Circuit</code></li>
+<li><code>PublicInputValue</code></li>
+<li><code>VerifierData</code></li>
+<li><code>StandardComposer</code>: A StandardComposer stores all of the circuit information (values, positions in the circuits, gates and Wires that occupy, public inputs, Permutation argument...etc)</li>
+<li><code>Proof</code>: A Proof is a composition of Commitments to the Witness, Permutation, Quotient, Shifted and Opening polynomials as well as the ProofEvaluations.</li>
+<li><code>VerifierKey</code>: PLONK circuit Verification Key.</li>
+<li><code>Prover</code>: Abstraction structure designed to construct a circuit and generate Proofs for it.</li>
+<li><code>ProverKey</code>: 	PLONK circuit Proving Key.</li>
+<li><code>Verifier</code>: Abstraction structure designed verify Proofs.</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>
+<p>transcript: an extension over the Merlin Transcript which adds a few extra functionalities.</p>
+<ol>
+<li>Structs:</li>
+</ol>
+<ul>
+<li><code>TranscriptWrapper</code>: Wrapper around Transcript</li>
+</ul>
+<ol start="2">
+<li>Traits:</li>
+</ol>
+<ul>
+<li><code>TranscriptProtocol</code>: 	Transcript adds an abstraction over the Merlin transcript For convenience</li>
+</ul>
+</li>
+</ul>
+<h3 id="proof-generation"><a class="header" href="#proof-generation">Proof generation</a></h3>
+<p>The proof is generated using <code>CircuitInputs</code> and <code>ProverKey</code> as follow:</p>
+<pre><pre class="playground"><code class="language-rust">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>    fn gen_proof(
+        &amp;mut self,
+        u_params: &amp;UniversalParams&lt;E&gt;,
+        prover_key: ProverKey&lt;E::Fr, P&gt;,
+        transcript_init: &amp;'static [u8],
+    ) 
+<span class="boring">}
+</span></code></pre></pre>
+<p>After the circuit is compiled, the prover calls  <code>gen_proof()</code> </p>
+<pre><pre class="playground"><code class="language-rust">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span> let proof = {
+            let mut circuit: TestCircuit&lt;E, P&gt; = TestCircuit {
+                a: E::Fr::from(20u64),
+                b: E::Fr::from(5u64),
+                c: E::Fr::from(25u64),
+                d: E::Fr::from(100u64),
+                e: P::ScalarField::from(2u64),
+                f: point_f_pi,
+            };
+
+            circuit.gen_proof(&amp;pp, pk_p, b&quot;Test&quot;)?
+        };
+<span class="boring">}
+</span></code></pre></pre>
+<h3 id="prover"><a class="header" href="#prover">Prover</a></h3>
+<h3 id="verifier"><a class="header" href="#verifier">Verifier</a></h3>
+<p>The Verification does not require a Circuit instance and can be executed solely using <code>verifier_data</code> after the circuit is compiled. </p>
+<pre><pre class="playground"><code class="language-rust">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Compile the circuit
+let (pk_p, verifier_data) = circuit.compile(&amp;pp)?;
+<span class="boring">}
+</span></code></pre></pre>
+<p>The Verifier's data is created from a <code>VerifierKey</code> and the public circuit inputs.</p>
+<pre><pre class="playground"><code class="language-rust">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub struct VerifierData&lt;E, P&gt;
+where
+    E: PairingEngine,
+    P: TEModelParameters&lt;BaseField = E::Fr&gt;,
+{
+    /// Verifier Key
+    pub key: VerifierKey&lt;E, P&gt;,
+
+    /// Public Input Positions
+    pub pi_pos: Vec&lt;usize&gt;,
+}
+<span class="boring">}
+</span></code></pre></pre>
+<h2 id="parameters"><a class="header" href="#parameters">Parameters</a></h2>
+<h3 id="elliptic-curve"><a class="header" href="#elliptic-curve">Elliptic curve:</a></h3>
+<p>Circuits in ARK-PLONK depend on two generic parameters: </p>
+<ul>
+<li>
+<p>The pairing engine which is a pairing friendly curve used for pairing operations and proof verification</p>
+</li>
+<li>
+<p>Twisted Edwards curve: derived from the first one and is used to make elliptic curve operations inside of the circuit.</p>
+<p><strong>Example:</strong></p>
+</li>
+</ul>
+<pre><pre class="playground"><code class="language-rust">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>  pub struct TestCircuit&lt;
+    E: PairingEngine,
+    P: TEModelParameters&lt;BaseField = E::Fr&gt;,
+&gt; {
+    a: E::Fr,
+    b: E::Fr,
+    c: E::Fr,
+    d: E::Fr,
+    e: P::ScalarField,
+    f: GroupAffine&lt;P&gt;,
+}
+<span class="boring">}
+</span></code></pre></pre>
+<p>Currently tests are only run with two pairing friendly curves <a href="https://lib.rs/crates/ark-bls12-381">Bls12_381</a> and 
+<a href="https://docs.rs/ark-ed-on-bls12-377/0.3.0/ark_ed_on_bls12_377/#">Bls12_377</a> in order to check that the library is generic and can in fact work 
+correctly with different parameters and also to measure performance when changing the used curve.</p>
+<ul>
+<li>
+<p>Commitment scheme: The first implementation of ARK-PLONK used the KZG10 commitment scheme which needs a trusted setup as explained in the KZG10 section. However, in order for other projects who don’t wish to have a trusted setup like Mithril for example there is a generic implementation using  <a href="https://docs.rs/ark-poly-commit/0.3.0/ark_poly_commit/">ark-poly-commit</a> library. </p>
+</li>
+<li>
+<p>Signature scheme: 
+TBD</p>
+</li>
+<li>
+<p>Hash function:
+TBD</p>
+</li>
+</ul>
+<h3 id="gadgets"><a class="header" href="#gadgets">Gadgets</a></h3>
+<p>In order to translate a high level code into an arithmetic circuit we need to use gadgets. Gadgets provide modular and reusable abstractions for circuits as well as abstracting functions, elliptic curve points or integers of specific sizes. Some of the most famous zksnarks gadget libraries are Libsnark in C++ and Bellman in Rust.</p>
+<p>Every single gadget in ARK-PLONK takes mutable reference or a pointer to the composer which then generates the proof and defines the circuit. </p>
+<h4 id="simple-example"><a class="header" href="#simple-example">Simple example</a></h4>
+<p>In order to show how our implementation works, we will take a simple example of a gadget $a+b=c$. The gadget proves the knowledge of two private inputs $a$ and $b$ while taking $c$ as a public input.</p>
+<pre><pre class="playground"><code class="language-rust">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>fn gadget(
+        &amp;mut self,
+        composer: &amp;mut StandardComposer&lt;E, P&gt;,
+    ) -&gt; Result&lt;(), Error&gt; {
+        let a = composer.add_input(self.a);
+        let b = composer.add_input(self.b);
+        // Make first constraint a + b = c
+        let add_result = composer.add(
+          (E::Fr::one(), a),
+          (E::Fr::one(), b),
+          E::Fr::zero(),
+          Some(-self.c),
+        );
+	composer.assert_equal(add_result, composer.zero_var());
+
+        // Check that a and b are in range
+        composer.range_gate(a, 1 &lt;&lt; 6);
+        composer.range_gate(b, 1 &lt;&lt; 5);
+        // Make second constraint a * b = d
+        let mul_result = composer.mul(E::Fr::one(), a, b, E::Fr::zero(), Some(-self.d));
+        composer.assert_equal(mul_result, composer.zero_var());
+
+        let e_repr = self.e.into_repr().to_bytes_le();
+        let e = composer.add_input(E::Fr::from_le_bytes_mod_order(&amp;e_repr));
+        let (x, y) = P::AFFINE_GENERATOR_COEFFS;
+        let generator = GroupAffine::new(x, y);
+        let scalar_mul_result = composer.fixed_base_scalar_mul(e, generator);
+        // Apply the constrain
+        composer.assert_equal_public_point(scalar_mul_result, self.f);
+        Ok(())
+    }
+
+<span class="boring">}
+</span></code></pre></pre>
+<p>We define three checks that our circuit relies on:</p>
+<ul>
+<li><strong>Range checks:</strong> $a&lt;26$ and $b&lt;25$</li>
+<li><strong>Addition checks:</strong> $a+b=c$</li>
+<li><strong>Elliptic curve multiplication</strong> </li>
+</ul>
+<h2 id="serialization"><a class="header" href="#serialization">Serialization</a></h2>
+<h2 id="performance"><a class="header" href="#performance">Performance:</a></h2>
+<p>To run the benchmarks and get a full report on the performance using your machine </p>
+<p><code>RUSTFLAGS='-C target-cpu=native' cargo bench</code></p>
+<p>The benchmarks for prover and verifier are done using the <a href="https://bheisler.github.io/criterion.rs/book/criterion_rs.html">Criterion.rs</a> micro-benchmarking tool. Benchmarks are repeated 10 times each and so far only been run with Bls12_381. Benchmarks taken on Intel(R) Core(TM) i9-10885H. Results are in the following table:</p>
+<table><thead><tr><th>Circuit size</th><th>Prover speed</th><th>Verifier speed</th></tr></thead><tbody>
+<tr><td>$2^5$</td><td>9.5398ms</td><td>4.2881ms</td></tr>
+<tr><td>$2^6$</td><td>13.013ms</td><td>4.2781ms</td></tr>
+<tr><td>$2^7$</td><td>18.137ms</td><td>4.2973ms</td></tr>
+<tr><td>$2^8$</td><td>29.914ms</td><td>4.2593ms</td></tr>
+<tr><td>$2^9$</td><td>50.221ms</td><td>4.3023ms</td></tr>
+<tr><td>$2^{10}$</td><td>68.704ms</td><td>4.2228ms</td></tr>
+<tr><td>$2^{11}$</td><td>127.49ms</td><td>4.1379ms</td></tr>
+<tr><td>$2^{12}$</td><td>245.48ms</td><td>4.1467ms</td></tr>
+<tr><td>$2^{13}$</td><td>440.64ms</td><td>4.1770ms</td></tr>
+<tr><td>$2^{14}$</td><td>869.66ms</td><td>4.1870ms</td></tr>
+<tr><td>$2^{15}$</td><td>1.7712s</td><td>4.3390ms</td></tr>
+<tr><td>$2^{16}$</td><td>3.4499s</td><td>4.5020ms</td></tr>
+<tr><td>$2^{17}$</td><td>6.7577s</td><td>5.1572ms</td></tr>
+<tr><td>$2^{18}$</td><td>13.704s</td><td>6.8124ms</td></tr>
+</tbody></table>
+<p>The ark-plonk benchmarks are outperforming those of dusk-plonk library. For example, in dusk-plonk the results are taken with Intel(R) Core(TM) i9-9900X for a circuit of size $2^{16}$ are:</p>
+<ul>
+<li>Prover time: $5.46s$ which is higher than $3.44s$ in the case of ark-plonk </li>
+<li>Verifier time: $9.34ms$ which is higher than $4.50ms$ in the case of Plonk.</li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="chapter_2.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="chapter_2.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+        <script type="text/javascript">
+            window.playground_copyable = true;
+        </script>
+        <script src="elasticlunr.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="mark.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="searcher.js" type="text/javascript" charset="utf-8"></script>
+        <script src="clipboard.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="highlight.js" type="text/javascript" charset="utf-8"></script>
+        <script src="book.js" type="text/javascript" charset="utf-8"></script>
+
+        <!-- Custom JS scripts -->
+    </body>
+</html>
