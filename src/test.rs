@@ -2,6 +2,7 @@
 ///
 /// The set of tests is split in two. The first set between `[]` is for regular
 /// tests that should not panic. The second set is for tests that should panic.
+#[cfg(test)]
 #[macro_export]
 macro_rules! batch_test {
     ( [$($test_set:ident),*], [$($test_panic_set:ident),*] => ($engine:ty, $params:ty) ) => {
@@ -24,3 +25,6 @@ macro_rules! batch_test {
         }
     }
 }
+
+#[cfg(feature = "test")]
+pub use crate::constraint_system::helper::*;

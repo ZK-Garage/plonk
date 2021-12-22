@@ -46,7 +46,7 @@ pub mod error;
 pub mod prelude;
 pub mod proof_system;
 
-#[cfg(test)]
+#[cfg(any(test, feature = "test"))]
 mod test;
 
 #[doc = include_str!("../docs/notes-intro.md")]

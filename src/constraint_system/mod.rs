@@ -16,7 +16,8 @@ mod logic;
 mod range;
 
 pub(crate) mod composer;
-pub(crate) mod helper;
+#[cfg(any(test, feature = "test"))]
+pub mod helper;
 pub(crate) mod variable;
 
 pub mod ecc;
