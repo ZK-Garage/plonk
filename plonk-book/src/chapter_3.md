@@ -31,7 +31,55 @@ ARK-PLONK's implementation is an optimization of the original PLONK protocol as 
 
 Our implementation also uses custom gates similarly to [TurboPolnk](https://docs.zkproof.org/pages/standards/accepted-workshop3/proposal-turbo_plonk.pdf) which allow us to define our own custom bit arithmetic operations like efficient Poseidon or MIMC hashes which are extremely efficient to evaluate inside of a snark. 
 
+### Custom gates
 
+The original Plonk proposes simple circuits whose gates only perform arithmetic operations: additions and multiplications. Plonk is able to extend an arithmetic "gate" and allows the creation of new customized gates which can perform so many different operations (EC additions, logical XOR, efficient Poseidon or Pedersen hashes....etc).
+
+
+The different types of gates in Ark-plonk are:
+
+* Arithmetic gates. (similar to Plonk)
+* Logic gates. Provide bitwise AND and XOR operations.
+* Range gates.
+* EC operations (Fixed base and variable base)
+
+
+In order to use these gates only when needed we introduce selector polynomials (SP). These polynomials will either activate or deactivate a specific gate depending on their value. We use the following notation:
+
+* $q_{arith}$ : arithmetic gate selector polynomial
+* $q_{logic}$ : logic gate SP
+* $q_{range}$ : range gate SP
+* $q_{ECfix}$: fixed group addition gate SP
+* $q_{ECvar}$:  variable group addition SP
+
+
+The gate constraint equation is represented as follow:
+
+$$
+q_{arith} \cdot arith\_eq +
+q_{logic} \cdot  logic\_eq +
+q_{range} \cdot  range\_eq +
+q_{ECfix} \cdot   ECfix\_eq +
+q_{ECvar} \cdot  ECvar\_eq
+=0
+$$
+
+
+In order to use one of these gates, we set the value of its associated SP to $1$ and the others to $0$. Let's say for example we want to use the range gate, we set $$q_{range}:=1$$ and   $$q_{arith}=q_{logic}= q_{ECfix}= q_{ECvar}:=0$$
+
+
+#### Design custom gates
+Before we explain how each of the previous mentioned custom gates is designed, we need to talk about fan-in 3 gates and why we use them at ark-plonk instead of fan-in 2.
+
+
+
+
+
+### TurboPlonk 
+
+
+
+### Lookup tables
 ### Modules
 * circuit: Tools & traits for PLONK circuits (ark_plonk::circuit)
   1. Structs
