@@ -1,21 +1,13 @@
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE
-// or https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-//
-// Copyright (c) ZK-GARAGE. All rights reserved.
-
-//! PLONK Benchmarks
+//! Benchmarks
 
 use ark_bls12_381::{Bls12_381, Fr as BlsScalar};
 use ark_ec::{PairingEngine, TEModelParameters};
 use ark_ed_on_bls12_381::EdwardsParameters;
+use ark_plonk::prelude::*;
 use ark_poly::univariate::DensePolynomial;
 use ark_poly_commit::kzg10::KZG10;
 use core::marker::PhantomData;
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
-use plonk::prelude::*;
 use rand_core::OsRng;
 
 /// Benchmark Circuit
@@ -128,7 +120,7 @@ fn constraint_system_benchmark(c: &mut Criterion) {
             &degree,
             |b, _| {
                 b.iter(|| {
-                    plonk::circuit::verify_proof(
+                    ark_plonk::circuit::verify_proof(
                         &pp,
                         key.clone(),
                         &proof,
@@ -145,8 +137,8 @@ fn constraint_system_benchmark(c: &mut Criterion) {
 }
 
 criterion_group! {
-    name = plonk;
+    name = ark_plonk;
     config = Criterion::default().sample_size(10);
     targets = constraint_system_benchmark
 }
-criterion_main!(plonk);
+criterion_main!(ark_plonk);
