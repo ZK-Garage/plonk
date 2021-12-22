@@ -69,11 +69,49 @@ In order to use one of these gates, we set the value of its associated SP to $1$
 
 
 #### Design custom gates
-Before we explain how each of the previous mentioned custom gates is designed, we need to talk about fan-in 3 gates and why we use them at ark-plonk instead of fan-in 2.
+Before we explain how each of the previous mentioned custom gates is designed, we need to talk about fan-in 3 gates and why we use them at ark-plonk instead of fan-in 2 gates.
+The original Plonk design uses fan-in 2 gates which means each gates has two inputs and an output wires.
+Ark-plonk gates on the other hand are fan-in-3 gates, so they have one more wire which makes it 4 wires in total.
+We can see in the following figure how a fan-in 3 gate looks like:
 
+<p align="center">
+  <img  alt="circuit" width="250"src="images/images/gate.png" />
+  
+</p>
+ 
+The original arithmetic constraint equation looks as follow
 
+$$
+q_m \cdot a \cdot b + 
+q_l \cdot a +
+q_r \cdot b +
+q_o \cdot c +
+q_c +
+PI
+= 0
+$$
 
+where $a$ is the left wire, $b$ is the right wire, $c$ is the output wire and $q_l, q_r, q_o, q_m, q_c$ are the associated elector polynomials .After the addition of a fourth wire $d$ the equation turns into:
+$$
+q_m \cdot a \cdot b + 
+q_l \cdot a +
+q_r \cdot b +
+\color{#007FFF}{q_d \cdot d} +
+q_o \cdot c +
+q_c +
+PI
+= 0.
+$$
 
+Ark-plonk still allows the use of fan-in 2 gates only by setting the 4th wire selector $q_d$ to $0$. 
+The reason why we use this design instead of the original one is to have one more witness available as a way to reduce gate counts.
+This method however has some negative implications on both the proof size and the verifier's time. It will increase the permutation polynomial degree (instead of 3 identity permutations it will become 4) and thus an n−degree increase in the quotient polynomial (from $3n$ to $4n$)
+ and an increase in the FFT degrees. We can expect the proof size( additional commitment to the wire polynomial and an additional group element). The verification time will also increase(21 exponentiations in  $G_1$ instead of $18$ for classic Plonk):
+ * 7 from the linearization polynomial opening, 
+* 11 from the quotient polynomial opening
+* 1 from the evaluation commitment 
+* 1 from the polynomial commitment argument for evaluation at $z$  
+* 1 from the polynomial commitment argument for evaluation at $zw$ 
 
 ### TurboPlonk 
 
