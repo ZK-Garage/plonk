@@ -1,6 +1,6 @@
 # PLONK
-![Build Status](https://github.com/rust-zkp/ark-plonk/workflows/Continuous%20integration/badge.svg)
-[![Repository](https://img.shields.io/badge/github-plonk-blueviolet?logo=github)](https://github.com/rust-zkp/ark-plonk)
+[![CI checks](https://github.com/ZK-Garage/plonk/actions/workflows/ci.yml/badge.svg)](https://github.com/ZK-Garage/plonk/actions/workflows/ci.yml)
+[![Repository](https://img.shields.io/badge/github-plonk-blueviolet?logo=github)](https://github.com/ZK-Garage/plonk)
 [![Documentation](https://img.shields.io/badge/docs-plonk-blue?logo=rust)](https://docs.rs/plonk/)
 
 
@@ -9,27 +9,11 @@ _This is a pure Rust implementation of the PLONK zk proving system_
 
 ## About
 Initial implementation created by [Kev](https://github.com/kevaundray), [Carlos](https://github.com/CPerezz) and [Luke](https://github.com/LukePearson1) at Dusk Network.
-Redesigned by the [rust zkp](https://github.com/rust-zkp) team to have a backend which is compatible with the [arkworks](https://github.com/arkworks-rs) suite. This allows us to leverage the multitude of curves
-and optimised algebra present in various arkworks repositories.
+Redesigned by the [ZK-Garage](https://github.com/ZK-Garage) team to have a backend which is compatible with the [arkworks](https://github.com/arkworks-rs) suite. This allows us to leverage the multitude of curves and optimised algebra present in various arkworks repositories.
 
-## Usage
-```rust
-use core::marker::PhantomData;
-use ark_bls12_381::{Bls12_381, Fr as BlsScalar};
-use ark_ec::twisted_edwards_extended::GroupAffine;
-use ark_ec::{AffineCurve, PairingEngine, TEModelParameters};
-use ark_ed_on_bls12_381::{
-    EdwardsAffine as JubjubAffine, EdwardsParameters as JubjubParameters,
-    EdwardsProjective as JubjubProjective, Fr as JubjubScalar,
-};
-use ark_ff::{BigInteger, PrimeField};
-use ark_plonk::circuit::{self, Circuit, PublicInputValue};
-use ark_plonk::prelude::*;
-use num_traits::{One, Zero};
-use rand_core::OsRng;
+Please, if you're interested on collaborating or contributing, you can join our Discord here: <https://discord.gg/XWJdhVf37F>
 
-
-### Features
+## Features
 
 This crate includes a variety of features which will briefly be explained below:
 - `parallel`: Enables `rayon` and other parallelisation primitives to be used and speed up some of the algorithms used
@@ -111,16 +95,12 @@ Verify 2^18 = 262144 gates/18 time:   [6.7577 ms 6.8124 ms 6.8925 ms]
 - Initial [implementation](https://github.com/kobigurk/plonk/tree/kobigurk/port_to_zexe) of PLONK with arkworks backend was done years before this lib existed by Kobi Gurkan
 
 ## Licensing
-
-
-This software is distributed under the 
-terms of both the MIT license and 
-theApache License (Version 2.0). Please 
-see [LICENSE-MIT](https://github.com/rust-zkp/ark-plonk/blob/master/LICENSE-MIT) 
-and [LICENSE-APACHE](https://github.com/rust-zkp/ark-plonk/blob/master/LICENSE-APACHE) 
-for further info.
+This software is distributed under the terms of both the MIT license and 
+the Apache License (Version 2.0). 
+Please see [LICENSE-MIT](https://github.com/ZK-Garage/plonk/blob/master/LICENSE-MIT) 
+and [LICENSE-APACHE](https://github.com/ZK-Garage/plonk/blob/master/LICENSE-APACHE) for further info.
 
 ## Contributing
-
-- If you want to contribute to this repository/project please, check [CONTRIBUTING.md](https://github.com/rust-zkp/ark-plonk/blob/master/CONTRIBUTING.md)
+- If you want to contribute to this repository/project please, check [CONTRIBUTING.md](https://github.com/ZK-Garage/plonk/blob/master/CONTRIBUTING.md)
 - If you want to report a bug or request a new feature addition, please open an issue on this repository.
+

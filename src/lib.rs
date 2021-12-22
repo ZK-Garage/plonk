@@ -6,23 +6,20 @@
 //
 // Copyright (c) ZK-INFRA. All rights reserved.
 
-//#![doc = include_str!("../README.md")]
-//! Permutations over Lagrange-bases for Oecumenical Noninteractive
-//! arguments of Knowledge (PLONK) is a zero knowledge proof system.
+//! # PLONK
+//! ![Build Status](https://github.com/rust-zkp/ark-plonk/workflows/Continuous%20integration/badge.svg)
+//! [![Repository](https://img.shields.io/badge/github-plonk-blueviolet?logo=github)](https://github.com/rust-zkp/ark-plonk)
+//! [![Documentation](https://img.shields.io/badge/docs-plonk-blue?logo=rust)](https://docs.rs/plonk/)
 //!
-//! This protocol was created by:
-//! - Ariel Gabizon (Protocol Labs),
-//! - Zachary J. Williamson (Aztec Protocol)
-//! - Oana Ciobotaru
 //!
-//! This crate contains a pure Rust implementation of this algorithm using
-//! code done by the creators of the protocol as a reference implementation:
+//! _This is a pure Rust implementation of the PLONK zk proving system_
 //!
-//! <https://github.com/AztecProtocol/barretenberg/blob/master/barretenberg/src/aztec/plonk/>
 //!
-//! If you want to see library usage examples, please check:
-//! <https://github.com/dusk-network/plonk/tree/v0.1.0/examples>
-
+//! ## About
+//! Initial implementation created by [Kev](https://github.com/kevaundray), [Carlos](https://github.com/CPerezz) and [Luke](https://github.com/LukePearson1) at Dusk Network.
+//! Redesigned by the [rust zkp](https://github.com/rust-zkp) team to have a backend which is compatible with the [arkworks](https://github.com/arkworks-rs) suite. This allows us to leverage the multitude of curves
+//! and optimised algebra present in various arkworks repositories.
+#![doc = include_str!("../test_circuit.md")]
 // Bitshift/Bitwise ops are allowed to gain performance.
 #![allow(clippy::suspicious_arithmetic_impl)]
 // Some structs do not have AddAssign or MulAssign impl.

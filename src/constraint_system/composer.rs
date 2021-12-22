@@ -45,8 +45,8 @@ use num_traits::{One, Zero};
 /// The StandardComposer also contains as associated functions all the
 /// neccessary tools to be able to istrument the circuits that the user needs
 /// through the addition of gates. There are functions that may add a single
-/// gate to the circuit as for example [`StandardComposer::add_gate`] and others
-/// that can add several gates to the circuit description such as
+/// arithmetic gate to the circuit [`StandardComposer::arithmetic_gate`] and
+/// others that can add several gates to the circuit description such as
 /// [`StandardComposer::conditional_select`].
 ///
 /// Each gate or group of gates adds an specific functionallity or operation to
@@ -356,29 +356,29 @@ where
         choice_a: Variable,
         choice_b: Variable,
     ) -> Variable {
+        let zero = self.zero_var;
         // bit * choice_a
-        let bit_times_a =
-            self.mul(E::Fr::one(), bit, choice_a, E::Fr::zero(), None);
+        let bit_times_a = self.arithmetic_gate(|gate| {
+            gate.witness(bit, choice_a, None).mul(E::Fr::one())
+        });
 
         // 1 - bit
-        let one_min_bit = self.add(
-            (-E::Fr::one(), bit),
-            (E::Fr::zero(), self.zero_var),
-            E::Fr::one(),
-            None,
-        );
+        let one_min_bit = self.arithmetic_gate(|gate| {
+            gate.witness(bit, zero, None)
+                .add(-E::Fr::one(), E::Fr::zero())
+                .constant(E::Fr::one())
+        });
 
         // (1 - bit) * b
-        let one_min_bit_choice_b =
-            self.mul(E::Fr::one(), one_min_bit, choice_b, E::Fr::zero(), None);
+        let one_min_bit_choice_b = self.arithmetic_gate(|gate| {
+            gate.witness(one_min_bit, choice_b, None).mul(E::Fr::one())
+        });
 
         // [ (1 - bit) * b ] + [ bit * a ]
-        self.add(
-            (E::Fr::one(), one_min_bit_choice_b),
-            (E::Fr::one(), bit_times_a),
-            E::Fr::zero(),
-            None,
-        )
+        self.arithmetic_gate(|gate| {
+            gate.witness(one_min_bit_choice_b, bit_times_a, None)
+                .add(E::Fr::one(), E::Fr::one())
+        })
     }
 
     /// Adds the polynomial f(x) = x * a to the circuit description where
@@ -396,7 +396,9 @@ where
         value: Variable,
     ) -> Variable {
         // returns bit * value
-        self.mul(E::Fr::one(), bit, value, E::Fr::zero(), None)
+        self.arithmetic_gate(|gate| {
+            gate.witness(bit, value, None).mul(E::Fr::one())
+        })
     }
 
     /// Adds the polynomial f(x) = 1 - x + xa to the circuit description where
@@ -668,8 +670,7 @@ mod test {
     use super::*;
     use crate::batch_test;
     use crate::constraint_system::helper::*;
-    use crate::prelude::Prover;
-    use crate::prelude::Verifier;
+    use crate::proof_system::{Prover, Verifier};
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
     use ark_poly::univariate::DensePolynomial;

@@ -170,16 +170,16 @@ where
         bit: Variable,
         point_b: Point<E, P>,
     ) -> Point<E, P> {
+        let zero = self.zero_var;
         let x = point_b.x;
         let y = point_b.y;
 
         // negation of point (x, y) is (-x, y)
-        let x_neg = self.add(
-            (-E::Fr::one(), x),
-            (E::Fr::zero(), self.zero_var),
-            E::Fr::zero(),
-            None,
-        );
+        let x_neg = self.arithmetic_gate(|gate| {
+            gate.witness(x, zero, None)
+                .add(-E::Fr::one(), E::Fr::zero())
+        });
+
         let x_updated = self.conditional_select(bit, x_neg, x);
 
         Point::new(x_updated, y)

@@ -1,11 +1,32 @@
-```
-// Implement a circuit that checks:
+Trait that should be implemented for any circuit function to provide to it
+the capabilities of automatically being able to generate, and verify proofs
+as well as compile the circuit.
+## Example
+```rust
+use ark_bls12_381::{Bls12_381, Fr as BlsScalar};
+use ark_ec::PairingEngine;
+use ark_ec::models::twisted_edwards_extended::GroupAffine;
+use ark_ec::{TEModelParameters, AffineCurve, ProjectiveCurve};
+use ark_ed_on_bls12_381::{
+    EdwardsAffine as JubJubAffine, EdwardsParameters as JubJubParameters,
+    EdwardsProjective as JubJubProjective, Fr as JubJubScalar,
+};
+use ark_ff::{PrimeField, BigInteger};
+use ark_plonk::prelude::*;
+use ark_poly::polynomial::univariate::DensePolynomial;
+use ark_poly_commit::kzg10::KZG10;
+use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
+use num_traits::{Zero, One};
+use rand_core::OsRng;
+fn main() -> Result<(), Error> {
+// Implements a circuit that checks:
 // 1) a + b = c where C is a PI
 // 2) a <= 2^6
 // 3) b <= 2^5
 // 4) a * b = d where D is a PI
-// 5) JubJub::GENERATOR * e(JubJubScalar) = f where F is a Public Input
-#[derive(Debug, Default)]
+// 5) JubJub::GENERATOR * e(JubJubScalar) = f where F is a PI
+#[derive(derivative::Derivative)]
+#[derivative(Debug(bound = ""), Default(bound = ""))]
 pub struct TestCircuit<
     E: PairingEngine,
     P: TEModelParameters<BaseField = E::Fr>,
@@ -17,10 +38,10 @@ pub struct TestCircuit<
     e: P::ScalarField,
     f: GroupAffine<P>,
 }
-impl<
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
-    > Circuit<E, P> for TestCircuit<E, P>
+impl<E, P> Circuit<E, P> for TestCircuit<E, P>
+where
+    E: PairingEngine,
+    P: TEModelParameters<BaseField = E::Fr>,
 {
     const CIRCUIT_ID: [u8; 32] = [0xff; 32];
     fn gadget(
@@ -29,27 +50,26 @@ impl<
     ) -> Result<(), Error> {
         let a = composer.add_input(self.a);
         let b = composer.add_input(self.b);
-        // Make first constraint a + b = c
-        let add_result = composer.add(
-          (E::Fr::one(), a),
-          (E::Fr::one(), b),
-          E::Fr::zero(),
-          Some(-self.c),
-        );
-	composer.assert_equal(add_result, composer.zero_var());
-
+        let zero = composer.zero_var();
+        // Make first constraint a + b = c (as public input)
+        composer.arithmetic_gate(|gate| {
+            gate.witness(a, b, Some(zero))
+                .add(E::Fr::one(), E::Fr::one())
+                .pi(-self.c)
+        });
         // Check that a and b are in range
         composer.range_gate(a, 1 << 6);
         composer.range_gate(b, 1 << 5);
         // Make second constraint a * b = d
-        let mul_result = composer.mul(E::Fr::one(), a, b, E::Fr::zero(), Some(-self.d));
-        composer.assert_equal(mul_result, composer.zero_var());
-
-        let e_repr = self.e.into_repr().to_bytes_le();
-        let e = composer.add_input(E::Fr::from_le_bytes_mod_order(&e_repr));
+        composer.arithmetic_gate(|gate| {
+            gate.witness(a, b, Some(zero)).mul(E::Fr::one()).pi(-self.d)
+        });
+        let e = composer
+            .add_input(from_embedded_curve_scalar::<E, P>(self.e));
         let (x, y) = P::AFFINE_GENERATOR_COEFFS;
         let generator = GroupAffine::new(x, y);
-        let scalar_mul_result = composer.fixed_base_scalar_mul(e, generator);
+        let scalar_mul_result =
+            composer.fixed_base_scalar_mul(e, generator);
         // Apply the constrain
         composer.assert_equal_public_point(scalar_mul_result, self.f);
         Ok(())
@@ -58,52 +78,50 @@ impl<
         1 << 11
     }
 }
-
-// Now let's use the Circuit we've just implemented!
-fn main()-> Result<(), Error> {
-    let pp: PublicParameters<Bls12_381> = KZG10::<Bls12_381,DensePolynomial<BlsScalar>,>::setup(
-          1 << 12, false, &mut OsRng
-    )?;
-    // Initialize the circuit
-    let mut circuit: TestCircuit::<
-        Bls12_381,
-        JubjubParameters,
-    > = TestCircuit::default();
-    // Compile the circuit
-    let (pk, vd) = circuit.compile(&pp).unwrap();
-    // Generator
-    let (x, y) = JubJubParameters::AFFINE_GENERATOR_COEFFS;
-    let generator = JubJubAffine::new(x, y);
-    let point_f_pi: JubJubAffine = AffineCurve::mul(
-      &generator,
-      JubJubScalar::from(2u64).into_repr(),
-    ).into_affine();
-    let proof = {
-        let mut circuit = TestCircuit {
-            a: BlsScalar::from(20u64),
-            b: BlsScalar::from(5u64),
-            c: BlsScalar::from(25u64),
-            d: BlsScalar::from(100u64),
-            e: JubJubScalar::from(2u64),
-            f: point_f_pi,
-        };
-        circuit.gen_proof(&pp, pk, b"Test").unwrap()
+// Generate CRS
+let pp = KZG10::<Bls12_381, DensePolynomial<BlsScalar>>::setup(
+    1 << 12,
+    false,
+    &mut OsRng,
+)?;
+let mut circuit = TestCircuit::<Bls12_381, JubJubParameters>::default();
+// Compile the circuit
+let (pk_p, verifier_data) = circuit.compile(&pp)?;
+let (x, y) = JubJubParameters::AFFINE_GENERATOR_COEFFS;
+let generator: GroupAffine<JubJubParameters> = GroupAffine::new(x, y);
+let point_f_pi: GroupAffine<JubJubParameters> = AffineCurve::mul(
+    &generator,
+    JubJubScalar::from(2u64).into_repr(),
+)
+.into_affine();
+// Prover POV
+let proof = {
+    let mut circuit: TestCircuit<Bls12_381, JubJubParameters> = TestCircuit {
+        a: BlsScalar::from(20u64),
+        b: BlsScalar::from(5u64),
+        c: BlsScalar::from(25u64),
+        d: BlsScalar::from(100u64),
+        e: JubJubScalar::from(2u64),
+        f: point_f_pi,
     };
+    circuit.gen_proof(&pp, pk_p, b"Test")?
+};
 
-    let public_inputs: Vec<PublicInputValue<BlsScalar, JubjubParameters>> = vec![
-        BlsScalar::from(25u64).into_pi(),
-        BlsScalar::from(100u64).into_pi(),
-        point_f_pi.into_pi()
-    ];
+// Verifier POV
+let public_inputs: Vec<PublicInputValue<JubJubParameters>> = vec![
+    BlsScalar::from(25u64).into_pi(),
+    BlsScalar::from(100u64).into_pi(),
+    GeIntoPubInput::into_pi(point_f_pi),
+];
+let VerifierData { key, pi_pos } = verifier_data;
 
-    circuit::verify_proof(
-        &pp,
-        *vd.key(),
-        &proof,
-        &public_inputs,
-        &vd.pi_pos(),
-        b"Test",
-    )
-    .unwrap();
+verify_proof::<Bls12_381, JubJubParameters>(
+    &pp,
+    key,
+    &proof,
+    &public_inputs,
+    &pi_pos,
+    b"Test",
+)
 }
 ```

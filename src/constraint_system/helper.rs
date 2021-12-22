@@ -13,7 +13,7 @@ use ark_poly::univariate::DensePolynomial;
 use ark_poly_commit::kzg10::{self, Powers, KZG10};
 use ark_poly_commit::sonic_pc::SonicKZG10;
 use ark_poly_commit::PolynomialCommitment;
-use num_traits::{One, Zero};
+use num_traits::One;
 use rand_core::OsRng;
 
 /// Adds dummy constraints using arithmetic gates.
@@ -28,13 +28,10 @@ pub(crate) fn dummy_gadget<E, P>(
     let one = E::Fr::one();
     let var_one = composer.add_input(one);
     for _ in 0..n {
-        composer.big_add(
-            (E::Fr::one(), var_one),
-            (E::Fr::one(), var_one),
-            None,
-            E::Fr::zero(),
-            None,
-        );
+        composer.arithmetic_gate(|gate| {
+            gate.witness(var_one, var_one, None)
+                .add(E::Fr::one(), E::Fr::one())
+        });
     }
 }
 

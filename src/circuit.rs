@@ -153,22 +153,20 @@ where
 ///
 /// # Example
 ///
-/// ```rust
+/// ```rust,no_run
 /// use ark_bls12_381::{Bls12_381, Fr as BlsScalar};
 /// use ark_ec::PairingEngine;
 /// use ark_ec::models::twisted_edwards_extended::GroupAffine;
 /// use ark_ec::{TEModelParameters, AffineCurve, ProjectiveCurve};
 /// use ark_ed_on_bls12_381::{
-///     EdwardsAffine as JubjubAffine, EdwardsParameters as JubjubParameters,
-///     EdwardsProjective as JubjubProjective, Fr as JubjubScalar,
+///     EdwardsAffine as JubJubAffine, EdwardsParameters as JubJubParameters,
+///     EdwardsProjective as JubJubProjective, Fr as JubJubScalar,
 /// };
 /// use ark_ff::{PrimeField, BigInteger};
-/// use ark_plonk::circuit::{Circuit, PublicInputValue, verify_proof, GeIntoPubInput, FeIntoPubInput};
-/// use ark_plonk::constraint_system::StandardComposer;
-/// use ark_plonk::error::Error;
-/// use ark_plonk::prelude::VerifierData;
+/// use ark_plonk::prelude::*;
 /// use ark_poly::polynomial::univariate::DensePolynomial;
 /// use ark_poly_commit::kzg10::KZG10;
+/// use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 /// use num_traits::{Zero, One};
 /// use rand_core::OsRng;
 ///
@@ -179,123 +177,115 @@ where
 /// // 3) b <= 2^5
 /// // 4) a * b = d where D is a PI
 /// // 5) JubJub::GENERATOR * e(JubJubScalar) = f where F is a PI
-/// #[derive(Debug)]
-/// pub struct TestCircuit<E, P>
-/// where
-///     E: PairingEngine,
-///     P: TEModelParameters<BaseField = E::Fr>,
-/// {
-///     a: E::Fr,
-///     b: E::Fr,
-///     c: E::Fr,
-///     d: E::Fr,
-///     e: P::ScalarField,
-///     f: GroupAffine<P>,
-/// }
+/// #[derive(derivative::Derivative)]
+///    #[derivative(Debug(bound = ""), Default(bound = ""))]
+///    pub struct TestCircuit<
+///        E: PairingEngine,
+///        P: TEModelParameters<BaseField = E::Fr>,
+///    > {
+///        a: E::Fr,
+///        b: E::Fr,
+///        c: E::Fr,
+///        d: E::Fr,
+///        e: P::ScalarField,
+///        f: GroupAffine<P>,
+///    }
 ///
-/// impl<E, P> Default for TestCircuit<E, P>
-/// where
-///     E: PairingEngine,
-///     P: TEModelParameters<BaseField = E::Fr>
-/// {
-///     fn default() -> Self {
-///         Self {
-///             a: E::Fr::zero(),
-///             b: E::Fr::zero(),
-///             c: E::Fr::zero(),
-///             d: E::Fr::zero(),
-///             e: P::ScalarField::zero(),
-///             f: GroupAffine::<P>::zero(),
-///         }
-///     }
-/// }
+///    impl<E, P> Circuit<E, P> for TestCircuit<E, P>
+///    where
+///        E: PairingEngine,
+///        P: TEModelParameters<BaseField = E::Fr>,
+///    {
+///        const CIRCUIT_ID: [u8; 32] = [0xff; 32];
 ///
-/// impl<E, P> Circuit<E, P> for TestCircuit<E, P>
-/// where
-///     E: PairingEngine,
-///     P: TEModelParameters<BaseField = E::Fr>,
-/// {
-///     const CIRCUIT_ID: [u8; 32] = [0xff; 32];
+///        fn gadget(
+///            &mut self,
+///            composer: &mut StandardComposer<E, P>,
+///        ) -> Result<(), Error> {
+///            let a = composer.add_input(self.a);
+///            let b = composer.add_input(self.b);
+///            let zero = composer.zero_var();
 ///
-///     fn gadget(
-///         &mut self,
-///         composer: &mut StandardComposer<E, P>,
-///     ) -> Result<(), Error> {
-///         // Add fixed witness zero
-///         let a = composer.add_input(self.a);
-///         let b = composer.add_input(self.b);
-///         // Make first constraint a + b = c
-///         let add_result = composer.add(
-///           (E::Fr::one(), a),
-///           (E::Fr::one(), b),
-///           E::Fr::zero(),
-///           Some(-self.c),
-///         );
-///         composer.assert_equal(add_result, composer.zero_var());
+///            // Make first constraint a + b = c (as public input)
+///            composer.arithmetic_gate(|gate| {
+///                gate.witness(a, b, Some(zero))
+///                    .add(E::Fr::one(), E::Fr::one())
+///                    .pi(-self.c)
+///            });
 ///
-///         // Check that a and b are in range
-///         composer.range_gate(a, 1 << 6);
-///         composer.range_gate(b, 1 << 5);
+///            // Check that a and b are in range
+///            composer.range_gate(a, 1 << 6);
+///            composer.range_gate(b, 1 << 5);
+///            // Make second constraint a * b = d
+///            composer.arithmetic_gate(|gate| {
+///                gate.witness(a, b, Some(zero)).mul(E::Fr::one()).pi(-self.d)
+///            });
+///            let e = composer
+///                .add_input(from_embedded_curve_scalar::<E, P>(self.e));
+///            let (x, y) = P::AFFINE_GENERATOR_COEFFS;
+///            let generator = GroupAffine::new(x, y);
+///            let scalar_mul_result =
+///                composer.fixed_base_scalar_mul(e, generator);
 ///
-///         // Make second constraint a * b = d
-///         let mul_result = composer.mul(E::Fr::one(), a, b, E::Fr::zero(), Some(-self.d));
-///         composer.assert_equal(mul_result, composer.zero_var());
+///            // Apply the constrain
+///            composer.assert_equal_public_point(scalar_mul_result, self.f);
+///            Ok(())
+///        }
 ///
-///         let e_repr = self.e.into_repr().to_bytes_le();
-///         let e = composer.add_input(E::Fr::from_le_bytes_mod_order(&e_repr));
-///         let (x, y) = P::AFFINE_GENERATOR_COEFFS;
-///         let generator = GroupAffine::new(x, y);
-///         let scalar_mul_result =
-///             composer.fixed_base_scalar_mul(e, generator);
-///         // Apply the constraint
-///         composer
-///             .assert_equal_public_point(scalar_mul_result, self.f.clone());
-///         Ok(())
-///     }
+///        fn padded_circuit_size(&self) -> usize {
+///            1 << 11
+///        }
+///    }
 ///
-///     fn padded_circuit_size(&self) -> usize {
-///         1 << 11
-///     }
-/// }
+/// // Generate CRS
+/// let pp = KZG10::<Bls12_381, DensePolynomial<BlsScalar>>::setup(
+///     1 << 12,
+///     false,
+///     &mut OsRng,
+/// )?;
 ///
-/// let pp = KZG10::<Bls12_381,DensePolynomial<BlsScalar>,>::setup(
-///     1 << 12, false, &mut OsRng
-///  )?;
-///
-/// // Initialize the circuit
-/// let mut circuit = TestCircuit::<Bls12_381, JubjubParameters>::default();
-///
+/// let mut circuit = TestCircuit::<Bls12_381, JubJubParameters>::default();
 /// // Compile the circuit
-/// let (pk, vd) = circuit.compile(&pp)?;
+/// let (pk_p, verifier_data) = circuit.compile(&pp)?;
 ///
+/// let (x, y) = JubJubParameters::AFFINE_GENERATOR_COEFFS;
+/// let generator: GroupAffine<JubJubParameters> = GroupAffine::new(x, y);
+/// let point_f_pi: GroupAffine<JubJubParameters> = AffineCurve::mul(
+///     &generator,
+///     JubJubScalar::from(2u64).into_repr(),
+/// )
+/// .into_affine();
 /// // Prover POV
-/// let (x, y) = JubjubParameters::AFFINE_GENERATOR_COEFFS;
-/// let generator = JubjubAffine::new(x, y);
-/// let point_f_pi: JubjubAffine = AffineCurve::mul(
-///   &generator,
-///   JubjubScalar::from(2u64).into_repr(),
-/// ).into_affine();
-///
 /// let proof = {
-///     let mut circuit = TestCircuit {
+///     let mut circuit: TestCircuit<Bls12_381, JubJubParameters> = TestCircuit {
 ///         a: BlsScalar::from(20u64),
 ///         b: BlsScalar::from(5u64),
 ///         c: BlsScalar::from(25u64),
 ///         d: BlsScalar::from(100u64),
-///         e: JubjubScalar::from(2u64),
+///         e: JubJubScalar::from(2u64),
 ///         f: point_f_pi,
 ///     };
-///     circuit.gen_proof(&pp, pk, b"Test")
-/// }?;
 ///
+///     circuit.gen_proof(&pp, pk_p, b"Test")?
+/// };
+/// // Test serialisation for verifier_data
+/// let mut verifier_data_bytes = Vec::new();
+/// verifier_data.serialize(&mut verifier_data_bytes).unwrap();
+///
+/// let verif_data: VerifierData<Bls12_381, JubJubParameters> =
+///     VerifierData::deserialize(verifier_data_bytes.as_slice()).unwrap();
+///
+/// assert!(verif_data == verifier_data);
 /// // Verifier POV
-/// let public_inputs: Vec<PublicInputValue<JubjubParameters>> = vec![
+/// let public_inputs: Vec<PublicInputValue<JubJubParameters>> = vec![
 ///     BlsScalar::from(25u64).into_pi(),
 ///     BlsScalar::from(100u64).into_pi(),
 ///     GeIntoPubInput::into_pi(point_f_pi),
 /// ];
-/// let VerifierData { key, pi_pos } = vd;
-/// verify_proof(
+///
+/// let VerifierData { key, pi_pos } = verifier_data;
+/// // TODO: non-ideal hack for a first functional version.
+/// verify_proof::<Bls12_381, JubJubParameters>(
 ///     &pp,
 ///     key,
 ///     &proof,
@@ -474,7 +464,8 @@ mod test {
     use ark_ec::twisted_edwards_extended::GroupAffine;
     use ark_ec::AffineCurve;
     use ark_poly_commit::kzg10::KZG10;
-    use num_traits::{One, Zero};
+    use num_traits::One;
+    use rand_core::OsRng;
 
     // Implements a circuit that checks:
     // 1) a + b = c where C is a PI
@@ -509,24 +500,22 @@ mod test {
         ) -> Result<(), Error> {
             let a = composer.add_input(self.a);
             let b = composer.add_input(self.b);
+            let zero = composer.zero_var;
 
             // Make first constraint a + b = c (as public input)
-            let add_result = composer.add(
-                (E::Fr::one(), a),
-                (E::Fr::one(), b),
-                E::Fr::zero(),
-                Some(-self.c),
-            );
-            composer.assert_equal(add_result, composer.zero_var());
+            composer.arithmetic_gate(|gate| {
+                gate.witness(a, b, Some(zero))
+                    .add(E::Fr::one(), E::Fr::one())
+                    .pi(-self.c)
+            });
 
             // Check that a and b are in range
             composer.range_gate(a, 1 << 6);
             composer.range_gate(b, 1 << 5);
             // Make second constraint a * b = d
-            let mul_result =
-                composer.mul(E::Fr::one(), a, b, E::Fr::zero(), Some(-self.d));
-            composer.assert_equal(mul_result, composer.zero_var());
-
+            composer.arithmetic_gate(|gate| {
+                gate.witness(a, b, Some(zero)).mul(E::Fr::one()).pi(-self.d)
+            });
             let e = composer
                 .add_input(util::from_embedded_curve_scalar::<E, P>(self.e));
             let (x, y) = P::AFFINE_GENERATOR_COEFFS;
@@ -546,8 +535,6 @@ mod test {
 
     fn test_full<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>(
     ) -> Result<(), Error> {
-        use rand_core::OsRng;
-
         // Generate CRS
         let pp = KZG10::<E, DensePolynomial<E::Fr>>::setup(
             1 << 12,
