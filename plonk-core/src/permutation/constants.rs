@@ -6,16 +6,21 @@
 //
 // Copyright (c) ZK-GARAGE. All rights reserved.
 
-//! PLONK
+//! Constants used in the permutation argument to ensure that the wire subsets
+//! are disjoint.
 
+#![allow(non_snake_case)]
 
-#![cfg_attr(not(any(feature = "std", test)), no_std)]
-#![cfg_attr(doc_cfg, feature(doc_cfg))]
-#![forbid(rustdoc::broken_intra_doc_links)]
-#![forbid(missing_docs)]
+use ark_ff::PrimeField;
 
-#[doc(inline)]
-pub use plonk_core::*;
+pub(crate) fn K1<F: PrimeField>() -> F {
+    F::from(7_u64)
+}
 
-#[doc(inline)]
-pub use plonk_hashing as hashing;
+pub(crate) fn K2<F: PrimeField>() -> F {
+    F::from(13_u64)
+}
+
+pub(crate) fn K3<F: PrimeField>() -> F {
+    F::from(17_u64)
+}

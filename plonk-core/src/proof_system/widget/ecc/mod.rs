@@ -6,16 +6,10 @@
 //
 // Copyright (c) ZK-GARAGE. All rights reserved.
 
-//! PLONK
+//! Elliptic Curve Cryptography Gates
 
+mod curve_addition;
+mod fixed_base_scalar_mul;
 
-#![cfg_attr(not(any(feature = "std", test)), no_std)]
-#![cfg_attr(doc_cfg, feature(doc_cfg))]
-#![forbid(rustdoc::broken_intra_doc_links)]
-#![forbid(missing_docs)]
-
-#[doc(inline)]
-pub use plonk_core::*;
-
-#[doc(inline)]
-pub use plonk_hashing as hashing;
+pub use curve_addition::*;
+pub use fixed_base_scalar_mul::*;

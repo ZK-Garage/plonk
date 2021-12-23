@@ -6,16 +6,7 @@
 //
 // Copyright (c) ZK-GARAGE. All rights reserved.
 
-//! PLONK
+//! Scalar Multiplication Gates
 
-
-#![cfg_attr(not(any(feature = "std", test)), no_std)]
-#![cfg_attr(doc_cfg, feature(doc_cfg))]
-#![forbid(rustdoc::broken_intra_doc_links)]
-#![forbid(missing_docs)]
-
-#[doc(inline)]
-pub use plonk_core::*;
-
-#[doc(inline)]
-pub use plonk_hashing as hashing;
+mod fixed_base;
+mod variable_base;
