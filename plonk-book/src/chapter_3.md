@@ -38,10 +38,12 @@ The original Plonk proposes simple circuits whose gates only perform arithmetic 
 
 The different types of gates in Ark-plonk are:
 
-* Arithmetic gates. (similar to Plonk)
-* Logic gates. Provide bitwise AND and XOR operations.
-* Range gates.
-* EC operations (Fixed base and variable base)
+* [Arithmetic gate](https://github.com/ZK-Garage/plonk/blob/master/src/constraint_system/arithmetic.rs) (similar to Plonk)
+* [Logic gate](https://github.com/ZK-Garage/plonk/blob/master/src/constraint_system/logic.rs): Provide bitwise AND and XOR operations.
+* [Range gate](https://github.com/ZK-Garage/plonk/blob/master/src/constraint_system/range.rs).
+* EC operations:
+   - Curve addition ([Fixed base](https://github.com/ZK-Garage/plonk/blob/master/src/constraint_system/ecc/curve_addition/fixed_base_gate.rs) and [variable base](https://github.com/ZK-Garage/plonk/blob/master/src/constraint_system/ecc/curve_addition/variable_base_gate.rs))
+   - Scalar multiplication ([Fixed base](https://github.com/ZK-Garage/plonk/blob/master/src/constraint_system/ecc/scalar_mul/fixed_base.rs) and [variable base](https://github.com/ZK-Garage/plonk/blob/master/src/constraint_system/ecc/scalar_mul/variable_base.rs))
 
 
 In order to use these gates only when needed we introduce selector polynomials (SP). These polynomials will either activate or deactivate a specific gate depending on their value. We use the following notation:
@@ -69,7 +71,7 @@ In order to use one of these gates, we set the value of its associated SP to $1$
 
 
 #### Design custom gates
-Before we explain how each of the previous mentioned custom gates is designed, we need to talk about fan-in 3 gates and why we use them at ark-plonk instead of fan-in 2 gates.
+Before we explain how each of the previous mentioned custom gates are designed, we need to talk about fan-in 3 gates and why we use them at ark-plonk instead of fan-in 2 gates?
 The original Plonk design uses fan-in 2 gates which means each gates has two inputs and an output wires.
 Ark-plonk gates on the other hand are fan-in-3 gates, so they have one more wire which makes it 4 wires in total.
 We can see in the following figure how a fan-in 3 gate looks like:
@@ -113,6 +115,54 @@ This method however has some negative implications on both the proof size and th
 * 1 from the polynomial commitment argument for evaluation at $z$  
 * 1 from the polynomial commitment argument for evaluation at $zw$ 
 
+**Range gate**
+
+A range-constraint gate checks if a variable $v$ is inside a range $[0,n]$ or not where $n=$ number of bits (let's say we want to know if $v$ is in the range $[0,2^{10}-1]$ and $n=10$).
+
+The number of bits needs to be divisible by 2( $n$ % $2 == 0$)
+       
+Each gate contains 4 accumulated quads (base-4 digits)
+
+which means $n_{quads}=n_{gates}*4$ where $n_{gates}$ is number of gates and $n_{quads}$ is number of quads.
+
+We have two cases:
+
+* $n$ is divisible by 8:
+ We find out how many gates are needed by doing $n_{gates}=n$ % $8$. We add a zero accumulator genesis gate (with $a_0=0, b_0=0,c_0=0 \; and\; p_0=0$) which is used to prove that the first digit is indeed a quad. 
+
+ * $n$ is not divisible by 8:
+
+   In our previous example range $[0,2^{10}-1 ]$, when dividing 10 by 8, we get 1 as the number of gates, when in fact we need 2 gates.
+        
+   In this case we increase number of gates by one:
+   ```
+   if n % 8 != 0 {
+            num_gates += 1;
+        }
+   ```
+
+The last gate must only contain one quad in the fourth wire. This is needed in order for the range gate equation not to be used on the last gate (since it only looks at the fourth for the next gate).
+
+As a conclusion: we will always use 1 more gate than the number of gates calculated Either due to the genesis quad, or the padding used to ensure we have 1 quad on the last gate 
+
+```used_gates = num_gates + 1;```
+
+Example: lets take $n=34$ which requires 17 quads (since each quad has 2 bits). We add one for the
+zeroed out accumulator so 18 quads in total. We compute number of gates as ($n_{gates}=n_{quads} \div 4= 4$). We can fit all of these quads in 5 gates ($n$ % $8!= 0$ which means $n_{gates}=4+1=5$). 
+
+ We check how many quads are in each gate by doing  $18$ % $4 = 2$ so on the last row, we will have two quads. Since each gate has 4 quads and the last gate must only contain one so we must pad the beginning in order to get one quad on the last row: 
+$18+X$ % $4 = 1$ where $X=3$ represents the extra zeroes.
+We now have 21 quads and $21 \div 4 = 5$ remainder 1, so we will need 5 full gates and extra gate with 1 quad.
+       
+
+
+  
+ 
+
+           
+
+       
+      
 ### TurboPlonk 
 
 
