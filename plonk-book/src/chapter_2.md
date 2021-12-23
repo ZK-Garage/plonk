@@ -1,13 +1,13 @@
 # PLONK
 
-PLONK stands for Permutations over Lagrange-bases for Oecumenical Non Interactive Arguments of Knowledge.
+PLONK stands for Permutations over Lagrange-bases for Oecumenical Non Interactive Arguments of Knowledge. From hereon we shall simply write plonk.
 
-PLONK is a general-purpose zero-knowledge proof scheme which solves a huge issue inherited in traditional zksnarks proof systems like Groth16: the one-time trusted setup.
-The trusted setup is a preprocessing phase which creates a Structured Reference String (SRS) that is available to both prover and verifier. The reason why SRS is created is to prevent the prover from cheating and creating fake proofs and thus fulfilling the soundness property. The problem with one-time trusted setup is that it’s a one-time event which means every circuit needs a new SRS to be generated which results in slow verification time.  PLONK solves this problem by creating a single SRS that’s used for an unlimited number of arbitrary circuits (of a certain maximum size). This string is also updatable which improves security.
+Plonk is a general-purpose zero-knowledge proof scheme which solves a huge issue inherited in traditional zksnarks proof systems like Groth16: the _non-universal_ one-time trusted setup.
+The trusted setup is a preprocessing phase which creates a Structured Reference String (SRS) that is available to both prover and verifier. The reason why an SRS is created is to prevent the prover from cheating and creating fake proofs and thus fulfilling the soundness property. The problem with a non-universal one-time trusted setup is that it’s a one-time event which means _every_ circuit needs a new SRS to be generated, which results in slow verification time. Plonk solves this problem by creating a single SRS that’s used for an unlimited number of arbitrary circuits (of a certain maximum size). This string is also updatable, which improves security.
 
 ## PLONK components
 
-PLONK can be constructed as follow:
+Plonk can be constructed as follow:
 
 Program (code)→ Arithmetic circuit → Constraint systems → Permutation checks → Polynomial commitments (A batched version of KZG10)
 
@@ -18,19 +18,19 @@ We will use the following example to be able to explain each step and the transi
 Prover wants to prove to Verifier that she knows the solution to the equation:
 $$x^3+x+5=0$$
 
-The goal is for Prover to evaluate the above function without revealing anything about the secret value x (solution to the equation). 
+The goal is for Prover to evaluate the above function without revealing anything about the secret value $x$ (solution to the equation). 
 
 
-Prover creates a program to represent the problem in a function code which then will be translated into an arithmetic circuit.
+Prover creates a program to represent the problem in a function code, which then will be translated into an arithmetic circuit.
 
 
 ### Arithmetic circuit
-This step transforms a program into an arithmetic circuit where two basic components: are being used: wires and gates. Plonk uses fan-in two gates, therefore each gate has a left input, a right input and an output. A circuit with n gates will have $3n$ wires. 
+This step transforms a program into an arithmetic circuit where two basic components are being used: wires and gates. Plonk uses fan-in two gates; therefore each gate has a left input, a right input, and an output. A circuit with $n$ gates will have $3n$ wires. 
 
-PlonK is gate-based instead of R1CS-based like some proof systems like Groth16. The difference between both systems is in how they handle addition gates, in R1CS addition gates are cheap as  wires that are going from an addition to multiplication gate are not labeled which is not the case for a gate-based system. The reason why PLONK uses a gate-based instead of a R1CS fan-in;  and  thus  our  linear constraints  are  just  wiring  constraints  that  can  be reduced to a permutation check. To understand more the advantages and disadvantages of each of those designs check this [article](https://hackmd.io/@aztec-network/plonk-arithmetiization-air#How-does-all-this-relate-to-R1CS).
+Plonk is gate-based instead of R1CS-based like some proof systems, such as Groth16. A primary difference between the two systems is in how they handle addition gates; in R1CS, addition gates are cheap since wires that go from an addition to a multiplication gate are not labeled, which is not the case for a gate-based system. The reason why plonk uses a gate-based system rather than an R1CS system is that the linear constraints (which are just wiring constraints) can be reduced to a permutation check. To better understand the advantages and disadvantages of each of those designs check this [article](https://hackmd.io/@aztec-network/plonk-arithmetiization-air#How-does-all-this-relate-to-R1CS).
 
 
-The following circuit translates the previous equation $x^3+x+5=0$ where we have 2 multiplication gates and 2 addition gates. 
+The following circuit translates the previous equation $x^3+x+5=0$, giving 2 multiplication gates and 2 addition gates. 
 
 <p align="center">
   <img  alt="circuit" width="250"src="images/images/circuit.png" />
@@ -40,7 +40,7 @@ The following circuit translates the previous equation $x^3+x+5=0$ where we have
 
 
 ### Constraint system
-The circuit is converted into a system of equations where the variables are the values on all the wires and there is one equation per gate. Let’s take our previous example:
+The circuit is converted into a system of equations where the variables are the values on each of the wires, and there is one equation per gate. Let’s take our previous example:
 
 $\begin{equation*}
 \begin{dcases}
@@ -53,7 +53,7 @@ $\begin{equation*}
 \end{dcases}
 \end{equation*}$
 
-The final result is  $x^3+x+5-c_4=0$ which represents the program we wanted to solve for $c_4=x^3+x+5=0$.
+The final result is  $x^3+x+5-c_4=0$, which represents the program we wanted to solve for $c_4=x^3+x+5=0$.
 The setup for each of those equations is of the form:
 $$(Q_{L_i})a_i + (Q_{R_i})b_i +(Q_{O_i})c_i + (Q_{M_i})a_ib_i  + Q_{C_{i}} =0$$
 
@@ -73,10 +73,10 @@ $$Q_{L_i}=1, Q_{R_i}=0,Q_{M_i}=0,Q_{O_i}=0,Q_{C_i}=-x$$
 There are two types of constraints:
 
 
-1. **Gate constraints:** Which represents the equations between the wires attached to the same gate. For example the equation $(1)$:  $$a_1*b_1-c_1=0 $$   
+1. **Gate constraints:** Which represent the equations between the wires attached to the same gate. For example the equation $(1)$:  $$a_1*b_1-c_1=0 $$.   
 
 
-2. **Copy constraints:**  PLONK enforces copy constraints which associate wires that are equal from the whole circuit so that the output of one circuit is indeed the input of the next one. These constraints are checked with a permutation argument. For example, $c_1$ the output of equation $(1)$ is also an input for another gate, we copy that constraint into a new one $a_2$ and we claim equality $c_1=a_2$
+2. **Copy constraints:**  Plonk enforces copy constraints; these associate wires from the whole circuit that have the same value, for example the output of one gate would be associated with the input of its destination gate. These constraints are checked with a permutation argument. For example, $c_1$ is the output of equation $(1)$ and is also an input for another gate, so we copy that constraint into a new one $a_2$ and we claim equality $c_1=a_2$.
 
 
 ### Permutation checks
@@ -116,28 +116,28 @@ for all $i \in \mathbb{N}$.
 
 ### KZG10 Batched commitments:
 
-PLONK uses a batched kate commitment form in order to improve verifier efficiency by allowing for a parallel opening of commitments for each evaluation point possible. 
+Plonk uses a batched kate commitment form in order to improve verifier efficiency by allowing for a parallel opening of commitments for each possible evaluation point. 
 Let’s take $t$ polynomials of degree $\leq d\;$. Let $F$ be a field of prime order. We denote by $F_{<d}[X]$ the set of polynomials over $F$ of degree $<d$. Let $G_1,G_2,G_t$ be groups of size $r$ and $e:G_1\times G_2\rightarrow G_t$ a bilinear pairing such that $e(g_1,g_2)=g_t$ with $g_1,g_2$ generators of $G_1$ and $G_2$ respectively.
  
  
 ##### Definition: 
-d-polynomial commitment scheme is a setting of $t$ polynomials $\phi_1,\phi_2,.......,\phi_t\in F_{<d}[x]$ of degree $d$ each such that $z_1,z_2,..........,z_t\in F$ are evaluation points for those polynomials. The alleged commitments to polynomials are $cm_1,cm_2,......,cm_t$ where $cm_i=com(\phi_i,srs)$ for $i\in[t]$ and alleged correct openings $s_1,s_2,.........,s_t$.
+d-polynomial commitment scheme is a setting of $t$ polynomials $\phi_1,\phi_2,.......,\phi_t\in F_{<d}[x]$ of degree $d$, each such that $z_1,z_2,..........,z_t\in F$ are evaluation points for those polynomials. The alleged commitments to polynomials are $cm_1,cm_2,......,cm_t$ where $cm_i=com(\phi_i,srs)$ for $i\in[t]$ and alleged correct openings $s_1,s_2,.........,s_t$.
 
 
-The commitment scheme has three steps as follow:
+The commitment scheme has three steps, as follow:
 
 
-* $gen(d)$: this step will generate a structured reference string $(srs)$ in a randomized way. The algorithm chooses randomly $x\in F$ and outputs
+* $gen(d)$: this step will generate a structured reference string $(srs)$ in a randomized way. The algorithm randomly chooses $x\in F$ and outputs
 
 $$srs=([1]_1,[x]_1,[x^2]_1,[x^3]_1,.............[x^{d-1}]_1,[1]_2,[x]_2)$$
-where   $[x]_1 =x.g_1$  and   $x_2=x.g_2$ 
+where   $[x]_1 =x.g_1$  and   $x_2=x.g_2$. 
 
 
-* $com(,srs)$: the commitment is computed as follow
+* $com(,srs)$: the commitment is computed as follows,
 $$com(,srs):=[\phi(x)]_1$$ 
 
 
-* $open:$ we take in consideration two scenarios:
+* $open:$ we present two scenarios:
 
    1. All evaluation points are equal $z_1=z_2=........=z_t=z$ $$open(\{cm_i\},\{z_i\},\{s_i\})$$ for $i \in [t]$
        
@@ -561,5 +561,6 @@ $$
         [1]_2
     )
 $$
+
 
 
