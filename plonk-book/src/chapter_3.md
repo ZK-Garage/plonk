@@ -154,15 +154,57 @@ zeroed out accumulator so 18 quads in total. We compute number of gates as ($n_{
 $18+X$ % $4 = 1$ where $X=3$ represents the extra zeroes.
 We now have 21 quads and $21 \div 4 = 5$ remainder 1, so we will need 5 full gates and extra gate with 1 quad.
        
+### Logic gates
+
+Ark-plonk logic gates can perform bitwise AND and XOR operations. 
+Each gate adds $k = n \div 2 + 1$ constraints to the circuit where $n$ % $2==0$ ($n$ is number of bits).
 
 
+
+<p align="center">
+  <img  alt="circuit" width="200"src="images/images/gate1.png" />
   
- 
+</p>
 
-           
 
-       
-      
+ - The **left wire** $a_i$ contains the left accumulated quad:
+$$
+a_0 = 0\\
+a_i = a_{i-1} \cdot 4 + a_i \text{, for } 1 \leq i \leq k
+$$
+
+ - The **right wire** $b_i$ contains the right accumulated quad:
+$$
+b_0 = 0\\
+b_i = b_{i-1} \cdot 4 + b_i \text{, for } 1 \leq i \leq k
+$$
+
+ - The **fourth wire** $c_i$ is actually the result of the selected logic operation between the last (__not accumulated__) quad 
+
+ - The **output wire** is connected to the product of the quads of the previous gate:
+$$
+p_i = a_i \cdot b_i \text{, for } 1 \leq i \leq k
+$$
+
+The result of the operation ends up in the 4th wire of the last subgate. 
+
+We will have  $n_{quads}=n\div 2$ (every quad contains 2 bits).
+We use a boolean selector `is_xor_gate` to choose whether the gate performs XOR or and AND operation:
+- `is_xor_gate = 1` means it performs XOR between the first $n$ for $a$ and $b$.
+- `is_xor_gate = 0` means it performs AND between the first $n$ for $a$ and $b$.
+
+#### Logic gates full scheme
+
+
+<p align="center">
+  <img  alt="circuit" width="350"src="images/images/logicgate.png" />
+  
+</p>
+
+On each round, we get the ith quads of $a$ and $b$ and then
+compute `out_quad` of $c_i$ logical OP result `&` or `^`) and `prod_quad` of $p_i$ (intermediate prod result).
+The result of the operation ends up in the 4th wire of the last subgate. 
+
 ### TurboPlonk 
 
 
