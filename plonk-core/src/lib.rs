@@ -4,22 +4,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 //
-// Copyright (c) ZK-INFRA. All rights reserved.
+// Copyright (c) ZK-GARAGE. All rights reserved.
 
-//! # PLONK
-//! ![Build Status](https://github.com/rust-zkp/ark-plonk/workflows/Continuous%20integration/badge.svg)
-//! [![Repository](https://img.shields.io/badge/github-plonk-blueviolet?logo=github)](https://github.com/rust-zkp/ark-plonk)
-//! [![Documentation](https://img.shields.io/badge/docs-plonk-blue?logo=rust)](https://docs.rs/plonk/)
+//! Permutations over Lagrange-bases for Oecumenical Noninteractive
+//! arguments of Knowledge (PLONK) is a zero knowledge proof system.
 //!
+//! This protocol was created by:
+//! - Ariel Gabizon (Protocol Labs),
+//! - Zachary J. Williamson (Aztec Protocol)
+//! - Oana Ciobotaru
 //!
-//! _This is a pure Rust implementation of the PLONK zk proving system_
+//! This crate contains a pure Rust implementation of this algorithm using
+//! code done by the creators of the protocol as a reference implementation:
 //!
-//!
-//! ## About
-//! Initial implementation created by [Kev](https://github.com/kevaundray), [Carlos](https://github.com/CPerezz) and [Luke](https://github.com/LukePearson1) at Dusk Network.
-//! Redesigned by the [rust zkp](https://github.com/rust-zkp) team to have a backend which is compatible with the [arkworks](https://github.com/arkworks-rs) suite. This allows us to leverage the multitude of curves
-//! and optimised algebra present in various arkworks repositories.
-#![doc = include_str!("../test_circuit.md")]
+//! <https://github.com/AztecProtocol/barretenberg/blob/master/barretenberg/src/aztec/plonk/>
+
 // Bitshift/Bitwise ops are allowed to gain performance.
 #![allow(clippy::suspicious_arithmetic_impl)]
 // Some structs do not have AddAssign or MulAssign impl.
@@ -49,14 +48,14 @@ pub mod proof_system;
 #[cfg(test)]
 mod test;
 
-#[doc = include_str!("../docs/notes-intro.md")]
+#[doc = include_str!("../../docs/notes-intro.md")]
 pub mod notes {
-    #[doc = include_str!("../docs/notes-commitments.md")]
+    #[doc = include_str!("../../docs/notes-commitments.md")]
     pub mod commitment_schemes {}
-    #[doc = include_str!("../docs/notes-snark.md")]
+    #[doc = include_str!("../../docs/notes-snark.md")]
     pub mod snark_construction {}
-    #[doc = include_str!("../docs/notes-prove-verify.md")]
+    #[doc = include_str!("../../docs/notes-prove-verify.md")]
     pub mod prove_verify {}
-    #[doc = include_str!("../docs/notes-KZG10.md")]
-    pub mod kzg10_docs {}
+    #[doc = include_str!("../../docs/notes-KZG10.md")]
+    pub mod kzg10 {}
 }
