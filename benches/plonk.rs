@@ -15,8 +15,8 @@ use ark_poly::univariate::DensePolynomial;
 use ark_poly_commit::kzg10::KZG10;
 use core::marker::PhantomData;
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
-use rand_core::OsRng;
 use plonk::prelude::*;
+use rand_core::OsRng;
 
 /// Benchmark Circuit
 #[derive(derivative::Derivative)]

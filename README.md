@@ -3,19 +3,18 @@
 [![Repository](https://img.shields.io/badge/github-plonk-blueviolet?logo=github)](https://github.com/ZK-Garage/plonk)
 [![Documentation](https://img.shields.io/badge/docs-plonk-blue?logo=rust)](https://docs.rs/plonk/)
 
-
 _This is a pure Rust implementation of the PLONK zk proving system_
 
-
 ## About
-Initial implementation created by [Kev](https://github.com/kevaundray), [Carlos](https://github.com/CPerezz) and [Luke](https://github.com/LukePearson1) at Dusk Network.
-Redesigned by the [ZK-Garage](https://github.com/ZK-Garage) team to have a backend which is compatible with the [arkworks](https://github.com/arkworks-rs) suite. This allows us to leverage the multitude of curves and optimised algebra present in various arkworks repositories.
+
+Initial implementation created by [Kev](https://github.com/kevaundray), [Carlos](https://github.com/CPerezz) and [Luke](https://github.com/LukePearson1) at Dusk Network. Redesigned by the [ZK-Garage](https://github.com/ZK-Garage) team to have a backend which is compatible with the [arkworks](https://github.com/arkworks-rs) suite. This allows us to leverage the multitude of curves and optimised algebra present in various arkworks repositories.
 
 Please, if you're interested on collaborating or contributing, you can join our Discord here: <https://discord.gg/XWJdhVf37F>
 
 ## Features
 
 This crate includes a variety of features which will briefly be explained below:
+
 - `parallel`: Enables `rayon` and other parallelisation primitives to be used and speed up some of the algorithms used by the crate and it's dependencies.
 
 - `asm`: Enables inline-assembly implementations for some of the internal algorithms and primitives used by the `arkworks` dependencies of the crate.
@@ -23,7 +22,6 @@ This crate includes a variety of features which will briefly be explained below:
 - `trace`: Enables the Circuit debugger tooling. This is essentially the capability of using the `StandardComposer::check_circuit_satisfied` function. The function will output information about each circuit gate until one of the gates does not satisfy the equation, or there are no more gates. If there is an unsatisfied gate equation, the function will panic and return the gate number.
 
 - `trace-print`: Goes a step further than `trace` and prints each `gate` component data, giving a clear overview of all the values which make up the circuit that we're constructing. __The recommended method is to derive the std output, and the std error, and then place them in text file which can be used to efficiently analyse the gates.__
-
 
 ## Documentation
 
@@ -57,7 +55,6 @@ Prove  2^16 =  65536 gates time:  [3420.7 ms 3449.9 ms 3477.6 ms]
 Prove  2^17 = 131072 gates time:  [6698.9 ms 6757.7 ms 6819.1 ms]
 Prove  2^18 = 262144 gates time:  [13603. ms 13704. ms 13816. ms]
 
-
 Verify 2^5 =      32 gates time:  [4.1958 ms 4.2881 ms 4.4535 ms]
 Verify 2^6 =      64 gates time:  [4.2475 ms 4.2781 ms 4.3019 ms]
 Verify 2^7 =     128 gates time:  [4.2062 ms 4.2973 ms 4.3528 ms]
@@ -80,6 +77,7 @@ Verify 2^18 = 262144 gates time:  [6.7577 ms 6.8124 ms 6.8925 ms]
 - Initial [implementation](https://github.com/kobigurk/plonk/tree/kobigurk/port_to_zexe) of PLONK with arkworks backend was done years before this lib existed by Kobi Gurkan
 
 ## Licensing
+
 This software is distributed under the terms of both the MIT license and the Apache License (Version 2.0). Please see [LICENSE-MIT](./LICENSE-MIT) and [LICENSE-APACHE](./LICENSE-APACHE) for further info.
 
 ## Contributing

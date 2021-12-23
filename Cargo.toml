@@ -2,22 +2,20 @@
 name = "plonk"
 version = "0.8.2"
 authors = [
-           "Kevaundray Wedderburn <kevtheappdev@gmail.com>",
-           "Luke Pearson <luke@polychain.capital>",
-           "Jules De Smit <jules@aleo.org>",
-           "Joshua Fitzgerald <joshua@heliax.dev>",
-           "Carlos Perez <carlos.perezbaro@iohk.io>",
-           "David Nevado <david.nevado@iohk.io>"
-           ]
+    "Kevaundray Wedderburn <kevtheappdev@gmail.com>",
+    "Luke Pearson <luke@polychain.capital>",
+    "Jules De Smit <jules@aleo.org>",
+    "Joshua Fitzgerald <joshua@heliax.dev>",
+    "Carlos Perez <carlos.perezbaro@iohk.io>",
+    "David Nevado <david.nevado@iohk.io>"
+]
 readme = "README.md"
 repository = "https://github.com/zk-garage/plonk"
 keywords = ["cryptography", "plonk", "zk-snarks", "zero-knowledge", "crypto"]
 categories =["algorithms", "cryptography", "science"]
 description = "A pure-Rust implementation of the PLONK ZK-Proof algorithm."
-
 license = "MIT OR Apache-2.0"
 edition = "2021"
-
 include = ["src", "LICENSE-*", "README.md"]
 
 [package.metadata.docs.rs]
@@ -57,11 +55,11 @@ name = "plonk"
 harness = false
 
 [profile.bench]
-opt-level = 3
+codegen-units = 1
 debug = false
 debug-assertions = false
+incremental = false
+lto = "thin"
+opt-level = 3
 overflow-checks = false
 rpath = false
-lto = "thin"
-incremental = false
-codegen-units = 1

@@ -163,11 +163,11 @@ where
 ///     EdwardsProjective as JubJubProjective, Fr as JubJubScalar,
 /// };
 /// use ark_ff::{PrimeField, BigInteger};
-/// use plonk::prelude::*;
 /// use ark_poly::polynomial::univariate::DensePolynomial;
 /// use ark_poly_commit::kzg10::KZG10;
 /// use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 /// use num_traits::{Zero, One};
+/// use plonk_core::prelude::*;
 /// use rand_core::OsRng;
 ///
 /// fn main() -> Result<(), Error> {
