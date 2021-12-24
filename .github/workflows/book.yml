@@ -30,9 +30,8 @@ jobs:
         run: mdbook build plonk-book/
 
       - name: Move book to docs
-        run: |
-          mv ./plonk-book ./docs
-
+        run: mv ./plonk-book/book/* ./docs
+        
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
