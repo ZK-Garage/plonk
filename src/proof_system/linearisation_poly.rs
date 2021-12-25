@@ -16,6 +16,7 @@ use crate::util::EvaluationDomainExt;
 use ark_ec::TEModelParameters;
 use ark_ff::Field;
 use ark_ff::PrimeField;
+use ark_poly::EvaluationDomain;
 use ark_poly::{
     univariate::DensePolynomial, GeneralEvaluationDomain, Polynomial,
 };
@@ -166,6 +167,7 @@ where
     );
 
     let permutation = prover_key.permutation.compute_linearisation(
+        domain.size(),
         *z_challenge,
         (*alpha, *beta, *gamma),
         (a_eval, b_eval, c_eval, d_eval),

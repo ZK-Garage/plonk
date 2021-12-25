@@ -323,7 +323,8 @@ where
         let circuit_size = self.padded_circuit_size();
         let (ck, _) = SonicKZG10::<E, DensePolynomial<E::Fr>>::trim(
             u_params,
-            circuit_size,
+            // +1 per wire, +2 for the permutation poly
+            circuit_size + 6,
             0,
             None,
         )
@@ -369,7 +370,8 @@ where
         let circuit_size = self.padded_circuit_size();
         let (ck, _) = SonicKZG10::<E, DensePolynomial<E::Fr>>::trim(
             u_params,
-            circuit_size,
+            // +1 per wire, +2 for the permutation poly
+            circuit_size + 6,
             0,
             None,
         )
@@ -411,7 +413,8 @@ where
     verifier.verifier_key = Some(plonk_verifier_key);
     let (_, sonic_vk) = SonicKZG10::<E, DensePolynomial<E::Fr>>::trim(
         u_params,
-        padded_circuit_size,
+        // +1 per wire, +2 for the permutation poly
+        padded_circuit_size + 6,
         0,
         None,
     )

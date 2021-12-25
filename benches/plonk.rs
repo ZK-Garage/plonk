@@ -72,7 +72,8 @@ fn constraint_system_benchmark(c: &mut Criterion) {
     const MAXIMUM_DEGREE: usize = 19;
 
     let pp = KZG10::<Bls12_381, DensePolynomial<BlsScalar>>::setup(
-        1 << MAXIMUM_DEGREE,
+        // +1 per wire, +2 for the permutation poly
+        1 << MAXIMUM_DEGREE + 6,
         false,
         &mut OsRng,
     )

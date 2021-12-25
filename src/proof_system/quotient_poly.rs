@@ -43,34 +43,50 @@ where
     F: PrimeField,
     P: TEModelParameters<BaseField = F>,
 {
-    let domain_4n =
-        GeneralEvaluationDomain::<F>::new(4 * domain.size()).unwrap();
+    let domain_8n =
+        GeneralEvaluationDomain::<F>::new(8 * domain.size()).unwrap();
 
-    let mut z_eval_4n = domain_4n.coset_fft(z_poly);
-    z_eval_4n.push(z_eval_4n[0]);
-    z_eval_4n.push(z_eval_4n[1]);
-    z_eval_4n.push(z_eval_4n[2]);
-    z_eval_4n.push(z_eval_4n[3]);
+    let mut z_eval_8n = domain_8n.coset_fft(z_poly);
+    z_eval_8n.push(z_eval_8n[0]);
+    z_eval_8n.push(z_eval_8n[1]);
+    z_eval_8n.push(z_eval_8n[2]);
+    z_eval_8n.push(z_eval_8n[3]);
+    z_eval_8n.push(z_eval_8n[4]);
+    z_eval_8n.push(z_eval_8n[5]);
+    z_eval_8n.push(z_eval_8n[6]);
+    z_eval_8n.push(z_eval_8n[7]);
 
-    let mut wl_eval_4n = domain_4n.coset_fft(w_l_poly);
-    wl_eval_4n.push(wl_eval_4n[0]);
-    wl_eval_4n.push(wl_eval_4n[1]);
-    wl_eval_4n.push(wl_eval_4n[2]);
-    wl_eval_4n.push(wl_eval_4n[3]);
+    let mut wl_eval_8n = domain_8n.coset_fft(w_l_poly);
+    wl_eval_8n.push(wl_eval_8n[0]);
+    wl_eval_8n.push(wl_eval_8n[1]);
+    wl_eval_8n.push(wl_eval_8n[2]);
+    wl_eval_8n.push(wl_eval_8n[3]);
+    wl_eval_8n.push(wl_eval_8n[4]);
+    wl_eval_8n.push(wl_eval_8n[5]);
+    wl_eval_8n.push(wl_eval_8n[6]);
+    wl_eval_8n.push(wl_eval_8n[7]);
 
-    let mut wr_eval_4n = domain_4n.coset_fft(w_r_poly);
-    wr_eval_4n.push(wr_eval_4n[0]);
-    wr_eval_4n.push(wr_eval_4n[1]);
-    wr_eval_4n.push(wr_eval_4n[2]);
-    wr_eval_4n.push(wr_eval_4n[3]);
+    let mut wr_eval_8n = domain_8n.coset_fft(w_r_poly);
+    wr_eval_8n.push(wr_eval_8n[0]);
+    wr_eval_8n.push(wr_eval_8n[1]);
+    wr_eval_8n.push(wr_eval_8n[2]);
+    wr_eval_8n.push(wr_eval_8n[3]);
+    wr_eval_8n.push(wr_eval_8n[4]);
+    wr_eval_8n.push(wr_eval_8n[5]);
+    wr_eval_8n.push(wr_eval_8n[6]);
+    wr_eval_8n.push(wr_eval_8n[7]);
 
-    let wo_eval_4n = domain_4n.coset_fft(w_o_poly);
+    let wo_eval_8n = domain_8n.coset_fft(w_o_poly);
 
-    let mut w4_eval_4n = domain_4n.coset_fft(w_4_poly);
-    w4_eval_4n.push(w4_eval_4n[0]);
-    w4_eval_4n.push(w4_eval_4n[1]);
-    w4_eval_4n.push(w4_eval_4n[2]);
-    w4_eval_4n.push(w4_eval_4n[3]);
+    let mut w4_eval_8n = domain_8n.coset_fft(w_4_poly);
+    w4_eval_8n.push(w4_eval_8n[0]);
+    w4_eval_8n.push(w4_eval_8n[1]);
+    w4_eval_8n.push(w4_eval_8n[2]);
+    w4_eval_8n.push(w4_eval_8n[3]);
+    w4_eval_8n.push(w4_eval_8n[4]);
+    w4_eval_8n.push(w4_eval_8n[5]);
+    w4_eval_8n.push(w4_eval_8n[6]);
+    w4_eval_8n.push(w4_eval_8n[7]);
 
     let gate_constraints = compute_gate_constraint_satisfiability(
         domain,
@@ -79,37 +95,37 @@ where
         *fixed_base_challenge,
         *var_base_challenge,
         prover_key,
-        &wl_eval_4n,
-        &wr_eval_4n,
-        &wo_eval_4n,
-        &w4_eval_4n,
+        &wl_eval_8n,
+        &wr_eval_8n,
+        &wo_eval_8n,
+        &w4_eval_8n,
         public_inputs_poly,
     );
 
     let permutation = compute_permutation_checks(
         domain,
         prover_key,
-        &wl_eval_4n,
-        &wr_eval_4n,
-        &wo_eval_4n,
-        &w4_eval_4n,
-        &z_eval_4n,
+        &wl_eval_8n,
+        &wr_eval_8n,
+        &wo_eval_8n,
+        &w4_eval_8n,
+        &z_eval_8n,
         *alpha,
         *beta,
         *gamma,
     );
 
-    let quotient = (0..domain_4n.size())
+    let quotient = (0..domain_8n.size())
         .map(|i| {
             let numerator = gate_constraints[i] + permutation[i];
-            let denominator = prover_key.v_h_coset_4n()[i];
+            let denominator = prover_key.v_h_coset_8n()[i];
             numerator * denominator.inverse().unwrap()
         })
         .collect::<Vec<_>>();
 
-    Ok(DensePolynomial {
-        coeffs: domain_4n.coset_ifft(&quotient),
-    })
+    Ok(DensePolynomial::from_coefficients_vec(
+        domain_8n.coset_ifft(&quotient),
+    ))
 }
 
 /// Ensures that the gate constraints are satisfied.
@@ -120,30 +136,30 @@ fn compute_gate_constraint_satisfiability<F, P>(
     fixed_base_challenge: F,
     var_base_challenge: F,
     prover_key: &ProverKey<F, P>,
-    wl_eval_4n: &[F],
-    wr_eval_4n: &[F],
-    wo_eval_4n: &[F],
-    w4_eval_4n: &[F],
+    wl_eval_8n: &[F],
+    wr_eval_8n: &[F],
+    wo_eval_8n: &[F],
+    w4_eval_8n: &[F],
     pi_poly: &DensePolynomial<F>,
 ) -> Vec<F>
 where
     F: PrimeField,
     P: TEModelParameters<BaseField = F>,
 {
-    let domain_4n =
-        GeneralEvaluationDomain::<F>::new(4 * domain.size()).unwrap();
-    let pi_eval_4n = domain_4n.coset_fft(pi_poly);
+    let domain_8n =
+        GeneralEvaluationDomain::<F>::new(8 * domain.size()).unwrap();
+    let pi_eval_8n = domain_8n.coset_fft(pi_poly);
 
-    (0..domain_4n.size())
+    (0..domain_8n.size())
         .map(|i| {
             let values = GateValues {
-                left: wl_eval_4n[i],
-                right: wr_eval_4n[i],
-                output: wo_eval_4n[i],
-                fourth: w4_eval_4n[i],
-                left_next: wl_eval_4n[i + 4],
-                right_next: wr_eval_4n[i + 4],
-                fourth_next: w4_eval_4n[i + 4],
+                left: wl_eval_8n[i],
+                right: wr_eval_8n[i],
+                output: wo_eval_8n[i],
+                fourth: w4_eval_8n[i],
+                left_next: wl_eval_8n[i + 8],
+                right_next: wr_eval_8n[i + 8],
+                fourth_next: w4_eval_8n[i + 8],
                 left_selector: prover_key.arithmetic.q_l.1[i],
                 right_selector: prover_key.arithmetic.q_r.1[i],
                 constant_selector: prover_key.arithmetic.q_c.1[i],
@@ -182,7 +198,7 @@ where
                 values,
             );
 
-            (arithmetic + pi_eval_4n[i])
+            (arithmetic + pi_eval_8n[i])
                 + range
                 + logic
                 + fixed_base_scalar_mul
@@ -196,11 +212,11 @@ where
 fn compute_permutation_checks<F, P>(
     domain: &GeneralEvaluationDomain<F>,
     prover_key: &ProverKey<F, P>,
-    wl_eval_4n: &[F],
-    wr_eval_4n: &[F],
-    wo_eval_4n: &[F],
-    w4_eval_4n: &[F],
-    z_eval_4n: &[F],
+    wl_eval_8n: &[F],
+    wr_eval_8n: &[F],
+    wo_eval_8n: &[F],
+    w4_eval_8n: &[F],
+    z_eval_8n: &[F],
     alpha: F,
     beta: F,
     gamma: F,
@@ -209,22 +225,22 @@ where
     F: PrimeField,
     P: TEModelParameters<BaseField = F>,
 {
-    let domain_4n =
-        GeneralEvaluationDomain::<F>::new(4 * domain.size()).unwrap();
+    let domain_8n =
+        GeneralEvaluationDomain::<F>::new(8 * domain.size()).unwrap();
     let l1_poly_alpha =
         compute_first_lagrange_poly_scaled(domain, alpha.square());
-    let l1_alpha_sq_evals = domain_4n.coset_fft(&l1_poly_alpha.coeffs);
+    let l1_alpha_sq_evals = domain_8n.coset_fft(&l1_poly_alpha.coeffs);
 
-    (0..domain_4n.size())
+    (0..domain_8n.size())
         .map(|i| {
             prover_key.permutation.compute_quotient_i(
                 i,
-                wl_eval_4n[i],
-                wr_eval_4n[i],
-                wo_eval_4n[i],
-                w4_eval_4n[i],
-                z_eval_4n[i],
-                z_eval_4n[i + 4],
+                wl_eval_8n[i],
+                wr_eval_8n[i],
+                wo_eval_8n[i],
+                w4_eval_8n[i],
+                z_eval_8n[i],
+                z_eval_8n[i + 8],
                 alpha,
                 l1_alpha_sq_evals[i],
                 beta,
