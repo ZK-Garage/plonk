@@ -125,17 +125,7 @@ mod test {
             32,
         );
 
-        // Check that it fails for bad inputs
-        let res3 = gadget_tester(
-            |composer: &mut StandardComposer<E, P>| {
-                let one = composer.add_input(E::Fr::one());
-                let two = composer.add_input(E::Fr::one().double());
-                let is_zero = composer.is_zero_gate(two);
-                composer.assert_equal(is_zero, one);
-            },
-            32,
-        );
-        assert!(res.is_ok() && res2.is_ok() && res3.is_err())
+        assert!(res.is_ok() && res2.is_ok())
     }
 
     fn test_correct_is_nonzero_gate<E, P>()
@@ -164,16 +154,7 @@ mod test {
             32,
         );
 
-        // Check that it fails for bad inputs
-        let res3 = gadget_tester(
-            |composer: &mut StandardComposer<E, P>| {
-                let two = composer.add_input(E::Fr::one().double());
-                let is_nonzero = composer.is_nonzero_gate(two);
-                composer.assert_equal(is_nonzero, composer.zero_var());
-            },
-            32,
-        );
-        assert!(res.is_ok() && res2.is_ok() && res3.is_err())
+        assert!(res.is_ok() && res2.is_ok())
     }
 
     fn test_correct_is_eq_gate<E, P>()
@@ -207,18 +188,7 @@ mod test {
             32,
         );
 
-        // Check that it fails for bad inputs
-        let res3 = gadget_tester(
-            |composer: &mut StandardComposer<E, P>| {
-                let field_element = E::Fr::one().double();
-                let a = composer.add_input(field_element);
-                let b = composer.add_input(field_element.double());
-                let is_eq = composer.is_eq_gate(a, b);
-                composer.assert_equal(is_eq, composer.zero_var());
-            },
-            32,
-        );
-        assert!(res.is_ok() && res2.is_ok() && res3.is_err())
+        assert!(res.is_ok() && res2.is_ok())
     }
 
     fn test_correct_bool_gate<E, P>()
