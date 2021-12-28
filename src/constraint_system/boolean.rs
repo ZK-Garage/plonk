@@ -58,11 +58,18 @@ where
     /// of its input is zero and outputs 1 otherwise.
     pub fn is_nonzero_gate(&mut self, a: Variable) -> Variable {
         //Get inverse value or just give 1 here if a is zero
-        let a_inv_value = self.variables.get(&a).unwrap().inverse().unwrap_or(E::Fr::one());
+        let a_inv_value = self
+            .variables
+            .get(&a)
+            .unwrap()
+            .inverse()
+            .unwrap_or(E::Fr::one());
         let a_inv = self.add_input(a_inv_value);
-        
+
         // This variable has value zero if input a is zero and value 1 otherwise
-        let product = self.arithmetic_gate(|gate| gate.witness(a, a_inv, None).mul(E::Fr::one()));
+        let product = self.arithmetic_gate(|gate| {
+            gate.witness(a, a_inv, None).mul(E::Fr::one())
+        });
         product
     }
 
@@ -71,14 +78,19 @@ where
     pub fn is_zero_gate(&mut self, a: Variable) -> Variable {
         let is_nonzero = self.is_nonzero_gate(a);
         let one = self.add_input(E::Fr::one());
-        let is_zero = self.arithmetic_gate(|gate| gate.witness(one, is_nonzero, None).add(E::Fr::one(), -E::Fr::one()));
+        let is_zero = self.arithmetic_gate(|gate| {
+            gate.witness(one, is_nonzero, None)
+                .add(E::Fr::one(), -E::Fr::one())
+        });
         is_zero
     }
 
-    /// A gate which outputs a variable whose value is 1 if the 
+    /// A gate which outputs a variable whose value is 1 if the
     /// two input variables have equal values and whose value is 0 otherwise.
     pub fn is_eq_gate(&mut self, a: Variable, b: Variable) -> Variable {
-        let difference = self.arithmetic_gate(|gate| gate.witness(a, b, None).add(E::Fr::one(), -E::Fr::one()));
+        let difference = self.arithmetic_gate(|gate| {
+            gate.witness(a, b, None).add(E::Fr::one(), -E::Fr::one())
+        });
         let is_eq = self.is_zero_gate(difference);
         is_eq
     }
@@ -105,8 +117,8 @@ mod test {
                 let is_zero = composer.is_zero_gate(composer.zero_var());
                 composer.assert_equal(is_zero, one);
             },
-             32
-            );
+            32,
+        );
 
         // Check that it gives false on non-zero input:
         let res2 = gadget_tester(
@@ -115,7 +127,8 @@ mod test {
                 let is_zero = composer.is_zero_gate(one);
                 composer.assert_equal(is_zero, composer.zero_var());
             },
-            32);
+            32,
+        );
 
         // Check that it fails for bad inputs
         let res3 = gadget_tester(
@@ -125,9 +138,9 @@ mod test {
                 let is_zero = composer.is_zero_gate(two);
                 composer.assert_equal(is_zero, one);
             },
-             32
-            );
-            assert!(res.is_ok() && res2.is_ok() && res3.is_err())
+            32,
+        );
+        assert!(res.is_ok() && res2.is_ok() && res3.is_err())
     }
 
     fn test_correct_is_nonzero_gate<E, P>()
@@ -143,8 +156,8 @@ mod test {
                 let is_nonzero = composer.is_nonzero_gate(two);
                 composer.assert_equal(is_nonzero, one);
             },
-             32
-            );
+            32,
+        );
 
         // Check that it gives false on zero input
         let res2 = gadget_tester(
@@ -153,8 +166,8 @@ mod test {
                 let is_nonzero = composer.is_nonzero_gate(zero);
                 composer.assert_equal(is_nonzero, zero);
             },
-             32
-            );
+            32,
+        );
 
         // Check that it fails for bad inputs
         let res3 = gadget_tester(
@@ -163,9 +176,9 @@ mod test {
                 let is_nonzero = composer.is_nonzero_gate(two);
                 composer.assert_equal(is_nonzero, composer.zero_var());
             },
-             32
-            );
-            assert!(res.is_ok() && res2.is_ok() && res3.is_err())
+            32,
+        );
+        assert!(res.is_ok() && res2.is_ok() && res3.is_err())
     }
 
     fn test_correct_is_eq_gate<E, P>()
@@ -184,8 +197,8 @@ mod test {
                 let is_eq = composer.is_eq_gate(a, b);
                 composer.assert_equal(is_eq, one);
             },
-             32
-            );
+            32,
+        );
 
         // Check that it gives false on non-equal inputs:
         let res2 = gadget_tester(
@@ -196,7 +209,8 @@ mod test {
                 let is_eq = composer.is_eq_gate(a, b);
                 composer.assert_equal(is_eq, composer.zero_var());
             },
-            32);
+            32,
+        );
 
         // Check that it fails for bad inputs
         let res3 = gadget_tester(
@@ -208,9 +222,9 @@ mod test {
                 let is_eq = composer.is_eq_gate(a, b);
                 composer.assert_equal(is_eq, composer.zero_var());
             },
-             32
-            );
-            assert!(res.is_ok() && res2.is_ok() && res3.is_err())
+            32,
+        );
+        assert!(res.is_ok() && res2.is_ok() && res3.is_err())
     }
 
     fn test_correct_bool_gate<E, P>()
