@@ -10,7 +10,10 @@
 
 use crate::constraint_system::{StandardComposer, Variable};
 use ark_ec::{PairingEngine, TEModelParameters};
+use ark_ff::Field;
 use num_traits::{One, Zero};
+
+use super::arithmetic::ArithmeticGate;
 
 impl<E, P> StandardComposer<E, P>
 where
@@ -50,6 +53,18 @@ where
 
         a
     }
+
+    /// A gate which outputs a variable equal to 0 if the value
+    /// of its input is zero and outputs 1 otherwise.
+    pub fn is_nonzero_gate(&mut self, a: Variable) -> Variable {
+        //Get inverse value or just give 1 here if a is zero
+        let a_inv_value = self.variables.get(&a).unwrap().inverse().unwrap_or(E::Fr::one());
+        let a_inv = self.add_input(a_inv_value);
+        
+        // This variable has value zero if input a is zero and value 1 otherwise
+        let product = self.arithmetic_gate(|gate| gate.witness(a, a_inv, None).mul(E::Fr::one()));
+        product
+    }
 }
 
 #[cfg(test)]
@@ -60,6 +75,55 @@ mod test {
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
     use num_traits::One;
+
+    fn test_correct_is_nonzero_gate<E, P>()
+    where
+        E: PairingEngine,
+        P: TEModelParameters<BaseField = E::Fr>,
+    {
+        let res = gadget_tester(
+            |composer: &mut StandardComposer<E, P>| {
+                let one = composer.add_input(E::Fr::one());
+                let two = composer.add_input(E::Fr::one().double());
+                let is_nonzero = composer.is_nonzero_gate(two);
+                composer.assert_equal(is_nonzero, one);
+            },
+             32
+            );
+            assert!(res.is_ok())
+    }
+
+    fn test_correct_is_nonzero_gate2<E, P>()
+    where
+        E: PairingEngine,
+        P: TEModelParameters<BaseField = E::Fr>,
+    {
+        let res = gadget_tester(
+            |composer: &mut StandardComposer<E, P>| {
+                let zero = composer.zero_var();
+                let is_nonzero = composer.is_nonzero_gate(zero);
+                composer.assert_equal(is_nonzero, zero);
+            },
+             32
+            );
+            assert!(res.is_ok())
+    }
+
+    fn test_incorrect_is_nonzero_gate<E, P>()
+    where
+        E: PairingEngine,
+        P: TEModelParameters<BaseField = E::Fr>,
+    {
+        let res = gadget_tester(
+            |composer: &mut StandardComposer<E, P>| {
+                let two = composer.add_input(E::Fr::one().double());
+                let is_nonzero = composer.is_nonzero_gate(two);
+                composer.assert_equal(is_nonzero, composer.zero_var());
+            },
+             32
+            );
+            assert!(res.is_err())
+    }
 
     fn test_correct_bool_gate<E, P>()
     where
@@ -98,6 +162,9 @@ mod test {
     // Test for Bls12_381
     batch_test!(
         [
+            test_correct_is_nonzero_gate,
+            test_correct_is_nonzero_gate2,
+            test_incorrect_is_nonzero_gate,
             test_correct_bool_gate,
             test_incorrect_bool_gate
         ],
@@ -110,6 +177,9 @@ mod test {
     // Test for Bls12_377
     batch_test!(
         [
+            test_correct_is_nonzero_gate,
+            test_correct_is_nonzero_gate2,
+            test_incorrect_is_nonzero_gate,
             test_correct_bool_gate,
             test_incorrect_bool_gate
         ],
