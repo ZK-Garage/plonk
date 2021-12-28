@@ -57,8 +57,7 @@ where
     pub fn is_zero_gate(&mut self, a: Variable) -> Variable {
         //Get relevant field values
         let a_value = self.variables.get(&a).unwrap();
-        let a_inv_value = a_value.inverse()
-            .unwrap_or(E::Fr::one());
+        let a_inv_value = a_value.inverse().unwrap_or(E::Fr::one());
         //This has value 1 if input value is zero, value 0 otherwise
         let result_value = E::Fr::one() - *a_value * a_inv_value;
 
@@ -66,17 +65,23 @@ where
         let result = self.add_input(result_value);
 
         // Enforce constraints
-        let a_times_result = self.arithmetic_gate(|gate| gate.witness(a, result, None).mul(E::Fr::one()));
+        let a_times_result = self.arithmetic_gate(|gate| {
+            gate.witness(a, result, None).mul(E::Fr::one())
+        });
         self.assert_equal(a_times_result, self.zero_var());
 
-        let a_times_ainv = self.arithmetic_gate(|gate| gate.witness(a, a_inv, None).mul(E::Fr::one()));
-        let sum = self.arithmetic_gate(|gate| gate.witness(a_times_ainv, result, None).add(E::Fr::one(), E::Fr::one()));
+        let a_times_ainv = self.arithmetic_gate(|gate| {
+            gate.witness(a, a_inv, None).mul(E::Fr::one())
+        });
+        let sum = self.arithmetic_gate(|gate| {
+            gate.witness(a_times_ainv, result, None)
+                .add(E::Fr::one(), E::Fr::one())
+        });
         let one = self.add_input(E::Fr::one());
         self.assert_equal(sum, one);
 
         result
     }
-
 
     /// A gate which outputs a variable whose value is 1 if the
     /// two input variables have equal values and whose value is 0 otherwise.
