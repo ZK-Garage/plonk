@@ -52,34 +52,31 @@ where
         a
     }
 
-    /// A gate which outputs a variable equal to 0 if the value
-    /// of its input is zero and outputs 1 otherwise.
-    pub fn is_nonzero_gate(&mut self, a: Variable) -> Variable {
-        //Get inverse value or just give 1 here if a is zero
-        let a_inv_value = self
-            .variables
-            .get(&a)
-            .unwrap()
-            .inverse()
-            .unwrap_or_else(E::Fr::one);
-        let a_inv = self.add_input(a_inv_value);
-
-        // This variable has value zero if input a is zero and value 1 otherwise
-        self.arithmetic_gate(|gate| {
-            gate.witness(a, a_inv, None).mul(E::Fr::one())
-        })
-    }
-
-    /// A gate which outputs a variable whose value is 1 if the value
-    /// of its input is zero and whose value is 0 otherwise.
+    /// A gate which outputs a variable whose value is 1 if
+    /// the input is 0 and whose value is 0 otherwise
     pub fn is_zero_gate(&mut self, a: Variable) -> Variable {
-        let is_nonzero = self.is_nonzero_gate(a);
+        //Get relevant field values
+        let a_value = self.variables.get(&a).unwrap();
+        let a_inv_value = a_value.inverse()
+            .unwrap_or(E::Fr::one());
+        //This has value 1 if input value is zero, value 0 otherwise
+        let result_value = E::Fr::one() - *a_value * a_inv_value;
+
+        let a_inv = self.add_input(a_inv_value);
+        let result = self.add_input(result_value);
+
+        // Enforce constraints
+        let a_times_result = self.arithmetic_gate(|gate| gate.witness(a, result, None).mul(E::Fr::one()));
+        self.assert_equal(a_times_result, self.zero_var());
+
+        let a_times_ainv = self.arithmetic_gate(|gate| gate.witness(a, a_inv, None).mul(E::Fr::one()));
+        let sum = self.arithmetic_gate(|gate| gate.witness(a_times_ainv, result, None).add(E::Fr::one(), E::Fr::one()));
         let one = self.add_input(E::Fr::one());
-        self.arithmetic_gate(|gate| {
-            gate.witness(one, is_nonzero, None)
-                .add(E::Fr::one(), -E::Fr::one())
-        })
+        self.assert_equal(sum, one);
+
+        result
     }
+
 
     /// A gate which outputs a variable whose value is 1 if the
     /// two input variables have equal values and whose value is 0 otherwise.
@@ -121,35 +118,6 @@ mod test {
                 let one = composer.add_input(E::Fr::one());
                 let is_zero = composer.is_zero_gate(one);
                 composer.assert_equal(is_zero, composer.zero_var());
-            },
-            32,
-        );
-
-        assert!(res.is_ok() && res2.is_ok())
-    }
-
-    fn test_correct_is_nonzero_gate<E, P>()
-    where
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
-    {
-        // Check that it gives true on non-zero input
-        let res = gadget_tester(
-            |composer: &mut StandardComposer<E, P>| {
-                let one = composer.add_input(E::Fr::one());
-                let two = composer.add_input(E::Fr::one().double());
-                let is_nonzero = composer.is_nonzero_gate(two);
-                composer.assert_equal(is_nonzero, one);
-            },
-            32,
-        );
-
-        // Check that it gives false on zero input
-        let res2 = gadget_tester(
-            |composer: &mut StandardComposer<E, P>| {
-                let zero = composer.zero_var();
-                let is_nonzero = composer.is_nonzero_gate(zero);
-                composer.assert_equal(is_nonzero, zero);
             },
             32,
         );
@@ -229,7 +197,6 @@ mod test {
     batch_test!(
         [
             test_correct_is_zero_gate,
-            test_correct_is_nonzero_gate,
             test_correct_is_eq_gate,
             test_correct_bool_gate,
             test_incorrect_bool_gate
@@ -244,7 +211,6 @@ mod test {
     batch_test!(
         [
             test_correct_is_zero_gate,
-            test_correct_is_nonzero_gate,
             test_correct_is_eq_gate,
             test_correct_bool_gate,
             test_incorrect_bool_gate
