@@ -13,8 +13,6 @@ use ark_ec::{PairingEngine, TEModelParameters};
 use ark_ff::Field;
 use num_traits::{One, Zero};
 
-use super::arithmetic::ArithmeticGate;
-
 impl<E, P> StandardComposer<E, P>
 where
     E: PairingEngine,
@@ -63,14 +61,13 @@ where
             .get(&a)
             .unwrap()
             .inverse()
-            .unwrap_or(E::Fr::one());
+            .unwrap_or_else(E::Fr::one);
         let a_inv = self.add_input(a_inv_value);
 
         // This variable has value zero if input a is zero and value 1 otherwise
-        let product = self.arithmetic_gate(|gate| {
+        self.arithmetic_gate(|gate| {
             gate.witness(a, a_inv, None).mul(E::Fr::one())
-        });
-        product
+        })
     }
 
     /// A gate which outputs a variable whose value is 1 if the value
@@ -78,11 +75,10 @@ where
     pub fn is_zero_gate(&mut self, a: Variable) -> Variable {
         let is_nonzero = self.is_nonzero_gate(a);
         let one = self.add_input(E::Fr::one());
-        let is_zero = self.arithmetic_gate(|gate| {
+        self.arithmetic_gate(|gate| {
             gate.witness(one, is_nonzero, None)
                 .add(E::Fr::one(), -E::Fr::one())
-        });
-        is_zero
+        })
     }
 
     /// A gate which outputs a variable whose value is 1 if the
@@ -91,8 +87,7 @@ where
         let difference = self.arithmetic_gate(|gate| {
             gate.witness(a, b, None).add(E::Fr::one(), -E::Fr::one())
         });
-        let is_eq = self.is_zero_gate(difference);
-        is_eq
+        self.is_zero_gate(difference)
     }
 }
 
@@ -215,7 +210,6 @@ mod test {
         // Check that it fails for bad inputs
         let res3 = gadget_tester(
             |composer: &mut StandardComposer<E, P>| {
-                let one = composer.add_input(E::Fr::one());
                 let field_element = E::Fr::one().double();
                 let a = composer.add_input(field_element);
                 let b = composer.add_input(field_element.double());
@@ -266,6 +260,7 @@ mod test {
         [
             test_correct_is_zero_gate,
             test_correct_is_nonzero_gate,
+            test_correct_is_eq_gate,
             test_correct_bool_gate,
             test_incorrect_bool_gate
         ],
@@ -280,6 +275,7 @@ mod test {
         [
             test_correct_is_zero_gate,
             test_correct_is_nonzero_gate,
+            test_correct_is_eq_gate,
             test_correct_bool_gate,
             test_incorrect_bool_gate
         ],
