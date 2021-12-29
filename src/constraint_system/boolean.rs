@@ -57,14 +57,19 @@ where
     pub fn is_zero_gate(&mut self, a: Variable) -> Variable {
         //Get relevant field values
         let a_value = self.variables.get(&a).unwrap();
-        let a_inv_value = a_value.inverse().unwrap_or(E::Fr::one());
+        let a_inv_value = a_value.inverse().unwrap_or_else(E::Fr::one);
         //This has value 1 if input value is zero, value 0 otherwise
         let result_value = E::Fr::one() - *a_value * a_inv_value;
 
         let a_inv = self.add_input(a_inv_value);
         let result = self.add_input(result_value);
 
-        // Enforce constraints
+        // Enforce constraints. The constraint system being used here
+        // is
+        // a * y + b - 1 = 0
+        // a * b = 0
+        // where y is auxiliary and b is the boolean (a == 0).
+        // Here y is denoting `a_inv` and b is denoting `result`
         let a_times_result = self.arithmetic_gate(|gate| {
             gate.witness(a, result, None).mul(E::Fr::one())
         });
