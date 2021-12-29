@@ -95,10 +95,8 @@ Verify 2^18 = 262144 gates/18 time:   [6.7577 ms 6.8124 ms 6.8925 ms]
 - Initial [implementation](https://github.com/kobigurk/plonk/tree/kobigurk/port_to_zexe) of PLONK with arkworks backend was done years before this lib existed by Kobi Gurkan
 
 ## Licensing
-This software is distributed under the terms of both the MIT license and 
-the Apache License (Version 2.0). 
-Please see [LICENSE-MIT](https://github.com/ZK-Garage/plonk/blob/master/LICENSE-MIT) 
-and [LICENSE-APACHE](https://github.com/ZK-Garage/plonk/blob/master/LICENSE-APACHE) for further info.
+
+This software is distributed under the terms of Mozilla Public License Version 2.0 (MPL-2.0). Please see [LICENSE](https://github.com/dusk-network/plonk/blob/master/LICENSE) for further info.
 
 ## Contributing
 - If you want to contribute to this repository/project please, check [CONTRIBUTING.md](https://github.com/ZK-Garage/plonk/blob/master/CONTRIBUTING.md)
