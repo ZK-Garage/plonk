@@ -11,13 +11,13 @@ use ark_ed_on_bls12_381::{
     EdwardsAffine as JubJubAffine, EdwardsParameters as JubJubParameters,
     EdwardsProjective as JubJubProjective, Fr as JubJubScalar,
 };
-use ark_ff::{PrimeField, BigInteger};
+use ark_ff::{PrimeField, FftField, BigInteger};
 use ark_plonk::prelude::*;
 use ark_poly::polynomial::univariate::DensePolynomial;
-use ark_poly_commit::kzg10::KZG10;
+use ark_poly_commit::PolynomialCommitment;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use num_traits::{Zero, One};
-use rand_core::OsRng;
+use rand::rngs::OsRng;
 fn main() -> Result<(), Error> {
 // Implements a circuit that checks:
 // 1) a + b = c where C is a PI
@@ -28,25 +28,25 @@ fn main() -> Result<(), Error> {
 #[derive(derivative::Derivative)]
 #[derivative(Debug(bound = ""), Default(bound = ""))]
 pub struct TestCircuit<
-    E: PairingEngine,
-    P: TEModelParameters<BaseField = E::Fr>,
+    F: FftField + PrimeField,
+    P: TEModelParameters<BaseField = F>,
 > {
-    a: E::Fr,
-    b: E::Fr,
-    c: E::Fr,
-    d: E::Fr,
+    a: F,
+    b: F,
+    c: F,
+    d: F,
     e: P::ScalarField,
     f: GroupAffine<P>,
 }
-impl<E, P> Circuit<E, P> for TestCircuit<E, P>
+impl<F, P> Circuit<F, P> for TestCircuit<F, P>
 where
-    E: PairingEngine,
-    P: TEModelParameters<BaseField = E::Fr>,
+    F: FftField + PrimeField,
+    P: TEModelParameters<BaseField = F>,
 {
     const CIRCUIT_ID: [u8; 32] = [0xff; 32];
     fn gadget(
         &mut self,
-        composer: &mut StandardComposer<E, P>,
+        composer: &mut StandardComposer<F, P>,
     ) -> Result<(), Error> {
         let a = composer.add_input(self.a);
         let b = composer.add_input(self.b);
@@ -54,7 +54,7 @@ where
         // Make first constraint a + b = c (as public input)
         composer.arithmetic_gate(|gate| {
             gate.witness(a, b, Some(zero))
-                .add(E::Fr::one(), E::Fr::one())
+                .add(F::one(), F::one())
                 .pi(-self.c)
         });
         // Check that a and b are in range
@@ -62,10 +62,10 @@ where
         composer.range_gate(b, 1 << 5);
         // Make second constraint a * b = d
         composer.arithmetic_gate(|gate| {
-            gate.witness(a, b, Some(zero)).mul(E::Fr::one()).pi(-self.d)
+            gate.witness(a, b, Some(zero)).mul(F::one()).pi(-self.d)
         });
         let e = composer
-            .add_input(from_embedded_curve_scalar::<E, P>(self.e));
+            .add_input(from_embedded_curve_scalar::<F, P>(self.e));
         let (x, y) = P::AFFINE_GENERATOR_COEFFS;
         let generator = GroupAffine::new(x, y);
         let scalar_mul_result =
@@ -79,12 +79,13 @@ where
     }
 }
 // Generate CRS
-let pp = KZG10::<Bls12_381, DensePolynomial<BlsScalar>>::setup(
+type PC = ark_plonk::commitment::KZG10::<Bls12_381>;
+let pp = PC::setup(
     1 << 12,
-    false,
+    None,
     &mut OsRng,
 )?;
-let mut circuit = TestCircuit::<Bls12_381, JubJubParameters>::default();
+let mut circuit = TestCircuit::<BlsScalar, JubJubParameters>::default();
 // Compile the circuit
 let (pk_p, verifier_data) = circuit.compile(&pp)?;
 let (x, y) = JubJubParameters::AFFINE_GENERATOR_COEFFS;
@@ -96,7 +97,7 @@ let point_f_pi: GroupAffine<JubJubParameters> = AffineCurve::mul(
 .into_affine();
 // Prover POV
 let proof = {
-    let mut circuit: TestCircuit<Bls12_381, JubJubParameters> = TestCircuit {
+    let mut circuit: TestCircuit<BlsScalar, JubJubParameters> = TestCircuit {
         a: BlsScalar::from(20u64),
         b: BlsScalar::from(5u64),
         c: BlsScalar::from(25u64),
@@ -108,14 +109,14 @@ let proof = {
 };
 
 // Verifier POV
-let public_inputs: Vec<PublicInputValue<JubJubParameters>> = vec![
-    BlsScalar::from(25u64).into_pi(),
-    BlsScalar::from(100u64).into_pi(),
+let public_inputs: Vec<PublicInputValue<BlsScalar>> = vec![
+    BlsScalar::from(25u64).into(),
+    BlsScalar::from(100u64).into(),
     GeIntoPubInput::into_pi(point_f_pi),
 ];
 let VerifierData { key, pi_pos } = verifier_data;
 
-verify_proof::<Bls12_381, JubJubParameters>(
+verify_proof::<BlsScalar, JubJubParameters, PC>(
     &pp,
     key,
     &proof,

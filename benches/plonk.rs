@@ -15,7 +15,7 @@ use ark_plonk::prelude::*;
 use ark_poly_commit::PolynomialCommitment;
 use core::marker::PhantomData;
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
-use rand_core::OsRng;
+use rand::rngs::OsRng;
 
 /// Benchmark Circuit
 #[derive(derivative::Derivative)]
@@ -70,18 +70,13 @@ fn constraint_system_benchmark(c: &mut Criterion) {
     const MINIMUM_DEGREE: usize = 5;
     const MAXIMUM_DEGREE: usize = 19;
 
-<<<<<<< HEAD
-    let pp = KZG10::<Bls12_381>::setup(1 << MAXIMUM_DEGREE, None, &mut OsRng)
-        .expect("Unable to sample public parameters.");
-=======
-    let pp = KZG10::<Bls12_381, DensePolynomial<BlsScalar>>::setup(
+    let pp = KZG10::<Bls12_381>::setup(
         // +1 per wire, +2 for the permutation poly
         1 << MAXIMUM_DEGREE + 6,
-        false,
+        None,
         &mut OsRng,
     )
     .expect("Unable to sample public parameters.");
->>>>>>> upstream/master
 
     let mut compiling_benchmarks = c.benchmark_group("compile");
     for degree in MINIMUM_DEGREE..MAXIMUM_DEGREE {

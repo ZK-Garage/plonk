@@ -181,7 +181,7 @@ where
 /// use ark_plonk::prelude::*;
 /// use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 /// use num_traits::{Zero, One};
-/// use rand_core::OsRng;
+/// use rand::rngs::OsRng;
 ///
 /// fn main() -> Result<(), Error> {
 /// // Implements a circuit that checks:
@@ -194,7 +194,7 @@ where
 ///    #[derivative(Debug(bound = ""), Default(bound = ""))]
 /// pub struct TestCircuit<F, P>
 /// where
-///     F: FftField,
+///     F: FftField + PrimeField,
 ///     P: TEModelParameters<BaseField = F>,
 /// {
 ///        a: F,
@@ -214,7 +214,7 @@ where
 ///
 ///        fn gadget(
 ///            &mut self,
-///            composer: &mut StandardComposer<E, P>,
+///            composer: &mut StandardComposer<F, P>,
 ///        ) -> Result<(), Error> {
 ///            let a = composer.add_input(self.a);
 ///            let b = composer.add_input(self.b);
@@ -235,22 +235,11 @@ where
 ///                gate.witness(a, b, Some(zero)).mul(F::one()).pi(-self.d)
 ///            });
 ///            let e = composer
-///                .add_input(from_embedded_curve_scalar::<E, P>(self.e));
+///                .add_input(from_embedded_curve_scalar::<F, P>(self.e));
 ///            let (x, y) = P::AFFINE_GENERATOR_COEFFS;
 ///            let generator = GroupAffine::new(x, y);
 ///            let scalar_mul_result =
 ///                composer.fixed_base_scalar_mul(e, generator);
-///
-///         // Make second constraint a * b = d
-///         let mul_result = composer.mul(F::one(), a, b, F::zero(), Some(-self.d));
-///         composer.assert_equal(mul_result, composer.zero_var());
-///
-///         let e_repr = self.e.into_repr().to_bytes_le();
-///         let e = composer.add_input(F::from_le_bytes_mod_order(&e_repr));
-///         let (x, y) = P::AFFINE_GENERATOR_COEFFS;
-///         let generator = GroupAffine::<P>::new(x, y);
-///         let scalar_mul_result =
-///             composer.fixed_base_scalar_mul(e, generator);
 ///            // Apply the constrain
 ///            composer.assert_equal_public_point(scalar_mul_result, self.f);
 ///            Ok(())
@@ -267,7 +256,7 @@ where
 ///     1 << 12, None, &mut OsRng
 ///  )?;
 ///
-/// let mut circuit = TestCircuit::<Bls12_381, JubJubParameters>::default();
+/// let mut circuit = TestCircuit::<BlsScalar, JubJubParameters>::default();
 /// // Compile the circuit
 /// let (pk_p, verifier_data) = circuit.compile::<PC>(&pp).unwrap();
 ///
@@ -280,7 +269,7 @@ where
 /// .into_affine();
 /// // Prover POV
 /// let proof = {
-///     let mut circuit: TestCircuit<Bls12_381, JubJubParameters> = TestCircuit {
+///     let mut circuit: TestCircuit<BlsScalar, JubJubParameters> = TestCircuit {
 ///         a: BlsScalar::from(20u64),
 ///         b: BlsScalar::from(5u64),
 ///         c: BlsScalar::from(25u64),
@@ -288,27 +277,27 @@ where
 ///         e: JubJubScalar::from(2u64),
 ///         f: point_f_pi,
 ///     };
-///     circuit.gen_proof::<PC>(&pp, pk, b"Test")
+///     circuit.gen_proof::<PC>(&pp, pk_p, b"Test")
 /// }?;
 ///
 /// // Test serialisation for verifier_data
 /// let mut verifier_data_bytes = Vec::new();
 /// verifier_data.serialize(&mut verifier_data_bytes).unwrap();
 ///
-/// let verif_data: VerifierData<Bls12_381::Fr, JubJubParameters> =
+/// let verif_data: VerifierData<BlsScalar, PC> =
 ///     VerifierData::deserialize(verifier_data_bytes.as_slice()).unwrap();
 ///
-/// assert!(verif_data == verifier_data);
+/// // assert!(verif_data == verifier_data);
 /// // Verifier POV
-/// let public_inputs: Vec<PublicInputValue<JubJubParameters>> = vec![
-///     BlsScalar::from(25u64).into_pi(),
-///     BlsScalar::from(100u64).into_pi(),
+/// let public_inputs: Vec<PublicInputValue<BlsScalar>> = vec![
+///     BlsScalar::from(25u64).into(),
+///     BlsScalar::from(100u64).into(),
 ///     GeIntoPubInput::into_pi(point_f_pi),
 /// ];
 ///
 /// let VerifierData { key, pi_pos } = verifier_data;
 /// // TODO: non-ideal hack for a first functional version.
-/// verify_proof::<Bls12_381::Fr, JubJubParameters, PC>(
+/// verify_proof::<BlsScalar, JubJubParameters, PC>(
 ///     &pp,
 ///     key,
 ///     &proof,
@@ -345,9 +334,6 @@ where
             + HomomorphicCommitment<F>,
     {
         // Setup PublicParams
-        // XXX: KZG10 does not have a trim function so we use sonics and
-        // then do a transformation between sonic CommiterKey to KZG10
-        // powers
         let circuit_size = self.padded_circuit_size();
         let (ck, _) = PC::trim(
             u_params,
@@ -395,9 +381,6 @@ where
         PC: PolynomialCommitment<F, DensePolynomial<F>>
             + HomomorphicCommitment<F>,
     {
-        // XXX: KZG10 does not have a trim function so we use sonics and
-        // then do a transformation between sonic CommiterKey to KZG10
-        // powers
         let circuit_size = self.padded_circuit_size();
         let (ck, _) = PC::trim(
             u_params,
@@ -437,7 +420,6 @@ where
 {
     let mut verifier: Verifier<F, P, PC> = Verifier::new(transcript_init);
     let padded_circuit_size = plonk_verifier_key.padded_circuit_size();
-    // let key: VerifierKey<E, P> = *plonk_verifier_key;
     verifier.verifier_key = Some(plonk_verifier_key);
     let (_, vk) = PC::trim(
         u_params,
@@ -485,7 +467,6 @@ mod test {
     use ark_ec::twisted_edwards_extended::GroupAffine;
     use ark_ec::{AffineCurve, PairingEngine};
     use ark_ff::{FftField, PrimeField};
-    use ark_poly_commit::{kzg10::KZG10, sonic_pc::SonicKZG10};
     use rand::rngs::OsRng;
 
     // Implements a circuit that checks:
