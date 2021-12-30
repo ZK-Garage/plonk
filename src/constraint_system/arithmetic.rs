@@ -435,42 +435,49 @@ where
 mod test {
     use super::*;
     use crate::batch_test;
+    use crate::commitment::HomomorphicCommitment;
     use crate::constraint_system::helper::*;
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
     use ark_ec::{PairingEngine, TEModelParameters};
+    use ark_ff::{FftField, PrimeField};
     use ark_ff::{One, Zero};
+    use ark_poly::univariate::DensePolynomial;
+    use ark_poly_commit::PolynomialCommitment;
 
-    fn test_public_inputs<E, P>()
+    fn test_public_inputs<F, P, PC>()
     where
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
+        //E: PairingEngine,
+        F: FftField + PrimeField,
+        P: TEModelParameters<BaseField = F>,
+        PC: PolynomialCommitment<F, DensePolynomial<F>>
+            + HomomorphicCommitment<F>,
     {
-        let res = gadget_tester::<E, P>(
-            |composer: &mut StandardComposer<E::Fr, P>| {
-                let var_one = composer.add_input(E::Fr::one());
+        let res = gadget_tester::<F, P, PC>(
+            |composer: &mut StandardComposer<F, P>| {
+                let var_one = composer.add_input(F::one());
                 let should_be_three = composer.big_add(
-                    (E::Fr::one(), var_one),
-                    (E::Fr::one(), var_one),
+                    (F::one(), var_one),
+                    (F::one(), var_one),
                     None,
-                    E::Fr::zero(),
-                    Some(E::Fr::one()),
+                    F::zero(),
+                    Some(F::one()),
                 );
                 composer.constrain_to_constant(
                     should_be_three,
-                    E::Fr::from(3u64),
+                    F::from(3u64),
                     None,
                 );
                 let should_be_four = composer.big_add(
-                    (E::Fr::one(), var_one),
-                    (E::Fr::one(), var_one),
+                    (F::one(), var_one),
+                    (F::one(), var_one),
                     None,
-                    E::Fr::zero(),
-                    Some(E::Fr::from(2u64)),
+                    F::zero(),
+                    Some(F::from(2u64)),
                 );
                 composer.constrain_to_constant(
                     should_be_four,
-                    E::Fr::from(4u64),
+                    F::from(4u64),
                     None,
                 );
             },
@@ -479,32 +486,35 @@ mod test {
         assert!(res.is_ok(), "{:?}", res.err().unwrap());
     }
 
-    fn test_correct_add_mul_gate<E, P>()
+    fn test_correct_add_mul_gate<F, P, PC>()
     where
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
+        //E: PairingEngine,
+        F: FftField + PrimeField,
+        P: TEModelParameters<BaseField = F>,
+        PC: PolynomialCommitment<F, DensePolynomial<F>>
+            + HomomorphicCommitment<F>,
     {
-        let res = gadget_tester::<E, P>(
-            |composer: &mut StandardComposer<E::Fr, P>| {
+        let res = gadget_tester::<F, P, PC>(
+            |composer: &mut StandardComposer<F, P>| {
                 // Verify that (4+5+5) * (6+7+7) = 280
-                let four = composer.add_input(E::Fr::from(4u64));
-                let five = composer.add_input(E::Fr::from(5u64));
-                let six = composer.add_input(E::Fr::from(6u64));
-                let seven = composer.add_input(E::Fr::from(7u64));
+                let four = composer.add_input(F::from(4u64));
+                let five = composer.add_input(F::from(5u64));
+                let six = composer.add_input(F::from(6u64));
+                let seven = composer.add_input(F::from(7u64));
 
                 let fourteen = composer.big_add(
-                    (E::Fr::one(), four),
-                    (E::Fr::one(), five),
-                    Some((E::Fr::one(), five)),
-                    E::Fr::zero(),
+                    (F::one(), four),
+                    (F::one(), five),
+                    Some((F::one(), five)),
+                    F::zero(),
                     None,
                 );
 
                 let twenty = composer.big_add(
-                    (E::Fr::one(), six),
-                    (E::Fr::one(), seven),
-                    Some((E::Fr::one(), seven)),
-                    E::Fr::zero(),
+                    (F::one(), six),
+                    (F::one(), seven),
+                    Some((F::one(), seven)),
+                    F::zero(),
                     None,
                 );
 
@@ -515,112 +525,108 @@ mod test {
                 // can compute it using the `mul` If the output
                 // is public, we can also constrain the output wire of the mul
                 // gate to it. This is what this test does
-                let output = composer.mul(
-                    E::Fr::one(),
-                    fourteen,
-                    twenty,
-                    E::Fr::zero(),
-                    None,
-                );
-                composer.constrain_to_constant(
-                    output,
-                    E::Fr::from(280u64),
-                    None,
-                );
+                let output =
+                    composer.mul(F::one(), fourteen, twenty, F::zero(), None);
+                composer.constrain_to_constant(output, F::from(280u64), None);
             },
             200,
         );
         assert!(res.is_ok(), "{:?}", res.err().unwrap());
     }
 
-    fn test_correct_add_gate<E, P>()
+    fn test_correct_add_gate<F, P, PC>()
     where
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
+        //E: PairingEngine,
+        F: FftField + PrimeField,
+        P: TEModelParameters<BaseField = F>,
+        PC: PolynomialCommitment<F, DensePolynomial<F>>
+            + HomomorphicCommitment<F>,
     {
-        let res = gadget_tester::<E, P>(
-            |composer: &mut StandardComposer<E::Fr, P>| {
+        let res = gadget_tester::<F, P, PC>(
+            |composer: &mut StandardComposer<F, P>| {
                 let zero = composer.zero_var();
-                let one = composer.add_input(E::Fr::one());
+                let one = composer.add_input(F::one());
 
                 let c = composer.add(
-                    (E::Fr::one(), one),
-                    (E::Fr::zero(), zero),
-                    E::Fr::from(2u64),
+                    (F::one(), one),
+                    (F::zero(), zero),
+                    F::from(2u64),
                     None,
                 );
-                composer.constrain_to_constant(c, E::Fr::from(3u64), None);
+                composer.constrain_to_constant(c, F::from(3u64), None);
             },
             32,
         );
         assert!(res.is_ok(), "{:?}", res.err().unwrap());
     }
 
-    fn test_correct_big_add_mul_gate<E, P>()
+    fn test_correct_big_add_mul_gate<F, P, PC>()
     where
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
+        //E: PairingEngine,
+        F: FftField + PrimeField,
+        P: TEModelParameters<BaseField = F>,
+        PC: PolynomialCommitment<F, DensePolynomial<F>>
+            + HomomorphicCommitment<F>,
     {
-        let res = gadget_tester::<E, P>(
-            |composer: &mut StandardComposer<E::Fr, P>| {
+        let res = gadget_tester::<F, P, PC>(
+            |composer: &mut StandardComposer<F, P>| {
                 // Verify that (4+5+5) * (6+7+7) + (8*9) = 352
-                let four = composer.add_input(E::Fr::from(4u64));
-                let five = composer.add_input(E::Fr::from(5u64));
-                let six = composer.add_input(E::Fr::from(6u64));
-                let seven = composer.add_input(E::Fr::from(7u64));
-                let nine = composer.add_input(E::Fr::from(9u64));
+                let four = composer.add_input(F::from(4u64));
+                let five = composer.add_input(F::from(5u64));
+                let six = composer.add_input(F::from(6u64));
+                let seven = composer.add_input(F::from(7u64));
+                let nine = composer.add_input(F::from(9u64));
 
                 let fourteen = composer.big_add(
-                    (E::Fr::one(), four),
-                    (E::Fr::one(), five),
-                    Some((E::Fr::one(), five)),
-                    E::Fr::zero(),
+                    (F::one(), four),
+                    (F::one(), five),
+                    Some((F::one(), five)),
+                    F::zero(),
                     None,
                 );
 
                 let twenty = composer.big_add(
-                    (E::Fr::one(), six),
-                    (E::Fr::one(), seven),
-                    Some((E::Fr::one(), seven)),
-                    E::Fr::zero(),
+                    (F::one(), six),
+                    (F::one(), seven),
+                    Some((F::one(), seven)),
+                    F::zero(),
                     None,
                 );
 
                 let output = composer.big_mul(
-                    E::Fr::one(),
+                    F::one(),
                     fourteen,
                     twenty,
-                    Some((E::Fr::from(8u64), nine)),
-                    E::Fr::zero(),
+                    Some((F::from(8u64), nine)),
+                    F::zero(),
                     None,
                 );
-                composer.constrain_to_constant(
-                    output,
-                    E::Fr::from(352u64),
-                    None,
-                );
+                composer.constrain_to_constant(output, F::from(352u64), None);
             },
             200,
         );
         assert!(res.is_ok());
     }
 
-    fn test_correct_big_arith_gate<E, P>()
+    fn test_correct_big_arith_gate<F, P, PC>()
     where
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
+        //E: PairingEngine,
+        F: FftField + PrimeField,
+        P: TEModelParameters<BaseField = F>,
+        PC: PolynomialCommitment<F, DensePolynomial<F>>
+            + HomomorphicCommitment<F>,
     {
-        let res = gadget_tester::<E, P>(
-            |composer: &mut StandardComposer<E::Fr, P>| {
+        let res = gadget_tester::<F, P, PC>(
+            |composer: &mut StandardComposer<F, P>| {
                 // Verify that (4*5)*6 + 4*7 + 5*8 + 9*10 + 11 = 289
-                let a = composer.add_input(E::Fr::from(4u64));
-                let b = composer.add_input(E::Fr::from(5u64));
-                let q_m = E::Fr::from(6u64);
-                let q_l = E::Fr::from(7u64);
-                let q_r = E::Fr::from(8u64);
-                let d = composer.add_input(E::Fr::from(9u64));
-                let q_4 = E::Fr::from(10u64);
-                let q_c = E::Fr::from(11u64);
+                let a = composer.add_input(F::from(4u64));
+                let b = composer.add_input(F::from(5u64));
+                let q_m = F::from(6u64);
+                let q_l = F::from(7u64);
+                let q_r = F::from(8u64);
+                let d = composer.add_input(F::from(9u64));
+                let q_4 = F::from(10u64);
+                let q_c = F::from(11u64);
 
                 let output = composer.big_arith(
                     q_m,
@@ -633,33 +639,32 @@ mod test {
                     None,
                 );
 
-                composer.constrain_to_constant(
-                    output,
-                    E::Fr::from(289u64),
-                    None,
-                );
+                composer.constrain_to_constant(output, F::from(289u64), None);
             },
             200,
         );
         assert!(res.is_ok());
     }
 
-    fn test_incorrect_big_arith_gate<E, P>()
+    fn test_incorrect_big_arith_gate<F, P, PC>()
     where
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
+        //E: PairingEngine,
+        F: FftField + PrimeField,
+        P: TEModelParameters<BaseField = F>,
+        PC: PolynomialCommitment<F, DensePolynomial<F>>
+            + HomomorphicCommitment<F>,
     {
-        let res = gadget_tester::<E, P>(
-            |composer: &mut StandardComposer<E::Fr, P>| {
+        let res = gadget_tester::<F, P, PC>(
+            |composer: &mut StandardComposer<F, P>| {
                 // Verify that (4*5)*6 + 4*7 + 5*8 + 9*12 + 11 != 289
-                let a = composer.add_input(E::Fr::from(4u64));
-                let b = composer.add_input(E::Fr::from(5u64));
-                let q_m = E::Fr::from(6u64);
-                let q_l = E::Fr::from(7u64);
-                let q_r = E::Fr::from(8u64);
-                let d = composer.add_input(E::Fr::from(9u64));
-                let q_4 = E::Fr::from(12u64);
-                let q_c = E::Fr::from(11u64);
+                let a = composer.add_input(F::from(4u64));
+                let b = composer.add_input(F::from(5u64));
+                let q_m = F::from(6u64);
+                let q_l = F::from(7u64);
+                let q_r = F::from(8u64);
+                let d = composer.add_input(F::from(9u64));
+                let q_4 = F::from(12u64);
+                let q_c = F::from(11u64);
 
                 let output = composer.big_arith(
                     q_m,
@@ -672,57 +677,52 @@ mod test {
                     None,
                 );
 
-                composer.constrain_to_constant(
-                    output,
-                    E::Fr::from(289u64),
-                    None,
-                );
+                composer.constrain_to_constant(output, F::from(289u64), None);
             },
             200,
         );
         assert!(res.is_err());
     }
 
-    fn test_incorrect_add_mul_gate<E, P>()
+    fn test_incorrect_add_mul_gate<F, P, PC>()
     where
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
+        //E: PairingEngine,
+        F: FftField + PrimeField,
+        P: TEModelParameters<BaseField = F>,
+        PC: PolynomialCommitment<F, DensePolynomial<F>>
+            + HomomorphicCommitment<F>,
     {
-        let res = gadget_tester::<E, P>(
-            |composer: &mut StandardComposer<E::Fr, P>| {
+        let res = gadget_tester::<F, P, PC>(
+            |composer: &mut StandardComposer<F, P>| {
                 // Verify that (5+5) * (6+7) != 117
-                let five = composer.add_input(E::Fr::from(5u64));
-                let six = composer.add_input(E::Fr::from(6u64));
-                let seven = composer.add_input(E::Fr::from(7u64));
+                let five = composer.add_input(F::from(5u64));
+                let six = composer.add_input(F::from(6u64));
+                let seven = composer.add_input(F::from(7u64));
 
                 let five_plus_five = composer.big_add(
-                    (E::Fr::one(), five),
-                    (E::Fr::one(), five),
+                    (F::one(), five),
+                    (F::one(), five),
                     None,
-                    E::Fr::zero(),
+                    F::zero(),
                     None,
                 );
 
                 let six_plus_seven = composer.big_add(
-                    (E::Fr::one(), six),
-                    (E::Fr::one(), seven),
+                    (F::one(), six),
+                    (F::one(), seven),
                     None,
-                    E::Fr::zero(),
+                    F::zero(),
                     None,
                 );
 
                 let output = composer.mul(
-                    E::Fr::one(),
+                    F::one(),
                     five_plus_five,
                     six_plus_seven,
-                    E::Fr::zero(),
+                    F::zero(),
                     None,
                 );
-                composer.constrain_to_constant(
-                    output,
-                    E::Fr::from(117u64),
-                    None,
-                );
+                composer.constrain_to_constant(output, F::from(117u64), None);
             },
             200,
         );
@@ -760,4 +760,8 @@ mod test {
             Bls12_377, ark_ed_on_bls12_377::EdwardsParameters
         )
     );
+
+    /*    batch_test_ipa!(
+        [test_public_inputs], [] => (ark_vesta::Affine)
+    )*/
 }

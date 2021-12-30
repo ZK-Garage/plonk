@@ -10,6 +10,7 @@
 //! This module contains the implementation of the `StandardComposer`s
 //! `Proof` structure and it's methods.
 
+use crate::commitment::HomomorphicCommitment;
 use crate::error::Error;
 use crate::label_commitment;
 use crate::proof_system::ecc::CurveAddition;
@@ -22,7 +23,6 @@ use crate::proof_system::VerifierKey as PlonkVerifierKey;
 use crate::transcript::TranscriptProtocol;
 use crate::util;
 use crate::util::EvaluationDomainExt;
-use crate::util::HomomorphicCommitment;
 use ark_ec::{
     msm::VariableBaseMSM, AffineCurve, ModelParameters, TEModelParameters,
 };

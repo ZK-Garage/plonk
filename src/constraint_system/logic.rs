@@ -345,26 +345,33 @@ where
 
 #[cfg(test)]
 mod test {
+    use crate::commitment::HomomorphicCommitment;
     use crate::constraint_system::helper::*;
     use crate::{batch_test, constraint_system::StandardComposer};
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
     use ark_ec::{models::TEModelParameters, PairingEngine};
-    fn test_logic_xor_and_constraint<E, P>()
+    use ark_ff::{FftField, PrimeField};
+    use ark_poly::univariate::DensePolynomial;
+    use ark_poly_commit::PolynomialCommitment;
+    fn test_logic_xor_and_constraint<F, P, PC>()
     where
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
+        //E: PairingEngine,
+        F: FftField + PrimeField,
+        P: TEModelParameters<BaseField = F>,
+        PC: PolynomialCommitment<F, DensePolynomial<F>>
+            + HomomorphicCommitment<F>,
     {
         // Should pass since the XOR result is correct and the bit-num is even.
-        let res = gadget_tester::<E, P>(
-            |composer: &mut StandardComposer<E::Fr, P>| {
-                let witness_a = composer.add_input(E::Fr::from(500u64));
-                let witness_b = composer.add_input(E::Fr::from(357u64));
+        let res = gadget_tester::<F, P, PC>(
+            |composer: &mut StandardComposer<F, P>| {
+                let witness_a = composer.add_input(F::from(500u64));
+                let witness_b = composer.add_input(F::from(357u64));
                 let xor_res = composer.xor_gate(witness_a, witness_b, 10);
                 // Check that the XOR result is indeed what we are expecting.
                 composer.constrain_to_constant(
                     xor_res,
-                    E::Fr::from(500u64 ^ 357u64),
+                    F::from(500u64 ^ 357u64),
                     None,
                 );
             },
@@ -373,15 +380,15 @@ mod test {
         assert!(res.is_ok());
 
         // Should pass since the AND result is correct even the bit-num is even.
-        let res = gadget_tester::<E, P>(
-            |composer: &mut StandardComposer<E::Fr, P>| {
-                let witness_a = composer.add_input(E::Fr::from(469u64));
-                let witness_b = composer.add_input(E::Fr::from(321u64));
+        let res = gadget_tester::<F, P, PC>(
+            |composer: &mut StandardComposer<F, P>| {
+                let witness_a = composer.add_input(F::from(469u64));
+                let witness_b = composer.add_input(F::from(321u64));
                 let xor_res = composer.and_gate(witness_a, witness_b, 10);
                 // Check that the AND result is indeed what we are expecting.
                 composer.constrain_to_constant(
                     xor_res,
-                    E::Fr::from(469u64 & 321u64),
+                    F::from(469u64 & 321u64),
                     None,
                 );
             },
@@ -391,15 +398,15 @@ mod test {
 
         // Should not pass since the XOR result is not correct even the bit-num
         // is even.
-        let res = gadget_tester::<E, P>(
-            |composer: &mut StandardComposer<E::Fr, P>| {
-                let witness_a = composer.add_input(E::Fr::from(139u64));
-                let witness_b = composer.add_input(E::Fr::from(33u64));
+        let res = gadget_tester::<F, P, PC>(
+            |composer: &mut StandardComposer<F, P>| {
+                let witness_a = composer.add_input(F::from(139u64));
+                let witness_b = composer.add_input(F::from(33u64));
                 let xor_res = composer.xor_gate(witness_a, witness_b, 10);
                 // Check that the XOR result is indeed what we are expecting.
                 composer.constrain_to_constant(
                     xor_res,
-                    E::Fr::from(139u64 & 33u64),
+                    F::from(139u64 & 33u64),
                     None,
                 );
             },
@@ -408,15 +415,15 @@ mod test {
         assert!(res.is_err());
 
         // Should pass even the bitnum is less than the number bit-size
-        let res = gadget_tester::<E, P>(
-            |composer: &mut StandardComposer<E::Fr, P>| {
-                let witness_a = composer.add_input(E::Fr::from(256u64));
-                let witness_b = composer.add_input(E::Fr::from(235u64));
+        let res = gadget_tester::<F, P, PC>(
+            |composer: &mut StandardComposer<F, P>| {
+                let witness_a = composer.add_input(F::from(256u64));
+                let witness_b = composer.add_input(F::from(235u64));
                 let xor_res = composer.xor_gate(witness_a, witness_b, 2);
                 // Check that the XOR result is indeed what we are expecting.
                 composer.constrain_to_constant(
                     xor_res,
-                    E::Fr::from(256u64 ^ 235u64),
+                    F::from(256u64 ^ 235u64),
                     None,
                 );
             },
@@ -425,23 +432,22 @@ mod test {
         assert!(res.is_err());
     }
 
-    fn test_logical_gate_odd_bit_num<E, P>()
+    fn test_logical_gate_odd_bit_num<F, P, PC>()
     where
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
+        //E: PairingEngine,
+        F: FftField + PrimeField,
+        P: TEModelParameters<BaseField = F>,
+        PC: PolynomialCommitment<F, DensePolynomial<F>>
+            + HomomorphicCommitment<F>,
     {
         // Should fail since the bit-num is odd.
-        let _ = gadget_tester::<E, P>(
-            |composer: &mut StandardComposer<E::Fr, P>| {
-                let witness_a = composer.add_input(E::Fr::from(500u64));
-                let witness_b = composer.add_input(E::Fr::from(499u64));
+        let _ = gadget_tester::<F, P, PC>(
+            |composer: &mut StandardComposer<F, P>| {
+                let witness_a = composer.add_input(F::from(500u64));
+                let witness_b = composer.add_input(F::from(499u64));
                 let xor_res = composer.xor_gate(witness_a, witness_b, 9);
                 // Check that the XOR result is indeed what we are expecting.
-                composer.constrain_to_constant(
-                    xor_res,
-                    E::Fr::from(7u64),
-                    None,
-                );
+                composer.constrain_to_constant(xor_res, F::from(7u64), None);
             },
             200,
         );

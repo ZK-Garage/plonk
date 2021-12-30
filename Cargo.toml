@@ -47,6 +47,8 @@ criterion = "0.3"
 paste = "1.0.6"
 rand = "0.8.0"
 tempdir = "0.3"
+ark-vesta = "0.3"
+blake2 = "0.10"
 
 [features]
 default = [

@@ -98,6 +98,7 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::commitment::HomomorphicCommitment;
     use crate::{batch_test, constraint_system::helper::*, util};
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
@@ -105,15 +106,21 @@ mod test {
         twisted_edwards_extended::GroupAffine as TEGroupAffine, AffineCurve,
         PairingEngine, TEModelParameters,
     };
+    use ark_ff::{FftField, PrimeField};
+    use ark_poly::univariate::DensePolynomial;
+    use ark_poly_commit::PolynomialCommitment;
 
-    fn test_var_base_scalar_mul<E, P>()
+    fn test_var_base_scalar_mul<F, P, PC>()
     where
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
+        //E: PairingEngine,
+        F: FftField + PrimeField,
+        P: TEModelParameters<BaseField = F>,
+        PC: PolynomialCommitment<F, DensePolynomial<F>>
+            + HomomorphicCommitment<F>,
     {
-        let res = gadget_tester::<E, P>(
-            |composer: &mut StandardComposer<E::Fr, P>| {
-                let scalar = E::Fr::from_le_bytes_mod_order(&[
+        let res = gadget_tester::<F, P, PC>(
+            |composer: &mut StandardComposer<F, P>| {
+                let scalar = F::from_le_bytes_mod_order(&[
                     182, 44, 247, 214, 94, 14, 151, 208, 130, 16, 200, 204,
                     147, 32, 104, 166, 0, 59, 52, 1, 1, 59, 103, 6, 169, 175,
                     51, 101, 234, 180, 125, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -127,7 +134,7 @@ mod test {
 
                 let expected_point: TEGroupAffine<P> = AffineCurve::mul(
                     &generator,
-                    util::to_embedded_curve_scalar::<E::Fr, P>(scalar),
+                    util::to_embedded_curve_scalar::<F, P>(scalar),
                 )
                 .into();
 

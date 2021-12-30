@@ -197,20 +197,27 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::commitment::HomomorphicCommitment;
     use crate::{batch_test, constraint_system::helper::*};
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
     use ark_ec::{models::TEModelParameters, PairingEngine};
-    fn test_range_constraint<E, P>()
+    use ark_ff::{FftField, PrimeField};
+    use ark_poly::univariate::DensePolynomial;
+    use ark_poly_commit::PolynomialCommitment;
+    fn test_range_constraint<F, P, PC>()
     where
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
+        //E: PairingEngine,
+        F: FftField + PrimeField,
+        P: TEModelParameters<BaseField = F>,
+        PC: PolynomialCommitment<F, DensePolynomial<F>>
+            + HomomorphicCommitment<F>,
     {
         // Should fail as the number is not 32 bits
-        let res = gadget_tester::<E, P>(
-            |composer: &mut StandardComposer<E::Fr, P>| {
-                let witness = composer
-                    .add_input(E::Fr::from((u32::max_value() as u64) + 1));
+        let res = gadget_tester::<F, P, PC>(
+            |composer: &mut StandardComposer<F, P>| {
+                let witness =
+                    composer.add_input(F::from((u32::max_value() as u64) + 1));
                 composer.range_gate(witness, 32);
             },
             200,
@@ -218,9 +225,9 @@ mod test {
         assert!(res.is_err());
 
         // Should fail as number is greater than 32 bits
-        let res = gadget_tester::<E, P>(
-            |composer: &mut StandardComposer<E::Fr, P>| {
-                let witness = composer.add_input(E::Fr::from(u64::max_value()));
+        let res = gadget_tester::<F, P, PC>(
+            |composer: &mut StandardComposer<F, P>| {
+                let witness = composer.add_input(F::from(u64::max_value()));
                 composer.range_gate(witness, 32);
             },
             200,
@@ -228,9 +235,9 @@ mod test {
         assert!(res.is_err());
 
         // Should pass as the number is within 34 bits
-        let res = gadget_tester::<E, P>(
-            |composer: &mut StandardComposer<E::Fr, P>| {
-                let witness = composer.add_input(E::Fr::from(2u64.pow(34) - 1));
+        let res = gadget_tester::<F, P, PC>(
+            |composer: &mut StandardComposer<F, P>| {
+                let witness = composer.add_input(F::from(2u64.pow(34) - 1));
                 composer.range_gate(witness, 34);
             },
             200,
@@ -238,16 +245,19 @@ mod test {
         assert!(res.is_ok());
     }
 
-    fn test_odd_bit_range<E, P>()
+    fn test_odd_bit_range<F, P, PC>()
     where
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
+        //E: PairingEngine,
+        F: FftField + PrimeField,
+        P: TEModelParameters<BaseField = F>,
+        PC: PolynomialCommitment<F, DensePolynomial<F>>
+            + HomomorphicCommitment<F>,
     {
         // Should fail as the number we we need a even number of bits
-        let _ok = gadget_tester::<E, P>(
-            |composer: &mut StandardComposer<E::Fr, P>| {
+        let _ok = gadget_tester::<F, P, PC>(
+            |composer: &mut StandardComposer<F, P>| {
                 let witness =
-                    composer.add_input(E::Fr::from(u32::max_value() as u64));
+                    composer.add_input(F::from(u32::max_value() as u64));
                 composer.range_gate(witness, 33);
             },
             200,

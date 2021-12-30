@@ -5,6 +5,7 @@
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
 use super::StandardComposer;
+use crate::commitment::HomomorphicCommitment;
 use crate::error::Error;
 use crate::proof_system::{Prover, Verifier};
 use ark_ec::{ModelParameters, PairingEngine, TEModelParameters};
@@ -14,7 +15,7 @@ use ark_poly_commit::sonic_pc::SonicKZG10;
 use ark_poly_commit::PolynomialCommitment;
 use rand_core::OsRng;
 
-use ark_ff::FftField;
+use ark_ff::{FftField, PrimeField};
 
 /// Adds dummy constraints using arithmetic gates.
 #[allow(dead_code)]
@@ -41,24 +42,26 @@ pub(crate) fn dummy_gadget<F, P>(
 /// Takes a generic gadget function with no auxillary input and tests whether it
 /// passes an end-to-end test.
 #[allow(dead_code)]
-pub(crate) fn gadget_tester<E, P>(
-    gadget: fn(&mut StandardComposer<E::Fr, P>),
+pub(crate) fn gadget_tester<F, P, PC>(
+    gadget: fn(&mut StandardComposer<F, P>),
     n: usize,
 ) -> Result<(), Error>
 where
-    E: PairingEngine,
-    P: TEModelParameters<BaseField = E::Fr>,
+    //E: PairingEngine,
+    F: FftField + PrimeField,
+    P: TEModelParameters<BaseField = F>,
+    PC: PolynomialCommitment<F, DensePolynomial<F>> + HomomorphicCommitment<F>,
 {
     // Common View
-    let universal_params =
-        SonicKZG10::<E, DensePolynomial<E::Fr>>::setup(2 * n, None, &mut OsRng)
-            .unwrap();
+    let universal_params = PC::setup(2 * n, None, &mut OsRng)
+        //    SonicKZG10::<E, DensePolynomial<E::Fr>>::setup(2 * n, None, &mut OsRng)
+        .unwrap();
 
-    type PC<E> = SonicKZG10<E, DensePolynomial<<E as PairingEngine>::Fr>>;
+    //type PC<E> = SonicKZG10<E, DensePolynomial<<E as PairingEngine>::Fr>>;
     // Provers View
     let (proof, public_inputs) = {
         // Create a prover struct
-        let mut prover = Prover::<E::Fr, P, PC<E>>::new(b"demo");
+        let mut prover = Prover::<F, P, PC>::new(b"demo");
 
         // Additionally key the transcript
         prover.key_transcript(b"key", b"additional seed information");
@@ -67,7 +70,7 @@ where
         gadget(prover.mut_cs());
 
         // Commit Key
-        let (ck, _) = PC::<E>::trim(
+        let (ck, _) = PC::trim(
             &universal_params,
             prover.circuit_size().next_power_of_two(),
             0,
@@ -97,7 +100,7 @@ where
     gadget(verifier.mut_cs());
 
     // Compute Commit and Verifier Key
-    let (ck, vk) = PC::<E>::trim(
+    let (ck, vk) = PC::trim(
         &universal_params,
         verifier.circuit_size().next_power_of_two(),
         0,

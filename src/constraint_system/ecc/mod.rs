@@ -207,26 +207,33 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::commitment::HomomorphicCommitment;
     use crate::{batch_test, constraint_system::helper::*};
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
     use ark_ec::{PairingEngine, TEModelParameters};
+    use ark_ff::{FftField, PrimeField};
+    use ark_poly::univariate::DensePolynomial;
+    use ark_poly_commit::PolynomialCommitment;
     use num_traits::One;
 
-    fn test_conditional_select_point<E, P>()
+    fn test_conditional_select_point<F, P, PC>()
     where
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
+        //E: PairingEngine,
+        F: FftField + PrimeField,
+        P: TEModelParameters<BaseField = F>,
+        PC: PolynomialCommitment<F, DensePolynomial<F>>
+            + HomomorphicCommitment<F>,
     {
-        let res = gadget_tester::<E, P>(
-            |composer: &mut StandardComposer<E::Fr, P>| {
-                let bit_1 = composer.add_input(E::Fr::one());
+        let res = gadget_tester::<F, P, PC>(
+            |composer: &mut StandardComposer<F, P>| {
+                let bit_1 = composer.add_input(F::one());
                 let bit_0 = composer.zero_var();
 
                 let point_a = Point::<P>::identity(composer);
                 let point_b = Point::new(
-                    composer.add_input(E::Fr::from(10u64)),
-                    composer.add_input(E::Fr::from(20u64)),
+                    composer.add_input(F::from(10u64)),
+                    composer.add_input(F::from(20u64)),
                 );
 
                 let choice =
@@ -243,20 +250,21 @@ mod test {
         assert!(res.is_ok());
     }
 
-    fn test_conditional_point_neg<E, P>()
+    fn test_conditional_point_neg<F, P, PC>()
     where
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
+        //E: PairingEngine,
+        F: FftField + PrimeField,
+        P: TEModelParameters<BaseField = F>,
+        PC: PolynomialCommitment<F, DensePolynomial<F>>
+            + HomomorphicCommitment<F>,
     {
-        gadget_tester::<E, P>(
-            |composer: &mut StandardComposer<E::Fr, P>| {
-                let bit_1 = composer.add_input(E::Fr::one());
+        gadget_tester::<F, P, PC>(
+            |composer: &mut StandardComposer<F, P>| {
+                let bit_1 = composer.add_input(F::one());
                 let bit_0 = composer.zero_var();
 
-                let point = TEGroupAffine::<P>::new(
-                    E::Fr::from(10u64),
-                    E::Fr::from(20u64),
-                );
+                let point =
+                    TEGroupAffine::<P>::new(F::from(10u64), F::from(20u64));
                 let point_var = Point::new(
                     composer.add_input(point.x),
                     composer.add_input(point.y),

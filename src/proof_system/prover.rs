@@ -7,6 +7,7 @@
 //! Prover-side of the PLONK Proving System
 
 use crate::{
+    commitment::HomomorphicCommitment,
     constraint_system::{StandardComposer, Variable},
     error::Error,
     label_polynomial,
@@ -15,7 +16,6 @@ use crate::{
     },
     transcript::TranscriptProtocol,
     util,
-    util::HomomorphicCommitment,
 };
 use ark_ec::{ModelParameters, PairingEngine, TEModelParameters};
 use ark_ff::{FftField, PrimeField};
@@ -481,62 +481,6 @@ where
             saw_opening,
             evaluations: evaluations.proof,
         })
-
-        /*
-
-        let aggregate_witness = Self::compute_aggregate_witness(
-            &[
-                quot,
-                lin_poly,
-                w_l_poly.clone(),
-                w_r_poly.clone(),
-                w_o_poly,
-                w_4_poly.clone(),
-                prover_key.permutation.left_sigma.0.clone(),
-                prover_key.permutation.right_sigma.0.clone(),
-                prover_key.permutation.out_sigma.0.clone(),
-            ],
-            &z_challenge,
-            aw_challenge,
-        );
-        let (w_z_comm, _) = PC::commit(
-            commit_key,
-            [label_polynomial!(aggregate_witness)].iter(),
-            None,
-        )
-        .unwrap();
-
-        // Compute aggregate witness to polynomials evaluated at the shifted
-        // evaluation challenge
-        let saw_challenge: F =
-            transcript.challenge_scalar(b"aggregate_witness");
-        let shifted_aggregate_witness = Self::compute_aggregate_witness(
-            &[z_poly, w_l_poly, w_r_poly, w_4_poly],
-            &(z_challenge * domain.element(1)),
-            saw_challenge,
-        );
-
-        let (w_zw_comm, _) = PC::commit(
-            commit_key,
-            [label_polynomial!(shifted_aggregate_witness)].iter(),
-            None,
-        )
-        .unwrap();
-
-        Ok(Proof {
-            a_comm: *w_commits[0].commitment(),
-            b_comm: *w_commits[1].commitment(),
-            c_comm: *w_commits[2].commitment(),
-            d_comm: *w_commits[3].commitment(),
-            z_comm: *z_poly_commit[0].commitment(),
-            t_1_comm: *t_commits[0].commitment(),
-            t_2_comm: *t_commits[1].commitment(),
-            t_3_comm: *t_commits[2].commitment(),
-            t_4_comm: *t_commits[3].commitment(),
-            w_z_comm: *w_z_comm[0].commitment(),
-            w_zw_comm: *w_zw_comm[0].commitment(),
-            evaluations: evaluations.proof,
-        })*/
     }
 
     /// Proves a circuit is satisfied, then clears the witness variables

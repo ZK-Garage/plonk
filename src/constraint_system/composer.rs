@@ -660,6 +660,7 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::commitment::HomomorphicCommitment;
     use crate::constraint_system::helper::*;
     use crate::prelude::Prover;
     use crate::prelude::Verifier;
@@ -668,11 +669,9 @@ mod test {
     use ark_bls12_381::Bls12_381;
     use ark_ec::models::TEModelParameters;
     use ark_ec::PairingEngine;
+    use ark_ff::{FftField, PrimeField};
     use ark_poly::univariate::DensePolynomial;
-    use ark_poly_commit::kzg10::{self, Powers, UniversalParams, KZG10};
-    use ark_poly_commit::sonic_pc::SonicKZG10;
     use ark_poly_commit::PolynomialCommitment;
-    use num_traits::One;
     use rand_core::OsRng;
 
     /// Tests that a circuit initially has 3 gates.
@@ -692,29 +691,35 @@ mod test {
     }
 
     /// Tests that an empty circuit proof passes.
-    fn test_prove_verify<E, P>()
+    fn test_prove_verify<F, P, PC>()
     where
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
+        //E: PairingEngine,
+        F: FftField + PrimeField,
+        P: TEModelParameters<BaseField = F>,
+        PC: PolynomialCommitment<F, DensePolynomial<F>>
+            + HomomorphicCommitment<F>,
     {
         // NOTE: Does nothing except add the dummy constraints.
         let res =
-            gadget_tester::<E, P>(|_: &mut StandardComposer<E::Fr, P>| {}, 200);
+            gadget_tester::<F, P, PC>(|_: &mut StandardComposer<F, P>| {}, 200);
         assert!(res.is_ok());
     }
 
-    fn test_conditional_select<E, P>()
+    fn test_conditional_select<F, P, PC>()
     where
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
+        //E: PairingEngine,
+        F: FftField + PrimeField,
+        P: TEModelParameters<BaseField = F>,
+        PC: PolynomialCommitment<F, DensePolynomial<F>>
+            + HomomorphicCommitment<F>,
     {
-        let res = gadget_tester::<E, P>(
-            |composer: &mut StandardComposer<E::Fr, P>| {
-                let bit_1 = composer.add_input(E::Fr::one());
+        let res = gadget_tester::<F, P, PC>(
+            |composer: &mut StandardComposer<F, P>| {
+                let bit_1 = composer.add_input(F::one());
                 let bit_0 = composer.zero_var();
 
-                let choice_a = composer.add_input(E::Fr::from(10u64));
-                let choice_b = composer.add_input(E::Fr::from(20u64));
+                let choice_a = composer.add_input(F::from(10u64));
+                let choice_b = composer.add_input(F::from(20u64));
 
                 let choice =
                     composer.conditional_select(bit_1, choice_a, choice_b);
@@ -730,29 +735,24 @@ mod test {
     }
 
     // FIXME: Move this to integration tests
-    fn test_multiple_proofs<E, P>()
+    fn test_multiple_proofs<F, P, PC>()
     where
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
+        //E: PairingEngine,
+        F: FftField + PrimeField,
+        P: TEModelParameters<BaseField = F>,
+        PC: PolynomialCommitment<F, DensePolynomial<F>>
+            + HomomorphicCommitment<F>,
     {
-        let u_params: UniversalParams<E> =
-            KZG10::<E, DensePolynomial<E::Fr>>::setup(
-                2 * 30,
-                false,
-                &mut OsRng,
-            )
-            .unwrap();
-
-        type PC<E> = SonicKZG10<E, DensePolynomial<<E as PairingEngine>::Fr>>;
+        let u_params = PC::setup(2 * 30, None, &mut OsRng).unwrap();
 
         // Create a prover struct
-        let mut prover: Prover<E::Fr, P, PC<E>> = Prover::new(b"demo");
+        let mut prover: Prover<F, P, PC> = Prover::new(b"demo");
 
         // Add gadgets
         dummy_gadget(10, prover.mut_cs());
 
         // Commit Key
-        let (ck, vk) = PC::<E>::trim(&u_params, 2 * 20, 0, None).unwrap();
+        let (ck, vk) = PC::trim(&u_params, 2 * 20, 0, None).unwrap();
 
         // Preprocess circuit
         prover.preprocess(&ck).unwrap();
@@ -771,7 +771,7 @@ mod test {
 
         // Verifier
         //
-        let mut verifier = Verifier::<E::Fr, P, PC<E>>::new(b"demo");
+        let mut verifier = Verifier::<F, P, PC>::new(b"demo");
 
         // Add gadgets
         dummy_gadget(10, verifier.mut_cs());

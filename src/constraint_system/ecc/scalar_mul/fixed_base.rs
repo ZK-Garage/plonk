@@ -174,16 +174,23 @@ mod tests {
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
     use ark_ec::{group::Group, AffineCurve, PairingEngine};
-    use ark_ff::PrimeField;
+    //use ark_ff::PrimeField;
+    use crate::commitment::HomomorphicCommitment;
+    use ark_ff::{FftField, PrimeField};
+    use ark_poly::univariate::DensePolynomial;
+    use ark_poly_commit::PolynomialCommitment;
 
-    fn test_ecc_constraint<E, P>()
+    fn test_ecc_constraint<F, P, PC>()
     where
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
+        //E: PairingEngine,
+        F: FftField + PrimeField,
+        P: TEModelParameters<BaseField = F>,
+        PC: PolynomialCommitment<F, DensePolynomial<F>>
+            + HomomorphicCommitment<F>,
     {
-        let res = gadget_tester::<E, P>(
-            |composer: &mut StandardComposer<E::Fr, P>| {
-                let scalar = E::Fr::from_le_bytes_mod_order(&[
+        let res = gadget_tester::<F, P, PC>(
+            |composer: &mut StandardComposer<F, P>| {
+                let scalar = F::from_le_bytes_mod_order(&[
                     182, 44, 247, 214, 94, 14, 151, 208, 130, 16, 200, 204,
                     147, 32, 104, 166, 0, 59, 52, 1, 1, 59, 103, 6, 169, 175,
                     51, 101, 234, 180, 125, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -196,7 +203,7 @@ mod tests {
                 let generator = TEGroupAffine::new(x, y);
                 let expected_point: TEGroupAffine<P> = AffineCurve::mul(
                     &generator,
-                    util::to_embedded_curve_scalar::<E::Fr, P>(scalar),
+                    util::to_embedded_curve_scalar::<F, P>(scalar),
                 )
                 .into();
 
@@ -211,21 +218,24 @@ mod tests {
         assert!(res.is_ok());
     }
 
-    fn test_ecc_constraint_zero<E, P>()
+    fn test_ecc_constraint_zero<F, P, PC>()
     where
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
+        //E: PairingEngine,
+        F: FftField + PrimeField,
+        P: TEModelParameters<BaseField = F>,
+        PC: PolynomialCommitment<F, DensePolynomial<F>>
+            + HomomorphicCommitment<F>,
     {
-        let res = gadget_tester::<E, P>(
-            |composer: &mut StandardComposer<E::Fr, P>| {
-                let scalar = E::Fr::zero();
+        let res = gadget_tester::<F, P, PC>(
+            |composer: &mut StandardComposer<F, P>| {
+                let scalar = F::zero();
                 let secret_scalar = composer.add_input(scalar);
 
                 let (x, y) = P::AFFINE_GENERATOR_COEFFS;
                 let generator = TEGroupAffine::new(x, y);
                 let expected_point = AffineCurve::mul(
                     &generator,
-                    util::to_embedded_curve_scalar::<E::Fr, P>(scalar),
+                    util::to_embedded_curve_scalar::<F, P>(scalar),
                 )
                 .into();
 
@@ -240,14 +250,17 @@ mod tests {
         assert!(res.is_ok());
     }
 
-    fn test_ecc_constraint_should_fail<E, P>()
+    fn test_ecc_constraint_should_fail<F, P, PC>()
     where
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
+        //E: PairingEngine,
+        F: FftField + PrimeField,
+        P: TEModelParameters<BaseField = F>,
+        PC: PolynomialCommitment<F, DensePolynomial<F>>
+            + HomomorphicCommitment<F>,
     {
-        let res = gadget_tester::<E, P>(
-            |composer: &mut StandardComposer<E::Fr, P>| {
-                let scalar = E::Fr::from(100u64);
+        let res = gadget_tester::<F, P, PC>(
+            |composer: &mut StandardComposer<F, P>| {
+                let scalar = F::from(100u64);
                 let secret_scalar = composer.add_input(scalar);
                 // Fails because we are not multiplying by the GENERATOR, it is
                 // double
@@ -257,7 +270,7 @@ mod tests {
 
                 let expected_point: TEGroupAffine<P> = AffineCurve::mul(
                     &double_gen,
-                    util::to_embedded_curve_scalar::<E::Fr, P>(scalar),
+                    util::to_embedded_curve_scalar::<F, P>(scalar),
                 )
                 .into();
 
@@ -273,13 +286,16 @@ mod tests {
         assert!(res.is_err());
     }
 
-    fn test_point_addition<E, P>()
+    fn test_point_addition<F, P, PC>()
     where
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
+        //E: PairingEngine,
+        F: FftField + PrimeField,
+        P: TEModelParameters<BaseField = F>,
+        PC: PolynomialCommitment<F, DensePolynomial<F>>
+            + HomomorphicCommitment<F>,
     {
-        let res = gadget_tester::<E, P>(
-            |composer: &mut StandardComposer<E::Fr, P>| {
+        let res = gadget_tester::<F, P, PC>(
+            |composer: &mut StandardComposer<F, P>| {
                 let (x, y) = P::AFFINE_GENERATOR_COEFFS;
                 let generator = TEGroupAffine::new(x, y);
 
@@ -310,42 +326,45 @@ mod tests {
         assert!(res.is_ok());
     }
 
-    fn test_pedersen_hash<E, P>()
+    fn test_pedersen_hash<F, P, PC>()
     where
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
+        //E: PairingEngine,
+        F: FftField + PrimeField,
+        P: TEModelParameters<BaseField = F>,
+        PC: PolynomialCommitment<F, DensePolynomial<F>>
+            + HomomorphicCommitment<F>,
     {
-        let res = gadget_tester::<E, P>(
-            |composer: &mut StandardComposer<E::Fr, P>| {
+        let res = gadget_tester::<F, P, PC>(
+            |composer: &mut StandardComposer<F, P>| {
                 let (x, y) = P::AFFINE_GENERATOR_COEFFS;
                 let generator = TEGroupAffine::new(x, y);
                 // First component
-                let scalar_a = E::Fr::from(112233u64);
+                let scalar_a = F::from(112233u64);
                 let secret_scalar_a = composer.add_input(scalar_a);
                 let point_a = generator;
                 let expected_component_a: TEGroupAffine<P> = AffineCurve::mul(
                     &point_a,
-                    util::to_embedded_curve_scalar::<E::Fr, P>(scalar_a),
+                    util::to_embedded_curve_scalar::<F, P>(scalar_a),
                 )
                 .into();
 
                 // Second component
-                let scalar_b = E::Fr::from(445566u64);
+                let scalar_b = F::from(445566u64);
                 let secret_scalar_b = composer.add_input(scalar_b);
                 let point_b = point_a.double() + point_a;
                 let expected_component_b: TEGroupAffine<P> = AffineCurve::mul(
                     &point_b,
-                    util::to_embedded_curve_scalar::<E::Fr, P>(scalar_b),
+                    util::to_embedded_curve_scalar::<F, P>(scalar_b),
                 )
                 .into();
 
                 // Expected pedersen hash
                 let expected_point = (AffineCurve::mul(
                     &point_a,
-                    util::to_embedded_curve_scalar::<E::Fr, P>(scalar_a),
+                    util::to_embedded_curve_scalar::<F, P>(scalar_a),
                 ) + AffineCurve::mul(
                     &point_b,
-                    util::to_embedded_curve_scalar::<E::Fr, P>(scalar_b),
+                    util::to_embedded_curve_scalar::<F, P>(scalar_b),
                 ))
                 .into();
 
@@ -384,27 +403,30 @@ mod tests {
         assert!(res.is_ok());
     }
 
-    fn test_pedersen_balance<E, P>()
+    fn test_pedersen_balance<F, P, PC>()
     where
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
+        //E: PairingEngine,
+        F: FftField + PrimeField,
+        P: TEModelParameters<BaseField = F>,
+        PC: PolynomialCommitment<F, DensePolynomial<F>>
+            + HomomorphicCommitment<F>,
     {
-        let res = gadget_tester::<E, P>(
-            |composer: &mut StandardComposer<E::Fr, P>| {
+        let res = gadget_tester::<F, P, PC>(
+            |composer: &mut StandardComposer<F, P>| {
                 let (x, y) = P::AFFINE_GENERATOR_COEFFS;
                 let generator = TEGroupAffine::new(x, y);
 
                 // First component
-                let scalar_a = E::Fr::from(25u64);
+                let scalar_a = F::from(25u64);
                 let secret_scalar_a = composer.add_input(scalar_a);
                 // Second component
-                let scalar_b = E::Fr::from(30u64);
+                let scalar_b = F::from(30u64);
                 let secret_scalar_b = composer.add_input(scalar_b);
                 // Third component
-                let scalar_c = E::Fr::from(10u64);
+                let scalar_c = F::from(10u64);
                 let secret_scalar_c = composer.add_input(scalar_c);
                 // Fourth component
-                let scalar_d = E::Fr::from(45u64);
+                let scalar_d = F::from(45u64);
                 let secret_scalar_d = composer.add_input(scalar_d);
 
                 let (x, y) = P::AFFINE_GENERATOR_COEFFS;
@@ -412,16 +434,12 @@ mod tests {
 
                 let expected_lhs: TEGroupAffine<P> = AffineCurve::mul(
                     &gen,
-                    util::to_embedded_curve_scalar::<E::Fr, P>(
-                        scalar_a + scalar_b,
-                    ),
+                    util::to_embedded_curve_scalar::<F, P>(scalar_a + scalar_b),
                 )
                 .into();
                 let expected_rhs: TEGroupAffine<P> = AffineCurve::mul(
                     &gen,
-                    util::to_embedded_curve_scalar::<E::Fr, P>(
-                        scalar_c + scalar_d,
-                    ),
+                    util::to_embedded_curve_scalar::<F, P>(scalar_c + scalar_d),
                 )
                 .into();
 

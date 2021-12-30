@@ -6,10 +6,10 @@
 
 //! Tools & traits for PLONK circuits
 
+use crate::commitment::HomomorphicCommitment;
 use crate::constraint_system::StandardComposer;
 use crate::error::Error;
 use crate::proof_system::{Proof, Prover, ProverKey, Verifier, VerifierKey};
-use crate::util::HomomorphicCommitment;
 use ark_ec::models::{ModelParameters, SWModelParameters, TEModelParameters};
 use ark_ec::{
     short_weierstrass_jacobian::{

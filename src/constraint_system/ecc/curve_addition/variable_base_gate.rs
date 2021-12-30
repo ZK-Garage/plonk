@@ -100,6 +100,11 @@ mod test {
     use ark_bls12_381::Bls12_381;
     use ark_ec::PairingEngine;
 
+    use crate::commitment::HomomorphicCommitment;
+    use ark_ff::{FftField, PrimeField};
+    use ark_poly::univariate::DensePolynomial;
+    use ark_poly_commit::PolynomialCommitment;
+
     /// Adds two curve points together using the classical point addition
     /// algorithm. This method is slower than WNAF and is just meant to be the
     /// source of truth to test the WNAF method.
@@ -245,13 +250,16 @@ mod test {
         Point::new(x_3, y_3)
     }
 
-    fn test_curve_addition<E, P>()
+    fn test_curve_addition<F, P, PC>()
     where
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
+        //E: PairingEngine,
+        F: FftField + PrimeField,
+        P: TEModelParameters<BaseField = F>,
+        PC: PolynomialCommitment<F, DensePolynomial<F>>
+            + HomomorphicCommitment<F>,
     {
-        let res = gadget_tester::<E, P>(
-            |composer: &mut StandardComposer<E::Fr, P>| {
+        let res = gadget_tester::<F, P, PC>(
+            |composer: &mut StandardComposer<F, P>| {
                 let (x, y) = P::AFFINE_GENERATOR_COEFFS;
                 let generator = TEGroupAffine::<P>::new(x, y);
                 let x_var = composer.add_input(x);

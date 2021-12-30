@@ -54,21 +54,28 @@ where
 mod test {
     use super::*;
     use crate::batch_test;
+    use crate::commitment::HomomorphicCommitment;
     use crate::constraint_system::helper::*;
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
     use ark_ec::{PairingEngine, TEModelParameters};
+    use ark_ff::{FftField, PrimeField};
+    use ark_poly::univariate::DensePolynomial;
+    use ark_poly_commit::PolynomialCommitment;
     use num_traits::One;
 
-    fn test_correct_bool_gate<E, P>()
+    fn test_correct_bool_gate<F, P, PC>()
     where
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
+        //E: PairingEngine,
+        F: FftField + PrimeField,
+        P: TEModelParameters<BaseField = F>,
+        PC: PolynomialCommitment<F, DensePolynomial<F>>
+            + HomomorphicCommitment<F>,
     {
-        let res = gadget_tester::<E, P>(
-            |composer: &mut StandardComposer<E::Fr, P>| {
+        let res = gadget_tester::<F, P, PC>(
+            |composer: &mut StandardComposer<F, P>| {
                 let zero = composer.zero_var();
-                let one = composer.add_input(E::Fr::one());
+                let one = composer.add_input(F::one());
                 composer.boolean_gate(zero);
                 composer.boolean_gate(one);
             },
@@ -77,15 +84,18 @@ mod test {
         assert!(res.is_ok())
     }
 
-    fn test_incorrect_bool_gate<E, P>()
+    fn test_incorrect_bool_gate<F, P, PC>()
     where
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
+        //E: PairingEngine,
+        F: FftField + PrimeField,
+        P: TEModelParameters<BaseField = F>,
+        PC: PolynomialCommitment<F, DensePolynomial<F>>
+            + HomomorphicCommitment<F>,
     {
-        let res = gadget_tester::<E, P>(
-            |composer: &mut StandardComposer<E::Fr, P>| {
-                let zero = composer.add_input(E::Fr::from(5u64));
-                let one = composer.add_input(E::Fr::one());
+        let res = gadget_tester::<F, P, PC>(
+            |composer: &mut StandardComposer<F, P>| {
+                let zero = composer.add_input(F::from(5u64));
+                let one = composer.add_input(F::one());
                 composer.boolean_gate(zero);
                 composer.boolean_gate(one);
             },

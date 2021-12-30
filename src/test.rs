@@ -80,7 +80,7 @@ macro_rules! batch_test {
                 #[test]
                 #[allow(non_snake_case)]
                 fn [< $test_set _on_ $engine>]() {
-                    $test_set::<$engine, $params>()
+                    $test_set::<<$engine as PairingEngine>::Fr, $params, crate::commitment::KZG10<$engine>>()
                 }
             )*
             $(
@@ -88,7 +88,30 @@ macro_rules! batch_test {
                 #[should_panic]
                 #[allow(non_snake_case)]
                 fn [< $test_panic_set _on_ $engine>]() {
-                    $test_panic_set::<$engine, $params>()
+                    $test_panic_set::<<$engine as PairingEngine>::Fr, $params, crate::commitment::KZG10<$engine>>()
+                }
+            )*
+        }
+    }
+}
+
+#[macro_export]
+macro_rules! batch_test_ipa {
+    ( [$($test_set:ident),*], [$($test_panic_set:ident),*] => ($curve:ty, $params:ty) ) => {
+        paste::item! {
+            $(
+                #[test]
+                #[allow(non_snake_case)]
+                fn [< $test_set _on_ $engine>]() {
+                    $test_set::<$curve::Fr, $params, ark_poly_commit::ipa_pc::InnerProductArgPC<$curve, blake2::Blake2s, DensePolynomial<$curve::Fr>>>()
+                }
+            )*
+            $(
+                #[test]
+                #[should_panic]
+                #[allow(non_snake_case)]
+                fn [< $test_panic_set _on_ $engine>]() {
+                    $test_panic_set::<$curve::Fr, $params, ark_poly_commit::ipa_pc::InnerProductArgPC<$curve, blake2::Blake2s, DensePolynomial<$curve::Fr>>>()
                 }
             )*
         }

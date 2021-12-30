@@ -7,11 +7,11 @@
 //! Verifier-side of the PLONK Proving System
 
 //use crate::circuit::EmbeddedCurve;
+use crate::commitment::HomomorphicCommitment;
 use crate::constraint_system::StandardComposer;
 use crate::error::Error;
 use crate::proof_system::widget::VerifierKey as PlonkVerifierKey;
 use crate::proof_system::Proof;
-use crate::util::HomomorphicCommitment;
 use ark_ec::{PairingEngine, TEModelParameters};
 use ark_ff::{FftField, PrimeField};
 use ark_poly::univariate::DensePolynomial;
