@@ -80,11 +80,10 @@ where
 
             let two_pow = F::from(2u64).pow([power as u64, 0, 0, 0]);
 
-            let q_l_a = (two_pow, *bit);
-            let q_r_b = (F::one(), accumulator_var);
-            let q_c = F::zero();
-
-            accumulator_var = self.add(q_l_a, q_r_b, q_c, None);
+            accumulator_var = self.arithmetic_gate(|gate| {
+                gate.witness(*bit, accumulator_var, None)
+                    .add(two_pow, F::one())
+            });
 
             accumulator_scalar +=
                 two_pow * F::from(scalar_bits_iter[power] as u64);

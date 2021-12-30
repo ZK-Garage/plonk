@@ -44,8 +44,8 @@ use ark_ec::{ModelParameters, SWModelParameters, TEModelParameters};
 /// The StandardComposer also contains as associated functions all the
 /// neccessary tools to be able to istrument the circuits that the user needs
 /// through the addition of gates. There are functions that may add a single
-/// gate to the circuit as for example [`StandardComposer::add_gate`] and others
-/// that can add several gates to the circuit description such as
+/// arithmetic gate to the circuit [`StandardComposer::arithmetic_gate`] and
+/// others that can add several gates to the circuit description such as
 /// [`StandardComposer::conditional_select`].
 ///
 /// Each gate or group of gates adds an specific functionallity or operation to
@@ -149,7 +149,7 @@ where
 impl<F, P> Default for StandardComposer<F, P>
 where
     F: FftField,
-    P: ModelParameters<BaseField = F>,
+    P: TEModelParameters<BaseField = F>,
 {
     #[inline]
     fn default() -> Self {
@@ -160,7 +160,7 @@ where
 impl<F, P> StandardComposer<F, P>
 where
     F: FftField,
-    P: ModelParameters<BaseField = F>,
+    P: TEModelParameters<BaseField = F>,
 {
     /// Generates a new empty `StandardComposer` with all of it's fields
     /// set to hold an initial capacity of 0.
@@ -352,28 +352,29 @@ where
         choice_a: Variable,
         choice_b: Variable,
     ) -> Variable {
+        let zero = self.zero_var;
         // bit * choice_a
-        let bit_times_a = self.mul(F::one(), bit, choice_a, F::zero(), None);
+        let bit_times_a = self.arithmetic_gate(|gate| {
+            gate.witness(bit, choice_a, None).mul(F::one())
+        });
 
         // 1 - bit
-        let one_min_bit = self.add(
-            (-F::one(), bit),
-            (F::zero(), self.zero_var),
-            F::one(),
-            None,
-        );
+        let one_min_bit = self.arithmetic_gate(|gate| {
+            gate.witness(bit, zero, None)
+                .add(-F::one(), F::zero())
+                .constant(F::one())
+        });
 
         // (1 - bit) * b
-        let one_min_bit_choice_b =
-            self.mul(F::one(), one_min_bit, choice_b, F::zero(), None);
+        let one_min_bit_choice_b = self.arithmetic_gate(|gate| {
+            gate.witness(one_min_bit, choice_b, None).mul(F::one())
+        });
 
         // [ (1 - bit) * b ] + [ bit * a ]
-        self.add(
-            (F::one(), one_min_bit_choice_b),
-            (F::one(), bit_times_a),
-            F::zero(),
-            None,
-        )
+        self.arithmetic_gate(|gate| {
+            gate.witness(one_min_bit_choice_b, bit_times_a, None)
+                .add(F::one(), F::one())
+        })
     }
 
     /// Adds the polynomial f(x) = x * a to the circuit description where
@@ -391,7 +392,9 @@ where
         value: Variable,
     ) -> Variable {
         // returns bit * value
-        self.mul(F::one(), bit, value, F::zero(), None)
+        self.arithmetic_gate(|gate| {
+            gate.witness(bit, value, None).mul(F::one())
+        })
     }
 
     /// Adds the polynomial f(x) = 1 - x + xa to the circuit description where
@@ -662,8 +665,7 @@ mod test {
     use super::*;
     use crate::commitment::HomomorphicCommitment;
     use crate::constraint_system::helper::*;
-    use crate::prelude::Prover;
-    use crate::prelude::Verifier;
+    use crate::proof_system::{Prover, Verifier};
     use crate::{batch_test, batch_test_field_params};
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
@@ -672,13 +674,13 @@ mod test {
     use ark_ff::{FftField, PrimeField};
     use ark_poly::univariate::DensePolynomial;
     use ark_poly_commit::PolynomialCommitment;
-    use rand_core::OsRng;
+    use rand::rngs::OsRng;
 
     /// Tests that a circuit initially has 3 gates.
     fn test_initial_circuit_size<F, P>()
     where
         F: FftField,
-        P: ModelParameters<BaseField = F>,
+        P: TEModelParameters<BaseField = F>,
     {
         // NOTE: Circuit size is n+3 because
         // - We have an extra gate which forces the first witness to be zero.

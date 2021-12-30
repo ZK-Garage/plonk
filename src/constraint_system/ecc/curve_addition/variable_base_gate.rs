@@ -117,6 +117,7 @@ mod test {
         F: PrimeField,
         P: TEModelParameters<BaseField = F>,
     {
+        let zero = composer.zero_var;
         let x1 = point_a.x;
         let y1 = point_a.y;
 
@@ -124,64 +125,38 @@ mod test {
         let y2 = point_b.y;
 
         // x1 * y2
-        let x1_y2 = composer.mul(
-            P::BaseField::one(),
-            x1,
-            y2,
-            P::BaseField::zero(),
-            None,
-        );
+        let x1_y2 = composer
+            .arithmetic_gate(|gate| gate.mul(F::one()).witness(x1, y2, None));
         // y1 * x2
-        let y1_x2 = composer.mul(
-            P::BaseField::one(),
-            y1,
-            x2,
-            P::BaseField::zero(),
-            None,
-        );
+        let y1_x2 = composer
+            .arithmetic_gate(|gate| gate.mul(F::one()).witness(y1, x2, None));
         // y1 * y2
-        let y1_y2 = composer.mul(
-            P::BaseField::one(),
-            y1,
-            y2,
-            P::BaseField::zero(),
-            None,
-        );
+        let y1_y2 = composer
+            .arithmetic_gate(|gate| gate.mul(F::one()).witness(y1, y2, None));
         // x1 * x2
-        let x1_x2 = composer.mul(
-            P::BaseField::one(),
-            x1,
-            x2,
-            P::BaseField::zero(),
-            None,
-        );
+        let x1_x2 = composer
+            .arithmetic_gate(|gate| gate.mul(F::one()).witness(x1, x2, None));
         // d x1x2 * y1y2
-        let d_x1_x2_y1_y2 =
-            composer.mul(P::COEFF_D, x1_x2, y1_y2, P::BaseField::zero(), None);
+        let d_x1_x2_y1_y2 = composer.arithmetic_gate(|gate| {
+            gate.mul(P::COEFF_D).witness(x1_x2, y1_y2, None)
+        });
 
         // x1y2 + y1x2
-        let x_numerator = composer.add(
-            (P::BaseField::one(), x1_y2),
-            (P::BaseField::one(), y1_x2),
-            P::BaseField::zero(),
-            None,
-        );
+        let x_numerator = composer.arithmetic_gate(|gate| {
+            gate.witness(x1_y2, y1_x2, None).add(F::one(), F::one())
+        });
 
         // y1y2 - a * x1x2 (a=-1) => y1y2 + x1x2
-        let y_numerator = composer.add(
-            (P::BaseField::one(), y1_y2),
-            (P::BaseField::one(), x1_x2),
-            P::BaseField::zero(),
-            None,
-        );
+        let y_numerator = composer.arithmetic_gate(|gate| {
+            gate.witness(y1_y2, x1_x2, None).add(F::one(), F::one())
+        });
 
         // 1 + dx1x2y1y2
-        let x_denominator = composer.add(
-            (P::BaseField::one(), d_x1_x2_y1_y2),
-            (P::BaseField::zero(), composer.zero_var),
-            P::BaseField::one(),
-            None,
-        );
+        let x_denominator = composer.arithmetic_gate(|gate| {
+            gate.witness(d_x1_x2_y1_y2, zero, None)
+                .add(F::one(), F::zero())
+                .constant(F::one())
+        });
 
         // Compute the inverse
         let inv_x_denom = composer
@@ -194,58 +169,44 @@ mod test {
 
         // Assert that we actually have the inverse
         // inv_x * x = 1
-        composer.mul_gate(
-            x_denominator,
-            inv_x_denom,
-            composer.zero_var,
-            P::BaseField::one(),
-            P::BaseField::zero(),
-            -P::BaseField::one(),
-            None,
-        );
+        composer.arithmetic_gate(|gate| {
+            gate.witness(x_denominator, inv_x_denom, Some(zero))
+                .mul(F::one())
+                .constant(-F::one())
+        });
 
         // 1 - dx1x2y1y2
-        let y_denominator = composer.add(
-            (-P::BaseField::one(), d_x1_x2_y1_y2),
-            (P::BaseField::zero(), composer.zero_var),
-            P::BaseField::one(),
-            None,
-        );
+        let y_denominator = composer.arithmetic_gate(|gate| {
+            gate.witness(d_x1_x2_y1_y2, zero, None)
+                .add(-F::one(), F::zero())
+                .constant(F::one())
+        });
+
         let inv_y_denom = composer
             .variables
             .get(&y_denominator)
             .unwrap()
             .inverse()
             .unwrap();
+
         let inv_y_denom = composer.add_input(inv_y_denom);
         // Assert that we actually have the inverse
         // inv_y * y = 1
-        composer.mul_gate(
-            y_denominator,
-            inv_y_denom,
-            composer.zero_var,
-            P::BaseField::one(),
-            P::BaseField::zero(),
-            -P::BaseField::one(),
-            None,
-        );
+        composer.arithmetic_gate(|gate| {
+            gate.mul(F::one())
+                .witness(y_denominator, inv_y_denom, Some(zero))
+                .constant(-F::one())
+        });
 
         // We can now use the inverses
 
-        let x_3 = composer.mul(
-            P::BaseField::one(),
-            inv_x_denom,
-            x_numerator,
-            P::BaseField::zero(),
-            None,
-        );
-        let y_3 = composer.mul(
-            P::BaseField::one(),
-            inv_y_denom,
-            y_numerator,
-            P::BaseField::zero(),
-            None,
-        );
+        let x_3 = composer.arithmetic_gate(|gate| {
+            gate.mul(F::one()).witness(inv_x_denom, x_numerator, None)
+        });
+
+        let y_3 = composer.arithmetic_gate(|gate| {
+            gate.mul(F::one()).witness(inv_y_denom, y_numerator, None)
+        });
 
         Point::new(x_3, y_3)
     }

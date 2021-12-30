@@ -1,3 +1,9 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+//
+// Copyright (c) ZK-GARAGE. All rights reserved.
+
 //! Benchmarks
 
 use ark_bls12_381::{Bls12_381, Fr as BlsScalar};
@@ -64,8 +70,18 @@ fn constraint_system_benchmark(c: &mut Criterion) {
     const MINIMUM_DEGREE: usize = 5;
     const MAXIMUM_DEGREE: usize = 19;
 
+<<<<<<< HEAD
     let pp = KZG10::<Bls12_381>::setup(1 << MAXIMUM_DEGREE, None, &mut OsRng)
         .expect("Unable to sample public parameters.");
+=======
+    let pp = KZG10::<Bls12_381, DensePolynomial<BlsScalar>>::setup(
+        // +1 per wire, +2 for the permutation poly
+        1 << MAXIMUM_DEGREE + 6,
+        false,
+        &mut OsRng,
+    )
+    .expect("Unable to sample public parameters.");
+>>>>>>> upstream/master
 
     let mut compiling_benchmarks = c.benchmark_group("compile");
     for degree in MINIMUM_DEGREE..MAXIMUM_DEGREE {

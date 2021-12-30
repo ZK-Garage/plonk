@@ -15,7 +15,8 @@ use ark_ec::{ModelParameters, TEModelParameters};
 use ark_ff::FftField;
 use ark_ff::Field;
 use ark_poly::{
-    univariate::DensePolynomial, GeneralEvaluationDomain, Polynomial,
+    univariate::DensePolynomial, EvaluationDomain, GeneralEvaluationDomain,
+    Polynomial,
 };
 use ark_serialize::{
     CanonicalDeserialize, CanonicalSerialize, Read, SerializationError, Write,
@@ -164,6 +165,7 @@ where
     );
 
     let permutation = prover_key.permutation.compute_linearisation(
+        domain.size(),
         *z_challenge,
         (*alpha, *beta, *gamma),
         (a_eval, b_eval, c_eval, d_eval),

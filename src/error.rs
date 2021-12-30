@@ -84,7 +84,6 @@ impl From<ark_poly_commit::error::Error> for Error {
     }
 }
 
-#[cfg(feature = "std")]
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -143,5 +142,4 @@ impl std::fmt::Display for Error {
     }
 }
 
-#[cfg(feature = "std")]
 impl std::error::Error for Error {}

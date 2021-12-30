@@ -10,13 +10,13 @@
 //! `AND` gate.
 
 use crate::constraint_system::{StandardComposer, Variable, WireData};
-use ark_ec::ModelParameters;
+use ark_ec::TEModelParameters;
 use ark_ff::{BigInteger, PrimeField};
 
 impl<F, P> StandardComposer<F, P>
 where
     F: PrimeField,
-    P: ModelParameters<BaseField = F>,
+    P: TEModelParameters<BaseField = F>,
 {
     /// Performs a logical AND or XOR op between the inputs provided for the
     /// specified number of bits.

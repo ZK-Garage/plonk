@@ -146,18 +146,11 @@ where
         let xy_alpha = self.zero_var;
         let last_accumulated_bit = self.add_input(scalar_acc[num_bits]);
 
-        self.big_add_gate(
-            acc_x,
-            acc_y,
-            xy_alpha,
-            Some(last_accumulated_bit),
-            F::zero(),
-            F::zero(),
-            F::zero(),
-            F::zero(),
-            F::zero(),
-            None,
-        );
+        self.arithmetic_gate(|gate| {
+            gate.witness(acc_x, acc_y, Some(xy_alpha))
+                .fan_in_3(F::zero(), last_accumulated_bit)
+                .out(F::zero())
+        });
 
         // Constrain the last element in the accumulator to be equal to the
         // input scalar.

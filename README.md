@@ -1,6 +1,6 @@
 # PLONK
-![Build Status](https://github.com/rust-zkp/ark-plonk/workflows/Continuous%20integration/badge.svg)
-[![Repository](https://img.shields.io/badge/github-plonk-blueviolet?logo=github)](https://github.com/rust-zkp/ark-plonk)
+[![CI checks](https://github.com/ZK-Garage/plonk/actions/workflows/ci.yml/badge.svg)](https://github.com/ZK-Garage/plonk/actions/workflows/ci.yml)
+[![Repository](https://img.shields.io/badge/github-plonk-blueviolet?logo=github)](https://github.com/ZK-Garage/plonk)
 [![Documentation](https://img.shields.io/badge/docs-plonk-blue?logo=rust)](https://docs.rs/plonk/)
 
 
@@ -9,135 +9,11 @@ _This is a pure Rust implementation of the PLONK zk proving system_
 
 ## About
 Initial implementation created by [Kev](https://github.com/kevaundray), [Carlos](https://github.com/CPerezz) and [Luke](https://github.com/LukePearson1) at Dusk Network.
-Redesigned by the [rust zkp](https://github.com/rust-zkp) team to have a backend which is compatible with the [arkworks](https://github.com/arkworks-rs) suite. This allows us to leverage the multitude of curves
-and optimised algebra present in various arkworks repositories.
+Redesigned by the [ZK-Garage](https://github.com/ZK-Garage) team to have a backend which is compatible with the [arkworks](https://github.com/arkworks-rs) suite. This allows us to leverage the multitude of curves and optimised algebra present in various arkworks repositories.
 
-## Usage
-```rust
-use core::marker::PhantomData;
-use ark_bls12_381::{Bls12_381, Fr as BlsScalar};
-use ark_ec::twisted_edwards_extended::GroupAffine;
-use ark_ec::{AffineCurve, PairingEngine, TEModelParameters};
-use ark_ed_on_bls12_381::{
-    EdwardsAffine as JubjubAffine, EdwardsParameters as JubjubParameters,
-    EdwardsProjective as JubjubProjective, Fr as JubjubScalar,
-};
-use ark_ff::{BigInteger, PrimeField};
-use ark_plonk::circuit::{self, Circuit, PublicInputValue};
-use ark_plonk::prelude::*;
-use num_traits::{One, Zero};
-use rand_core::OsRng;
+Please, if you're interested on collaborating or contributing, you can join our Discord here: <https://discord.gg/XWJdhVf37F>
 
-// Implement a circuit that checks:
-// 1) a + b = c where C is a PI
-// 2) a <= 2^6
-// 3) b <= 2^5
-// 4) a * b = d where D is a PI
-// 5) JubJub::GENERATOR * e(JubJubScalar) = f where F is a Public Input
-#[derive(Debug, Default)]
-pub struct TestCircuit<
-    E: PairingEngine,
-    P: TEModelParameters<BaseField = E::Fr>,
-> {
-    a: E::Fr,
-    b: E::Fr,
-    c: E::Fr,
-    d: E::Fr,
-    e: P::ScalarField,
-    f: GroupAffine<P>,
-}
-impl<
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
-    > Circuit<E, P> for TestCircuit<E, P>
-{
-    const CIRCUIT_ID: [u8; 32] = [0xff; 32];
-    fn gadget(
-        &mut self,
-        composer: &mut StandardComposer<E, P>,
-    ) -> Result<(), Error> {
-        let a = composer.add_input(self.a);
-        let b = composer.add_input(self.b);
-        // Make first constraint a + b = c
-        let add_result = composer.add(
-          (E::Fr::one(), a),
-          (E::Fr::one(), b),
-          E::Fr::zero(),
-          Some(-self.c),
-        );
-	composer.assert_equal(add_result, composer.zero_var());
-
-        // Check that a and b are in range
-        composer.range_gate(a, 1 << 6);
-        composer.range_gate(b, 1 << 5);
-        // Make second constraint a * b = d
-        let mul_result = composer.mul(E::Fr::one(), a, b, E::Fr::zero(), Some(-self.d));
-        composer.assert_equal(mul_result, composer.zero_var());
-
-        let e_repr = self.e.into_repr().to_bytes_le();
-        let e = composer.add_input(E::Fr::from_le_bytes_mod_order(&e_repr));
-        let (x, y) = P::AFFINE_GENERATOR_COEFFS;
-        let generator = GroupAffine::new(x, y);
-        let scalar_mul_result = composer.fixed_base_scalar_mul(e, generator);
-        // Apply the constrain
-        composer.assert_equal_public_point(scalar_mul_result, self.f);
-        Ok(())
-    }
-    fn padded_circuit_size(&self) -> usize {
-        1 << 11
-    }
-}
-
-// Now let's use the Circuit we've just implemented!
-fn main()-> Result<(), Error> {
-    let pp: PublicParameters<Bls12_381> = KZG10::<Bls12_381,DensePolynomial<BlsScalar>,>::setup(
-          1 << 12, false, &mut OsRng
-    )?;
-    // Initialize the circuit
-    let mut circuit: TestCircuit::<
-        Bls12_381,
-        JubjubParameters,
-    > = TestCircuit::default();
-    // Compile the circuit
-    let (pk, vd) = circuit.compile(&pp).unwrap();
-    // Generator
-    let (x, y) = JubJubParameters::AFFINE_GENERATOR_COEFFS;
-    let generator = JubJubAffine::new(x, y);
-    let point_f_pi: JubJubAffine = AffineCurve::mul(
-      &generator,
-      JubJubScalar::from(2u64).into_repr(),
-    ).into_affine();
-    let proof = {
-        let mut circuit = TestCircuit {
-            a: BlsScalar::from(20u64),
-            b: BlsScalar::from(5u64),
-            c: BlsScalar::from(25u64),
-            d: BlsScalar::from(100u64),
-            e: JubJubScalar::from(2u64),
-            f: point_f_pi,
-        };
-        circuit.gen_proof(&pp, pk, b"Test").unwrap()
-    };
-
-    let public_inputs: Vec<PublicInputValue<BlsScalar, JubjubParameters>> = vec![
-        BlsScalar::from(25u64).into_pi(),
-        BlsScalar::from(100u64).into_pi(),
-        point_f_pi.into_pi()
-    ];
-
-    circuit::verify_proof(
-        &pp,
-        *vd.key(),
-        &proof,
-        &public_inputs,
-        &vd.pi_pos(),
-        b"Test",
-    )
-    .unwrap();
-}
-```
-
-### Features
+## Features
 
 This crate includes a variety of features which will briefly be explained below:
 - `parallel`: Enables `rayon` and other parallelisation primitives to be used and speed up some of the algorithms used
@@ -220,9 +96,9 @@ Verify 2^18 = 262144 gates/18 time:   [6.7577 ms 6.8124 ms 6.8925 ms]
 
 ## Licensing
 
-This code is licensed under Mozilla Public License Version 2.0 (MPL-2.0). Please see [LICENSE](https://github.com/rust-zkp/ark-plonk/blob/master/LICENSE) for further info.
+This software is distributed under the terms of Mozilla Public License Version 2.0 (MPL-2.0). Please see [LICENSE](https://github.com/dusk-network/plonk/blob/master/LICENSE) for further info.
 
 ## Contributing
-
-- If you want to contribute to this repository/project please, check [CONTRIBUTING.md](https://github.com/rust-zkp/ark-plonk/blob/master/CONTRIBUTING.md)
+- If you want to contribute to this repository/project please, check [CONTRIBUTING.md](https://github.com/ZK-Garage/plonk/blob/master/CONTRIBUTING.md)
 - If you want to report a bug or request a new feature addition, please open an issue on this repository.
+

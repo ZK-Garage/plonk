@@ -35,7 +35,7 @@ hashbrown = { version = "0.11.2", default-features = false, features = ["ahash"]
 itertools = { version = "0.10.1", default-features = false }
 merlin = { version = "3.0", default-features = false }
 num-traits = "0.2.14"
-rand_core = { version = "0.6", default-features = false, features = ["getrandom"] }
+rand = { version = "0.8", default-features = false, features = ["getrandom"] }
 
 [dev-dependencies]
 ark-sponge = "0.3"
@@ -53,7 +53,7 @@ blake2 = "0.10"
 
 [features]
 default = [
-    "rand_core/std",
+    "rand/std",
     "itertools/default",
     "parallel",
     "asm"

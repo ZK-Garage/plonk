@@ -20,7 +20,10 @@ use core::marker::PhantomData;
 /// Represents a point of the embeded curve in the circuit
 #[derive(derivative::Derivative)]
 #[derivative(Clone, Copy, Debug)]
-pub struct Point<P: ModelParameters> {
+pub struct Point<P>
+where
+    P: ModelParameters,
+{
     /// `X`-coordinate
     x: Variable,
 
@@ -33,8 +36,8 @@ pub struct Point<P: ModelParameters> {
 
 impl<F, P> Point<P>
 where
-    P: ModelParameters<BaseField = F>,
     F: FftField,
+    P: TEModelParameters<BaseField = F>,
 {
     /// Builds a new [`Point`] from `X` and `Y` coordinates.
     ///
@@ -69,20 +72,20 @@ where
     }
 }
 
-impl<F, M> StandardComposer<F, M>
+impl<F, P> StandardComposer<F, P>
 where
     F: FftField,
-    M: TEModelParameters<BaseField = F>,
+    P: TEModelParameters<BaseField = F>,
 {
     /// Converts an embeded curve point into a constraint system Point
     /// without constraining the values
-    pub fn add_affine(&mut self, affine: TEGroupAffine<M>) -> Point<M> {
+    pub fn add_affine(&mut self, affine: TEGroupAffine<P>) -> Point<P> {
         Point::new(self.add_input(affine.x), self.add_input(affine.y))
     }
 
     /// Converts an embeded curve point into a constraint system Point
     /// without constraining the values
-    pub fn add_public_affine(&mut self, affine: TEGroupAffine<M>) -> Point<M> {
+    pub fn add_public_affine(&mut self, affine: TEGroupAffine<P>) -> Point<P> {
         let point = self.add_affine(affine);
         self.constrain_to_constant(point.x, F::zero(), Some(-affine.x));
         self.constrain_to_constant(point.y, F::zero(), Some(-affine.y));
@@ -93,8 +96,8 @@ where
     /// constrained witness value
     pub fn add_affine_to_circuit_description(
         &mut self,
-        affine: TEGroupAffine<M>,
-    ) -> Point<M> {
+        affine: TEGroupAffine<P>,
+    ) -> Point<P> {
         // NOTE: Not using individual gates because one of these may be zero.
         Point::new(
             self.add_witness_to_circuit_description(affine.x),
@@ -106,22 +109,22 @@ where
     /// point.
     pub fn assert_equal_public_point(
         &mut self,
-        point: Point<M>,
-        public_point: TEGroupAffine<M>,
+        point: Point<P>,
+        public_point: TEGroupAffine<P>,
     ) {
         self.constrain_to_constant(point.x, F::zero(), Some(-public_point.x));
         self.constrain_to_constant(point.y, F::zero(), Some(-public_point.y));
     }
 }
 
-impl<F, M> StandardComposer<F, M>
+impl<F, P> StandardComposer<F, P>
 where
     F: FftField,
-    M: ModelParameters<BaseField = F>,
+    P: TEModelParameters<BaseField = F>,
 {
     /// Asserts that a point in the circuit is equal to another point in the
     /// circuit.
-    pub fn assert_equal_point(&mut self, lhs: Point<M>, rhs: Point<M>) {
+    pub fn assert_equal_point(&mut self, lhs: Point<P>, rhs: Point<P>) {
         self.assert_equal(lhs.x, rhs.x);
         self.assert_equal(lhs.y, rhs.y);
     }
@@ -141,10 +144,10 @@ where
     /// See: [`StandardComposer::boolean_gate`].
     pub fn conditional_point_select(
         &mut self,
-        point_1: Point<M>,
-        point_0: Point<M>,
+        point_1: Point<P>,
+        point_0: Point<P>,
         bit: Variable,
-    ) -> Point<M> {
+    ) -> Point<P> {
         Point::new(
             self.conditional_select(bit, point_1.x, point_0.x),
             self.conditional_select(bit, point_1.y, point_0.y),
@@ -162,18 +165,17 @@ where
     pub fn conditional_point_neg(
         &mut self,
         bit: Variable,
-        point_b: Point<M>,
-    ) -> Point<M> {
+        point_b: Point<P>,
+    ) -> Point<P> {
+        let zero = self.zero_var;
         let x = point_b.x;
         let y = point_b.y;
 
         // negation of point (x, y) is (-x, y)
-        let x_neg = self.add(
-            (-F::one(), x),
-            (F::zero(), self.zero_var),
-            F::zero(),
-            None,
-        );
+        let x_neg = self.arithmetic_gate(|gate| {
+            gate.witness(x, zero, None).add(-F::one(), F::zero())
+        });
+
         let x_updated = self.conditional_select(bit, x_neg, x);
 
         Point::new(x_updated, y)
@@ -195,8 +197,8 @@ where
     fn conditional_select_identity(
         &mut self,
         bit: Variable,
-        point: Point<M>,
-    ) -> Point<M> {
+        point: Point<P>,
+    ) -> Point<P> {
         Point::new(
             self.conditional_select_zero(bit, point.x),
             self.conditional_select_one(bit, point.y),

@@ -11,7 +11,7 @@ use crate::proof_system::{Prover, Verifier};
 use ark_ec::{ModelParameters, TEModelParameters};
 use ark_poly::univariate::DensePolynomial;
 use ark_poly_commit::PolynomialCommitment;
-use rand_core::OsRng;
+use rand::rngs::OsRng;
 
 use ark_ff::{FftField, PrimeField};
 
@@ -22,18 +22,14 @@ pub(crate) fn dummy_gadget<F, P>(
     composer: &mut StandardComposer<F, P>,
 ) where
     F: FftField,
-    P: ModelParameters<BaseField = F>,
+    P: TEModelParameters<BaseField = F>,
 {
     let one = F::one();
     let var_one = composer.add_input(one);
     for _ in 0..n {
-        composer.big_add(
-            (F::one(), var_one),
-            (F::one(), var_one),
-            None,
-            F::zero(),
-            None,
-        );
+        composer.arithmetic_gate(|gate| {
+            gate.witness(var_one, var_one, None).add(F::one(), F::one())
+        });
     }
 }
 
@@ -50,7 +46,12 @@ where
     PC: PolynomialCommitment<F, DensePolynomial<F>> + HomomorphicCommitment<F>,
 {
     // Common View
-    let universal_params = PC::setup(2 * n, None, &mut OsRng).unwrap();
+    let universal_params = PC::setup(
+        2 * n + 6, // +1 per wire, +2 for the permutation poly
+        None,
+        &mut OsRng,
+    )
+    .unwrap();
 
     // Provers View
     let (proof, public_inputs) = {
@@ -66,7 +67,8 @@ where
         // Commit Key
         let (ck, _) = PC::trim(
             &universal_params,
-            prover.circuit_size().next_power_of_two(),
+            // +1 per wire, +2 for the permutation poly
+            prover.circuit_size().next_power_of_two() + 6,
             0,
             None,
         )
@@ -96,7 +98,7 @@ where
     // Compute Commit and Verifier Key
     let (ck, vk) = PC::trim(
         &universal_params,
-        verifier.circuit_size().next_power_of_two(),
+        verifier.circuit_size().next_power_of_two() + 6,
         0,
         None,
     )

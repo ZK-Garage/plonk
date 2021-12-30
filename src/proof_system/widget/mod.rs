@@ -18,6 +18,7 @@ use ark_ff::{FftField, Field, PrimeField};
 use ark_poly::{univariate::DensePolynomial, Evaluations};
 use ark_poly_commit::PolynomialCommitment;
 use ark_serialize::*;
+use core::marker::PhantomData;
 
 /// Gate Values
 ///
@@ -298,21 +299,21 @@ where
     /// ProverKey for permutation checks
     pub(crate) permutation: permutation::ProverKey<F>,
 
-    /// Pre-processes the 4n Evaluations for the vanishing polynomial, so
+    /// Pre-processes the 8n Evaluations for the vanishing polynomial, so
     /// they do not need to be computed at the proving stage.
     ///
     /// NOTE: With this, we can combine all parts of the quotient polynomial
     /// in their evaluation phase and divide by the quotient
     /// polynomial without having to perform IFFT
-    pub(crate) v_h_coset_4n: Evaluations<F>,
+    pub(crate) v_h_coset_8n: Evaluations<F>,
 }
 
 impl<F> ProverKey<F>
 where
     F: FftField,
 {
-    pub(crate) fn v_h_coset_4n(&self) -> &Evaluations<F> {
-        &self.v_h_coset_4n
+    pub(crate) fn v_h_coset_8n(&self) -> &Evaluations<F> {
+        &self.v_h_coset_8n
     }
 
     /// Constructs a [`ProverKey`] from the widget ProverKey's that are
@@ -336,7 +337,7 @@ where
         out_sigma: (DensePolynomial<F>, Evaluations<F>),
         fourth_sigma: (DensePolynomial<F>, Evaluations<F>),
         linear_evaluations: Evaluations<F>,
-        v_h_coset_4n: Evaluations<F>,
+        v_h_coset_8n: Evaluations<F>,
     ) -> Self {
         Self {
             n,
@@ -360,7 +361,7 @@ where
                 fourth_sigma,
                 linear_evaluations,
             },
-            v_h_coset_4n,
+            v_h_coset_8n,
         }
     }
 }
@@ -370,7 +371,7 @@ mod test {
     use super::*;
     use ark_poly::polynomial::univariate::DensePolynomial;
     use ark_poly::{EvaluationDomain, GeneralEvaluationDomain, UVPolynomial};
-    use rand_core::OsRng;
+    use rand::rngs::OsRng;
 
     fn rand_poly_eval<F>(n: usize) -> (DensePolynomial<F>, Evaluations<F>)
     where
@@ -385,7 +386,7 @@ mod test {
         F: FftField,
     {
         let domain = GeneralEvaluationDomain::new(4 * n).unwrap();
-        let values: Vec<_> = (0..4 * n).map(|_| F::rand(&mut OsRng)).collect();
+        let values: Vec<_> = (0..8 * n).map(|_| F::rand(&mut OsRng)).collect();
         Evaluations::from_vec_and_domain(values, domain)
     }
 
@@ -412,7 +413,7 @@ mod test {
         let fourth_sigma = rand_poly_eval(n);
 
         let linear_evaluations = rand_evaluations(n);
-        let v_h_coset_4n = rand_evaluations(n);
+        let v_h_coset_8n = rand_evaluations(n);
 
         let prover_key = ProverKey::from_polynomials_and_evals(
             n,
@@ -432,7 +433,7 @@ mod test {
             out_sigma,
             fourth_sigma,
             linear_evaluations,
-            v_h_coset_4n,
+            v_h_coset_8n,
         );
 
         let mut prover_key_bytes = vec![];

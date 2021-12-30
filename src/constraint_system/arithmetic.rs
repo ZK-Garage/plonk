@@ -8,426 +8,173 @@
 
 use crate::constraint_system::StandardComposer;
 use crate::constraint_system::Variable;
-use ark_ec::ModelParameters;
+use ark_ec::{ModelParameters, TEModelParameters};
 use ark_ff::FftField;
+use core::marker::PhantomData;
+
+#[derive(Debug, Clone, Copy)]
+pub struct ArithmeticGate<F>
+where
+    F: FftField,
+{
+    pub(crate) witness: Option<(Variable, Variable, Option<Variable>)>,
+    pub(crate) fan_in_3: Option<(F, Variable)>,
+    pub(crate) mul_selector: F,
+    pub(crate) add_selectors: (F, F),
+    pub(crate) out_selector: F,
+    pub(crate) const_selector: F,
+    pub(crate) pi: Option<F>,
+}
+
+impl<F> Default for ArithmeticGate<F>
+where
+    F: FftField,
+{
+    fn default() -> Self {
+        Self {
+            witness: None,
+            fan_in_3: None,
+            mul_selector: F::zero(),
+            add_selectors: (F::zero(), F::zero()),
+            out_selector: -F::one(),
+            const_selector: F::zero(),
+            pi: None,
+        }
+    }
+}
+
+impl<F> ArithmeticGate<F>
+where
+    F: FftField,
+{
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn witness(
+        &mut self,
+        w_l: Variable,
+        w_r: Variable,
+        w_o: Option<Variable>,
+    ) -> &mut Self {
+        self.witness = Some((w_l, w_r, w_o));
+        self
+    }
+
+    pub fn fan_in_3(&mut self, q_4: F, w_4: Variable) -> &mut Self {
+        self.fan_in_3 = Some((q_4, w_4));
+        self
+    }
+
+    pub fn mul(&mut self, q_m: F) -> &mut Self {
+        self.mul_selector = q_m;
+        self
+    }
+
+    pub fn add(&mut self, q_l: F, q_r: F) -> &mut Self {
+        self.add_selectors = (q_l, q_r);
+        self
+    }
+
+    pub fn out(&mut self, q_o: F) -> &mut Self {
+        self.out_selector = q_o;
+        self
+    }
+
+    pub fn constant(&mut self, q_c: F) -> &mut Self {
+        self.const_selector = q_c;
+        self
+    }
+
+    pub fn pi(&mut self, pi: F) -> &mut Self {
+        self.pi = Some(pi);
+        self
+    }
+
+    pub fn build(&mut self) -> Self {
+        *self
+    }
+}
 
 impl<F, P> StandardComposer<F, P>
 where
     F: FftField,
-    P: ModelParameters<BaseField = F>,
+    P: TEModelParameters<BaseField = F>,
 {
-    /// Adds a width-3 add gate to the circuit, linking the addition of the
-    /// provided inputs, scaled by the selector coefficients with the output
-    /// provided.
-    pub fn add_gate(
-        &mut self,
-        a: Variable,
-        b: Variable,
-        c: Variable,
-        q_l: F,
-        q_r: F,
-        q_o: F,
-        q_c: F,
-        pi: Option<F>,
-    ) -> Variable {
-        self.big_add_gate(a, b, c, None, q_l, q_r, q_o, F::zero(), q_c, pi)
-    }
-
-    /// Adds a width-4 add gate to the circuit and it's corresponding
-    /// constraint.
-    ///
-    /// This type of gate is usually used when we need to have
-    /// the largest amount of performance and the minimum circuit-size
-    /// possible. Since it allows the end-user to set every selector coefficient
-    /// as scaling value on the gate eq.
-    pub fn big_add_gate(
-        &mut self,
-        a: Variable,
-        b: Variable,
-        c: Variable,
-        d: Option<Variable>,
-        q_l: F,
-        q_r: F,
-        q_o: F,
-        q_4: F,
-        q_c: F,
-        pi: Option<F>,
-    ) -> Variable {
-        // Check if advice wire has a value
-        let d = match d {
-            Some(var) => var,
-            None => self.zero_var,
+    /// Function used to generate any arithmetic gate with fan-in-2 or fan-in-3.
+    pub fn arithmetic_gate<Fn>(&mut self, func: Fn) -> Variable
+    where
+        Fn: FnOnce(&mut ArithmeticGate<F>) -> &mut ArithmeticGate<F>,
+    {
+        let gate = {
+            let mut gate = ArithmeticGate::<F>::new();
+            func(&mut gate).build()
         };
 
-        self.w_l.push(a);
-        self.w_r.push(b);
-        self.w_o.push(c);
-        self.w_4.push(d);
-
-        // For an add gate, q_m is zero
-        self.q_m.push(F::zero());
-
-        // Add selector vectors
-        self.q_l.push(q_l);
-        self.q_r.push(q_r);
-        self.q_o.push(q_o);
-        self.q_c.push(q_c);
-        self.q_4.push(q_4);
-        self.q_arith.push(F::one());
-        self.q_range.push(F::zero());
-        self.q_logic.push(F::zero());
-        self.q_fixed_group_add.push(F::zero());
-        self.q_variable_group_add.push(F::zero());
-
-        if let Some(pi) = pi {
-            assert!(self.public_inputs_sparse_store.insert(self.n, pi).is_none(),"The invariant of already having a PI inserted for this position should never exist");
+        if gate.witness.is_none() {
+            panic!("Missing left and right wire witnesses")
         }
 
-        self.perm.add_variables_to_map(a, b, c, d, self.n);
-
-        self.n += 1;
-
-        c
-    }
-    /// Adds a width-3 mul gate to the circuit linking the product of the
-    /// provided inputs scaled by the selector coefficient `q_m` with the output
-    /// provided scaled by `q_o`.
-    ///
-    /// Note that this gate requires to provide the actual result of the gate
-    /// (output wire) since it will just add a `mul constraint` to the circuit.
-    pub fn mul_gate(
-        &mut self,
-        a: Variable,
-        b: Variable,
-        c: Variable,
-        q_m: F,
-        q_o: F,
-        q_c: F,
-        pi: Option<F>,
-    ) -> Variable {
-        self.big_mul_gate(a, b, c, None, q_m, q_o, q_c, F::zero(), pi)
-    }
-
-    /// Adds a width-4 `big_mul_gate` with the left, right and fourth inputs
-    /// and it's scaling factors, computing & returning the output (result)
-    /// `Variable` and adding the corresponding mul constraint.
-    ///
-    /// This type of gate is usually used when we need to have
-    /// the largest amount of performance and the minimum circuit-size
-    /// possible. Since it allows the end-user to setup all of the selector
-    /// coefficients.
-    ///
-    /// Forces `q_m * (a * b) + q_4 * d + q_c + q_o * c = 0`
-    // XXX: Maybe make these tuples instead of individual field?
-    pub fn big_mul_gate(
-        &mut self,
-        a: Variable,
-        b: Variable,
-        c: Variable,
-        d: Option<Variable>,
-        q_m: F,
-        q_o: F,
-        q_c: F,
-        q_4: F,
-        pi: Option<F>,
-    ) -> Variable {
-        // Check if advice wire has a value
-        let d = match d {
-            Some(var) => var,
-            None => self.zero_var,
+        let (w4, q4) = if gate.fan_in_3.is_none() {
+            self.w_4.push(self.zero_var);
+            self.q_4.push(F::zero());
+            (self.zero_var, F::zero())
+        } else {
+            let (q4, w4) = gate.fan_in_3.unwrap();
+            self.w_4.push(w4);
+            self.q_4.push(q4);
+            (w4, q4)
         };
 
-        self.w_l.push(a);
-        self.w_r.push(b);
-        self.w_o.push(c);
-        self.w_4.push(d);
-
-        // For a mul gate q_L and q_R is zero
-        self.q_l.push(F::zero());
-        self.q_r.push(F::zero());
+        let gate_witness = gate.witness.unwrap();
+        self.w_l.push(gate_witness.0);
+        self.w_r.push(gate_witness.1);
+        self.q_l.push(gate.add_selectors.0);
+        self.q_r.push(gate.add_selectors.1);
 
         // Add selector vectors
-        self.q_m.push(q_m);
-        self.q_o.push(q_o);
-        self.q_c.push(q_c);
-        self.q_4.push(q_4);
-        self.q_arith.push(F::one());
+        self.q_m.push(gate.mul_selector);
+        self.q_o.push(gate.out_selector);
+        self.q_c.push(gate.const_selector);
 
+        self.q_arith.push(F::one());
         self.q_range.push(F::zero());
         self.q_logic.push(F::zero());
         self.q_fixed_group_add.push(F::zero());
         self.q_variable_group_add.push(F::zero());
 
-        if let Some(pi) = pi {
+        if let Some(pi) = gate.pi {
+            let insert_res = self.public_inputs_sparse_store.insert(self.n, pi);
             assert!(
-                self.public_inputs_sparse_store.insert(self.n, pi).is_none(),"The invariant of already having a PI inserted for this position should never exist"
-            );
-        }
-
-        self.perm.add_variables_to_map(a, b, c, d, self.n);
-
-        self.n += 1;
-
-        c
-    }
-
-    /// This gates turns on all the selctor polynomials to give users,
-    /// in some situations, the ability to use the extra selector for
-    /// more variables into additions.
-    ///
-    /// This type of gate is usually used when we need to have
-    /// the largest amount of performance and the minimum circuit-size
-    /// possible. Since it allows the end-user to setup all of the selector
-    /// coefficients.
-    ///
-    /// Equation: `(a*b)*q_m + a*q_l + b*q_r + d*q_4 + q_c + PI + q_o * c = 0`.
-    /// `d` will be set to zero if not provided.
-    ///
-    /// ### Returns
-    /// `c`
-    pub fn big_arith_gate(
-        &mut self,
-        a: Variable,
-        b: Variable,
-        c: Variable,
-        d: Option<Variable>,
-        q_m: F,
-        q_l: F,
-        q_r: F,
-        q_o: F,
-        q_c: F,
-        q_4: F,
-        pi: Option<F>,
-    ) -> Variable {
-        // Check if advice wire has a value
-        let d = match d {
-            Some(var) => var,
-            None => self.zero_var,
+                insert_res.is_none(),
+                "Attempting to overwrite an already existing PI"
+            )
         };
 
-        self.w_l.push(a);
-        self.w_r.push(b);
+        let c = gate_witness.2.unwrap_or_else(|| {
+            self.add_input(
+                ((gate.mul_selector
+                    * (self.variables[&gate_witness.0]
+                        * self.variables[&gate_witness.1]))
+                    + gate.add_selectors.0 * self.variables[&gate_witness.0]
+                    + gate.add_selectors.1 * self.variables[&gate_witness.1]
+                    + gate.const_selector
+                    + q4 * self.variables[&w4]
+                    + gate.pi.unwrap_or_default())
+                    * (-gate.out_selector),
+            )
+        });
         self.w_o.push(c);
-        self.w_4.push(d);
-
-        // Add selector vectors
-        self.q_m.push(q_m);
-        self.q_o.push(q_o);
-        self.q_c.push(q_c);
-        self.q_4.push(q_4);
-        self.q_l.push(q_l);
-        self.q_r.push(q_r);
-        self.q_arith.push(F::one());
-
-        self.q_range.push(F::zero());
-        self.q_logic.push(F::zero());
-        self.q_fixed_group_add.push(F::zero());
-        self.q_variable_group_add.push(F::zero());
-
-        if let Some(pi) = pi {
-            assert!(
-                self.public_inputs_sparse_store.insert(self.n, pi).is_none(),"The invariant of already having a PI inserted for this position should never exist"
-            );
-        }
-
-        self.perm.add_variables_to_map(a, b, c, d, self.n);
-
-        self.n += 1;
-
-        c
-    }
-
-    /// Adds a [`StandardComposer::big_add_gate`] with the left and right
-    /// inputs and it's scaling factors, computing & returning the output
-    /// (result) [`Variable`], and adding the corresponding addition
-    /// constraint.
-    ///
-    /// This type of gate is usually used when we don't need to have
-    /// the largest amount of performance as well as the minimum circuit-size
-    /// possible. Since it defaults some of the selector coeffs = 0 in order
-    /// to reduce the verbosity and complexity.
-    ///
-    /// Forces `q_l * w_l + q_r * w_r + q_c + PI = w_o(computed by the gate)`.
-    pub fn add(
-        &mut self,
-        q_l_a: (F, Variable),
-        q_r_b: (F, Variable),
-        q_c: F,
-        pi: Option<F>,
-    ) -> Variable {
-        self.big_add(q_l_a, q_r_b, None, q_c, pi)
-    }
-
-    /// Adds a [`StandardComposer::big_add_gate`] with the left, right and
-    /// fourth inputs and it's scaling factors, computing & returning the
-    /// output (result) [`Variable`] and adding the corresponding addition
-    /// constraint.
-    ///
-    /// This type of gate is usually used when we don't need to have
-    /// the largest amount of performance and the minimum circuit-size
-    /// possible. Since it defaults some of the selector coeffs = 0 in order
-    /// to reduce the verbosity and complexity.
-    ///
-    /// Forces `q_l * w_l + q_r * w_r + q_4 * w_4 + q_c + PI = w_o(computed by
-    /// the gate)`.
-    pub fn big_add(
-        &mut self,
-        q_l_a: (F, Variable),
-        q_r_b: (F, Variable),
-        q_4_d: Option<(F, Variable)>,
-        q_c: F,
-        pi: Option<F>,
-    ) -> Variable {
-        // Check if advice wire is available
-        let (q_4, d) = match q_4_d {
-            Some((q_4, var)) => (q_4, var),
-            None => (F::zero(), self.zero_var),
-        };
-
-        let (q_l, a) = q_l_a;
-        let (q_r, b) = q_r_b;
-
-        let q_o = -F::one();
-
-        // Compute the output wire
-        let a_eval = self.variables[&a];
-        let b_eval = self.variables[&b];
-        let d_eval = self.variables[&d];
-        let c_eval = (q_l * a_eval)
-            + (q_r * b_eval)
-            + (q_4 * d_eval)
-            + q_c
-            + pi.unwrap_or_default();
-        let c = self.add_input(c_eval);
-
-        self.big_add_gate(a, b, c, Some(d), q_l, q_r, q_o, q_4, q_c, pi)
-    }
-
-    /// Adds a [`StandardComposer::big_mul_gate`] with the left, right
-    /// and fourth inputs and it's scaling factors, computing & returning
-    /// the output (result) [`Variable`] and adding the corresponding mul
-    /// constraint.
-    ///
-    /// This type of gate is usually used when we don't need to have
-    /// the largest amount of performance and the minimum circuit-size
-    /// possible. Since it defaults some of the selector coeffs = 0 in order
-    /// to reduce the verbosity and complexity.
-    ///
-    /// Forces `q_m * (w_l * w_r) + w_4 * q_4 + q_c + PI = w_o(computed by the
-    /// gate)`.
-    ///
-    /// `{w_l, w_r, w_4} = {a, b, d}`
-    pub fn mul(
-        &mut self,
-        q_m: F,
-        a: Variable,
-        b: Variable,
-        q_c: F,
-        pi: Option<F>,
-    ) -> Variable {
-        self.big_mul(q_m, a, b, None, q_c, pi)
-    }
-
-    /// Adds a width-4 [`StandardComposer::big_mul_gate`] with the left, right
-    /// and fourth inputs and it's scaling factors, computing & returning
-    /// the output (result) [`Variable`] and adding the corresponding mul
-    /// constraint.
-    ///
-    /// This type of gate is usually used when we don't need to have
-    /// the largest amount of performance and the minimum circuit-size
-    /// possible. Since it defaults some of the selector coeffs = 0 in order
-    /// to reduce the verbosity and complexity.
-    ///
-    /// Forces `q_m * (w_l * w_r) + w_4 * q_4 + q_c + PI = w_o(computed by the
-    /// gate)`.
-    ///
-    /// `{w_l, w_r, w_4} = {a, b, d}`
-    pub fn big_mul(
-        &mut self,
-        q_m: F,
-        a: Variable,
-        b: Variable,
-        q_4_d: Option<(F, Variable)>,
-        q_c: F,
-        pi: Option<F>,
-    ) -> Variable {
-        let q_o = -F::one();
-
-        // Check if advice wire is available
-        let (q_4, d) = match q_4_d {
-            Some((q_4, var)) => (q_4, var),
-            None => (F::zero(), self.zero_var),
-        };
-
-        // Compute output wire
-        let a_eval = self.variables[&a];
-        let b_eval = self.variables[&b];
-        let d_eval = self.variables[&d];
-        let c_eval = (q_m * a_eval * b_eval)
-            + (q_4 * d_eval)
-            + q_c
-            + pi.unwrap_or_default();
-        let c = self.add_input(c_eval);
-
-        self.big_mul_gate(a, b, c, Some(d), q_m, q_o, q_c, q_4, pi)
-    }
-
-    /// Adds a [`StandardComposer::big_arith_gate`] with the left, right
-    /// , fourth inputs and corresponding coefficients, computing & returning
-    /// the output (result) [`Variable`] and adding the corresponding arith
-    /// constraint.
-    ///
-    /// This type of gate is usually used when we don't need to have
-    /// the largest amount of performance and the minimum circuit-size
-    /// possible, since it defaults set `q_o` to `-1` to reduce the verbosity.
-    ///
-    /// Equation: `(a*b)*q_m + a*q_l + b*q_r + d*q_4 + q_c + PI = c`
-    /// ### Returns
-    /// `c`
-    pub fn big_arith(
-        &mut self,
-        q_m: F,
-        a: Variable,
-        b: Variable,
-        q_l: F,
-        q_r: F,
-        q_4_d: Option<(F, Variable)>,
-        q_c: F,
-        pi: Option<F>,
-    ) -> Variable {
-        // check if advice wire is available
-        let (q_4, d) = match q_4_d {
-            Some((q_4, d)) => (q_4, d),
-            None => (F::zero(), self.zero_var),
-        };
-
-        // compute output wire
-        let a_eval = self.variables[&a];
-        let b_eval = self.variables[&b];
-        let d_eval = self.variables[&d];
-
-        let c_eval = (q_m * a_eval * b_eval)
-            + (q_l * a_eval)
-            + (q_r * b_eval)
-            + (q_4 * d_eval)
-            + q_c
-            + pi.unwrap_or_default();
-
-        let c = self.add_input(c_eval);
-
-        self.big_arith_gate(
-            a,
-            b,
+        self.perm.add_variables_to_map(
+            gate_witness.0,
+            gate_witness.1,
             c,
-            Some(d),
-            q_m,
-            q_l,
-            q_r,
-            -F::one(),
-            q_c,
-            q_4,
-            pi,
-        )
+            w4,
+            self.n,
+        );
+        self.n += 1;
+
+        c
     }
 }
 
@@ -454,25 +201,25 @@ mod test {
         let res = gadget_tester::<F, P, PC>(
             |composer: &mut StandardComposer<F, P>| {
                 let var_one = composer.add_input(F::one());
-                let should_be_three = composer.big_add(
-                    (F::one(), var_one),
-                    (F::one(), var_one),
-                    None,
-                    F::zero(),
-                    Some(F::one()),
-                );
+
+                let should_be_three = composer.arithmetic_gate(|gate| {
+                    gate.witness(var_one, var_one, None)
+                        .add(F::one(), F::one())
+                        .pi(F::one())
+                });
+
                 composer.constrain_to_constant(
                     should_be_three,
                     F::from(3u64),
                     None,
                 );
-                let should_be_four = composer.big_add(
-                    (F::one(), var_one),
-                    (F::one(), var_one),
-                    None,
-                    F::zero(),
-                    Some(F::from(2u64)),
-                );
+
+                let should_be_four = composer.arithmetic_gate(|gate| {
+                    gate.witness(var_one, var_one, None)
+                        .add(F::one(), F::one())
+                        .pi(F::from(2u64))
+                });
+
                 composer.constrain_to_constant(
                     should_be_four,
                     F::from(4u64),
@@ -499,31 +246,29 @@ mod test {
                 let six = composer.add_input(F::from(6u64));
                 let seven = composer.add_input(F::from(7u64));
 
-                let fourteen = composer.big_add(
-                    (F::one(), four),
-                    (F::one(), five),
-                    Some((F::one(), five)),
-                    F::zero(),
-                    None,
-                );
+                let fourteen = composer.arithmetic_gate(|gate| {
+                    gate.witness(four, five, None)
+                        .add(F::one(), F::one())
+                        .pi(F::from(5u64))
+                });
 
-                let twenty = composer.big_add(
-                    (F::one(), six),
-                    (F::one(), seven),
-                    Some((F::one(), seven)),
-                    F::zero(),
-                    None,
-                );
+                let twenty = composer.arithmetic_gate(|gate| {
+                    gate.witness(six, seven, None)
+                        .add(F::one(), F::one())
+                        .fan_in_3(F::one(), seven)
+                });
 
                 // There are quite a few ways to check the equation is correct,
                 // depending on your circumstance If we already
                 // have the output wire, we can constrain the output of the
                 // mul_gate to be equal to it If we do not, we
-                // can compute it using the `mul` If the output
+                // can compute it using an `arithmetic_gate`. If the output
                 // is public, we can also constrain the output wire of the mul
                 // gate to it. This is what this test does
-                let output =
-                    composer.mul(F::one(), fourteen, twenty, F::zero(), None);
+                let output = composer.arithmetic_gate(|gate| {
+                    gate.witness(fourteen, twenty, None).mul(F::one())
+                });
+
                 composer.constrain_to_constant(output, F::from(280u64), None);
             },
             200,
@@ -543,12 +288,12 @@ mod test {
                 let zero = composer.zero_var();
                 let one = composer.add_input(F::one());
 
-                let c = composer.add(
-                    (F::one(), one),
-                    (F::zero(), zero),
-                    F::from(2u64),
-                    None,
-                );
+                let c = composer.arithmetic_gate(|gate| {
+                    gate.witness(one, zero, None)
+                        .add(F::one(), F::one())
+                        .constant(F::from(2u64))
+                });
+
                 composer.constrain_to_constant(c, F::from(3u64), None);
             },
             32,
@@ -572,30 +317,25 @@ mod test {
                 let seven = composer.add_input(F::from(7u64));
                 let nine = composer.add_input(F::from(9u64));
 
-                let fourteen = composer.big_add(
-                    (F::one(), four),
-                    (F::one(), five),
-                    Some((F::one(), five)),
-                    F::zero(),
-                    None,
-                );
+                let fourteen = composer.arithmetic_gate(|gate| {
+                    gate.witness(four, five, None)
+                        .add(F::one(), F::one())
+                        .fan_in_3(F::one(), five)
+                });
 
-                let twenty = composer.big_add(
-                    (F::one(), six),
-                    (F::one(), seven),
-                    Some((F::one(), seven)),
-                    F::zero(),
-                    None,
-                );
+                let twenty = composer.arithmetic_gate(|gate| {
+                    gate.witness(six, seven, None)
+                        .add(F::one(), F::one())
+                        .fan_in_3(F::one(), seven)
+                });
 
-                let output = composer.big_mul(
-                    F::one(),
-                    fourteen,
-                    twenty,
-                    Some((F::from(8u64), nine)),
-                    F::zero(),
-                    None,
-                );
+                let output = composer.arithmetic_gate(|gate| {
+                    gate.witness(fourteen, twenty, None)
+                        .mul(F::one())
+                        .fan_in_3(F::from(8u64), nine)
+                });
+
+                composer.constrain_to_constant(output, F::from(352u64), None);
                 composer.constrain_to_constant(output, F::from(352u64), None);
             },
             200,
@@ -622,16 +362,13 @@ mod test {
                 let q_4 = F::from(10u64);
                 let q_c = F::from(11u64);
 
-                let output = composer.big_arith(
-                    q_m,
-                    a,
-                    b,
-                    q_l,
-                    q_r,
-                    Some((q_4, d)),
-                    q_c,
-                    None,
-                );
+                let output = composer.arithmetic_gate(|gate| {
+                    gate.witness(a, b, None)
+                        .mul(q_m)
+                        .add(q_l, q_r)
+                        .fan_in_3(q_4, d)
+                        .constant(q_c)
+                });
 
                 composer.constrain_to_constant(output, F::from(289u64), None);
             },
@@ -659,16 +396,13 @@ mod test {
                 let q_4 = F::from(12u64);
                 let q_c = F::from(11u64);
 
-                let output = composer.big_arith(
-                    q_m,
-                    a,
-                    b,
-                    q_l,
-                    q_r,
-                    Some((q_4, d)),
-                    q_c,
-                    None,
-                );
+                let output = composer.arithmetic_gate(|gate| {
+                    gate.witness(a, b, None)
+                        .mul(q_m)
+                        .add(q_l, q_r)
+                        .fan_in_3(q_4, d)
+                        .constant(q_c)
+                });
 
                 composer.constrain_to_constant(output, F::from(289u64), None);
             },
@@ -691,29 +425,20 @@ mod test {
                 let six = composer.add_input(F::from(6u64));
                 let seven = composer.add_input(F::from(7u64));
 
-                let five_plus_five = composer.big_add(
-                    (F::one(), five),
-                    (F::one(), five),
-                    None,
-                    F::zero(),
-                    None,
-                );
+                let five_plus_five = composer.arithmetic_gate(|gate| {
+                    gate.witness(five, five, None).add(F::one(), F::one())
+                });
 
-                let six_plus_seven = composer.big_add(
-                    (F::one(), six),
-                    (F::one(), seven),
-                    None,
-                    F::zero(),
-                    None,
-                );
+                let six_plus_seven = composer.arithmetic_gate(|gate| {
+                    gate.witness(six, seven, None).add(F::one(), F::one())
+                });
 
-                let output = composer.mul(
-                    F::one(),
-                    five_plus_five,
-                    six_plus_seven,
-                    F::zero(),
-                    None,
-                );
+                let output = composer.arithmetic_gate(|gate| {
+                    gate.witness(five_plus_five, six_plus_seven, None)
+                        .add(F::one(), F::one())
+                });
+
+                composer.constrain_to_constant(output, F::from(117u64), None);
                 composer.constrain_to_constant(output, F::from(117u64), None);
             },
             200,

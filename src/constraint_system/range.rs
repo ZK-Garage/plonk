@@ -7,13 +7,13 @@
 //! Range Gate
 
 use crate::constraint_system::{StandardComposer, Variable, WireData};
-use ark_ec::ModelParameters;
+use ark_ec::TEModelParameters;
 use ark_ff::{BigInteger, PrimeField};
 
 impl<F, P> StandardComposer<F, P>
 where
     F: PrimeField,
-    P: ModelParameters<BaseField = F>,
+    P: TEModelParameters<BaseField = F>,
 {
     /// Adds a range-constraint gate that checks and constrains a
     /// [`Variable`] to be inside of the range \[0,num_bits\].

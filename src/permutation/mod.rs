@@ -15,7 +15,7 @@ use ark_poly::{univariate::DensePolynomial, UVPolynomial};
 use constants::*;
 use hashbrown::HashMap;
 use itertools::izip;
-use rand_core::RngCore;
+use rand::RngCore;
 
 /// Permutation provides the necessary state information and functions
 /// to create the permutation polynomial. In the literature, Z(X) is the
@@ -766,16 +766,16 @@ mod test {
     };
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
-    use ark_ec::ModelParameters;
+    use ark_ec::TEModelParameters;
     use ark_ff::Field;
     use ark_poly::univariate::DensePolynomial;
     use ark_poly::Polynomial;
-    use rand_core::OsRng;
+    use rand::rngs::OsRng;
 
     fn test_multizip_permutation_poly<F, P>()
     where
         F: FftField,
-        P: ModelParameters<BaseField = F>,
+        P: TEModelParameters<BaseField = F>,
     {
         let mut cs: StandardComposer<F, P> =
             StandardComposer::<F, P>::with_expected_size(4);
