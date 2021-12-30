@@ -7,7 +7,7 @@
 use super::StandardComposer;
 use crate::error::Error;
 use crate::proof_system::{Prover, Verifier};
-use ark_ec::{PairingEngine, TEModelParameters};
+use ark_ec::{ModelParameters, PairingEngine, TEModelParameters};
 use ark_poly::univariate::DensePolynomial;
 use ark_poly_commit::kzg10::{self, Powers, KZG10};
 use ark_poly_commit::sonic_pc::SonicKZG10;
@@ -18,9 +18,12 @@ use ark_ff::FftField;
 
 /// Adds dummy constraints using arithmetic gates.
 #[allow(dead_code)]
-pub(crate) fn dummy_gadget<F>(n: usize, composer: &mut StandardComposer<F>)
-where
+pub(crate) fn dummy_gadget<F, P>(
+    n: usize,
+    composer: &mut StandardComposer<F, P>,
+) where
     F: FftField,
+    P: ModelParameters<BaseField = F>,
 {
     let one = F::one();
     let var_one = composer.add_input(one);
@@ -39,7 +42,7 @@ where
 /// passes an end-to-end test.
 #[allow(dead_code)]
 pub(crate) fn gadget_tester<E, P>(
-    gadget: fn(&mut StandardComposer<E::Fr>),
+    gadget: fn(&mut StandardComposer<E::Fr, P>),
     n: usize,
 ) -> Result<(), Error>
 where
@@ -48,11 +51,14 @@ where
 {
     // Common View
     let universal_params =
-        KZG10::<E, DensePolynomial<E::Fr>>::setup(2 * n, false, &mut OsRng)?;
+        SonicKZG10::<E, DensePolynomial<E::Fr>>::setup(2 * n, None, &mut OsRng)
+            .unwrap();
+
+    type PC<E> = SonicKZG10<E, DensePolynomial<<E as PairingEngine>::Fr>>;
     // Provers View
     let (proof, public_inputs) = {
         // Create a prover struct
-        let mut prover = Prover::new(b"demo");
+        let mut prover = Prover::<E::Fr, P, PC<E>>::new(b"demo");
 
         // Additionally key the transcript
         prover.key_transcript(b"key", b"additional seed information");
@@ -61,26 +67,23 @@ where
         gadget(prover.mut_cs());
 
         // Commit Key
-        let (ck, _) = SonicKZG10::<E, DensePolynomial<E::Fr>>::trim(
+        let (ck, _) = PC::<E>::trim(
             &universal_params,
             prover.circuit_size().next_power_of_two(),
             0,
             None,
         )
         .unwrap();
-        let powers = Powers::<E> {
-            powers_of_g: ck.powers_of_g.into(),
-            powers_of_gamma_g: ck.powers_of_gamma_g.into(),
-        };
+
         // Preprocess circuit
-        prover.preprocess(&powers)?;
+        prover.preprocess(&ck)?;
 
         // Once the prove method is called, the public inputs are cleared
         // So pre-fetch these before calling Prove
         let public_inputs = prover.cs.construct_dense_pi_vec();
 
         // Compute Proof
-        (prover.prove::<E, P>(&powers)?, public_inputs)
+        (prover.prove(&ck)?, public_inputs)
     };
     // Verifiers view
     //
@@ -94,29 +97,17 @@ where
     gadget(verifier.mut_cs());
 
     // Compute Commit and Verifier Key
-    let (sonic_ck, sonic_vk) = SonicKZG10::<E, DensePolynomial<E::Fr>>::trim(
+    let (ck, vk) = PC::<E>::trim(
         &universal_params,
         verifier.circuit_size().next_power_of_two(),
         0,
         None,
     )
     .unwrap();
-    let powers = Powers {
-        powers_of_g: sonic_ck.powers_of_g.into(),
-        powers_of_gamma_g: sonic_ck.powers_of_gamma_g.into(),
-    };
 
-    let vk = kzg10::VerifierKey {
-        g: sonic_vk.g,
-        gamma_g: sonic_vk.gamma_g,
-        h: sonic_vk.h,
-        beta_h: sonic_vk.beta_h,
-        prepared_h: sonic_vk.prepared_h,
-        prepared_beta_h: sonic_vk.prepared_beta_h,
-    };
     // Preprocess circuit
-    verifier.preprocess(&powers)?;
+    verifier.preprocess(&ck)?;
 
     // Verify proof
-    verifier.verify::<P>(&proof, &vk, &public_inputs)
+    verifier.verify(&proof, &vk, &public_inputs)
 }

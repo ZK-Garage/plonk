@@ -6,24 +6,32 @@
 
 //! Verifier-side of the PLONK Proving System
 
+//use crate::circuit::EmbeddedCurve;
 use crate::constraint_system::StandardComposer;
 use crate::error::Error;
 use crate::proof_system::widget::VerifierKey as PlonkVerifierKey;
 use crate::proof_system::Proof;
+use crate::util::HomomorphicCommitment;
 use ark_ec::{PairingEngine, TEModelParameters};
+use ark_ff::{FftField, PrimeField};
+use ark_poly::univariate::DensePolynomial;
 use ark_poly_commit::kzg10::{Powers, VerifierKey};
+use ark_poly_commit::PolynomialCommitment;
+use core::marker::PhantomData;
 use merlin::Transcript;
 
 /// Abstraction structure designed verify [`Proof`]s.
-pub struct Verifier<E>
+pub struct Verifier<F, P, PC>
 where
-    E: PairingEngine,
+    F: FftField + PrimeField,
+    P: TEModelParameters<BaseField = F>,
+    PC: PolynomialCommitment<F, DensePolynomial<F>> + HomomorphicCommitment<F>,
 {
     /// VerificationKey which is used to verify a specific PLONK circuit
-    pub verifier_key: Option<PlonkVerifierKey<E>>,
+    pub verifier_key: Option<PlonkVerifierKey<F, PC>>,
 
     /// Circuit Description
-    pub(crate) cs: StandardComposer<E::Fr>,
+    pub(crate) cs: StandardComposer<F, P>,
 
     /// Store the messages exchanged during the preprocessing stage.
     ///
@@ -34,9 +42,11 @@ where
     pub preprocessed_transcript: Transcript,
 }
 
-impl<E> Verifier<E>
+impl<F, P, PC> Verifier<F, P, PC>
 where
-    E: PairingEngine,
+    F: FftField + PrimeField,
+    P: TEModelParameters<BaseField = F>,
+    PC: PolynomialCommitment<F, DensePolynomial<F>> + HomomorphicCommitment<F>,
 {
     /// Creates a new `Verifier` instance.
     pub fn new(label: &'static [u8]) -> Self {
@@ -62,18 +72,25 @@ where
     }
 
     /// Returns a mutable copy of the underlying composer.
-    pub fn mut_cs(&mut self) -> &mut StandardComposer<E::Fr> {
+    pub fn mut_cs(&mut self) -> &mut StandardComposer<F, P> {
         &mut self.cs
     }
 
     /// Preprocess a circuit to obtain a [`VerifierKey`] and a circuit
     /// descriptor so that the `Verifier` instance can verify [`Proof`]s
     /// for this circuit descriptor instance.
-    pub fn preprocess(&mut self, commit_key: &Powers<E>) -> Result<(), Error> {
-        let vk = self.cs.preprocess_verifier(
-            commit_key,
-            &mut self.preprocessed_transcript,
-        )?;
+    pub fn preprocess(
+        &mut self,
+        commit_key: &PC::CommitterKey,
+    ) -> Result<(), Error> {
+        let vk = self
+            .cs
+            .preprocess_verifier(
+                commit_key,
+                &mut self.preprocessed_transcript,
+                PhantomData::<PC>,
+            )
+            .unwrap();
 
         self.verifier_key = Some(vk);
         Ok(())
@@ -89,15 +106,12 @@ where
     }
 
     /// Verifies a [`Proof`] using `pc_verifier_key` and `public_inputs`.
-    pub fn verify<P>(
+    pub fn verify(
         &self,
-        proof: &Proof<E>,
-        pc_verifier_key: &VerifierKey<E>,
-        public_inputs: &[E::Fr],
-    ) -> Result<(), Error>
-    where
-        P: TEModelParameters<BaseField = E::Fr>,
-    {
+        proof: &Proof<F, PC>,
+        pc_verifier_key: &PC::VerifierKey,
+        public_inputs: &[F],
+    ) -> Result<(), Error> {
         proof.verify::<P>(
             self.verifier_key.as_ref().unwrap(),
             &mut self.preprocessed_transcript.clone(),
@@ -107,12 +121,14 @@ where
     }
 }
 
-impl<E> Default for Verifier<E>
+impl<F, P, PC> Default for Verifier<F, P, PC>
 where
-    E: PairingEngine,
+    F: FftField + PrimeField,
+    P: TEModelParameters<BaseField = F>,
+    PC: PolynomialCommitment<F, DensePolynomial<F>> + HomomorphicCommitment<F>,
 {
     #[inline]
-    fn default() -> Verifier<E> {
+    fn default() -> Verifier<F, P, PC> {
         Verifier::new(b"plonk")
     }
 }

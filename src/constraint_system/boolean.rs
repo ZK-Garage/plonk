@@ -7,11 +7,13 @@
 //! Boolean Gates
 
 use crate::constraint_system::{StandardComposer, Variable};
+use ark_ec::ModelParameters;
 use ark_ff::FftField;
 
-impl<F> StandardComposer<F>
+impl<F, P> StandardComposer<F, P>
 where
     F: FftField,
+    P: ModelParameters<BaseField = F>,
 {
     /// Adds a boolean constraint (also known as binary constraint) where
     /// the gate eq. will enforce that the [`Variable`] received is either `0`
@@ -64,7 +66,7 @@ mod test {
         P: TEModelParameters<BaseField = E::Fr>,
     {
         let res = gadget_tester::<E, P>(
-            |composer: &mut StandardComposer<E::Fr>| {
+            |composer: &mut StandardComposer<E::Fr, P>| {
                 let zero = composer.zero_var();
                 let one = composer.add_input(E::Fr::one());
                 composer.boolean_gate(zero);
@@ -81,7 +83,7 @@ mod test {
         P: TEModelParameters<BaseField = E::Fr>,
     {
         let res = gadget_tester::<E, P>(
-            |composer: &mut StandardComposer<E::Fr>| {
+            |composer: &mut StandardComposer<E::Fr, P>| {
                 let zero = composer.add_input(E::Fr::from(5u64));
                 let one = composer.add_input(E::Fr::one());
                 composer.boolean_gate(zero);

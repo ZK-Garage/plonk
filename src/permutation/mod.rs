@@ -760,20 +760,25 @@ pub(crate) fn random_scalar<F: FftField, R: RngCore>(rng: &mut R) -> F {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::batch_test_field;
+    use crate::{batch_test_field, batch_test_field_params};
     use crate::{
         constraint_system::StandardComposer, util::EvaluationDomainExt,
     };
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
+    use ark_ec::ModelParameters;
     use ark_ff::Field;
     use ark_poly::univariate::DensePolynomial;
     use ark_poly::Polynomial;
     use rand_core::OsRng;
 
-    fn test_multizip_permutation_poly<F: FftField>() {
-        let mut cs: StandardComposer<F> =
-            StandardComposer::with_expected_size(4);
+    fn test_multizip_permutation_poly<F, P>()
+    where
+        F: FftField,
+        P: ModelParameters<BaseField = F>,
+    {
+        let mut cs: StandardComposer<F, P> =
+            StandardComposer::<F, P>::with_expected_size(4);
 
         let zero = F::zero();
         let one = F::one();
@@ -1310,25 +1315,47 @@ mod test {
 
     // Test on Bls12-381
     batch_test_field!(
-        [test_multizip_permutation_poly,
-        test_permutation_compute_sigmas_only_left_wires,
-        test_permutation_compute_sigmas,
-        test_basic_slow_permutation_poly
-        ],
-        []
-        => (Bls12_381)
-    );
-
-    // Test on Bls12-377
-    batch_test_field!(
-        [test_multizip_permutation_poly,
-        test_permutation_compute_sigmas_only_left_wires,
+        [test_permutation_compute_sigmas_only_left_wires,
         test_permutation_compute_sigmas,
         test_basic_slow_permutation_poly
         ],
         []
         => (
-        Bls12_377
+            Bls12_381
+        )
+    );
+
+    // Test on Bls12-377
+    batch_test_field!(
+        [test_permutation_compute_sigmas_only_left_wires,
+        test_permutation_compute_sigmas,
+        test_basic_slow_permutation_poly
+        ],
+        []
+        => (
+            Bls12_377
+        )
+    );
+
+    // Test on Bls12-381
+    batch_test_field_params!(
+        [test_multizip_permutation_poly
+        ],
+        []
+        => (
+            Bls12_381,
+            ark_ed_on_bls12_381::EdwardsParameters
+        )
+    );
+
+    // Test on Bls12-377
+    batch_test_field_params!(
+        [test_multizip_permutation_poly
+        ],
+        []
+        => (
+            Bls12_377,
+            ark_ed_on_bls12_377::EdwardsParameters
         )
     );
 }

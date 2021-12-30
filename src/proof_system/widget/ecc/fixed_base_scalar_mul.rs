@@ -19,7 +19,7 @@
 //! base2 bit.
 
 use crate::proof_system::widget::{GateConstraint, GateValues};
-use ark_ec::TEModelParameters;
+use ark_ec::{ModelParameters, SWModelParameters, TEModelParameters};
 use ark_ff::Field;
 use core::marker::PhantomData;
 
@@ -29,7 +29,7 @@ use core::marker::PhantomData;
 pub struct FixedBaseScalarMul<F, P>(PhantomData<(F, P)>)
 where
     F: Field,
-    P: TEModelParameters<BaseField = F>;
+    P: ModelParameters<BaseField = F>;
 
 impl<F, P> GateConstraint<F> for FixedBaseScalarMul<F, P>
 where
@@ -86,6 +86,13 @@ where
         checks * separation_challenge
     }
 }
+/*
+impl<F, P> GateConstraint<F> for FixedBaseScalarMul<F, P>
+where
+    F: Field,
+    P: SWModelParameters<BaseField = F>,
+{
+}*/
 
 /// Extracts the bit value from the accumulated bit.
 pub(crate) fn extract_bit<F>(curr_acc: F, next_acc: F) -> F

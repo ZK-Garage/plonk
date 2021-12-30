@@ -8,14 +8,13 @@
 
 use crate::permutation::constants::{K1, K2, K3};
 use crate::proof_system::linearisation_poly::ProofEvaluations;
-use ark_ec::PairingEngine;
 use ark_ff::FftField;
 use ark_ff::Field;
 use ark_poly::polynomial::univariate::DensePolynomial;
 use ark_poly::{
     EvaluationDomain, Evaluations, GeneralEvaluationDomain, Polynomial,
 };
-use ark_poly_commit::sonic_pc::Commitment;
+use ark_poly_commit::PCCommitment;
 use ark_serialize::*;
 
 /// Permutation Prover Key
@@ -291,41 +290,41 @@ where
 #[derive(CanonicalDeserialize, CanonicalSerialize, derivative::Derivative)]
 #[derivative(
     Clone(bound = ""),
-    Debug(bound = ""),
-    Eq(bound = ""),
-    PartialEq(bound = "")
+    //Debug(bound = ""),
+    //Eq(bound = ""),
+    //PartialEq(bound = "")
 )]
-pub struct VerifierKey<E>
+pub struct VerifierKey<PCC>
 where
-    E: PairingEngine,
+    PCC: PCCommitment,
 {
     /// Left Permutation Commitment
-    pub left_sigma: Commitment<E>,
+    pub left_sigma: PCC,
 
     /// Right Permutation Commitment
-    pub right_sigma: Commitment<E>,
+    pub right_sigma: PCC,
 
     /// Output Permutation Commitment
-    pub out_sigma: Commitment<E>,
+    pub out_sigma: PCC,
 
     /// Fourth Permutation Commitment
-    pub fourth_sigma: Commitment<E>,
+    pub fourth_sigma: PCC,
 }
 
-impl<E> VerifierKey<E>
+impl<PCC> VerifierKey<PCC>
 where
-    E: PairingEngine,
+    PCC: PCCommitment,
 {
     /// Computes the linearisation commitments.
-    pub fn compute_linearisation_commitment(
+    pub fn compute_linearisation_commitment<F: FftField>(
         &self,
-        scalars: &mut Vec<E::Fr>,
-        points: &mut Vec<E::G1Affine>,
-        evaluations: &ProofEvaluations<E::Fr>,
-        z_challenge: E::Fr,
-        (alpha, beta, gamma): (E::Fr, E::Fr, E::Fr),
-        l1_eval: E::Fr,
-        z_comm: E::G1Affine,
+        scalars: &mut Vec<F>,
+        points: &mut Vec<PCC>,
+        evaluations: &ProofEvaluations<F>,
+        z_challenge: F,
+        (alpha, beta, gamma): (F, F, F),
+        l1_eval: F,
+        z_comm: PCC,
     ) {
         let alpha_sq = alpha.square();
 
@@ -336,13 +335,13 @@ where
             let beta_z = beta * z_challenge;
             let q_0 = evaluations.a_eval + beta_z + gamma;
 
-            let beta_k1_z = beta * K1::<E::Fr>() * z_challenge;
+            let beta_k1_z = beta * K1::<F>() * z_challenge;
             let q_1 = evaluations.b_eval + beta_k1_z + gamma;
 
-            let beta_k2_z = beta * K2::<E::Fr>() * z_challenge;
+            let beta_k2_z = beta * K2::<F>() * z_challenge;
             let q_2 = evaluations.c_eval + beta_k2_z + gamma;
 
-            let beta_k3_z = beta * K3::<E::Fr>() * z_challenge;
+            let beta_k3_z = beta * K3::<F>() * z_challenge;
             let q_3 = (evaluations.d_eval + beta_k3_z + gamma) * alpha;
 
             q_0 * q_1 * q_2 * q_3
@@ -373,6 +372,6 @@ where
         };
 
         scalars.push(y);
-        points.push(self.fourth_sigma.0);
+        points.push(self.fourth_sigma.clone());
     }
 }

@@ -37,6 +37,8 @@ num-traits = "0.2.14"
 rand_core = { version = "0.6", default-features = false, features = ["getrandom"] }
 
 [dev-dependencies]
+ark-sponge = "0.3"
+ark-std = "0.3"
 ark-bls12-377 = "0.3"
 ark-bls12-381 = "0.3"
 ark-ed-on-bls12-377 = "0.3"

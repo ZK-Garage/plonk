@@ -10,14 +10,17 @@ pub mod curve_addition;
 pub mod scalar_mul;
 
 use crate::constraint_system::{variable::Variable, StandardComposer};
-use ark_ec::{twisted_edwards_extended::GroupAffine, TEModelParameters};
+use ark_ec::{
+    twisted_edwards_extended::GroupAffine as TEGroupAffine, ModelParameters,
+    SWModelParameters, TEModelParameters,
+};
 use ark_ff::FftField;
 use core::marker::PhantomData;
 
 /// Represents a point of the embeded curve in the circuit
 #[derive(derivative::Derivative)]
 #[derivative(Clone, Copy, Debug)]
-pub struct Point<P: TEModelParameters> {
+pub struct Point<P: ModelParameters> {
     /// `X`-coordinate
     x: Variable,
 
@@ -30,7 +33,7 @@ pub struct Point<P: TEModelParameters> {
 
 impl<F, P> Point<P>
 where
-    P: TEModelParameters<BaseField = F>,
+    P: ModelParameters<BaseField = F>,
     F: FftField,
 {
     /// Builds a new [`Point`] from `X` and `Y` coordinates.
@@ -49,7 +52,7 @@ where
     }
 
     /// Returns an identity point.
-    pub fn identity(composer: &mut StandardComposer<P::BaseField>) -> Self {
+    pub fn identity(composer: &mut StandardComposer<P::BaseField, P>) -> Self {
         let one =
             composer.add_witness_to_circuit_description(P::BaseField::one());
         Self::new(composer.zero_var, one)
@@ -66,25 +69,20 @@ where
     }
 }
 
-impl<F> StandardComposer<F>
+impl<F, M> StandardComposer<F, M>
 where
     F: FftField,
+    M: TEModelParameters<BaseField = F>,
 {
     /// Converts an embeded curve point into a constraint system Point
     /// without constraining the values
-    pub fn add_affine<P: TEModelParameters<BaseField = F>>(
-        &mut self,
-        affine: GroupAffine<P>,
-    ) -> Point<P> {
+    pub fn add_affine(&mut self, affine: TEGroupAffine<M>) -> Point<M> {
         Point::new(self.add_input(affine.x), self.add_input(affine.y))
     }
 
     /// Converts an embeded curve point into a constraint system Point
     /// without constraining the values
-    pub fn add_public_affine<P: TEModelParameters<BaseField = F>>(
-        &mut self,
-        affine: GroupAffine<P>,
-    ) -> Point<P> {
+    pub fn add_public_affine(&mut self, affine: TEGroupAffine<M>) -> Point<M> {
         let point = self.add_affine(affine);
         self.constrain_to_constant(point.x, F::zero(), Some(-affine.x));
         self.constrain_to_constant(point.y, F::zero(), Some(-affine.y));
@@ -93,12 +91,10 @@ where
 
     /// Add the provided affine point as a circuit description and return its
     /// constrained witness value
-    pub fn add_affine_to_circuit_description<
-        P: TEModelParameters<BaseField = F>,
-    >(
+    pub fn add_affine_to_circuit_description(
         &mut self,
-        affine: GroupAffine<P>,
-    ) -> Point<P> {
+        affine: TEGroupAffine<M>,
+    ) -> Point<M> {
         // NOTE: Not using individual gates because one of these may be zero.
         Point::new(
             self.add_witness_to_circuit_description(affine.x),
@@ -108,22 +104,24 @@ where
 
     /// Asserts that a [`Point`] in the circuit is equal to a known public
     /// point.
-    pub fn assert_equal_public_point<P: TEModelParameters<BaseField = F>>(
+    pub fn assert_equal_public_point(
         &mut self,
-        point: Point<P>,
-        public_point: GroupAffine<P>,
+        point: Point<M>,
+        public_point: TEGroupAffine<M>,
     ) {
         self.constrain_to_constant(point.x, F::zero(), Some(-public_point.x));
         self.constrain_to_constant(point.y, F::zero(), Some(-public_point.y));
     }
+}
 
+impl<F, M> StandardComposer<F, M>
+where
+    F: FftField,
+    M: ModelParameters<BaseField = F>,
+{
     /// Asserts that a point in the circuit is equal to another point in the
     /// circuit.
-    pub fn assert_equal_point<P: TEModelParameters<BaseField = F>>(
-        &mut self,
-        lhs: Point<P>,
-        rhs: Point<P>,
-    ) {
+    pub fn assert_equal_point(&mut self, lhs: Point<M>, rhs: Point<M>) {
         self.assert_equal(lhs.x, rhs.x);
         self.assert_equal(lhs.y, rhs.y);
     }
@@ -141,12 +139,12 @@ where
     /// The `bit` used as input which is a [`Variable`] should have previously
     /// been constrained to be either `1` or `0` using a boolean constraint.
     /// See: [`StandardComposer::boolean_gate`].
-    pub fn conditional_point_select<P: TEModelParameters<BaseField = F>>(
+    pub fn conditional_point_select(
         &mut self,
-        point_1: Point<P>,
-        point_0: Point<P>,
+        point_1: Point<M>,
+        point_0: Point<M>,
         bit: Variable,
-    ) -> Point<P> {
+    ) -> Point<M> {
         Point::new(
             self.conditional_select(bit, point_1.x, point_0.x),
             self.conditional_select(bit, point_1.y, point_0.y),
@@ -161,11 +159,11 @@ where
     /// The `bit` used as input which is a [`Variable`] should had previously
     /// been constrained to be either 1 or 0 using a bool constrain. See:
     /// [`StandardComposer::boolean_gate`].
-    pub fn conditional_point_neg<P: TEModelParameters<BaseField = F>>(
+    pub fn conditional_point_neg(
         &mut self,
         bit: Variable,
-        point_b: Point<P>,
-    ) -> Point<P> {
+        point_b: Point<M>,
+    ) -> Point<M> {
         let x = point_b.x;
         let y = point_b.y;
 
@@ -194,11 +192,11 @@ where
     /// The `bit` used as input which is a [`Variable`] should have previously
     /// been constrained to be either `1` or `0` using a boolean constraint.
     /// See: [`StandardComposer::boolean_gate`].
-    fn conditional_select_identity<P: TEModelParameters<BaseField = F>>(
+    fn conditional_select_identity(
         &mut self,
         bit: Variable,
-        point: Point<P>,
-    ) -> Point<P> {
+        point: Point<M>,
+    ) -> Point<M> {
         Point::new(
             self.conditional_select_zero(bit, point.x),
             self.conditional_select_one(bit, point.y),
@@ -212,7 +210,7 @@ mod test {
     use crate::{batch_test, constraint_system::helper::*};
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
-    use ark_ec::PairingEngine;
+    use ark_ec::{PairingEngine, TEModelParameters};
     use num_traits::One;
 
     fn test_conditional_select_point<E, P>()
@@ -221,7 +219,7 @@ mod test {
         P: TEModelParameters<BaseField = E::Fr>,
     {
         let res = gadget_tester::<E, P>(
-            |composer: &mut StandardComposer<E::Fr>| {
+            |composer: &mut StandardComposer<E::Fr, P>| {
                 let bit_1 = composer.add_input(E::Fr::one());
                 let bit_0 = composer.zero_var();
 
@@ -251,11 +249,11 @@ mod test {
         P: TEModelParameters<BaseField = E::Fr>,
     {
         gadget_tester::<E, P>(
-            |composer: &mut StandardComposer<E::Fr>| {
+            |composer: &mut StandardComposer<E::Fr, P>| {
                 let bit_1 = composer.add_input(E::Fr::one());
                 let bit_0 = composer.zero_var();
 
-                let point = GroupAffine::<P>::new(
+                let point = TEGroupAffine::<P>::new(
                     E::Fr::from(10u64),
                     E::Fr::from(20u64),
                 );

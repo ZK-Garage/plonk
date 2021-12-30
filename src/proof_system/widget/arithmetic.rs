@@ -7,11 +7,11 @@
 //! Arithmetic Gates
 
 use crate::proof_system::linearisation_poly::ProofEvaluations;
-use ark_ec::PairingEngine;
 use ark_ff::FftField;
+use ark_ff::{Field, PrimeField};
 use ark_poly::polynomial::univariate::DensePolynomial;
 use ark_poly::Evaluations;
-use ark_poly_commit::sonic_pc::Commitment;
+use ark_poly_commit::{LabeledCommitment, PolynomialCommitment};
 use ark_serialize::*;
 
 /// Arithmetic Gates Prover Key
@@ -88,63 +88,65 @@ where
 
 /// Arithmetic Gates Verifier Key
 #[derive(CanonicalDeserialize, CanonicalSerialize, derivative::Derivative)]
-#[derivative(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct VerifierKey<E>
+#[derivative(Clone, /*Copy, Debug, Eq, PartialEq*/)]
+pub struct VerifierKey<F, PC>
 where
-    E: PairingEngine,
+    F: PrimeField,
+    PC: PolynomialCommitment<F, DensePolynomial<F>>,
 {
     /// Multiplication Selector Commitment
-    pub q_m: Commitment<E>,
+    pub q_m: PC::Commitment,
 
     /// Left Selector Commitment
-    pub q_l: Commitment<E>,
+    pub q_l: PC::Commitment,
 
     /// Right Selector Commitment
-    pub q_r: Commitment<E>,
+    pub q_r: PC::Commitment,
 
     /// Output Selector Commitment
-    pub q_o: Commitment<E>,
+    pub q_o: PC::Commitment,
 
     /// Fourth Selector Commitment
-    pub q_4: Commitment<E>,
+    pub q_4: PC::Commitment,
 
     /// Constant Selector Commitment
-    pub q_c: Commitment<E>,
+    pub q_c: PC::Commitment,
 
     /// Arithmetic Selector Commitment
-    pub q_arith: Commitment<E>,
+    pub q_arith: PC::Commitment,
 }
 
-impl<E> VerifierKey<E>
+impl<F, PC> VerifierKey<F, PC>
 where
-    E: PairingEngine,
+    F: PrimeField,
+    PC: PolynomialCommitment<F, DensePolynomial<F>>,
 {
     /// Computes arithmetic gate contribution to the linearisation polynomial
     /// commitment.
     pub fn compute_linearisation_commitment(
         &self,
-        scalars: &mut Vec<E::Fr>,
-        points: &mut Vec<E::G1Affine>,
-        evaluations: &ProofEvaluations<E::Fr>,
+        scalars: &mut Vec<F>,
+        points: &mut Vec<PC::Commitment>,
+        evaluations: &ProofEvaluations<F>,
     ) {
         let q_arith_eval = evaluations.q_arith_eval;
 
         scalars.push(evaluations.a_eval * evaluations.b_eval * q_arith_eval);
-        points.push(self.q_m.0);
+        points.push(self.q_m.clone());
 
         scalars.push(evaluations.a_eval * q_arith_eval);
-        points.push(self.q_l.0);
+        points.push(self.q_l.clone());
 
         scalars.push(evaluations.b_eval * q_arith_eval);
-        points.push(self.q_r.0);
+        points.push(self.q_r.clone());
 
         scalars.push(evaluations.c_eval * q_arith_eval);
-        points.push(self.q_o.0);
+        points.push(self.q_o.clone());
 
         scalars.push(evaluations.d_eval * q_arith_eval);
-        points.push(self.q_4.0);
+        points.push(self.q_4.clone());
 
         scalars.push(q_arith_eval);
-        points.push(self.q_c.0);
+        points.push(self.q_c.clone());
     }
 }

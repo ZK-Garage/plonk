@@ -5,6 +5,9 @@
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
 //! A collection of all possible errors encountered in PLONK.
+use ark_ff::Field;
+use ark_poly::polynomial::univariate::DensePolynomial;
+use ark_poly_commit::PolynomialCommitment;
 
 /// Defines all possible errors that can be encountered in PLONK.
 #[derive(Debug)]
@@ -42,7 +45,7 @@ pub enum Error {
     /// Polynomial Commitment errors
     PCError {
         /// Polynomial Commitment errors
-        error: ark_poly_commit::error::Error,
+        error: String,
     },
 
     // KZG10 errors
@@ -75,12 +78,18 @@ pub enum Error {
     /// array.
     ScalarMalformed,
 }
-
-impl From<ark_poly_commit::error::Error> for Error {
-    fn from(error: ark_poly_commit::error::Error) -> Self {
-        Self::PCError { error }
+/*
+impl From<PC::Error> for Error
+where
+    F: Field,
+    PC: PolynomialCommitment<F, DensePolynomial<F>>
+{
+    fn from(error: PC::Error) -> Self {
+        Self::PCError {
+            error: format!("Polynomial Commitment Error: {:?}", error),
+        }
     }
-}
+}*/
 
 #[cfg(feature = "std")]
 impl std::fmt::Display for Error {

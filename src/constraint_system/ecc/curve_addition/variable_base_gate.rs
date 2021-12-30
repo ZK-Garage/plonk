@@ -8,19 +8,20 @@
 
 use crate::constraint_system::ecc::Point;
 use crate::constraint_system::StandardComposer;
-use ark_ec::models::twisted_edwards_extended::GroupAffine;
+use ark_ec::models::twisted_edwards_extended::GroupAffine as TEGroupAffine;
 use ark_ec::models::TEModelParameters;
 use ark_ff::PrimeField;
 
-impl<F> StandardComposer<F>
+impl<F, P> StandardComposer<F, P>
 where
     F: PrimeField,
+    P: TEModelParameters<BaseField = F>,
 {
     /// Adds two curve points together using a curve addition gate
     /// Note that since the points are not fixed the generator is not a part of
     /// the circuit description, however it is less efficient for a program
     /// width of 4.
-    pub fn point_addition_gate<P: TEModelParameters<BaseField = F>>(
+    pub fn point_addition_gate(
         &mut self,
         point_a: Point<P>,
         point_b: Point<P>,
@@ -41,8 +42,8 @@ where
         let x_2_scalar = self.variables.get(&x_2).unwrap();
         let y_2_scalar = self.variables.get(&y_2).unwrap();
 
-        let p1 = GroupAffine::<P>::new(*x_1_scalar, *y_1_scalar);
-        let p2 = GroupAffine::<P>::new(*x_2_scalar, *y_2_scalar);
+        let p1 = TEGroupAffine::<P>::new(*x_1_scalar, *y_1_scalar);
+        let p2 = TEGroupAffine::<P>::new(*x_2_scalar, *y_2_scalar);
 
         let point = p1 + p2;
         let x_3_scalar = point.x;
@@ -102,14 +103,15 @@ mod test {
     /// Adds two curve points together using the classical point addition
     /// algorithm. This method is slower than WNAF and is just meant to be the
     /// source of truth to test the WNAF method.
-    pub fn classical_point_addition<
-        P: TEModelParameters<BaseField = F>,
-        F: PrimeField,
-    >(
-        composer: &mut StandardComposer<P::BaseField>,
+    pub fn classical_point_addition<F, P>(
+        composer: &mut StandardComposer<P::BaseField, P>,
         point_a: Point<P>,
         point_b: Point<P>,
-    ) -> Point<P> {
+    ) -> Point<P>
+    where
+        F: PrimeField,
+        P: TEModelParameters<BaseField = F>,
+    {
         let x1 = point_a.x;
         let y1 = point_a.y;
 
@@ -249,9 +251,9 @@ mod test {
         P: TEModelParameters<BaseField = E::Fr>,
     {
         let res = gadget_tester::<E, P>(
-            |composer: &mut StandardComposer<E::Fr>| {
+            |composer: &mut StandardComposer<E::Fr, P>| {
                 let (x, y) = P::AFFINE_GENERATOR_COEFFS;
-                let generator = GroupAffine::<P>::new(x, y);
+                let generator = TEGroupAffine::<P>::new(x, y);
                 let x_var = composer.add_input(x);
                 let y_var = composer.add_input(y);
                 let expected_point = generator + generator;

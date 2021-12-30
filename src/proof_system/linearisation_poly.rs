@@ -11,7 +11,7 @@ use crate::proof_system::widget::GateConstraint;
 use crate::proof_system::GateValues;
 use crate::proof_system::ProverKey;
 use crate::util::EvaluationDomainExt;
-use ark_ec::TEModelParameters;
+use ark_ec::{ModelParameters, TEModelParameters};
 use ark_ff::FftField;
 use ark_ff::Field;
 use ark_poly::{
@@ -246,7 +246,6 @@ where
         d_eval,
         q_arith_eval,
     );
-
     let range = Range::linearisation_term(
         &prover_key.range_selector.0,
         *range_separation_challenge,
@@ -259,13 +258,13 @@ where
         values,
     );
 
-    let fixed_base_scalar_mul = FixedBaseScalarMul::<_, P>::linearisation_term(
+    let fixed_base_scalar_mul = FixedBaseScalarMul::<F, P>::linearisation_term(
         &prover_key.fixed_group_add_selector.0,
         *fixed_base_separation_challenge,
         values,
     );
 
-    let curve_addition = CurveAddition::<_, P>::linearisation_term(
+    let curve_addition = CurveAddition::<F, P>::linearisation_term(
         &prover_key.variable_group_add_selector.0,
         *var_base_separation_challenge,
         values,

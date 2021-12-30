@@ -21,7 +21,10 @@ use alloc::collections::BTreeMap;
 #[cfg(feature = "trace")]
 use ark_ff::BigInteger;
 use ark_ff::FftField;
+use core::marker::PhantomData;
 use hashbrown::HashMap;
+
+use ark_ec::{ModelParameters, SWModelParameters, TEModelParameters};
 
 /// The StandardComposer is the circuit-builder tool that the `dusk-plonk`
 /// repository provides so that circuit descriptions can be written, stored and
@@ -50,9 +53,10 @@ use hashbrown::HashMap;
 /// the StandardComposer as a builder.
 #[derive(derivative::Derivative)]
 #[derivative(Debug)]
-pub struct StandardComposer<F>
+pub struct StandardComposer<F, P>
 where
     F: FftField,
+    P: ModelParameters<BaseField = F>,
 {
     /// Number of arithmetic gates in the circuit
     pub(crate) n: usize,
@@ -106,11 +110,15 @@ where
 
     /// Permutation argument.
     pub(crate) perm: Permutation,
+
+    /// Type Parameter Marker
+    __: PhantomData<P>,
 }
 
-impl<F> StandardComposer<F>
+impl<F, P> StandardComposer<F, P>
 where
     F: FftField,
+    P: ModelParameters<BaseField = F>,
 {
     /// Returns the number of gates in the circuit
     pub fn circuit_size(&self) -> usize {
@@ -138,9 +146,10 @@ where
     }
 }
 
-impl<F> Default for StandardComposer<F>
+impl<F, P> Default for StandardComposer<F, P>
 where
     F: FftField,
+    P: ModelParameters<BaseField = F>,
 {
     #[inline]
     fn default() -> Self {
@@ -148,9 +157,10 @@ where
     }
 }
 
-impl<F> StandardComposer<F>
+impl<F, P> StandardComposer<F, P>
 where
     F: FftField,
+    P: ModelParameters<BaseField = F>,
 {
     /// Generates a new empty `StandardComposer` with all of it's fields
     /// set to hold an initial capacity of 0.
@@ -161,7 +171,7 @@ where
     /// holds `Vec` for every polynomial, and these will need to be re-allocated
     /// each time the circuit grows considerably.
     pub fn new() -> Self {
-        StandardComposer::with_expected_size(0)
+        Self::with_expected_size(0)
     }
 
     /// Fixes a [`Variable`] in the witness to be a part of the circuit
@@ -177,7 +187,7 @@ where
     /// since the `Vec`s will already have an appropriate allocation at the
     /// beginning of the composing stage.
     pub fn with_expected_size(expected_size: usize) -> Self {
-        let mut composer = StandardComposer {
+        let mut composer = Self {
             n: 0,
             q_m: Vec::with_capacity(expected_size),
             q_l: Vec::with_capacity(expected_size),
@@ -198,6 +208,7 @@ where
             zero_var: Variable(0),
             variables: HashMap::with_capacity(expected_size),
             perm: Permutation::new(),
+            __: PhantomData::<P>,
         };
 
         // Reserve the first variable to be zero
@@ -652,7 +663,7 @@ mod test {
     use crate::constraint_system::helper::*;
     use crate::prelude::Prover;
     use crate::prelude::Verifier;
-    use crate::{batch_test, batch_test_field};
+    use crate::{batch_test, batch_test_field_params};
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
     use ark_ec::models::TEModelParameters;
@@ -665,9 +676,10 @@ mod test {
     use rand_core::OsRng;
 
     /// Tests that a circuit initially has 3 gates.
-    fn test_initial_circuit_size<F>()
+    fn test_initial_circuit_size<F, P>()
     where
         F: FftField,
+        P: ModelParameters<BaseField = F>,
     {
         // NOTE: Circuit size is n+3 because
         // - We have an extra gate which forces the first witness to be zero.
@@ -676,7 +688,7 @@ mod test {
         //   not the identity and
         // - Another gate which ensures that the selector polynomials are not
         //   all zeroes
-        assert_eq!(3, StandardComposer::<F>::new().circuit_size())
+        assert_eq!(3, StandardComposer::<F, P>::new().circuit_size())
     }
 
     /// Tests that an empty circuit proof passes.
@@ -687,7 +699,7 @@ mod test {
     {
         // NOTE: Does nothing except add the dummy constraints.
         let res =
-            gadget_tester::<E, P>(|_: &mut StandardComposer<E::Fr>| {}, 200);
+            gadget_tester::<E, P>(|_: &mut StandardComposer<E::Fr, P>| {}, 200);
         assert!(res.is_ok());
     }
 
@@ -697,7 +709,7 @@ mod test {
         P: TEModelParameters<BaseField = E::Fr>,
     {
         let res = gadget_tester::<E, P>(
-            |composer: &mut StandardComposer<E::Fr>| {
+            |composer: &mut StandardComposer<E::Fr, P>| {
                 let bit_1 = composer.add_input(E::Fr::one());
                 let bit_0 = composer.zero_var();
 
@@ -731,27 +743,19 @@ mod test {
             )
             .unwrap();
 
+        type PC<E> = SonicKZG10<E, DensePolynomial<<E as PairingEngine>::Fr>>;
+
         // Create a prover struct
-        let mut prover: Prover<E::Fr> = Prover::new(b"demo");
+        let mut prover: Prover<E::Fr, P, PC<E>> = Prover::new(b"demo");
 
         // Add gadgets
         dummy_gadget(10, prover.mut_cs());
 
         // Commit Key
-        let (ck, _) = SonicKZG10::<E, DensePolynomial<E::Fr>>::trim(
-            &u_params,
-            2 * 20,
-            0,
-            None,
-        )
-        .unwrap();
-        let powers = Powers {
-            powers_of_g: ck.powers_of_g.into(),
-            powers_of_gamma_g: ck.powers_of_gamma_g.into(),
-        };
+        let (ck, vk) = PC::<E>::trim(&u_params, 2 * 20, 0, None).unwrap();
 
         // Preprocess circuit
-        prover.preprocess(&powers).unwrap();
+        prover.preprocess(&ck).unwrap();
 
         let public_inputs = prover.cs.construct_dense_pi_vec();
 
@@ -759,7 +763,7 @@ mod test {
 
         // Compute multiple proofs
         for _ in 0..3 {
-            proofs.push(prover.prove::<E, P>(&powers).unwrap());
+            proofs.push(prover.prove(&ck).unwrap());
 
             // Add another witness instance
             dummy_gadget(10, prover.mut_cs());
@@ -767,59 +771,39 @@ mod test {
 
         // Verifier
         //
-        let mut verifier: Verifier<E> = Verifier::new(b"demo");
+        let mut verifier = Verifier::<E::Fr, P, PC<E>>::new(b"demo");
 
         // Add gadgets
         dummy_gadget(10, verifier.mut_cs());
 
-        // Commit and Verifier Key
-        let (sonic_ck, sonic_vk) =
-            SonicKZG10::<E, DensePolynomial<E::Fr>>::trim(
-                &u_params,
-                2 * 20,
-                0,
-                None,
-            )
-            .unwrap();
-        let powers = Powers {
-            powers_of_g: sonic_ck.powers_of_g.into(),
-            powers_of_gamma_g: sonic_ck.powers_of_gamma_g.into(),
-        };
-
-        let vk = kzg10::VerifierKey {
-            g: sonic_vk.g,
-            gamma_g: sonic_vk.gamma_g,
-            h: sonic_vk.h,
-            beta_h: sonic_vk.beta_h,
-            prepared_h: sonic_vk.prepared_h,
-            prepared_beta_h: sonic_vk.prepared_beta_h,
-        };
-
         // Preprocess
-        verifier.preprocess(&powers).unwrap();
+        verifier.preprocess(&ck).unwrap();
 
         for proof in proofs {
-            assert!(verifier.verify::<P>(&proof, &vk, &public_inputs).is_ok());
+            assert!(verifier.verify(&proof, &vk, &public_inputs).is_ok());
         }
     }
 
     // Tests for Bls12_381
-    batch_test_field!(
+    batch_test_field_params!(
         [
             test_initial_circuit_size
         ],
         [] => (
-            Bls12_381
+            Bls12_381,
+            ark_ed_on_bls12_381::EdwardsParameters
+
         )
     );
 
     // Tests for Bls12_377
-    batch_test_field!(
+    batch_test_field_params!(
         [
             test_initial_circuit_size
         ],
         [] => (
-            Bls12_377
+            Bls12_377,
+            ark_ed_on_bls12_377::EdwardsParameters
         )
     );
 
@@ -828,9 +812,10 @@ mod test {
         [
             test_prove_verify,
             test_multiple_proofs,
-            test_conditional_select        ],
+            test_conditional_select ],
         [] => (
-            Bls12_381, ark_ed_on_bls12_381::EdwardsParameters
+            Bls12_381,
+            ark_ed_on_bls12_381::EdwardsParameters
         )
     );
 
@@ -842,7 +827,8 @@ mod test {
             test_conditional_select
                     ],
         [] => (
-            Bls12_377, ark_ed_on_bls12_377::EdwardsParameters
+            Bls12_377,
+            ark_ed_on_bls12_377::EdwardsParameters
         )
     );
 }

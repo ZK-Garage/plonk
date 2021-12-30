@@ -10,7 +10,6 @@ use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, GeneralEvaluationDomain,
     Polynomial, UVPolynomial,
 };
-use ark_poly_commit::kzg10::Commitment;
 
 /// Returns an iterator over increasing powers of the given `scalar` starting
 /// at `0`.
@@ -176,16 +175,60 @@ where
     P::ScalarField::from_le_bytes_mod_order(&scalar_repr.to_bytes_le())
 }
 
+use ark_ec::msm::VariableBaseMSM;
+use ark_poly_commit::sonic_pc::SonicKZG10;
+use ark_poly_commit::PolynomialCommitment;
+
+pub trait HomomorphicCommitment<F>:
+    PolynomialCommitment<F, DensePolynomial<F>>
+where
+    F: PrimeField,
+{
+    fn multi_scalar_mul(
+        commitments: &[Self::Commitment],
+        scalars: &[F],
+    ) -> Self::Commitment;
+}
+
+type KZG10<E> = SonicKZG10<E, DensePolynomial<<E as PairingEngine>::Fr>>;
+type KZG10Commitment<E> = <KZG10<E> as PolynomialCommitment<
+    <E as PairingEngine>::Fr,
+    DensePolynomial<<E as PairingEngine>::Fr>,
+>>::Commitment;
+
+impl<E> HomomorphicCommitment<E::Fr> for KZG10<E>
+where
+    E: PairingEngine,
+{
+    fn multi_scalar_mul(
+        commitments: &[KZG10Commitment<E>],
+        scalars: &[E::Fr],
+    ) -> KZG10Commitment<E> {
+        let scalars_repr = scalars
+            .iter()
+            .map(<E::Fr as PrimeField>::into_repr)
+            .collect::<Vec<_>>();
+
+        let points_repr = commitments.iter().map(|c| c.0).collect::<Vec<_>>();
+
+        ark_poly_commit::kzg10::Commitment::<E>(
+            VariableBaseMSM::multi_scalar_mul(&points_repr, &scalars_repr)
+                .into(),
+        )
+    }
+}
+
 /// Computes a linear combination of the polynomial evaluations and polynomial
 /// commitments provided a challenge.
 // TODO: complete doc
-pub fn linear_combination<E>(
-    evals: &[E::Fr],
-    commitments: &[Commitment<E>],
-    challenge: E::Fr,
-) -> (Commitment<E>, E::Fr)
+pub fn linear_combination<F, H>(
+    evals: &[F],
+    commitments: &[H::Commitment],
+    challenge: F,
+) -> (H::Commitment, F)
 where
-    E: PairingEngine,
+    F: PrimeField,
+    H: HomomorphicCommitment<F>,
 {
     assert_eq!(evals.len(), commitments.len());
     let powers = powers_of(challenge).take(evals.len()).collect::<Vec<_>>();
@@ -194,13 +237,31 @@ where
         .zip(powers.iter())
         .map(|(&eval, power)| eval * power)
         .sum();
-    let combined_commitment = Commitment(
-        commitments
-            .iter()
-            .zip(powers.iter())
-            .map(|(commit, &power)| commit.0.mul(power))
-            .sum::<E::G1Projective>()
-            .into(),
-    );
+    let combined_commitment = H::multi_scalar_mul(commitments, &powers);
     (combined_commitment, combined_eval)
+}
+
+/// Macro to quickly label polynomials
+#[macro_export]
+macro_rules! label_polynomial {
+    ($poly:expr) => {
+        ark_poly_commit::LabeledPolynomial::new(
+            stringify!($poly).to_owned(),
+            $poly.clone(),
+            None,
+            None,
+        )
+    };
+}
+
+/// Macro to quickly label polynomial commitments
+#[macro_export]
+macro_rules! label_commitment {
+    ($comm:expr) => {
+        ark_poly_commit::LabeledCommitment::new(
+            stringify!($comm).to_owned(),
+            $comm.clone(),
+            None,
+        )
+    };
 }

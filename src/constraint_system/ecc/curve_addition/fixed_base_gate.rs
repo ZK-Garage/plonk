@@ -8,7 +8,7 @@
 
 use crate::constraint_system::StandardComposer;
 use crate::constraint_system::Variable;
-use ark_ec::models::TEModelParameters;
+use ark_ec::models::{ModelParameters, TEModelParameters};
 use ark_ff::PrimeField;
 
 /// Contains all of the components needed to verify that a bit scalar
@@ -48,12 +48,13 @@ where
     pub xy_beta: P::BaseField,
 }
 
-impl<F> StandardComposer<F>
+impl<F, P> StandardComposer<F, P>
 where
     F: PrimeField,
+    P: TEModelParameters<BaseField = F>,
 {
     /// Generates a new structure for preparing a [`WnafRound`] ROUND.
-    pub(crate) fn new_wnaf<P: TEModelParameters<BaseField = F>>(
+    pub(crate) fn new_wnaf(
         acc_x: Variable,
         acc_y: Variable,
         accumulated_bit: Variable,
@@ -74,10 +75,7 @@ where
     }
 
     /// Fixed group addition of a point.
-    pub(crate) fn fixed_group_add<P: TEModelParameters<BaseField = F>>(
-        &mut self,
-        wnaf_round: WnafRound<P>,
-    ) {
+    pub(crate) fn fixed_group_add(&mut self, wnaf_round: WnafRound<P>) {
         self.w_l.push(wnaf_round.acc_x);
         self.w_r.push(wnaf_round.acc_y);
         self.w_o.push(wnaf_round.xy_alpha);

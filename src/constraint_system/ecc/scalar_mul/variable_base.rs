@@ -8,12 +8,13 @@
 
 use crate::constraint_system::ecc::Point;
 use crate::constraint_system::{variable::Variable, StandardComposer};
-use ark_ec::models::TEModelParameters;
+use ark_ec::TEModelParameters;
 use ark_ff::{BigInteger, FftField, FpParameters, PrimeField};
 
-impl<F> StandardComposer<F>
+impl<F, P> StandardComposer<F, P>
 where
     F: FftField + PrimeField,
+    P: TEModelParameters<BaseField = F>,
 {
     /// Adds a variable-base scalar multiplication to the circuit description.
     ///
@@ -22,14 +23,11 @@ where
     /// If you're planning to multiply always by the generator of the scalar
     /// field, you should use [`StandardComposer::fixed_base_scalar_mul`]
     /// which is optimized for fixed_base ops.
-    pub fn variable_base_scalar_mul<P>(
+    pub fn variable_base_scalar_mul(
         &mut self,
         curve_var: Variable,
         point: Point<P>,
-    ) -> Point<P>
-    where
-        P: TEModelParameters<BaseField = F>,
-    {
+    ) -> Point<P> {
         // Turn scalar into bits
         let raw_scalar = *self
             .variables
@@ -104,7 +102,8 @@ mod test {
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
     use ark_ec::{
-        twisted_edwards_extended::GroupAffine, AffineCurve, PairingEngine,
+        twisted_edwards_extended::GroupAffine as TEGroupAffine, AffineCurve,
+        PairingEngine, TEModelParameters,
     };
 
     fn test_var_base_scalar_mul<E, P>()
@@ -113,7 +112,7 @@ mod test {
         P: TEModelParameters<BaseField = E::Fr>,
     {
         let res = gadget_tester::<E, P>(
-            |composer: &mut StandardComposer<E::Fr>| {
+            |composer: &mut StandardComposer<E::Fr, P>| {
                 let scalar = E::Fr::from_le_bytes_mod_order(&[
                     182, 44, 247, 214, 94, 14, 151, 208, 130, 16, 200, 204,
                     147, 32, 104, 166, 0, 59, 52, 1, 1, 59, 103, 6, 169, 175,
@@ -124,9 +123,9 @@ mod test {
                 let secret_scalar = composer.add_input(scalar);
 
                 let (x, y) = P::AFFINE_GENERATOR_COEFFS;
-                let generator = GroupAffine::new(x, y);
+                let generator = TEGroupAffine::new(x, y);
 
-                let expected_point: GroupAffine<P> = AffineCurve::mul(
+                let expected_point: TEGroupAffine<P> = AffineCurve::mul(
                     &generator,
                     util::to_embedded_curve_scalar::<E::Fr, P>(scalar),
                 )

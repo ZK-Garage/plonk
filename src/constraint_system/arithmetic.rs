@@ -8,11 +8,13 @@
 
 use crate::constraint_system::StandardComposer;
 use crate::constraint_system::Variable;
+use ark_ec::ModelParameters;
 use ark_ff::FftField;
 
-impl<F> StandardComposer<F>
+impl<F, P> StandardComposer<F, P>
 where
     F: FftField,
+    P: ModelParameters<BaseField = F>,
 {
     /// Adds a width-3 add gate to the circuit, linking the addition of the
     /// provided inputs, scaled by the selector coefficients with the output
@@ -445,7 +447,7 @@ mod test {
         P: TEModelParameters<BaseField = E::Fr>,
     {
         let res = gadget_tester::<E, P>(
-            |composer: &mut StandardComposer<E::Fr>| {
+            |composer: &mut StandardComposer<E::Fr, P>| {
                 let var_one = composer.add_input(E::Fr::one());
                 let should_be_three = composer.big_add(
                     (E::Fr::one(), var_one),
@@ -483,7 +485,7 @@ mod test {
         P: TEModelParameters<BaseField = E::Fr>,
     {
         let res = gadget_tester::<E, P>(
-            |composer: &mut StandardComposer<E::Fr>| {
+            |composer: &mut StandardComposer<E::Fr, P>| {
                 // Verify that (4+5+5) * (6+7+7) = 280
                 let four = composer.add_input(E::Fr::from(4u64));
                 let five = composer.add_input(E::Fr::from(5u64));
@@ -537,7 +539,7 @@ mod test {
         P: TEModelParameters<BaseField = E::Fr>,
     {
         let res = gadget_tester::<E, P>(
-            |composer: &mut StandardComposer<E::Fr>| {
+            |composer: &mut StandardComposer<E::Fr, P>| {
                 let zero = composer.zero_var();
                 let one = composer.add_input(E::Fr::one());
 
@@ -560,7 +562,7 @@ mod test {
         P: TEModelParameters<BaseField = E::Fr>,
     {
         let res = gadget_tester::<E, P>(
-            |composer: &mut StandardComposer<E::Fr>| {
+            |composer: &mut StandardComposer<E::Fr, P>| {
                 // Verify that (4+5+5) * (6+7+7) + (8*9) = 352
                 let four = composer.add_input(E::Fr::from(4u64));
                 let five = composer.add_input(E::Fr::from(5u64));
@@ -609,7 +611,7 @@ mod test {
         P: TEModelParameters<BaseField = E::Fr>,
     {
         let res = gadget_tester::<E, P>(
-            |composer: &mut StandardComposer<E::Fr>| {
+            |composer: &mut StandardComposer<E::Fr, P>| {
                 // Verify that (4*5)*6 + 4*7 + 5*8 + 9*10 + 11 = 289
                 let a = composer.add_input(E::Fr::from(4u64));
                 let b = composer.add_input(E::Fr::from(5u64));
@@ -648,7 +650,7 @@ mod test {
         P: TEModelParameters<BaseField = E::Fr>,
     {
         let res = gadget_tester::<E, P>(
-            |composer: &mut StandardComposer<E::Fr>| {
+            |composer: &mut StandardComposer<E::Fr, P>| {
                 // Verify that (4*5)*6 + 4*7 + 5*8 + 9*12 + 11 != 289
                 let a = composer.add_input(E::Fr::from(4u64));
                 let b = composer.add_input(E::Fr::from(5u64));
@@ -687,7 +689,7 @@ mod test {
         P: TEModelParameters<BaseField = E::Fr>,
     {
         let res = gadget_tester::<E, P>(
-            |composer: &mut StandardComposer<E::Fr>| {
+            |composer: &mut StandardComposer<E::Fr, P>| {
                 // Verify that (5+5) * (6+7) != 117
                 let five = composer.add_input(E::Fr::from(5u64));
                 let six = composer.add_input(E::Fr::from(6u64));

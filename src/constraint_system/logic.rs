@@ -10,11 +10,13 @@
 //! `AND` gate.
 
 use crate::constraint_system::{StandardComposer, Variable, WireData};
+use ark_ec::ModelParameters;
 use ark_ff::{BigInteger, PrimeField};
 
-impl<F> StandardComposer<F>
+impl<F, P> StandardComposer<F, P>
 where
     F: PrimeField,
+    P: ModelParameters<BaseField = F>,
 {
     /// Performs a logical AND or XOR op between the inputs provided for the
     /// specified number of bits.
@@ -355,7 +357,7 @@ mod test {
     {
         // Should pass since the XOR result is correct and the bit-num is even.
         let res = gadget_tester::<E, P>(
-            |composer: &mut StandardComposer<E::Fr>| {
+            |composer: &mut StandardComposer<E::Fr, P>| {
                 let witness_a = composer.add_input(E::Fr::from(500u64));
                 let witness_b = composer.add_input(E::Fr::from(357u64));
                 let xor_res = composer.xor_gate(witness_a, witness_b, 10);
@@ -372,7 +374,7 @@ mod test {
 
         // Should pass since the AND result is correct even the bit-num is even.
         let res = gadget_tester::<E, P>(
-            |composer: &mut StandardComposer<E::Fr>| {
+            |composer: &mut StandardComposer<E::Fr, P>| {
                 let witness_a = composer.add_input(E::Fr::from(469u64));
                 let witness_b = composer.add_input(E::Fr::from(321u64));
                 let xor_res = composer.and_gate(witness_a, witness_b, 10);
@@ -390,7 +392,7 @@ mod test {
         // Should not pass since the XOR result is not correct even the bit-num
         // is even.
         let res = gadget_tester::<E, P>(
-            |composer: &mut StandardComposer<E::Fr>| {
+            |composer: &mut StandardComposer<E::Fr, P>| {
                 let witness_a = composer.add_input(E::Fr::from(139u64));
                 let witness_b = composer.add_input(E::Fr::from(33u64));
                 let xor_res = composer.xor_gate(witness_a, witness_b, 10);
@@ -407,7 +409,7 @@ mod test {
 
         // Should pass even the bitnum is less than the number bit-size
         let res = gadget_tester::<E, P>(
-            |composer: &mut StandardComposer<E::Fr>| {
+            |composer: &mut StandardComposer<E::Fr, P>| {
                 let witness_a = composer.add_input(E::Fr::from(256u64));
                 let witness_b = composer.add_input(E::Fr::from(235u64));
                 let xor_res = composer.xor_gate(witness_a, witness_b, 2);
@@ -430,7 +432,7 @@ mod test {
     {
         // Should fail since the bit-num is odd.
         let _ = gadget_tester::<E, P>(
-            |composer: &mut StandardComposer<E::Fr>| {
+            |composer: &mut StandardComposer<E::Fr, P>| {
                 let witness_a = composer.add_input(E::Fr::from(500u64));
                 let witness_b = composer.add_input(E::Fr::from(499u64));
                 let xor_res = composer.xor_gate(witness_a, witness_b, 9);
