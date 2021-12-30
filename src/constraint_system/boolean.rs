@@ -62,11 +62,9 @@ mod test {
     use ark_ff::{FftField, PrimeField};
     use ark_poly::univariate::DensePolynomial;
     use ark_poly_commit::PolynomialCommitment;
-    use num_traits::One;
 
     fn test_correct_bool_gate<F, P, PC>()
     where
-        //E: PairingEngine,
         F: FftField + PrimeField,
         P: TEModelParameters<BaseField = F>,
         PC: PolynomialCommitment<F, DensePolynomial<F>>
@@ -86,7 +84,6 @@ mod test {
 
     fn test_incorrect_bool_gate<F, P, PC>()
     where
-        //E: PairingEngine,
         F: FftField + PrimeField,
         P: TEModelParameters<BaseField = F>,
         PC: PolynomialCommitment<F, DensePolynomial<F>>

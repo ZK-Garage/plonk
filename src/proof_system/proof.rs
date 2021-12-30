@@ -21,13 +21,10 @@ use crate::proof_system::range::Range;
 use crate::proof_system::GateConstraint;
 use crate::proof_system::VerifierKey as PlonkVerifierKey;
 use crate::transcript::TranscriptProtocol;
-use crate::util;
 use crate::util::EvaluationDomainExt;
-use ark_ec::{
-    msm::VariableBaseMSM, AffineCurve, ModelParameters, TEModelParameters,
-};
-use ark_ec::{PairingEngine, ProjectiveCurve};
-use ark_ff::{fields::batch_inversion, FftField, Field, PrimeField};
+use ark_ec::{ModelParameters, TEModelParameters};
+
+use ark_ff::{fields::batch_inversion, FftField, PrimeField};
 use ark_poly::univariate::DensePolynomial;
 use ark_poly::{EvaluationDomain, GeneralEvaluationDomain};
 use ark_poly_commit::PolynomialCommitment;
@@ -35,7 +32,6 @@ use ark_serialize::{
     CanonicalDeserialize, CanonicalSerialize, Read, SerializationError, Write,
 };
 use merlin::Transcript;
-use rand_core::OsRng;
 
 /// A Proof is a composition of `Commitment`s to the Witness, Permutation,
 /// Quotient, Shifted and Opening polynomials as well as the
@@ -243,27 +239,6 @@ where
 
         // Reconstruct the Aggregated Proof commitments and evals
         // The proof consists of the witness commitment with no blinder
-        /*
-        let (aggregate_proof_commitment, aggregate_proof_eval) = self
-            .gen_aggregate_proof(
-                t_eval,
-                t_comm,
-                r_comm,
-                plonk_verifier_key,
-                transcript,
-            );
-        let aggregate_proof = self.w_z_comm;
-
-        // Reconstruct the Aggregated Shift Proof commitments and evals
-        // The proof consists of the witness commitment with no blinder
-        let (aggregate_shift_proof_commitment, aggregate_shift_proof_eval) =
-            self.gen_shift_aggregate_proof(transcript);
-
-        let aggregate_shift_proof = self.w_zw_comm;
-
-        // Add commitment to openings to transcript
-        transcript.append(b"w_z", &self.w_z_comm);
-        transcript.append(b"w_z_w", &self.w_zw_comm);*/
 
         // Compute aggregate witness to polynomials evaluated at the evaluation
         // challenge `z`
@@ -361,62 +336,6 @@ where
             }
         })
     }
-    /*
-        // TODO: Doc this
-        fn gen_aggregate_proof(
-            &self,
-            t_eval: F,
-            t_comm: PC::Commitment,
-            r_comm: PC::Commitment,
-            plonk_verifier_key: &PlonkVerifierKey<F, PC>,
-            transcript: &mut Transcript,
-        ) -> (PC::Commitment, F) {
-            let challenge = transcript.challenge_scalar(b"aggregate_witness");
-            util::linear_combination(
-                &[
-                    t_eval,
-                    self.evaluations.linearisation_polynomial_eval,
-                    self.evaluations.a_eval,
-                    self.evaluations.b_eval,
-                    self.evaluations.c_eval,
-                    self.evaluations.d_eval,
-                    self.evaluations.left_sigma_eval,
-                    self.evaluations.right_sigma_eval,
-                    self.evaluations.out_sigma_eval,
-                ],
-                &[
-                    t_comm,
-                    r_comm,
-                    self.a_comm,
-                    self.b_comm,
-                    self.c_comm,
-                    self.d_comm,
-                    plonk_verifier_key.permutation.left_sigma,
-                    plonk_verifier_key.permutation.right_sigma,
-                    plonk_verifier_key.permutation.out_sigma,
-                ],
-                challenge,
-            )
-        }
-
-        // TODO: Doc this
-        fn gen_shift_aggregate_proof(
-            &self,
-            transcript: &mut Transcript,
-        ) -> (PC::Commitment, F) {
-            let challenge = transcript.challenge_scalar(b"aggregate_witness");
-            util::linear_combination(
-                &[
-                    self.evaluations.permutation_eval,
-                    self.evaluations.a_next_eval,
-                    self.evaluations.b_next_eval,
-                    self.evaluations.d_next_eval,
-                ],
-                &[self.z_comm, self.a_comm, self.b_comm, self.d_comm],
-                challenge,
-            )
-        }
-    */
     // TODO: Doc this
     fn compute_quotient_evaluation(
         &self,
@@ -470,11 +389,6 @@ where
         let z_n = z_challenge.pow(&[n, 0, 0, 0]);
         let z_two_n = z_challenge.pow(&[2 * n, 0, 0, 0]);
         let z_three_n = z_challenge.pow(&[3 * n, 0, 0, 0]);
-        /*let t_comm = self.t_1_comm.0.into_projective()
-            + self.t_2_comm.0.mul(z_n.into_repr())
-            + self.t_3_comm.0.mul(z_two_n.into_repr())
-            + self.t_4_comm.0.mul(z_three_n.into_repr());
-        Commitment(t_comm.into_affine())*/
 
         PC::multi_scalar_mul(
             &[
@@ -636,16 +550,17 @@ where
 
 #[cfg(test)]
 mod test {
+    /*
     use super::*;
     use crate::batch_test_field;
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
-    use ark_ff::UniformRand;
+    use ark_ff::{PrimeField, UniformRand};
     use rand_core::OsRng;
 
-    /*    fn test_serde_proof<F, PC>()
+    fn test_serde_proof<F, PC>()
     where
-        F: Field,
+        F: PrimeField,
         PC: PolynomialCommitment<F, DensePolynomial<F>>
             + HomomorphicCommitment<F>,
     {
@@ -659,9 +574,8 @@ mod test {
             t_2_comm: Default::default(),
             t_3_comm: Default::default(),
             t_4_comm: Default::default(),
-            pc_opening: Default::default(),
-            //w_z_comm: Default::default(),
-            //w_zw_comm: Default::default(),
+            aw_opening: Default::default(),
+            saw_opening: Default::default(),
             evaluations: ProofEvaluations {
                 a_eval: F::rand(&mut OsRng),
                 b_eval: F::rand(&mut OsRng),
@@ -705,5 +619,5 @@ mod test {
         [] => (
             Bls12_377
         )
-    ); */
+    );*/
 }

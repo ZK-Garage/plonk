@@ -112,7 +112,6 @@ mod test {
 
     fn test_var_base_scalar_mul<F, P, PC>()
     where
-        //E: PairingEngine,
         F: FftField + PrimeField,
         P: TEModelParameters<BaseField = F>,
         PC: PolynomialCommitment<F, DensePolynomial<F>>

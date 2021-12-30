@@ -215,11 +215,9 @@ mod test {
     use ark_ff::{FftField, PrimeField};
     use ark_poly::univariate::DensePolynomial;
     use ark_poly_commit::PolynomialCommitment;
-    use num_traits::One;
 
     fn test_conditional_select_point<F, P, PC>()
     where
-        //E: PairingEngine,
         F: FftField + PrimeField,
         P: TEModelParameters<BaseField = F>,
         PC: PolynomialCommitment<F, DensePolynomial<F>>
@@ -252,7 +250,6 @@ mod test {
 
     fn test_conditional_point_neg<F, P, PC>()
     where
-        //E: PairingEngine,
         F: FftField + PrimeField,
         P: TEModelParameters<BaseField = F>,
         PC: PolynomialCommitment<F, DensePolynomial<F>>

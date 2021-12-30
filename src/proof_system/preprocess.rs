@@ -9,12 +9,11 @@
 use crate::constraint_system::StandardComposer;
 use crate::error::Error;
 use crate::proof_system::{widget, ProverKey};
-use ark_ec::{ModelParameters, PairingEngine};
+use ark_ec::ModelParameters;
 use ark_ff::FftField;
 use ark_ff::PrimeField;
 use ark_poly::polynomial::univariate::DensePolynomial;
 use ark_poly::{EvaluationDomain, Evaluations, GeneralEvaluationDomain};
-use ark_poly_commit::kzg10::{Powers, KZG10};
 use ark_poly_commit::{LabeledPolynomial, PolynomialCommitment};
 use core::marker::PhantomData;
 use merlin::Transcript;

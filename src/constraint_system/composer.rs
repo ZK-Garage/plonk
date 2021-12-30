@@ -693,7 +693,6 @@ mod test {
     /// Tests that an empty circuit proof passes.
     fn test_prove_verify<F, P, PC>()
     where
-        //E: PairingEngine,
         F: FftField + PrimeField,
         P: TEModelParameters<BaseField = F>,
         PC: PolynomialCommitment<F, DensePolynomial<F>>
@@ -707,7 +706,6 @@ mod test {
 
     fn test_conditional_select<F, P, PC>()
     where
-        //E: PairingEngine,
         F: FftField + PrimeField,
         P: TEModelParameters<BaseField = F>,
         PC: PolynomialCommitment<F, DensePolynomial<F>>
@@ -737,7 +735,6 @@ mod test {
     // FIXME: Move this to integration tests
     fn test_multiple_proofs<F, P, PC>()
     where
-        //E: PairingEngine,
         F: FftField + PrimeField,
         P: TEModelParameters<BaseField = F>,
         PC: PolynomialCommitment<F, DensePolynomial<F>>

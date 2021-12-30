@@ -170,19 +170,17 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::commitment::HomomorphicCommitment;
     use crate::{batch_test, constraint_system::helper::*, util};
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
     use ark_ec::{group::Group, AffineCurve, PairingEngine};
-    //use ark_ff::PrimeField;
-    use crate::commitment::HomomorphicCommitment;
     use ark_ff::{FftField, PrimeField};
     use ark_poly::univariate::DensePolynomial;
     use ark_poly_commit::PolynomialCommitment;
 
     fn test_ecc_constraint<F, P, PC>()
     where
-        //E: PairingEngine,
         F: FftField + PrimeField,
         P: TEModelParameters<BaseField = F>,
         PC: PolynomialCommitment<F, DensePolynomial<F>>
@@ -220,7 +218,6 @@ mod tests {
 
     fn test_ecc_constraint_zero<F, P, PC>()
     where
-        //E: PairingEngine,
         F: FftField + PrimeField,
         P: TEModelParameters<BaseField = F>,
         PC: PolynomialCommitment<F, DensePolynomial<F>>
@@ -252,7 +249,6 @@ mod tests {
 
     fn test_ecc_constraint_should_fail<F, P, PC>()
     where
-        //E: PairingEngine,
         F: FftField + PrimeField,
         P: TEModelParameters<BaseField = F>,
         PC: PolynomialCommitment<F, DensePolynomial<F>>
@@ -288,7 +284,6 @@ mod tests {
 
     fn test_point_addition<F, P, PC>()
     where
-        //E: PairingEngine,
         F: FftField + PrimeField,
         P: TEModelParameters<BaseField = F>,
         PC: PolynomialCommitment<F, DensePolynomial<F>>
@@ -328,7 +323,6 @@ mod tests {
 
     fn test_pedersen_hash<F, P, PC>()
     where
-        //E: PairingEngine,
         F: FftField + PrimeField,
         P: TEModelParameters<BaseField = F>,
         PC: PolynomialCommitment<F, DensePolynomial<F>>
@@ -405,7 +399,6 @@ mod tests {
 
     fn test_pedersen_balance<F, P, PC>()
     where
-        //E: PairingEngine,
         F: FftField + PrimeField,
         P: TEModelParameters<BaseField = F>,
         PC: PolynomialCommitment<F, DensePolynomial<F>>

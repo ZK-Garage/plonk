@@ -9,7 +9,6 @@
 use crate::permutation::constants::{K1, K2, K3};
 use crate::proof_system::linearisation_poly::ProofEvaluations;
 use ark_ff::FftField;
-use ark_ff::Field;
 use ark_poly::polynomial::univariate::DensePolynomial;
 use ark_poly::{
     EvaluationDomain, Evaluations, GeneralEvaluationDomain, Polynomial,

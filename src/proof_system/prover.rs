@@ -15,20 +15,16 @@ use crate::{
         linearisation_poly, proof::Proof, quotient_poly, ProverKey,
     },
     transcript::TranscriptProtocol,
-    util,
 };
-use ark_ec::{ModelParameters, PairingEngine, TEModelParameters};
+use ark_ec::{ModelParameters, TEModelParameters};
 use ark_ff::{FftField, PrimeField};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, GeneralEvaluationDomain,
     UVPolynomial,
 };
-use ark_poly_commit::kzg10::{Powers, KZG10};
-use ark_poly_commit::{LabeledPolynomial, PolynomialCommitment};
+use ark_poly_commit::PolynomialCommitment;
 use core::marker::PhantomData;
-use core::ops::Add;
 use merlin::Transcript;
-use num_traits::Zero;
 
 /// Abstraction structure designed to construct a circuit and generate
 /// [`Proof`]s for it.
@@ -161,24 +157,6 @@ where
         self.preprocessed_transcript.append_message(label, message);
     }
 
-    /// Computes a single witness for multiple polynomials at the same point, by
-    /// taking a random linear combination of the individual witnesses.
-    ///
-    /// The result does not depend on `z`, thus we can remove the term `f(z)`.
-    fn compute_aggregate_witness(
-        polynomials: &[DensePolynomial<F>],
-        point: &F,
-        challenge: F,
-    ) -> DensePolynomial<F> {
-        util::ruffini(
-            util::powers_of(challenge)
-                .zip(polynomials)
-                .map(|(challenge, poly)| poly * challenge)
-                .fold(Zero::zero(), Add::add),
-            *point,
-        )
-    }
-
     /// Preprocesses the underlying constraint system.
     pub fn preprocess(
         &mut self,
@@ -289,7 +267,6 @@ where
 
         // Add permutation polynomial commitment to transcript.
         transcript.append(b"z", z_poly_commit[0].commitment());
-        //transcript.append_commitments(&*z_poly_commit, PhantomData::<PC>);
 
         // 3. Compute public inputs polynomial.
         let pi_poly = DensePolynomial::from_coefficients_vec(
@@ -345,7 +322,6 @@ where
             PC::commit(commit_key, t_polys.iter(), None).unwrap();
 
         // Add quotient polynomial commitments to transcript
-        //transcript.append_commitments(&*t_commits, PhantomData::<PC>);
         transcript.append(b"t_1", t_commits[0].commitment());
         transcript.append(b"t_2", t_commits[1].commitment());
         transcript.append(b"t_3", t_commits[2].commitment());

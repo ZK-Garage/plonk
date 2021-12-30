@@ -9,7 +9,7 @@
 
 use ark_ff::{Field, PrimeField};
 use ark_poly::univariate::DensePolynomial;
-use ark_poly_commit::{LabeledCommitment, PCCommitment, PolynomialCommitment};
+use ark_poly_commit::{LabeledCommitment, PolynomialCommitment};
 use ark_serialize::CanonicalSerialize;
 use core::marker::PhantomData;
 use merlin::Transcript;

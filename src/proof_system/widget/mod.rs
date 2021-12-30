@@ -14,11 +14,9 @@ pub mod range;
 use crate::proof_system::linearisation_poly::ProofEvaluations;
 use crate::proof_system::permutation;
 use crate::transcript::TranscriptProtocol;
-use ark_ec::PairingEngine;
 use ark_ff::{FftField, Field, PrimeField};
 use ark_poly::{univariate::DensePolynomial, Evaluations};
-use ark_poly_commit::sonic_pc::SonicKZG10;
-use ark_poly_commit::{PCCommitment, PolynomialCommitment};
+use ark_poly_commit::PolynomialCommitment;
 use ark_serialize::*;
 
 /// Gate Values
@@ -78,9 +76,7 @@ where
     ///
     /// This method is an encoding of the polynomial constraint(s) that this
     /// gate represents whenever it is added to a circuit.
-    fn constraints(separation_challenge: F, values: GateValues<F>) -> F {
-        unimplemented!()
-    }
+    fn constraints(separation_challenge: F, values: GateValues<F>) -> F;
 
     /// Computes the quotient polynomial term for the given gate type for the
     /// given value of `selector` instantiated with `separation_challenge` and
@@ -372,38 +368,30 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
-    use ark_bls12_381::Bls12_381;
-    use ark_bls12_381::Fr as BlsScalar;
-    use ark_bls12_381::G1Affine;
-    use ark_ff::{Fp256, UniformRand};
     use ark_poly::polynomial::univariate::DensePolynomial;
     use ark_poly::{EvaluationDomain, GeneralEvaluationDomain, UVPolynomial};
-    use ark_poly_commit::kzg10::Commitment;
     use rand_core::OsRng;
 
-    fn rand_poly_eval(
-        n: usize,
-    ) -> (
-        DensePolynomial<Fp256<ark_bls12_381::FrParameters>>,
-        Evaluations<Fp256<ark_bls12_381::FrParameters>>,
-    ) {
+    fn rand_poly_eval<F>(n: usize) -> (DensePolynomial<F>, Evaluations<F>)
+    where
+        F: FftField,
+    {
         let polynomial = DensePolynomial::rand(n, &mut OsRng);
         (polynomial, rand_evaluations(n))
     }
 
-    fn rand_evaluations(
-        n: usize,
-    ) -> Evaluations<Fp256<ark_bls12_381::FrParameters>> {
-        let domain: GeneralEvaluationDomain<
-            Fp256<ark_bls12_381::FrParameters>,
-        > = GeneralEvaluationDomain::new(4 * n).unwrap();
-        let values: Vec<_> =
-            (0..4 * n).map(|_| BlsScalar::rand(&mut OsRng)).collect();
+    fn rand_evaluations<F>(n: usize) -> Evaluations<F>
+    where
+        F: FftField,
+    {
+        let domain = GeneralEvaluationDomain::new(4 * n).unwrap();
+        let values: Vec<_> = (0..4 * n).map(|_| F::rand(&mut OsRng)).collect();
         Evaluations::from_vec_and_domain(values, domain)
     }
 
     #[test]
     fn test_serialise_deserialise_prover_key() {
+        type F = ark_bls12_381::Fr;
         let n = 1 << 11;
 
         let q_m = rand_poly_eval(n);
@@ -452,7 +440,7 @@ mod test {
             .serialize_unchecked(&mut prover_key_bytes)
             .unwrap();
 
-        let obtained_pk: ProverKey<Fp256<ark_bls12_381::FrParameters>> =
+        let obtained_pk: ProverKey<F> =
             ProverKey::deserialize_unchecked(prover_key_bytes.as_slice())
                 .unwrap();
 
@@ -460,28 +448,31 @@ mod test {
     }
     /*
         #[test]
-        fn test_serialise_deserialise_verifier_key<E>()
+        fn test_serialise_deserialise_verifier_key<F, P, PC>()
         where
-            E: PairingEngine,
+                    F: FftField + PrimeField,
+        P: TEModelParameters<BaseField = F>,
+        PC: PolynomialCommitment<F, DensePolynomial<F>>
+            + HomomorphicCommitment<F>,
         {
             let n = 2usize.pow(5);
 
-            let q_m = Commitment::<E>(G1Affine::default());
-            let q_l = Commitment(G1Affine::default());
-            let q_r = Commitment(G1Affine::default());
-            let q_o = Commitment(G1Affine::default());
-            let q_4 = Commitment(G1Affine::default());
-            let q_c = Commitment(G1Affine::default());
-            let q_arith = Commitment(G1Affine::default());
-            let q_range = Commitment(G1Affine::default());
-            let q_logic = Commitment(G1Affine::default());
-            let q_fixed_group_add = Commitment(G1Affine::default());
-            let q_variable_group_add = Commitment(G1Affine::default());
+            let q_m = PC::Commitment::default();
+            let q_l = PC::Commitment::default();
+            let q_r = PC::Commitment::default();
+            let q_o = PC::Commitment::default();
+            let q_4 = PC::Commitment::default();
+            let q_c = PC::Commitment::default();
+            let q_arith = PC::Commitment::default();
+            let q_range = PC::Commitment::default();
+            let q_logic = PC::Commitment::default();
+            let q_fixed_group_add = PC::Commitment::default();
+            let q_variable_group_add = PC::Commitment::default();
 
-            let left_sigma = Commitment(G1Affine::default());
-            let right_sigma = Commitment(G1Affine::default());
-            let out_sigma = Commitment(G1Affine::default());
-            let fourth_sigma = Commitment(G1Affine::default());
+            let left_sigma = PC::Commitment::default();
+            let right_sigma = PC::Commitment::default();
+            let out_sigma = PC::Commitment::default();
+            let fourth_sigma = PC::Commitment::default();
 
             let verifier_key = VerifierKey::from_polynomial_commitments(
                 n,
@@ -507,14 +498,13 @@ mod test {
                 .serialize_unchecked(&mut verifier_key_bytes)
                 .unwrap();
 
-            type Fr = <Bls12_381 as PairingEngine>::Fr;
             let obtained_vk: VerifierKey<
-                Fr,
-                SonicKZG10<Bls12_381, DensePolynomial<Fr>>,
+                F, P
+                PC,
             > = VerifierKey::deserialize_unchecked(verifier_key_bytes.as_slice())
                 .unwrap();
 
-            //assert!(verifier_key == obtained_vk);
+            assert!(verifier_key == obtained_vk);
         }
     */
 }

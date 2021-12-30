@@ -8,10 +8,8 @@ use super::StandardComposer;
 use crate::commitment::HomomorphicCommitment;
 use crate::error::Error;
 use crate::proof_system::{Prover, Verifier};
-use ark_ec::{ModelParameters, PairingEngine, TEModelParameters};
+use ark_ec::{ModelParameters, TEModelParameters};
 use ark_poly::univariate::DensePolynomial;
-use ark_poly_commit::kzg10::{self, Powers, KZG10};
-use ark_poly_commit::sonic_pc::SonicKZG10;
 use ark_poly_commit::PolynomialCommitment;
 use rand_core::OsRng;
 
@@ -47,17 +45,13 @@ pub(crate) fn gadget_tester<F, P, PC>(
     n: usize,
 ) -> Result<(), Error>
 where
-    //E: PairingEngine,
     F: FftField + PrimeField,
     P: TEModelParameters<BaseField = F>,
     PC: PolynomialCommitment<F, DensePolynomial<F>> + HomomorphicCommitment<F>,
 {
     // Common View
-    let universal_params = PC::setup(2 * n, None, &mut OsRng)
-        //    SonicKZG10::<E, DensePolynomial<E::Fr>>::setup(2 * n, None, &mut OsRng)
-        .unwrap();
+    let universal_params = PC::setup(2 * n, None, &mut OsRng).unwrap();
 
-    //type PC<E> = SonicKZG10<E, DensePolynomial<<E as PairingEngine>::Fr>>;
     // Provers View
     let (proof, public_inputs) = {
         // Create a prover struct

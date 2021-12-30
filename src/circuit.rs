@@ -18,12 +18,10 @@ use ark_ec::{
     twisted_edwards_extended::{
         GroupAffine as TEGroupAffine, GroupProjective as TEGroupProjective,
     },
-    PairingEngine, ProjectiveCurve,
+    ProjectiveCurve,
 };
 use ark_ff::{FftField, Field, PrimeField};
 use ark_poly::univariate::DensePolynomial;
-use ark_poly_commit::kzg10::{self, Powers, UniversalParams};
-use ark_poly_commit::sonic_pc::SonicKZG10;
 use ark_poly_commit::PolynomialCommitment;
 use ark_serialize::*;
 
@@ -175,12 +173,12 @@ where
 ///     EdwardsProjective as JubjubProjective, Fr as JubjubScalar,
 /// };
 /// use ark_ff::{FftField, PrimeField, BigInteger};
-/// use ark_plonk::circuit::{Circuit, PublicInputValue, verify_proof, GeIntoPubInput, FeIntoPubInput};
+/// use ark_plonk::circuit::{Circuit, PublicInputValue, verify_proof, GeIntoPubInput};
 /// use ark_plonk::constraint_system::StandardComposer;
 /// use ark_plonk::error::Error;
 /// use ark_plonk::prelude::VerifierData;
 /// use ark_poly::polynomial::univariate::DensePolynomial;
-/// use ark_poly_commit::kzg10::KZG10;
+/// use ark_poly_commit::{PolynomialCommitment, sonic_pc::SonicKZG10};
 /// use num_traits::{Zero, One};
 /// use rand_core::OsRng;
 ///
@@ -222,7 +220,7 @@ where
 ///     }
 /// }
 ///
-/// impl<F, P> Circuit<F> for TestCircuit<F, P>
+/// impl<F, P> Circuit<F, P> for TestCircuit<F, P>
 /// where
 ///     F: FftField + PrimeField,
 ///     P: TEModelParameters<BaseField = F>,
@@ -231,7 +229,7 @@ where
 ///
 ///     fn gadget(
 ///         &mut self,
-///         composer: &mut StandardComposer<F>,
+///         composer: &mut StandardComposer<F, P>,
 ///     ) -> Result<(), Error> {
 ///         // Add fixed witness zero
 ///         let a = composer.add_input(self.a);
@@ -270,15 +268,16 @@ where
 ///     }
 /// }
 ///
-/// let pp = KZG10::<Bls12_381,DensePolynomial<BlsScalar>,>::setup(
-///     1 << 12, false, &mut OsRng
+/// type PC = SonicKZG10::<Bls12_381,DensePolynomial<BlsScalar>>;
+/// let pp = PC::setup(
+///     1 << 12, None, &mut OsRng
 ///  )?;
 ///
 /// // Initialize the circuit
 /// let mut circuit = TestCircuit::<BlsScalar, JubjubParameters>::default();
 ///
 /// // Compile the circuit
-/// let (pk, vd) = circuit.compile::<Bls12_381>(&pp)?;
+/// let (pk, vd) = circuit.compile::<PC>(&pp).unwrap();
 ///
 /// // Prover POV
 /// let (x, y) = JubjubParameters::AFFINE_GENERATOR_COEFFS;
@@ -297,7 +296,7 @@ where
 ///         e: JubjubScalar::from(2u64),
 ///         f: point_f_pi,
 ///     };
-///     circuit.gen_proof::<Bls12_381, JubjubParameters>(&pp, pk, b"Test")
+///     circuit.gen_proof::<PC>(&pp, pk, b"Test")
 /// }?;
 ///
 /// // Verifier POV
@@ -307,7 +306,7 @@ where
 ///     GeIntoPubInput::into_pi(point_f_pi),
 /// ];
 /// let VerifierData { key, pi_pos } = vd;
-/// verify_proof::<Bls12_381,JubjubParameters>(
+/// verify_proof::<BlsScalar, JubjubParameters, PC>(
 ///     &pp,
 ///     key,
 ///     &proof,
@@ -461,9 +460,9 @@ mod test {
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
     use ark_ec::twisted_edwards_extended::GroupAffine;
-    use ark_ec::AffineCurve;
+    use ark_ec::{AffineCurve, PairingEngine};
     use ark_ff::{FftField, PrimeField};
-    use ark_poly_commit::kzg10::KZG10;
+    use ark_poly_commit::{kzg10::KZG10, sonic_pc::SonicKZG10};
 
     // Implements a circuit that checks:
     // 1) a + b = c where C is a PI

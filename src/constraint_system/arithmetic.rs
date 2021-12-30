@@ -441,13 +441,11 @@ mod test {
     use ark_bls12_381::Bls12_381;
     use ark_ec::{PairingEngine, TEModelParameters};
     use ark_ff::{FftField, PrimeField};
-    use ark_ff::{One, Zero};
     use ark_poly::univariate::DensePolynomial;
     use ark_poly_commit::PolynomialCommitment;
 
     fn test_public_inputs<F, P, PC>()
     where
-        //E: PairingEngine,
         F: FftField + PrimeField,
         P: TEModelParameters<BaseField = F>,
         PC: PolynomialCommitment<F, DensePolynomial<F>>
@@ -488,7 +486,6 @@ mod test {
 
     fn test_correct_add_mul_gate<F, P, PC>()
     where
-        //E: PairingEngine,
         F: FftField + PrimeField,
         P: TEModelParameters<BaseField = F>,
         PC: PolynomialCommitment<F, DensePolynomial<F>>
@@ -536,7 +533,6 @@ mod test {
 
     fn test_correct_add_gate<F, P, PC>()
     where
-        //E: PairingEngine,
         F: FftField + PrimeField,
         P: TEModelParameters<BaseField = F>,
         PC: PolynomialCommitment<F, DensePolynomial<F>>
@@ -562,7 +558,6 @@ mod test {
 
     fn test_correct_big_add_mul_gate<F, P, PC>()
     where
-        //E: PairingEngine,
         F: FftField + PrimeField,
         P: TEModelParameters<BaseField = F>,
         PC: PolynomialCommitment<F, DensePolynomial<F>>
@@ -610,7 +605,6 @@ mod test {
 
     fn test_correct_big_arith_gate<F, P, PC>()
     where
-        //E: PairingEngine,
         F: FftField + PrimeField,
         P: TEModelParameters<BaseField = F>,
         PC: PolynomialCommitment<F, DensePolynomial<F>>
@@ -648,7 +642,6 @@ mod test {
 
     fn test_incorrect_big_arith_gate<F, P, PC>()
     where
-        //E: PairingEngine,
         F: FftField + PrimeField,
         P: TEModelParameters<BaseField = F>,
         PC: PolynomialCommitment<F, DensePolynomial<F>>
@@ -686,7 +679,6 @@ mod test {
 
     fn test_incorrect_add_mul_gate<F, P, PC>()
     where
-        //E: PairingEngine,
         F: FftField + PrimeField,
         P: TEModelParameters<BaseField = F>,
         PC: PolynomialCommitment<F, DensePolynomial<F>>
