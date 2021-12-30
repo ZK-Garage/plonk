@@ -336,7 +336,6 @@ mod test {
                 });
 
                 composer.constrain_to_constant(output, F::from(352u64), None);
-                composer.constrain_to_constant(output, F::from(352u64), None);
             },
             200,
         );
@@ -438,7 +437,6 @@ mod test {
                         .add(F::one(), F::one())
                 });
 
-                composer.constrain_to_constant(output, F::from(117u64), None);
                 composer.constrain_to_constant(output, F::from(117u64), None);
             },
             200,

@@ -450,7 +450,7 @@ where
             &self.evaluations,
             &mut scalars,
             &mut points,
-        ); //*/
+        );
         CurveAddition::<_, P>::extend_linearisation_commitment::<PC>(
             &plonk_verifier_key.variable_group_add_selector_commitment,
             var_base_sep_challenge,
@@ -469,8 +469,6 @@ where
                 l1_eval,
                 self.z_comm.clone(),
             );
-
-        //ark_poly_commit::kzg10::Commitment::<E>(E::G1Affine::identity())
         PC::multi_scalar_mul(&points, &scalars)
     }
 }

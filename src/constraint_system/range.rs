@@ -207,7 +207,6 @@ mod test {
     use ark_poly_commit::PolynomialCommitment;
     fn test_range_constraint<F, P, PC>()
     where
-        //E: PairingEngine,
         F: FftField + PrimeField,
         P: TEModelParameters<BaseField = F>,
         PC: PolynomialCommitment<F, DensePolynomial<F>>
@@ -247,7 +246,6 @@ mod test {
 
     fn test_odd_bit_range<F, P, PC>()
     where
-        //E: PairingEngine,
         F: FftField + PrimeField,
         P: TEModelParameters<BaseField = F>,
         PC: PolynomialCommitment<F, DensePolynomial<F>>
