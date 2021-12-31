@@ -830,4 +830,16 @@ mod test {
             ark_ed_on_bls12_377::EdwardsParameters
         )
     );
+
+    // Tests for Bls12_381
+    crate::batch_test_ipa!(
+        [
+            test_prove_verify,
+            test_multiple_proofs,
+            test_conditional_select ],
+        [] => (
+            Bls12_381,
+            ark_ed_on_bls12_381::EdwardsParameters
+        )
+    );
 }

@@ -486,4 +486,20 @@ mod tests {
             ark_ed_on_bls12_377::EdwardsParameters
         )
     );
+
+    // Bls12-381 tests
+    crate::batch_test_ipa!(
+        [
+            test_ecc_constraint,
+            test_ecc_constraint_zero,
+            test_ecc_constraint_should_fail,
+            test_point_addition,
+            test_pedersen_hash,
+            test_pedersen_balance
+        ],
+        [] => (
+            Bls12_381,
+            ark_ed_on_bls12_381::EdwardsParameters
+        )
+    );
 }

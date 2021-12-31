@@ -166,4 +166,13 @@ mod test {
             ark_ed_on_bls12_377::EdwardsParameters
         )
     );
+
+    // Tests for Bls12_381
+    crate::batch_test_ipa!(
+        [test_var_base_scalar_mul],
+        [] => (
+            Bls12_381,
+            ark_ed_on_bls12_381::EdwardsParameters
+        )
+    );
 }

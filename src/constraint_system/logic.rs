@@ -468,4 +468,12 @@ mod test {
         => (
             Bls12_377, ark_ed_on_bls12_377::EdwardsParameters       )
     );
+
+    // Test for Bls12_381
+    crate::batch_test_ipa!(
+        [test_logic_xor_and_constraint],
+        [test_logical_gate_odd_bit_num]
+        => (
+            Bls12_381, ark_ed_on_bls12_381::EdwardsParameters      )
+    );
 }

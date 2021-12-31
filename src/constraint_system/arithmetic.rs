@@ -181,9 +181,9 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::batch_test;
     use crate::commitment::HomomorphicCommitment;
     use crate::constraint_system::helper::*;
+    use crate::{batch_test, batch_test_ipa};
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
     use ark_ec::{PairingEngine, TEModelParameters};
@@ -475,8 +475,32 @@ mod test {
             Bls12_377, ark_ed_on_bls12_377::EdwardsParameters
         )
     );
+    batch_test_ipa!(
+        [
+            test_public_inputs,
+            test_correct_add_mul_gate,
+            test_correct_add_gate,
+            test_correct_big_add_mul_gate,
+            test_correct_big_arith_gate,
+            test_incorrect_add_mul_gate,
+            test_incorrect_big_arith_gate
+        ],
+        [] => (
+            Bls12_381, ark_ed_on_bls12_381::EdwardsParameters
+        )
+    );
 
-    /*    batch_test_ipa!(
-        [test_public_inputs], [] => (ark_vesta::Affine)
-    )*/
+    #[test]
+    #[allow(non_snake_case)]
+    fn test_ipa() {
+        test_correct_big_arith_gate::<
+            ark_bls12_381::Fr,
+            ark_ed_on_bls12_381::EdwardsParameters,
+            ark_poly_commit::ipa_pc::InnerProductArgPC<
+                ark_bls12_381::G1Affine,
+                blake2::Blake2b,
+                DensePolynomial<ark_bls12_381::Fr>,
+            >,
+        >();
+    }
 }

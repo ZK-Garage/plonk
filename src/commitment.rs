@@ -48,6 +48,50 @@ where
     }
 }
 
+use ark_ec::AffineCurve;
+
+/// Shortened type for Inner Product Argument polynomial commitment schemes
+pub type IPA<G, D> = ark_poly_commit::ipa_pc::InnerProductArgPC<
+    G,
+    D,
+    DensePolynomial<<G as ark_ec::AffineCurve>::ScalarField>,
+>;
+/// Shortened type for an Inner Product Argument polynomial commitment
+pub type IPACommitment<G, D> = <IPA<G, D> as PolynomialCommitment<
+    <G as AffineCurve>::ScalarField,
+    DensePolynomial<<G as AffineCurve>::ScalarField>,
+>>::Commitment;
+
+use blake2::digest::Digest;
+impl<G, D> HomomorphicCommitment<<G as ark_ec::AffineCurve>::ScalarField>
+    for IPA<G, D>
+where
+    G: AffineCurve,
+    D: Digest,
+{
+    fn multi_scalar_mul(
+        commitments: &[IPACommitment<G, D>],
+        scalars: &[<G as ark_ec::AffineCurve>::ScalarField],
+    ) -> IPACommitment<G, D> {
+        let scalars_repr = scalars
+            .iter()
+            .map(<G as ark_ec::AffineCurve>::ScalarField::into_repr)
+            .collect::<Vec<_>>();
+
+        let points_repr =
+            commitments.iter().map(|c| c.comm).collect::<Vec<_>>();
+
+        IPACommitment::<G, D> {
+            comm: VariableBaseMSM::multi_scalar_mul(
+                &points_repr,
+                &scalars_repr,
+            )
+            .into(),
+            shifted_comm: None, // TODO: support degree bounds?
+        }
+    }
+}
+
 /// Computes a linear combination of the polynomial evaluations and polynomial
 /// commitments provided a challenge.
 // TODO: complete doc

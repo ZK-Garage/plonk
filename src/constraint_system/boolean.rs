@@ -121,4 +121,15 @@ mod test {
         [] => (
             Bls12_377, ark_ed_on_bls12_377::EdwardsParameters        )
     );
+
+    // Test for Bls12_381
+    crate::batch_test_ipa!(
+        [
+            test_correct_bool_gate,
+            test_incorrect_bool_gate
+        ],
+        [] => (
+            Bls12_381, ark_ed_on_bls12_381::EdwardsParameters
+        )
+    );
 }

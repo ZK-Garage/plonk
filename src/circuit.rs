@@ -528,7 +528,7 @@ mod test {
         }
 
         fn padded_circuit_size(&self) -> usize {
-            1 << 11
+            1 << 9
         }
     }
 
@@ -540,7 +540,7 @@ mod test {
             + HomomorphicCommitment<F>,
     {
         // Generate CRS
-        let pp = PC::setup(1 << 12, None, &mut OsRng).unwrap();
+        let pp = PC::setup(1 << 19, None, &mut OsRng).unwrap();
 
         let mut circuit = TestCircuit::<F, P>::default();
 
@@ -608,6 +608,15 @@ mod test {
             <Bls12_381 as PairingEngine>::Fr,
             ark_ed_on_bls12_381::EdwardsParameters,
             crate::commitment::KZG10<Bls12_381>,
+        >()?;
+
+        test_full::<
+            <Bls12_381 as PairingEngine>::Fr,
+            ark_ed_on_bls12_381::EdwardsParameters,
+            crate::commitment::IPA<
+                <Bls12_381 as PairingEngine>::G1Affine,
+                blake2::Blake2b,
+            >,
         >()
     }
 

@@ -279,4 +279,13 @@ mod test {
             Bls12_377, ark_ed_on_bls12_377::EdwardsParameters
         )
     );
+
+    // Test on Bls12-381
+    crate::batch_test_ipa!(
+        [test_range_constraint],
+        [test_odd_bit_range]
+        => (
+            Bls12_381, ark_ed_on_bls12_381::EdwardsParameters
+        )
+    );
 }
