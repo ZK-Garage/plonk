@@ -7,6 +7,7 @@
 //! Tools & traits for PLONK circuits
 
 use crate::error::Error;
+use crate::prelude::StandardComposer;
 use crate::proof_system::{Proof, Prover, ProverKey, Verifier, VerifierKey};
 use ark_ec::models::TEModelParameters;
 use ark_ec::{
@@ -19,7 +20,6 @@ use ark_poly_commit::kzg10::{self, Powers, UniversalParams};
 use ark_poly_commit::sonic_pc::SonicKZG10;
 use ark_poly_commit::PolynomialCommitment;
 use ark_serialize::*;
-use crate::prelude::StandardComposer;
 
 /// Field Element Into Public Input
 ///
