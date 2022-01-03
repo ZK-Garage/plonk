@@ -210,6 +210,20 @@ The result of the operation ends up in the 4th wire of the last subgate.
 
 
 ### Lookup tables
+The concept of lookup tables is to use precomputed tables in Plonk which allows circuits to be encoded more efficiently. These tables contain the most commonly used computation units which are very expensive to compute each time like XOR or AND operation between bit strings, or common hash functions such as AES-128 or SHA-256...etc. This removes the aspect of circuit complexity needed to compute the function, so the complexity of the SNARK depends only on the size of the function's domain.
+
+The Plonk circuit would then contain another type of gates (lookup gates) besides the original addition, multiplication and constant gates.
+In ARK-PLONK, we use PlonKup, a ZK-SNARK that integrates plookup into PlonK in an efficient way. Before we explain how PlonKup works, we will introduce the original [plookup]((https://eprint.iacr.org/2020/315.pdf) ) definition.
+
+#### PLOOKUP
+The PLOOKUP protocol takes sequences $(f_1,f_2,...,f_n)$ and $(t_1,t_2,...,t_d)$ and checks that every value in the first sequence appears in the second where $f_i$ is the compressed tuple $(input_i,output_i)$ and $(t_1,t_2,...,t_d)$ is the lookup table containing all valid compressed input-output pairs.
+
+Plookup introduces the notion of "randomized differences" and use it to prove that one sequence is a subsequence of another. This is done by creating the difference set for the sequence and also the difference set for its subsequence and compare them. However since it is possible for two distinct sequences to have the same difference set we use randomized difference.
+
+
+#### PLONKUP
+
+
 ### Modules
 * circuit: Tools & traits for PLONK circuits (ark_plonk::circuit)
   1. Structs
