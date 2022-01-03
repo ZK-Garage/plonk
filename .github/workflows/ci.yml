@@ -35,6 +35,11 @@ jobs:
         with:
           command: test
           args: --verbose --release --workspace --all-features
+      - name: Check Benchmarks
+        uses: actions-rs/cargo@v1
+        with:
+          command: bench
+          args: --verbose --workspace --all-features --no-run
 
   build:
     if: github.event.pull_request.draft == false
