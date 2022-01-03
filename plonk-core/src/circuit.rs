@@ -1,14 +1,11 @@
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE
-// or https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
 //
-// Copyright (c) ZK-GARAGE. All rights reserved.
+// Copyright (c) DUSK NETWORK. All rights reserved.
 
 //! Tools & traits for PLONK circuits
 
-use crate::constraint_system::StandardComposer;
 use crate::error::Error;
 use crate::proof_system::{Proof, Prover, ProverKey, Verifier, VerifierKey};
 use ark_ec::models::TEModelParameters;
@@ -22,6 +19,7 @@ use ark_poly_commit::kzg10::{self, Powers, UniversalParams};
 use ark_poly_commit::sonic_pc::SonicKZG10;
 use ark_poly_commit::PolynomialCommitment;
 use ark_serialize::*;
+use crate::prelude::StandardComposer;
 
 /// Field Element Into Public Input
 ///
@@ -323,7 +321,8 @@ where
         let circuit_size = self.padded_circuit_size();
         let (ck, _) = SonicKZG10::<E, DensePolynomial<E::Fr>>::trim(
             u_params,
-            circuit_size,
+            // +1 per wire, +2 for the permutation poly
+            circuit_size + 6,
             0,
             None,
         )
@@ -369,7 +368,8 @@ where
         let circuit_size = self.padded_circuit_size();
         let (ck, _) = SonicKZG10::<E, DensePolynomial<E::Fr>>::trim(
             u_params,
-            circuit_size,
+            // +1 per wire, +2 for the permutation poly
+            circuit_size + 6,
             0,
             None,
         )
@@ -411,7 +411,8 @@ where
     verifier.verifier_key = Some(plonk_verifier_key);
     let (_, sonic_vk) = SonicKZG10::<E, DensePolynomial<E::Fr>>::trim(
         u_params,
-        padded_circuit_size,
+        // +1 per wire, +2 for the permutation poly
+        padded_circuit_size + 6,
         0,
         None,
     )

@@ -1,10 +1,8 @@
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE
-// or https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
 //
-// Copyright (c) ZK-GARAGE. All rights reserved.
+// Copyright (c) DUSK NETWORK. All rights reserved.
 
 //! Proof System Widgets
 
@@ -312,13 +310,13 @@ where
     /// ProverKey for permutation checks
     pub(crate) permutation: permutation::ProverKey<F>,
 
-    /// Pre-processes the 4n Evaluations for the vanishing polynomial, so
+    /// Pre-processes the 8n Evaluations for the vanishing polynomial, so
     /// they do not need to be computed at the proving stage.
     ///
     /// NOTE: With this, we can combine all parts of the quotient polynomial
     /// in their evaluation phase and divide by the quotient
     /// polynomial without having to perform IFFT
-    pub(crate) v_h_coset_4n: Evaluations<F>,
+    pub(crate) v_h_coset_8n: Evaluations<F>,
 
     /// Type Parameter Marker
     __: PhantomData<P>,
@@ -329,8 +327,8 @@ where
     F: PrimeField,
     P: TEModelParameters<BaseField = F>,
 {
-    pub(crate) fn v_h_coset_4n(&self) -> &Evaluations<F> {
-        &self.v_h_coset_4n
+    pub(crate) fn v_h_coset_8n(&self) -> &Evaluations<F> {
+        &self.v_h_coset_8n
     }
 
     /// Constructs a [`ProverKey`] from the widget ProverKey's that are
@@ -354,7 +352,7 @@ where
         out_sigma: (DensePolynomial<F>, Evaluations<F>),
         fourth_sigma: (DensePolynomial<F>, Evaluations<F>),
         linear_evaluations: Evaluations<F>,
-        v_h_coset_4n: Evaluations<F>,
+        v_h_coset_8n: Evaluations<F>,
     ) -> Self {
         Self {
             n,
@@ -378,7 +376,7 @@ where
                 fourth_sigma,
                 linear_evaluations,
             },
-            v_h_coset_4n,
+            v_h_coset_8n,
             __: PhantomData,
         }
     }
@@ -414,7 +412,7 @@ mod test {
             Fp256<ark_bls12_381::FrParameters>,
         > = GeneralEvaluationDomain::new(4 * n).unwrap();
         let values: Vec<_> =
-            (0..4 * n).map(|_| BlsScalar::rand(&mut OsRng)).collect();
+            (0..8 * n).map(|_| BlsScalar::rand(&mut OsRng)).collect();
         Evaluations::from_vec_and_domain(values, domain)
     }
 
@@ -440,7 +438,7 @@ mod test {
         let fourth_sigma = rand_poly_eval(n);
 
         let linear_evaluations = rand_evaluations(n);
-        let v_h_coset_4n = rand_evaluations(n);
+        let v_h_coset_8n = rand_evaluations(n);
 
         let prover_key = ProverKey::from_polynomials_and_evals(
             n,
@@ -460,7 +458,7 @@ mod test {
             out_sigma,
             fourth_sigma,
             linear_evaluations,
-            v_h_coset_4n,
+            v_h_coset_8n,
         );
 
         let mut prover_key_bytes = vec![];

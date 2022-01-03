@@ -1,10 +1,8 @@
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE
-// or https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
 //
-// Copyright (c) ZK-GARAGE. All rights reserved.
+// Copyright (c) DUSK NETWORK. All rights reserved.
 
 //! PLONK Permutation Prover and Verifier Data
 
@@ -14,9 +12,7 @@ use ark_ec::PairingEngine;
 use ark_ff::Field;
 use ark_ff::PrimeField;
 use ark_poly::polynomial::univariate::DensePolynomial;
-use ark_poly::{
-    EvaluationDomain, Evaluations, GeneralEvaluationDomain, Polynomial,
-};
+use ark_poly::{EvaluationDomain, Evaluations, GeneralEvaluationDomain};
 use ark_poly_commit::sonic_pc::Commitment;
 use ark_serialize::*;
 
@@ -155,6 +151,7 @@ where
     /// Computes the linearisation polynomial.
     pub fn compute_linearisation(
         &self,
+        n: usize,
         z_challenge: F,
         (alpha, beta, gamma): (F, F, F),
         (a_eval, b_eval, c_eval, d_eval): (F, F, F, F),
@@ -177,7 +174,7 @@ where
             (alpha, beta, gamma),
             &self.fourth_sigma.0,
         );
-        let domain = GeneralEvaluationDomain::new(z_poly.degree()).unwrap();
+        let domain = GeneralEvaluationDomain::new(n).unwrap();
         let c = self.compute_lineariser_check_is_one(
             &domain,
             z_challenge,

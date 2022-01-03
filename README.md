@@ -78,7 +78,7 @@ Verify 2^18 = 262144 gates time:  [6.7577 ms 6.8124 ms 6.8925 ms]
 
 ## Licensing
 
-This software is distributed under the terms of both the MIT license and the Apache License (Version 2.0). Please see [LICENSE-MIT](./LICENSE-MIT) and [LICENSE-APACHE](./LICENSE-APACHE) for further info.
+This software is distributed under the terms of Mozilla Public License Version 2.0 (MPL-2.0). Please see [LICENSE](https://github.com/dusk-network/plonk/blob/master/LICENSE) for further info.
 
 ## Contributing
 - If you want to contribute to this repository/project please, check [CONTRIBUTING.md](./CONTRIBUTING.md)

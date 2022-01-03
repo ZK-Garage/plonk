@@ -1,10 +1,8 @@
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE
-// or https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
 //
-// Copyright (c) ZK-GARAGE. All rights reserved.
+// Copyright (c) DUSK NETWORK. All rights reserved.
 
 use crate::proof_system::ecc::{CurveAddition, FixedBaseScalarMul};
 use crate::proof_system::logic::Logic;
@@ -16,6 +14,7 @@ use crate::util::EvaluationDomainExt;
 use ark_ec::TEModelParameters;
 use ark_ff::Field;
 use ark_ff::PrimeField;
+use ark_poly::EvaluationDomain;
 use ark_poly::{
     univariate::DensePolynomial, GeneralEvaluationDomain, Polynomial,
 };
@@ -166,6 +165,7 @@ where
     );
 
     let permutation = prover_key.permutation.compute_linearisation(
+        domain.size(),
         *z_challenge,
         (*alpha, *beta, *gamma),
         (a_eval, b_eval, c_eval, d_eval),
