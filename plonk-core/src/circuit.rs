@@ -6,8 +6,8 @@
 
 //! Tools & traits for PLONK circuits
 
-use crate::constraint_system::StandardComposer;
 use crate::error::Error;
+use crate::prelude::StandardComposer;
 use crate::proof_system::{Proof, Prover, ProverKey, Verifier, VerifierKey};
 use ark_ec::models::TEModelParameters;
 use ark_ec::{
@@ -161,11 +161,11 @@ where
 ///     EdwardsProjective as JubJubProjective, Fr as JubJubScalar,
 /// };
 /// use ark_ff::{PrimeField, BigInteger};
-/// use ark_plonk::prelude::*;
 /// use ark_poly::polynomial::univariate::DensePolynomial;
 /// use ark_poly_commit::kzg10::KZG10;
 /// use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 /// use num_traits::{Zero, One};
+/// use plonk_core::prelude::*;
 /// use rand_core::OsRng;
 ///
 /// fn main() -> Result<(), Error> {

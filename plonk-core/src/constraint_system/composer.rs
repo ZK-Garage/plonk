@@ -25,9 +25,9 @@ use core::marker::PhantomData;
 use hashbrown::HashMap;
 use num_traits::{One, Zero};
 
-/// The StandardComposer is the circuit-builder tool that the `dusk-plonk`
-/// repository provides so that circuit descriptions can be written, stored and
-/// transformed into a [`Proof`](crate::proof_system::Proof) at some point.
+/// The StandardComposer is the circuit-builder tool that the `plonk` repository
+/// provides so that circuit descriptions can be written, stored and transformed
+/// into a [`Proof`](crate::proof_system::Proof) at some point.
 ///
 /// A StandardComposer stores all of the circuit information, being this one
 /// all of the witness and circuit descriptors info (values, positions in the

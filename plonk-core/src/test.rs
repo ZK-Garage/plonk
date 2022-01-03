@@ -1,3 +1,11 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+//
+// Copyright (c) ZK-GARAGE. All rights reserved.
+
+//! Test Suite
+
 /// Defines a set of tests on a pairing engine / curve combination.
 ///
 /// The set of tests is split in two. The first set between `[]` is for regular
