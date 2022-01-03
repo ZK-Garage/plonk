@@ -103,16 +103,9 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
             panic!("Missing left and right wire witnesses")
         }
 
-        let (w4, q4) = if gate.fan_in_3.is_none() {
-            self.w_4.push(self.zero_var);
-            self.q_4.push(E::Fr::zero());
-            (self.zero_var, E::Fr::zero())
-        } else {
-            let (q4, w4) = gate.fan_in_3.unwrap();
-            self.w_4.push(w4);
-            self.q_4.push(q4);
-            (w4, q4)
-        };
+        let (q4, w4) = gate.fan_in_3.unwrap_or((E::Fr::zero(), self.zero_var));
+        self.w_4.push(w4);
+        self.q_4.push(q4);
 
         let gate_witness = gate.witness.unwrap();
         self.w_l.push(gate_witness.0);
