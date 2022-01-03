@@ -216,9 +216,29 @@ The Plonk circuit would then contain another type of gates (lookup gates) beside
 In ARK-PLONK, we use PlonKup, a ZK-SNARK that integrates plookup into PlonK in an efficient way. Before we explain how PlonKup works, we will introduce the original [plookup]((https://eprint.iacr.org/2020/315.pdf) ) definition.
 
 #### PLOOKUP
-The PLOOKUP protocol takes sequences $(f_1,f_2,...,f_n)$ and $(t_1,t_2,...,t_d)$ and checks that every value in the first sequence appears in the second where $f_i$ is the compressed tuple $(input_i,output_i)$ and $(t_1,t_2,...,t_d)$ is the lookup table containing all valid compressed input-output pairs.
+The PLOOKUP protocol takes sequences $(f_1,f_2,...,f_n)$ and $(t_1,t_2,...,t_d)$ and checks that every value in the first sequence $(f_i)_{i\in [n]}$ appears in the second $(t_i)_{i\in [d]}$: $$ (f_i)_{i\in [n]}\subset (t_i)_{i\in [d]}$$ where $f_i$ is the compressed tuple $(input_i,output_i)$ and $(t_1,t_2,...,t_d)$ is the lookup table containing all valid compressed input-output pairs. 
 
-Plookup introduces the notion of "randomized differences" and use it to prove that one sequence is a subsequence of another. This is done by creating the difference set for the sequence and also the difference set for its subsequence and compare them. However since it is possible for two distinct sequences to have the same difference set we use randomized difference.
+Plookup introduces the notion of "randomized differences" and use it to prove that one sequence is a subsequence of another. This is done by creating the difference set for the sequence and also the difference set for its subsequence and compare them. However since it is possible for two distinct sequences to have the same difference set we use randomized difference. Instead of comparing the set of differences between $\{f_i\}$ and $\{t_i\}$ which might result in a different order and thus won't be equal, a third sequence $\{s_i\}$ is introduced and used instead of $\{f_i\}$. The sequence $\{s_i\}$ represents the sorted version of the concatenation of $\{f_i\}$ and $\{t_i\}$ such that $s=(f,t)$, re-arranged to be "ordered by $t$. 
+
+
+Comparing randomized difference sets is done as follow:  we choose random $\beta\in\mathbb{F}$,and compare the elements in the sequences: $$\{t_i+\beta t_{i+1}\}_{i∈[d−1]},\{s_i+\beta s_{i+1}\}_{i\in[n−1]}$$
+
+**Plookup protocol:**
+
+The verifier sends a random $\alpha \in \mathbb{F}$ to the prover, and they both compute the set $\{\alpha x + \alpha^2y + \alpha^3z: f(x,y)=z\}$.
+
+The verifier sends random $\beta, \gamma \in \mathbb{F}$
+to the prover, who defines these bi-variate polynomials $F$ and $G$
+
+$F(\beta,\gamma) := (1 +\beta)^n·\prod_{i\in[n]}(\gamma+f_i)\prod _{i∈[d−1]}(\gamma(1 +\beta) +t_i+\beta t_{i+1})$
+
+$G(\beta,\gamma) :=\prod_{i\in[n+d−1]}(\gamma(1 +\beta) +s_i+\beta s_{i+1})$ 
+$F≡Gi$ and only if:
+* $f \subset  t$ and
+* $s$ is $(f,t)$ sorted by $t$
+
+
+
 
 
 #### PLONKUP
