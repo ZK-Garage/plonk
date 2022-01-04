@@ -225,21 +225,30 @@ Comparing randomized difference sets is done as follow:  we choose random $\beta
 
 **Plookup protocol:**
 
-The verifier sends a random $\alpha \in \mathbb{F}$ to the prover, and they both compute the set $\{\alpha x + \alpha^2y + \alpha^3z: f(x,y)=z\}$.
+Preprocessed polynomials: $t\in F_{<n+1}[X]$ describing the lookup values.
 
-The verifier sends random $\beta, \gamma \in \mathbb{F}$
+Inputs: $f\in F_{<n}[X]$
+
+1. The verifier sends random $\beta, \gamma \in \mathbb{F}$
 to the prover, who defines these bi-variate polynomials $F$ and $G$
 
-$F(\beta,\gamma) := (1 +\beta)^n·\prod_{i\in[n]}(\gamma+f_i)\prod _{i∈[d−1]}(\gamma(1 +\beta) +t_i+\beta t_{i+1})$
+   $F(\beta,\gamma) := (1 +\beta)^n·\prod_{i\in[n]}(\gamma+f_i)\prod _{i∈[d−1]}(\gamma(1 +\beta) +t_i+\beta t_{i+1})$
 
-$G(\beta,\gamma) :=\prod_{i\in[n+d−1]}(\gamma(1 +\beta) +s_i+\beta s_{i+1})$ 
-$F≡Gi$ and only if:
-* $f \subset  t$ and
-* $s$ is $(f,t)$ sorted by $t$
+   $G(\beta,\gamma) :=\prod_{i\in[n+d−1]}(\gamma(1 +\beta) +s_i+\beta s_{i+1})$ 
 
+   $F≡G$ if and only if:
+   * $f \subset  t$ and
+   * $s$ is $(f,t)$ sorted by $t$
 
+2. Prover computes a polynomial $Z\in F_{<n+1}[X]$ that aggregates the   value $F(\beta,\gamma)/G(\beta,\gamma)$. More precisely, the prover computes the following recursive sequence and sends it to the trusted setup $I$:
 
+  * $Z(g) = 1$
 
+  * $Z(g^i) =\dfrac{(1 +β)^{i−1}\prod_{j<i}(\gamma+f_j)·\prod_{1≤j<i}(γ(1 +\beta) +t_j+\beta t_{j+1})}{\prod_{1≤j<i}(\gamma(1 +\beta) +s_j+βs_{j+1})(\gamma(1 +\beta) +s_{n+j}+\beta s_{n+j+1})}$ for $2≤i≤n$
+
+  * $Z(g^{n+1}) = 1$
+
+3. Verifier checks that $Z$ is indeed of the form described above,  and that $Z(g^{n+1}) = 1$
 
 #### PLONKUP
 
