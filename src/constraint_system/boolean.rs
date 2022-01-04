@@ -57,35 +57,30 @@ where
     pub fn is_zero_gate(&mut self, a: Variable) -> Variable {
         //Get relevant field values
         let a_value = self.variables.get(&a).unwrap();
-        let a_inv_value = a_value.inverse().unwrap_or_else(E::Fr::one);
+        let y_value = a_value.inverse().unwrap_or_else(E::Fr::one);
         //This has value 1 if input value is zero, value 0 otherwise
-        let result_value = E::Fr::one() - *a_value * a_inv_value;
+        let b_value = E::Fr::one() - *a_value * y_value;
 
-        let a_inv = self.add_input(a_inv_value);
-        let result = self.add_input(result_value);
+        let y = self.add_input(y_value);
+        let b = self.add_input(b_value);
+        let zero = self.zero_var();
 
-        // Enforce constraints. The constraint system being used here
-        // is
+        // Enforce constraints. The constraint system being used here is
         // a * y + b - 1 = 0
         // a * b = 0
         // where y is auxiliary and b is the boolean (a == 0).
-        // Here y is denoting `a_inv` and b is denoting `result`
-        let a_times_result = self.arithmetic_gate(|gate| {
-            gate.witness(a, result, None).mul(E::Fr::one())
+        let _a_times_b = self.arithmetic_gate(|gate| {
+            gate.witness(a, b, Some(zero)).mul(E::Fr::one())
         });
-        self.assert_equal(a_times_result, self.zero_var());
 
-        let a_times_ainv = self.arithmetic_gate(|gate| {
-            gate.witness(a, a_inv, None).mul(E::Fr::one())
+        let _constraint1 = self.arithmetic_gate(|gate| {
+            gate.witness(a, y, Some(zero))
+                .mul(E::Fr::one())
+                .fan_in_3(E::Fr::one(), b)
+                .constant(-E::Fr::one())
         });
-        let sum = self.arithmetic_gate(|gate| {
-            gate.witness(a_times_ainv, result, None)
-                .add(E::Fr::one(), E::Fr::one())
-        });
-        let one = self.add_input(E::Fr::one());
-        self.assert_equal(sum, one);
 
-        result
+        b
     }
 
     /// A gate which outputs a variable whose value is 1 if the
@@ -94,6 +89,11 @@ where
         let difference = self.arithmetic_gate(|gate| {
             gate.witness(a, b, None).add(E::Fr::one(), -E::Fr::one())
         });
+        // TODO: These dummy constraints are a hack to avoid a 2^k issue,
+        // specifically the q_arith poly being constant.
+        // It should be safe to remove this dummy constraint once that issue
+        // is resolved.
+        self.add_dummy_constraints();
         self.is_zero_gate(difference)
     }
 }
