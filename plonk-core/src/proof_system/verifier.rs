@@ -82,14 +82,11 @@ where
         &mut self,
         commit_key: &PC::CommitterKey,
     ) -> Result<(), Error> {
-        let vk = self
-            .cs
-            .preprocess_verifier(
-                commit_key,
-                &mut self.preprocessed_transcript,
-                PhantomData::<PC>,
-            )
-            .unwrap();
+        let vk = self.cs.preprocess_verifier(
+            commit_key,
+            &mut self.preprocessed_transcript,
+            PhantomData::<PC>,
+        )?;
 
         self.verifier_key = Some(vk);
         Ok(())

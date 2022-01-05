@@ -1,6 +1,6 @@
 //! Useful commitment stuff
 use ark_ec::{msm::VariableBaseMSM, PairingEngine};
-use ark_ff::PrimeField;
+use ark_ff::{Field, PrimeField};
 use ark_poly::univariate::DensePolynomial;
 use ark_poly_commit::sonic_pc::SonicKZG10;
 use ark_poly_commit::PolynomialCommitment;
@@ -115,4 +115,17 @@ where
         .sum();
     let combined_commitment = H::multi_scalar_mul(commitments, &powers);
     (combined_commitment, combined_eval)
+}
+
+/// Aggregate polynomials
+pub fn aggregate_polynomials<F: Field>(
+    polynomials: &[DensePolynomial<F>],
+    challenge: F,
+) -> DensePolynomial<F> {
+    use num_traits::Zero;
+    use std::ops::Add;
+    crate::util::powers_of(challenge)
+        .zip(polynomials)
+        .map(|(challenge, poly)| poly * challenge)
+        .fold(Zero::zero(), Add::add)
 }

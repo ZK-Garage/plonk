@@ -6,7 +6,7 @@
 
 use super::StandardComposer;
 use crate::commitment::HomomorphicCommitment;
-use crate::error::Error;
+use crate::error::{to_pc_error, Error};
 use crate::proof_system::{Prover, Verifier};
 use ark_ec::{ModelParameters, TEModelParameters};
 use ark_poly::univariate::DensePolynomial;
@@ -51,7 +51,7 @@ where
         None,
         &mut OsRng,
     )
-    .unwrap();
+    .map_err(to_pc_error::<F, PC>)?;
 
     // Provers View
     let (proof, public_inputs) = {
@@ -72,7 +72,7 @@ where
             0,
             None,
         )
-        .unwrap();
+        .map_err(to_pc_error::<F, PC>)?;
 
         // Preprocess circuit
         prover.preprocess(&ck)?;
@@ -102,7 +102,7 @@ where
         0,
         None,
     )
-    .unwrap();
+    .map_err(to_pc_error::<F, PC>)?;
 
     // Preprocess circuit
     verifier.preprocess(&ck)?;

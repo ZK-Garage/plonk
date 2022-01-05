@@ -6,12 +6,8 @@
 
 //! Tools & traits for PLONK circuits
 
-<<<<<<< HEAD:src/circuit.rs
 use crate::commitment::HomomorphicCommitment;
-use crate::constraint_system::StandardComposer;
-=======
->>>>>>> upstream/master:plonk-core/src/circuit.rs
-use crate::error::Error;
+use crate::error::{to_pc_error, Error};
 use crate::prelude::StandardComposer;
 use crate::proof_system::{Proof, Prover, ProverKey, Verifier, VerifierKey};
 use ark_ec::models::{ModelParameters, SWModelParameters, TEModelParameters};
@@ -176,25 +172,16 @@ where
 ///     EdwardsAffine as JubJubAffine, EdwardsParameters as JubJubParameters,
 ///     EdwardsProjective as JubJubProjective, Fr as JubJubScalar,
 /// };
-<<<<<<< HEAD:src/circuit.rs
 /// use ark_ff::{FftField, PrimeField, BigInteger};
-/// use ark_plonk::circuit::{Circuit, PublicInputValue, verify_proof, GeIntoPubInput};
-/// use ark_plonk::constraint_system::StandardComposer;
-/// use ark_plonk::error::Error;
-=======
-/// use ark_ff::{PrimeField, BigInteger};
->>>>>>> upstream/master:plonk-core/src/circuit.rs
+/// use plonk_core::circuit::{Circuit, PublicInputValue, verify_proof, GeIntoPubInput};
+/// use plonk_core::constraint_system::StandardComposer;
+/// use plonk_core::error::Error;
 /// use ark_poly::polynomial::univariate::DensePolynomial;
 /// use ark_poly_commit::{PolynomialCommitment, sonic_pc::SonicKZG10};
-/// use ark_plonk::prelude::*;
+/// use plonk_core::prelude::*;
 /// use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 /// use num_traits::{Zero, One};
-<<<<<<< HEAD:src/circuit.rs
 /// use rand::rngs::OsRng;
-=======
-/// use plonk_core::prelude::*;
-/// use rand_core::OsRng;
->>>>>>> upstream/master:plonk-core/src/circuit.rs
 ///
 /// fn main() -> Result<(), Error> {
 /// // Implements a circuit that checks:
@@ -271,7 +258,7 @@ where
 ///
 /// let mut circuit = TestCircuit::<BlsScalar, JubJubParameters>::default();
 /// // Compile the circuit
-/// let (pk_p, verifier_data) = circuit.compile::<PC>(&pp).unwrap();
+/// let (pk_p, verifier_data) = circuit.compile::<PC>(&pp).map_err(to_pc_error::<F, PC>)?;
 ///
 /// let (x, y) = JubJubParameters::AFFINE_GENERATOR_COEFFS;
 /// let generator: GroupAffine<JubJubParameters> = GroupAffine::new(x, y);
@@ -355,18 +342,18 @@ where
             0,
             None,
         )
-        .unwrap();
+        .map_err(to_pc_error::<F, PC>)?;
 
         //Generate & save `ProverKey` with some random values.
         let mut prover = Prover::<F, P, PC>::new(b"CircuitCompilation");
-        self.gadget(prover.mut_cs()).unwrap();
+        self.gadget(prover.mut_cs())?;
         let pi_pos = prover.mut_cs().pi_positions();
-        prover.preprocess(&ck).unwrap();
+        prover.preprocess(&ck)?;
 
         // Generate & save `VerifierKey` with some random values.
         let mut verifier = Verifier::new(b"CircuitCompilation");
-        self.gadget(verifier.mut_cs()).unwrap();
-        verifier.preprocess(&ck).unwrap();
+        self.gadget(verifier.mut_cs())?;
+        verifier.preprocess(&ck)?;
         Ok((
             prover
                 .prover_key
@@ -402,11 +389,11 @@ where
             0,
             None,
         )
-        .unwrap();
+        .map_err(to_pc_error::<F, PC>)?;
         // New Prover instance
         let mut prover = Prover::new(transcript_init);
         // Fill witnesses for Prover
-        self.gadget(prover.mut_cs()).unwrap();
+        self.gadget(prover.mut_cs())?;
         // Add ProverKey to Prover
         prover.prover_key = Some(prover_key);
         prover.prove(&ck)
@@ -441,7 +428,7 @@ where
         0,
         None,
     )
-    .unwrap();
+    .map_err(to_pc_error::<F, PC>)?;
 
     verifier.verify(
         proof,
@@ -553,12 +540,13 @@ mod test {
             + HomomorphicCommitment<F>,
     {
         // Generate CRS
-        let pp = PC::setup(1 << 19, None, &mut OsRng).unwrap();
+        let pp = PC::setup(1 << 19, None, &mut OsRng)
+            .map_err(to_pc_error::<F, PC>)?;
 
         let mut circuit = TestCircuit::<F, P>::default();
 
         // Compile the circuit
-        let (pk_p, verifier_data) = circuit.compile::<PC>(&pp).unwrap();
+        let (pk_p, verifier_data) = circuit.compile::<PC>(&pp)?;
 
         let (x, y) = P::AFFINE_GENERATOR_COEFFS;
         let generator: GroupAffine<P> = GroupAffine::new(x, y);
@@ -579,7 +567,7 @@ mod test {
                 f: point_f_pi,
             };
 
-            circuit.gen_proof::<PC>(&pp, pk_p, b"Test").unwrap()
+            circuit.gen_proof::<PC>(&pp, pk_p, b"Test")?
         };
 
         // Test serialisation for verifier_data

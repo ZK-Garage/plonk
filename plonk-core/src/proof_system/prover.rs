@@ -9,6 +9,7 @@
 use crate::{
     commitment::HomomorphicCommitment,
     constraint_system::{StandardComposer, Variable},
+    error::to_pc_error,
     error::Error,
     label_polynomial,
     proof_system::{
@@ -276,8 +277,8 @@ where
         ];
 
         // Commit to witness polynomials.
-        let (w_commits, w_rands) =
-            PC::commit(commit_key, w_polys.iter(), None).unwrap();
+        let (w_commits, w_rands) = PC::commit(commit_key, w_polys.iter(), None)
+            .map_err(to_pc_error::<F, PC>)?;
 
         // Add witness polynomial commitments to transcript.
         //transcript.append_commitments(&*w_commits, PhantomData::<PC>);
@@ -317,7 +318,8 @@ where
 
         // Commit to permutation polynomial.
         let (z_poly_commit, z_poly_rand) =
-            PC::commit(commit_key, z_polys.iter(), None).unwrap();
+            PC::commit(commit_key, z_polys.iter(), None)
+                .map_err(to_pc_error::<F, PC>)?;
 
         // Add permutation polynomial commitment to transcript.
         transcript.append(b"z", z_poly_commit[0].commitment());
@@ -357,8 +359,7 @@ where
             &logic_sep_challenge,
             &fixed_base_sep_challenge,
             &var_base_sep_challenge,
-        )
-        .unwrap();
+        )?;
 
         // Split quotient polynomial into 4 degree `n` polynomials
         let (t_1_poly, t_2_poly, t_3_poly, t_4_poly) =
@@ -372,8 +373,8 @@ where
         ];
 
         // Commit to splitted quotient polynomial
-        let (t_commits, _) =
-            PC::commit(commit_key, t_polys.iter(), None).unwrap();
+        let (t_commits, _) = PC::commit(commit_key, t_polys.iter(), None)
+            .map_err(to_pc_error::<F, PC>)?;
 
         // Add quotient polynomial commitments to transcript
         transcript.append(b"t_1", t_commits[0].commitment());
@@ -442,60 +443,60 @@ where
             &z_challenge,
         );
 
-        let lin_sigma_polys = [
-            label_polynomial!(quot),
-            label_polynomial!(lin_poly),
-            label_polynomial!(prover_key.permutation.left_sigma.0.clone()),
-            label_polynomial!(prover_key.permutation.right_sigma.0.clone()),
-            label_polynomial!(prover_key.permutation.out_sigma.0.clone()),
-        ];
-
-        let (lin_sigma_commits, lin_sigma_rands) =
-            PC::commit(commit_key, &lin_sigma_polys, None).unwrap();
-
         // Compute aggregate witness to polynomials evaluated at the evaluation
         // challenge `z`
         let aw_challenge: F = transcript.challenge_scalar(b"aggregate_witness");
 
+        let aw_poly = crate::commitment::aggregate_polynomials(
+            &[
+                quot,
+                lin_poly,
+                prover_key.permutation.left_sigma.0.clone(),
+                prover_key.permutation.right_sigma.0.clone(),
+                prover_key.permutation.out_sigma.0.clone(),
+                w_l_poly.clone(),
+                w_r_poly.clone(),
+                w_o_poly.clone(),
+                w_4_poly.clone(),
+            ],
+            aw_challenge,
+        );
+        let (aw_commits, aw_rands) =
+            PC::commit(commit_key, &[label_polynomial!(aw_poly)], None)
+                .map_err(to_pc_error::<F, PC>)?;
+
         let aw_opening = PC::open(
             commit_key,
-            lin_sigma_polys.iter().chain(w_polys.iter()),
-            lin_sigma_commits.iter().chain(w_commits.iter()),
+            &[label_polynomial!(aw_poly)],
+            &aw_commits,
             &z_challenge,
             aw_challenge,
-            lin_sigma_rands.iter().chain(w_rands.iter()),
+            &aw_rands,
             None,
         )
-        .unwrap();
+        .map_err(to_pc_error::<F, PC>)?;
 
         let saw_challenge: F =
             transcript.challenge_scalar(b"aggregate_witness");
 
+        let saw_poly = crate::commitment::aggregate_polynomials(
+            &[z_poly, w_l_poly, w_r_poly, w_4_poly],
+            saw_challenge,
+        );
+        let (saw_commits, saw_rands) =
+            PC::commit(commit_key, &[label_polynomial!(saw_poly)], None)
+                .map_err(to_pc_error::<F, PC>)?;
+
         let saw_opening = PC::open(
             commit_key,
-            &[
-                z_polys[0].clone(),
-                w_polys[0].clone(),
-                w_polys[1].clone(),
-                w_polys[3].clone(),
-            ],
-            &[
-                z_poly_commit[0].clone(),
-                w_commits[0].clone(),
-                w_commits[1].clone(),
-                w_commits[3].clone(),
-            ],
+            &[label_polynomial!(saw_poly)],
+            &saw_commits,
             &(z_challenge * domain.element(1)),
             saw_challenge,
-            &[
-                z_poly_rand[0].clone(),
-                w_rands[0].clone(),
-                w_rands[1].clone(),
-                w_rands[3].clone(),
-            ],
+            &saw_rands,
             None,
         )
-        .unwrap();
+        .map_err(to_pc_error::<F, PC>)?;
 
         Ok(Proof {
             a_comm: w_commits[0].commitment().clone(),
@@ -523,22 +524,20 @@ where
         if self.prover_key.is_none() {
             // Preprocess circuit and store preprocessed circuit and transcript
             // in the Prover.
-            self.prover_key = Some(
-                self.cs
-                    .preprocess_prover(
-                        commit_key,
-                        &mut self.preprocessed_transcript,
-                        PhantomData::<PC>,
-                    )
-                    .unwrap(),
-            );
+            self.prover_key = Some(self.cs.preprocess_prover(
+                commit_key,
+                &mut self.preprocessed_transcript,
+                PhantomData::<PC>,
+            )?);
         }
 
         let prover_key = self.prover_key.as_ref().unwrap();
 
-        let proof = self
-            .prove_with_preprocessed(commit_key, prover_key, PhantomData::<PC>)
-            .unwrap();
+        let proof = self.prove_with_preprocessed(
+            commit_key,
+            prover_key,
+            PhantomData::<PC>,
+        )?;
 
         // Clear witness and reset composer variables
         self.clear_witness();

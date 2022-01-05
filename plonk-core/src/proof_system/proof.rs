@@ -267,41 +267,49 @@ where
             self.evaluations.c_eval,
             self.evaluations.d_eval,
         ];
-        /*
-        let mut query_set = ark_poly_commit::QuerySet::new();
-        let mut evaluations = ark_poly_commit::Evaluations::new();
-        for commit in commits.iter() {
-            query_set.insert((
-                commit.label().to_owned(),
-                ("z_challenge".to_owned(), z_challenge),
-            ));
-            evaluations.insert(
-                (commit.label().to_owned(),
-                "z_challenge".to_owned()), z_challenge),
-            );
-        }*/
-
-        /*match PC::batch_check(
-            verifier_key,
-            commits.iter(),
-            &query_set,
-            &evaluations,
-            &self.aw_opening,
-            aw_challenge,
-            None,
-        ) {
-            Ok(true) => Ok(()),
-            Ok(false) => Err(Error::ProofVerificationError),
-            Err(e) => panic!("{:?}", e),
-        }*/
 
         let saw_challenge: F =
             transcript.challenge_scalar(b"aggregate_witness");
+
+        let (aw_commitment, aw_eval) =
+            crate::commitment::linear_combination::<F, PC>(
+                &evals,
+                &[
+                    t_comm,
+                    lin_comm,
+                    plonk_verifier_key.permutation.left_sigma.clone(),
+                    plonk_verifier_key.permutation.right_sigma.clone(),
+                    plonk_verifier_key.permutation.out_sigma.clone(),
+                    self.a_comm.clone(),
+                    self.b_comm.clone(),
+                    self.c_comm.clone(),
+                    self.d_comm.clone(),
+                ],
+                aw_challenge,
+            );
+
+        let (saw_commitment, saw_eval) =
+            crate::commitment::linear_combination::<F, PC>(
+                &[
+                    self.evaluations.permutation_eval,
+                    self.evaluations.a_next_eval,
+                    self.evaluations.b_next_eval,
+                    self.evaluations.d_next_eval,
+                ],
+                &[
+                    self.z_comm.clone(),
+                    self.a_comm.clone(),
+                    self.b_comm.clone(),
+                    self.d_comm.clone(),
+                ],
+                saw_challenge,
+            );
+
         match PC::check(
             verifier_key,
-            commits.iter(),
+            &[label_commitment!(aw_commitment)],
             &z_challenge,
-            evals,
+            [aw_eval],
             &self.aw_opening,
             aw_challenge,
             None,
@@ -313,19 +321,9 @@ where
         .and_then(|_| {
             match PC::check(
                 verifier_key,
-                &[
-                    label_commitment!(self.z_comm),
-                    commits[5].clone(),
-                    commits[6].clone(),
-                    commits[8].clone(),
-                ],
+                &[label_commitment!(saw_commitment)],
                 &(z_challenge * domain.element(1)),
-                [
-                    self.evaluations.permutation_eval,
-                    self.evaluations.a_next_eval,
-                    self.evaluations.b_next_eval,
-                    self.evaluations.d_next_eval,
-                ],
+                [saw_eval],
                 &self.saw_opening,
                 saw_challenge,
                 None,

@@ -7,7 +7,7 @@
 //! Methods to preprocess the constraint system for use in a proof.
 
 use crate::constraint_system::StandardComposer;
-use crate::error::Error;
+use crate::error::{to_pc_error, Error};
 use crate::proof_system::{widget, ProverKey};
 use ark_ec::TEModelParameters;
 use ark_ff::FftField;
@@ -125,7 +125,7 @@ where
         PC: PolynomialCommitment<F, DensePolynomial<F>>,
     {
         let (_, selectors, domain) =
-            self.preprocess_shared(commit_key, transcript, _pc).unwrap();
+            self.preprocess_shared(commit_key, transcript, _pc)?;
 
         let domain_8n =
             GeneralEvaluationDomain::new(8 * domain.size()).unwrap();
@@ -263,7 +263,7 @@ where
         let domain = GeneralEvaluationDomain::new(self.circuit_size()).unwrap();
 
         // Check that the length of the wires is consistent.
-        self.check_poly_same_len().unwrap();
+        self.check_poly_same_len()?;
 
         // 1. Pad circuit to a power of two
         self.pad(domain.size() as usize - self.n);
@@ -389,7 +389,7 @@ where
             .iter(),
             None,
         )
-        .unwrap();
+        .map_err(to_pc_error::<F, PC>)?;
 
         let verifier_key = widget::VerifierKey::from_polynomial_commitments(
             self.circuit_size(),

@@ -84,6 +84,20 @@ impl From<ark_poly_commit::error::Error> for Error {
     }
 }
 
+/// Convert an ark_poly_commit error
+pub fn to_pc_error<F, PC>(error: PC::Error) -> Error
+where
+    F: ark_ff::Field,
+    PC: ark_poly_commit::PolynomialCommitment<
+        F,
+        ark_poly::univariate::DensePolynomial<F>,
+    >,
+{
+    Error::PCError {
+        error: format!("Polynomial Commitment Error: {:?}", error),
+    }
+}
+
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
