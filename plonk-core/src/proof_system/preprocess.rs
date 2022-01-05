@@ -12,7 +12,7 @@ use crate::proof_system::{widget, ProverKey};
 use crate::transcript::TranscriptWrapper;
 use ark_ec::{PairingEngine, TEModelParameters};
 use ark_ff::PrimeField;
-use ark_poly::polynomial::univariate::DensePolynomial;
+use ark_poly::{UVPolynomial, polynomial::univariate::DensePolynomial};
 use ark_poly::{EvaluationDomain, Evaluations, GeneralEvaluationDomain};
 use ark_poly_commit::kzg10::{Powers, KZG10};
 use num_traits::{One, Zero};
@@ -250,40 +250,42 @@ where
         // 1. Pad circuit to a power of two
         self.pad(domain.size() as usize - self.n);
 
-        let q_m_poly: DensePolynomial<E::Fr> = DensePolynomial {
-            coeffs: domain.ifft(&self.q_m),
-        };
-        let q_r_poly: DensePolynomial<E::Fr> = DensePolynomial {
-            coeffs: domain.ifft(&self.q_r),
-        };
-        let q_l_poly: DensePolynomial<E::Fr> = DensePolynomial {
-            coeffs: domain.ifft(&self.q_l),
-        };
-        let q_o_poly: DensePolynomial<E::Fr> = DensePolynomial {
-            coeffs: domain.ifft(&self.q_o),
-        };
-        let q_c_poly: DensePolynomial<E::Fr> = DensePolynomial {
-            coeffs: domain.ifft(&self.q_c),
-        };
-        let q_4_poly: DensePolynomial<E::Fr> = DensePolynomial {
-            coeffs: domain.ifft(&self.q_4),
-        };
-        let q_arith_poly: DensePolynomial<E::Fr> = DensePolynomial {
-            coeffs: domain.ifft(&self.q_arith),
-        };
-        let q_range_poly: DensePolynomial<E::Fr> = DensePolynomial {
-            coeffs: domain.ifft(&self.q_range),
-        };
-        let q_logic_poly: DensePolynomial<E::Fr> = DensePolynomial {
-            coeffs: domain.ifft(&self.q_logic),
-        };
-        let q_fixed_group_add_poly: DensePolynomial<E::Fr> = DensePolynomial {
-            coeffs: domain.ifft(&self.q_fixed_group_add),
-        };
+        let q_m_poly: DensePolynomial<E::Fr> =
+            DensePolynomial::from_coefficients_vec(domain.ifft(&self.q_m));
+
+        let q_r_poly: DensePolynomial<E::Fr> =
+            DensePolynomial::from_coefficients_vec(domain.ifft(&self.q_r));
+
+        let q_l_poly: DensePolynomial<E::Fr> =
+            DensePolynomial::from_coefficients_vec(domain.ifft(&self.q_l));
+
+        let q_o_poly: DensePolynomial<E::Fr> =
+            DensePolynomial::from_coefficients_vec(domain.ifft(&self.q_o));
+
+        let q_c_poly: DensePolynomial<E::Fr> =
+            DensePolynomial::from_coefficients_vec(domain.ifft(&self.q_c));
+
+        let q_4_poly: DensePolynomial<E::Fr> =
+            DensePolynomial::from_coefficients_vec(domain.ifft(&self.q_4));
+
+        let q_arith_poly: DensePolynomial<E::Fr> =
+            DensePolynomial::from_coefficients_vec(domain.ifft(&self.q_arith));
+
+        let q_range_poly: DensePolynomial<E::Fr> =
+            DensePolynomial::from_coefficients_vec(domain.ifft(&self.q_range));
+
+        let q_logic_poly: DensePolynomial<E::Fr> =
+            DensePolynomial::from_coefficients_vec(domain.ifft(&self.q_logic));
+
+        let q_fixed_group_add_poly: DensePolynomial<E::Fr> =
+            DensePolynomial::from_coefficients_vec(
+                domain.ifft(&self.q_fixed_group_add),
+            );
+
         let q_variable_group_add_poly: DensePolynomial<E::Fr> =
-            DensePolynomial {
-                coeffs: domain.ifft(&self.q_variable_group_add),
-            };
+            DensePolynomial::from_coefficients_vec(
+                domain.ifft(&self.q_variable_group_add),
+            );
 
         // 2. Compute the sigma polynomials
         let (
