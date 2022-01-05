@@ -1,0 +1,24 @@
+[package]
+name = "plonk-hashing"
+version = "0.8.2"
+authors = ["ZK-GARAGE Authors"]
+readme = "README.md"
+repository = "https://github.com/zk-garage/plonk"
+keywords = ["cryptography", "plonk", "zk-snarks", "zero-knowledge", "crypto"]
+categories = ["algorithms", "cryptography", "science"]
+description = "A pure-Rust implementation of the PLONK ZK-Proof algorithm."
+license = "MIT OR Apache-2.0"
+edition = "2021"
+
+[package.metadata.docs.rs]
+# To build locally:
+# RUSTDOCFLAGS="--cfg doc_cfg" cargo +nightly doc --all-features --open
+all-features = true
+rustdoc-args = ["--cfg", "doc_cfg"]
+
+[features]
+# Enable Standard Library
+std = []
+
+[dependencies]
+plonk-core = { path = "../plonk-core" }
