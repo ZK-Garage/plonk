@@ -6,9 +6,13 @@
 
 //! Tools & traits for PLONK circuits
 
+<<<<<<< HEAD:src/circuit.rs
 use crate::commitment::HomomorphicCommitment;
 use crate::constraint_system::StandardComposer;
+=======
+>>>>>>> upstream/master:plonk-core/src/circuit.rs
 use crate::error::Error;
+use crate::prelude::StandardComposer;
 use crate::proof_system::{Proof, Prover, ProverKey, Verifier, VerifierKey};
 use ark_ec::models::{ModelParameters, SWModelParameters, TEModelParameters};
 use ark_ec::{
@@ -172,16 +176,25 @@ where
 ///     EdwardsAffine as JubJubAffine, EdwardsParameters as JubJubParameters,
 ///     EdwardsProjective as JubJubProjective, Fr as JubJubScalar,
 /// };
+<<<<<<< HEAD:src/circuit.rs
 /// use ark_ff::{FftField, PrimeField, BigInteger};
 /// use ark_plonk::circuit::{Circuit, PublicInputValue, verify_proof, GeIntoPubInput};
 /// use ark_plonk::constraint_system::StandardComposer;
 /// use ark_plonk::error::Error;
+=======
+/// use ark_ff::{PrimeField, BigInteger};
+>>>>>>> upstream/master:plonk-core/src/circuit.rs
 /// use ark_poly::polynomial::univariate::DensePolynomial;
 /// use ark_poly_commit::{PolynomialCommitment, sonic_pc::SonicKZG10};
 /// use ark_plonk::prelude::*;
 /// use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 /// use num_traits::{Zero, One};
+<<<<<<< HEAD:src/circuit.rs
 /// use rand::rngs::OsRng;
+=======
+/// use plonk_core::prelude::*;
+/// use rand_core::OsRng;
+>>>>>>> upstream/master:plonk-core/src/circuit.rs
 ///
 /// fn main() -> Result<(), Error> {
 /// // Implements a circuit that checks:

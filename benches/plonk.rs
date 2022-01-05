@@ -1,17 +1,19 @@
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE
+// or https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
 //
 // Copyright (c) ZK-GARAGE. All rights reserved.
 
-//! Benchmarks
+//! PLONK Benchmarks
 
 use ark_bls12_381::{Bls12_381, Fr as BlsScalar};
 use ark_ec::{PairingEngine, TEModelParameters};
 use ark_ed_on_bls12_381::EdwardsParameters;
 use ark_ff::FftField;
-use ark_plonk::commitment::KZG10;
-use ark_plonk::prelude::*;
+use plonk::commitment::KZG10;
+use plonk::prelude::*;
 use ark_poly_commit::PolynomialCommitment;
 use core::marker::PhantomData;
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
@@ -142,12 +144,22 @@ fn constraint_system_benchmark(c: &mut Criterion) {
             &degree,
             |b, _| {
                 b.iter(|| {
+<<<<<<< HEAD
                     ark_plonk::circuit::verify_proof::<
                         <Bls12_381 as PairingEngine>::Fr,
                         EdwardsParameters,
                         KZG10<Bls12_381>,
                     >(
                         &pp, key.clone(), &proof, &[], &pi_pos, &label
+=======
+                    plonk::circuit::verify_proof(
+                        &pp,
+                        key.clone(),
+                        &proof,
+                        &[],
+                        &pi_pos,
+                        &label,
+>>>>>>> upstream/master
                     )
                     .expect("Unable to verify benchmark circuit.");
                 })
@@ -158,8 +170,8 @@ fn constraint_system_benchmark(c: &mut Criterion) {
 }
 
 criterion_group! {
-    name = ark_plonk;
+    name = plonk;
     config = Criterion::default().sample_size(10);
     targets = constraint_system_benchmark
 }
-criterion_main!(ark_plonk);
+criterion_main!(plonk);
