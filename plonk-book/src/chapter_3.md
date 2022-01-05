@@ -216,7 +216,9 @@ The Plonk circuit would then contain another type of gates (lookup gates) beside
 In ARK-PLONK, we use PlonKup, a ZK-SNARK that integrates plookup into PlonK in an efficient way. Before we explain how PlonKup works, we will introduce the original [plookup]((https://eprint.iacr.org/2020/315.pdf) ) definition.
 
 #### PLOOKUP
-The PLOOKUP protocol takes sequences $(f_1,f_2,...,f_n)$ and $(t_1,t_2,...,t_d)$ and checks that every value in the first sequence $(f_i)_{i\in [n]}$ appears in the second $(t_i)_{i\in [d]}$: $$ (f_i)_{i\in [n]}\subset (t_i)_{i\in [d]}$$ where $f_i$ is the compressed tuple $(input_i,output_i)$ and $(t_1,t_2,...,t_d)$ is the lookup table containing all valid compressed input-output pairs. 
+The PLOOKUP protocol takes sequences $(f_1,f_2,...,f_n)$ and $(t_1,t_2,...,t_d)$ and checks that every value in the first sequence $(f_i)_{i\in [n]}$ appears in the second $(t_i)_{i\in [d]}$: $$ (f_i)_{i\in [n]}\subset (t_i)_{i\in [d]}$$ where $f_i$ is the compressed tuple $(input_i,output_i)$ and $(t_1,t_2,...,t_d)$ is the lookup table containing all valid compressed input-output pairs. We define $(t_i)$ as: 
+$$t_i=\tau_{1,i} + \zeta\tau_{2,i}+\zeta^2\tau_{3,i}$$
+for $\tau\in\mathbb{F}^{n+3}$  a publicly known table of $3$ columns and $n$ rows (one column per input/output, and each row describes the relation between the output and the pair of inputs) and $\zeta\in\mathbb{F}$ a random element obtained from the verifier. The vector $t=(t_1,t_2,...,t_n)$ is used to compress the rows of the table.
 
 Plookup introduces the notion of "randomized differences" and use it to prove that one sequence is a subsequence of another. This is done by creating the difference set for the sequence and also the difference set for its subsequence and compare them. However since it is possible for two distinct sequences to have the same difference set we use randomized difference. Instead of comparing the set of differences between $\{f_i\}$ and $\{t_i\}$ which might result in a different order and thus won't be equal, a third sequence $\{s_i\}$ is introduced and used instead of $\{f_i\}$. The sequence $\{s_i\}$ represents the sorted version of the concatenation of $\{f_i\}$ and $\{t_i\}$ such that $s=(f,t)$, re-arranged to be "ordered by $t$. 
 
@@ -248,11 +250,27 @@ to the prover, who defines these bi-variate polynomials $F$ and $G$
 
   * $Z(g^{n+1}) = 1$
 
-3. Verifier checks that $Z$ is indeed of the form described above,  and that $Z(g^{n+1}) = 1$
+3. Verifier checks that $Z$ is indeed of the form described above,  and that $Z(g^{n+1}) = 1$. More precisely, the verifier checks:
+ 
+   * $L_1(x)(Z(x)−1) = 0$.
+   * $(x−g^{n+1})Z(x)(1 +\beta)·(\gamma+f(x))(\gamma(1 +\beta) +t(x) +\beta t(g·x))= (x−g^{n+1})Z(g·x)(\gamma(1+\beta)+h_1(x)+\beta h_1(g·x))(\gamma(1+\beta)+h_2(x)+\beta h_2(g·x))$
+   * $L_{n+1}(x)(h_1(x)−h_2(g·x)) = 0$
+   * $L_{n+1}(x)(Z(x)−1) = 0$
+
+where $L_i(X)\in F_{<n}[X]$ for $i\in[n]$ is the Lagrange polynomial defined as: $$L_i(X) =\dfrac{ω^i(X^n−1)}{n(X−ω^i)}$$
+and the zero polynomial $Z_H(X)\in F_{<n+1}[X]$ is defined as: $$Z_H(X) = (X−ω)···(X−ω^{n−1})(X−ω^n) =X^n−1$$
+$h_1$ and $h_2$ represent the lower and upper halves of the vector $s$ defined as:
+
+$h_1= (s_0,s_1,s_2,...,s_{n−1})$ and $h_2= (s_n,s_{n+1},s_{n+2},...,s_{2n−1})$
 
 #### PLONKUP
 
+Plonkup uses an alternative method for dividing the sorted vector $s$ which reduces the verifier's complexity. In PLOOKUP, the prover devides $s$ into an upper and lower bounds:
 
+$h_1=(s_0,s_1,s_2,...,s_{n−1})$ and $h_2= (s_n,s_{n+1},s_{n+2},...,s_{2n−1})$. 
+This method adds another check for the verifier $L_{n−1}(X)h_1(X)−L_0(X)h_2(X) = 0$ and can be avoided if those halves are divided differently. 
+
+In PLONKUP, the prover uses alternating halves $h_1=(s_0,s_2,s_4,...,s_{2n−2})$ and $h_2=(s_1,s_3,s_5,...,s_{2n−1})$ and thus no need to check if they overlap.
 ### Modules
 * circuit: Tools & traits for PLONK circuits (ark_plonk::circuit)
   1. Structs
