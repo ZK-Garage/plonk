@@ -12,7 +12,7 @@ use crate::proof_system::{widget, ProverKey};
 use crate::transcript::TranscriptWrapper;
 use ark_ec::{PairingEngine, TEModelParameters};
 use ark_ff::PrimeField;
-use ark_poly::{UVPolynomial, polynomial::univariate::DensePolynomial};
+use ark_poly::{polynomial::univariate::DensePolynomial, UVPolynomial};
 use ark_poly::{EvaluationDomain, Evaluations, GeneralEvaluationDomain};
 use ark_poly_commit::kzg10::{Powers, KZG10};
 use num_traits::{One, Zero};
