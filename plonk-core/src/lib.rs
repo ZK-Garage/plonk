@@ -42,6 +42,7 @@ pub mod constraint_system;
 pub mod error;
 pub mod prelude;
 pub mod proof_system;
+pub mod lookup;
 
 #[cfg(test)]
 mod test;
