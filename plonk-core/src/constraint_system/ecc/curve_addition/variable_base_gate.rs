@@ -147,10 +147,10 @@ mod test {
                 .add(E::Fr::one(), E::Fr::one())
         });
 
-        // y1y2 - a * x1x2 (a=-1) => y1y2 + x1x2
+        // y1y2 - a * x1x2
         let y_numerator = composer.arithmetic_gate(|gate| {
             gate.witness(y1_y2, x1_x2, None)
-                .add(E::Fr::one(), E::Fr::one())
+                .add(E::Fr::one(), -P::COEFF_A)
         });
 
         // 1 + dx1x2y1y2
