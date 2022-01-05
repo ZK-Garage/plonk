@@ -53,10 +53,11 @@ where
     /// A gate which outputs a variable whose value is 1 if
     /// the input is 0 and whose value is 0 otherwise
     pub fn is_zero_gate(&mut self, a: Variable) -> Variable {
-        //Get relevant field values
+        // Get relevant field values
         let a_value = self.variables.get(&a).unwrap();
         let y_value = a_value.inverse().unwrap_or_else(E::Fr::one);
-        //This has value 1 if input value is zero, value 0 otherwise
+
+        // This has value 1 if input value is zero, value 0 otherwise
         let b_value = E::Fr::one() - *a_value * y_value;
 
         let y = self.add_input(y_value);
@@ -71,7 +72,7 @@ where
             gate.witness(a, b, Some(zero)).mul(E::Fr::one())
         });
 
-        let _constraint1 = self.arithmetic_gate(|gate| {
+        let _first_constraint = self.arithmetic_gate(|gate| {
             gate.witness(a, y, Some(zero))
                 .mul(E::Fr::one())
                 .fan_in_3(E::Fr::one(), b)
