@@ -8,6 +8,7 @@ use ark_poly_commit::PolynomialCommitment;
 /// A homomorphic polynomial commitment
 pub trait HomomorphicCommitment<F>:
     PolynomialCommitment<F, DensePolynomial<F>>
+//+ std::fmt::Debug + Eq + PartialEq
 where
     F: PrimeField,
 {

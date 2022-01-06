@@ -296,7 +296,7 @@ where
 )]
 pub struct VerifierKey<PCC>
 where
-    PCC: PCCommitment,
+    PCC: PCCommitment + Default,
 {
     /// Left Permutation Commitment
     pub left_sigma: PCC,
@@ -313,7 +313,7 @@ where
 
 impl<PCC> VerifierKey<PCC>
 where
-    PCC: PCCommitment,
+    PCC: PCCommitment + Default,
 {
     /// Computes the linearisation commitments.
     pub fn compute_linearisation_commitment<F: FftField>(

@@ -43,7 +43,7 @@ pub(crate) fn gadget_tester<F, P, PC>(
 where
     F: FftField + PrimeField,
     P: TEModelParameters<BaseField = F>,
-    PC: PolynomialCommitment<F, DensePolynomial<F>> + HomomorphicCommitment<F>,
+    PC: HomomorphicCommitment<F>,
 {
     // Common View
     let universal_params = PC::setup(

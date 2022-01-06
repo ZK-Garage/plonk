@@ -176,8 +176,7 @@ mod tests {
     where
         F: FftField + PrimeField,
         P: TEModelParameters<BaseField = F>,
-        PC: PolynomialCommitment<F, DensePolynomial<F>>
-            + HomomorphicCommitment<F>,
+        PC: HomomorphicCommitment<F>,
     {
         let res = gadget_tester::<F, P, PC>(
             |composer: &mut StandardComposer<F, P>| {
@@ -213,8 +212,7 @@ mod tests {
     where
         F: FftField + PrimeField,
         P: TEModelParameters<BaseField = F>,
-        PC: PolynomialCommitment<F, DensePolynomial<F>>
-            + HomomorphicCommitment<F>,
+        PC: HomomorphicCommitment<F>,
     {
         let res = gadget_tester::<F, P, PC>(
             |composer: &mut StandardComposer<F, P>| {
@@ -244,8 +242,7 @@ mod tests {
     where
         F: FftField + PrimeField,
         P: TEModelParameters<BaseField = F>,
-        PC: PolynomialCommitment<F, DensePolynomial<F>>
-            + HomomorphicCommitment<F>,
+        PC: HomomorphicCommitment<F>,
     {
         let res = gadget_tester::<F, P, PC>(
             |composer: &mut StandardComposer<F, P>| {
@@ -279,8 +276,7 @@ mod tests {
     where
         F: FftField + PrimeField,
         P: TEModelParameters<BaseField = F>,
-        PC: PolynomialCommitment<F, DensePolynomial<F>>
-            + HomomorphicCommitment<F>,
+        PC: HomomorphicCommitment<F>,
     {
         let res = gadget_tester::<F, P, PC>(
             |composer: &mut StandardComposer<F, P>| {
@@ -318,8 +314,7 @@ mod tests {
     where
         F: FftField + PrimeField,
         P: TEModelParameters<BaseField = F>,
-        PC: PolynomialCommitment<F, DensePolynomial<F>>
-            + HomomorphicCommitment<F>,
+        PC: HomomorphicCommitment<F>,
     {
         let res = gadget_tester::<F, P, PC>(
             |composer: &mut StandardComposer<F, P>| {
@@ -394,8 +389,7 @@ mod tests {
     where
         F: FftField + PrimeField,
         P: TEModelParameters<BaseField = F>,
-        PC: PolynomialCommitment<F, DensePolynomial<F>>
-            + HomomorphicCommitment<F>,
+        PC: HomomorphicCommitment<F>,
     {
         let res = gadget_tester::<F, P, PC>(
             |composer: &mut StandardComposer<F, P>| {

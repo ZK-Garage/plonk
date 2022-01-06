@@ -32,9 +32,9 @@ use rand::rngs::OsRng;
 /// [`Proof`]s for it.
 pub struct Prover<F, P, PC>
 where
-    F: FftField,
+    F: PrimeField + FftField,
     P: ModelParameters<BaseField = F>,
-    PC: PolynomialCommitment<F, DensePolynomial<F>>,
+    PC: HomomorphicCommitment<F>,
 {
     /// Proving Key which is used to create proofs about a specific PLONK
     /// circuit.
@@ -54,7 +54,7 @@ impl<F, P, PC> Prover<F, P, PC>
 where
     F: FftField + PrimeField,
     P: TEModelParameters<BaseField = F>,
-    PC: PolynomialCommitment<F, DensePolynomial<F>> + HomomorphicCommitment<F>,
+    PC: HomomorphicCommitment<F>,
 {
     /// Creates a new `Prover` instance.
     pub fn new(label: &'static [u8]) -> Self {
@@ -550,7 +550,7 @@ impl<F, P, PC> Default for Prover<F, P, PC>
 where
     F: FftField + PrimeField,
     P: TEModelParameters<BaseField = F>,
-    PC: PolynomialCommitment<F, DensePolynomial<F>> + HomomorphicCommitment<F>,
+    PC: HomomorphicCommitment<F>,
 {
     #[inline]
     fn default() -> Self {

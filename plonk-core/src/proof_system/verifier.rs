@@ -24,7 +24,7 @@ pub struct Verifier<F, P, PC>
 where
     F: FftField + PrimeField,
     P: TEModelParameters<BaseField = F>,
-    PC: PolynomialCommitment<F, DensePolynomial<F>> + HomomorphicCommitment<F>,
+    PC: HomomorphicCommitment<F>,
 {
     /// VerificationKey which is used to verify a specific PLONK circuit
     pub verifier_key: Option<PlonkVerifierKey<F, PC>>,
@@ -45,7 +45,7 @@ impl<F, P, PC> Verifier<F, P, PC>
 where
     F: FftField + PrimeField,
     P: TEModelParameters<BaseField = F>,
-    PC: PolynomialCommitment<F, DensePolynomial<F>> + HomomorphicCommitment<F>,
+    PC: HomomorphicCommitment<F>,
 {
     /// Creates a new `Verifier` instance.
     pub fn new(label: &'static [u8]) -> Self {
@@ -121,7 +121,7 @@ impl<F, P, PC> Default for Verifier<F, P, PC>
 where
     F: FftField + PrimeField,
     P: TEModelParameters<BaseField = F>,
-    PC: PolynomialCommitment<F, DensePolynomial<F>> + HomomorphicCommitment<F>,
+    PC: HomomorphicCommitment<F>,
 {
     #[inline]
     fn default() -> Verifier<F, P, PC> {

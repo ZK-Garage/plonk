@@ -21,8 +21,6 @@ use ark_ec::{
     ProjectiveCurve,
 };
 use ark_ff::{FftField, Field, PrimeField};
-use ark_poly::univariate::DensePolynomial;
-use ark_poly_commit::PolynomialCommitment;
 use ark_serialize::*;
 
 /// Group Element Into Public Input
@@ -126,7 +124,7 @@ pub enum EmbeddedCurve<F> {
 pub struct VerifierData<F, PC>
 where
     F: PrimeField,
-    PC: PolynomialCommitment<F, DensePolynomial<F>>,
+    PC: HomomorphicCommitment<F>,
 {
     /// Verifier Key
     pub key: VerifierKey<F, PC>,
@@ -138,7 +136,7 @@ where
 impl<F, PC> VerifierData<F, PC>
 where
     F: PrimeField,
-    PC: PolynomialCommitment<F, DensePolynomial<F>>,
+    PC: HomomorphicCommitment<F>,
 {
     /// Creates a new `VerifierData` from a [`VerifierKey`] and the public
     /// input positions of the circuit that it represents.
@@ -330,8 +328,7 @@ where
     ) -> Result<(ProverKey<F>, VerifierData<F, PC>), Error>
     where
         F: FftField + PrimeField,
-        PC: PolynomialCommitment<F, DensePolynomial<F>>
-            + HomomorphicCommitment<F>,
+        PC: HomomorphicCommitment<F>,
     {
         // Setup PublicParams
         let circuit_size = self.padded_circuit_size();
@@ -378,8 +375,7 @@ where
     where
         F: FftField + PrimeField,
         P: TEModelParameters<BaseField = F>,
-        PC: PolynomialCommitment<F, DensePolynomial<F>>
-            + HomomorphicCommitment<F>,
+        PC: HomomorphicCommitment<F>,
     {
         let circuit_size = self.padded_circuit_size();
         let (ck, _) = PC::trim(
@@ -416,7 +412,7 @@ pub fn verify_proof<F, P, PC>(
 where
     F: FftField + PrimeField,
     P: TEModelParameters<BaseField = F>,
-    PC: PolynomialCommitment<F, DensePolynomial<F>> + HomomorphicCommitment<F>,
+    PC: HomomorphicCommitment<F>,
 {
     let mut verifier: Verifier<F, P, PC> = Verifier::new(transcript_init);
     let padded_circuit_size = plonk_verifier_key.padded_circuit_size();
@@ -536,8 +532,7 @@ mod test {
     where
         F: FftField + PrimeField,
         P: TEModelParameters<BaseField = F>,
-        PC: PolynomialCommitment<F, DensePolynomial<F>>
-            + HomomorphicCommitment<F>,
+        PC: HomomorphicCommitment<F>,
     {
         // Generate CRS
         let pp = PC::setup(1 << 19, None, &mut OsRng)

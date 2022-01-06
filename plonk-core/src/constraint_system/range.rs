@@ -209,8 +209,7 @@ mod test {
     where
         F: FftField + PrimeField,
         P: TEModelParameters<BaseField = F>,
-        PC: PolynomialCommitment<F, DensePolynomial<F>>
-            + HomomorphicCommitment<F>,
+        PC: HomomorphicCommitment<F>,
     {
         // Should fail as the number is not 32 bits
         let res = gadget_tester::<F, P, PC>(
@@ -248,8 +247,7 @@ mod test {
     where
         F: FftField + PrimeField,
         P: TEModelParameters<BaseField = F>,
-        PC: PolynomialCommitment<F, DensePolynomial<F>>
-            + HomomorphicCommitment<F>,
+        PC: HomomorphicCommitment<F>,
     {
         // Should fail as the number we we need a even number of bits
         let _ok = gadget_tester::<F, P, PC>(

@@ -6,6 +6,7 @@
 
 //! Methods to preprocess the constraint system for use in a proof.
 
+use crate::commitment::HomomorphicCommitment;
 use crate::constraint_system::StandardComposer;
 use crate::error::{to_pc_error, Error};
 use crate::proof_system::{widget, ProverKey};
@@ -122,7 +123,7 @@ where
         _pc: PhantomData<PC>,
     ) -> Result<ProverKey<F>, Error>
     where
-        PC: PolynomialCommitment<F, DensePolynomial<F>>,
+        PC: HomomorphicCommitment<F>,
     {
         let (_, selectors, domain) =
             self.preprocess_shared(commit_key, transcript, _pc)?;
@@ -232,7 +233,7 @@ where
         _pc: PhantomData<PC>,
     ) -> Result<widget::VerifierKey<F, PC>, Error>
     where
-        PC: PolynomialCommitment<F, DensePolynomial<F>>,
+        PC: HomomorphicCommitment<F>,
     {
         let (verifier_key, _, _) =
             self.preprocess_shared(commit_key, transcript, _pc).unwrap();
@@ -258,7 +259,7 @@ where
         Error,
     >
     where
-        PC: PolynomialCommitment<F, DensePolynomial<F>>,
+        PC: HomomorphicCommitment<F>,
     {
         let domain = GeneralEvaluationDomain::new(self.circuit_size()).unwrap();
 

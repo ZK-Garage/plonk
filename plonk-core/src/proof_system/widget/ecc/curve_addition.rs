@@ -57,10 +57,3 @@ where
             * separation_challenge
     }
 }
-
-/*impl<F, P> GateConstraint<F> for CurveAddition<F, P>
-where
-    F: Field,
-    P: SWModelParameters<BaseField = F>,
-{
-}*/

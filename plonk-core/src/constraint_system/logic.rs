@@ -353,14 +353,11 @@ mod test {
     use ark_ec::{models::TEModelParameters, PairingEngine};
     use ark_ff::{FftField, PrimeField};
     use ark_poly::univariate::DensePolynomial;
-    use ark_poly_commit::PolynomialCommitment;
     fn test_logic_xor_and_constraint<F, P, PC>()
     where
-        //E: PairingEngine,
         F: FftField + PrimeField,
         P: TEModelParameters<BaseField = F>,
-        PC: PolynomialCommitment<F, DensePolynomial<F>>
-            + HomomorphicCommitment<F>,
+        PC: HomomorphicCommitment<F>,
     {
         // Should pass since the XOR result is correct and the bit-num is even.
         let res = gadget_tester::<F, P, PC>(
@@ -434,11 +431,9 @@ mod test {
 
     fn test_logical_gate_odd_bit_num<F, P, PC>()
     where
-        //E: PairingEngine,
         F: FftField + PrimeField,
         P: TEModelParameters<BaseField = F>,
-        PC: PolynomialCommitment<F, DensePolynomial<F>>
-            + HomomorphicCommitment<F>,
+        PC: HomomorphicCommitment<F>,
     {
         // Should fail since the bit-num is odd.
         let _ = gadget_tester::<F, P, PC>(

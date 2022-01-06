@@ -54,7 +54,7 @@ use merlin::Transcript;
 pub struct Proof<F, PC>
 where
     F: PrimeField,
-    PC: PolynomialCommitment<F, DensePolynomial<F>> + HomomorphicCommitment<F>,
+    PC: HomomorphicCommitment<F>,
 {
     /// Commitment to the witness polynomial for the left wires.
     pub(crate) a_comm: PC::Commitment,
@@ -102,7 +102,7 @@ where
 impl<F, PC> Proof<F, PC>
 where
     F: FftField + PrimeField,
-    PC: PolynomialCommitment<F, DensePolynomial<F>> + HomomorphicCommitment<F>,
+    PC: HomomorphicCommitment<F>,
 {
     /// Performs the verification of a [`Proof`] returning a boolean result.
     pub(crate) fn verify<P>(
