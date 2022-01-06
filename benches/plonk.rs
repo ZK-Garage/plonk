@@ -12,11 +12,11 @@ use ark_bls12_381::{Bls12_381, Fr as BlsScalar};
 use ark_ec::{PairingEngine, TEModelParameters};
 use ark_ed_on_bls12_381::EdwardsParameters;
 use ark_ff::FftField;
-use plonk::commitment::KZG10;
-use plonk::prelude::*;
 use ark_poly_commit::PolynomialCommitment;
 use core::marker::PhantomData;
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
+use plonk::commitment::KZG10;
+use plonk::prelude::*;
 use rand::rngs::OsRng;
 
 /// Benchmark Circuit
@@ -144,22 +144,12 @@ fn constraint_system_benchmark(c: &mut Criterion) {
             &degree,
             |b, _| {
                 b.iter(|| {
-<<<<<<< HEAD
-                    ark_plonk::circuit::verify_proof::<
+                    plonk::circuit::verify_proof::<
                         <Bls12_381 as PairingEngine>::Fr,
                         EdwardsParameters,
                         KZG10<Bls12_381>,
                     >(
                         &pp, key.clone(), &proof, &[], &pi_pos, &label
-=======
-                    plonk::circuit::verify_proof(
-                        &pp,
-                        key.clone(),
-                        &proof,
-                        &[],
-                        &pi_pos,
-                        &label,
->>>>>>> upstream/master
                     )
                     .expect("Unable to verify benchmark circuit.");
                 })
