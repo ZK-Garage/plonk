@@ -231,7 +231,7 @@ where
         &self,
         commit_key: &PC::CommitterKey,
         prover_key: &ProverKey<F>,
-        __: PhantomData<PC>,
+        _data: PhantomData<PC>,
     ) -> Result<Proof<F, PC>, Error> {
         let domain =
             GeneralEvaluationDomain::new(self.cs.circuit_size()).unwrap();
