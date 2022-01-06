@@ -244,7 +244,7 @@ where
         // challenge `z`
         let aw_challenge: F = transcript.challenge_scalar(b"aggregate_witness");
 
-        let commits = [
+        let aw_commits = [
             label_commitment!(t_comm),
             label_commitment!(lin_comm),
             label_commitment!(plonk_verifier_key.permutation.left_sigma),
@@ -256,7 +256,7 @@ where
             label_commitment!(self.d_comm),
         ];
 
-        let evals = [
+        let aw_evals = [
             t_eval,
             self.evaluations.linearisation_polynomial_eval,
             self.evaluations.left_sigma_eval,
@@ -271,7 +271,7 @@ where
         let saw_challenge: F =
             transcript.challenge_scalar(b"aggregate_witness");
 
-        let (aw_commitment, aw_eval) =
+        /*let (aw_commitment, aw_eval) =
             crate::commitment::linear_combination::<F, PC>(
                 &evals,
                 &[
@@ -303,13 +303,27 @@ where
                     self.d_comm.clone(),
                 ],
                 saw_challenge,
-            );
+            );*/
 
+        let saw_commits = [
+            label_commitment!(self.z_comm),
+            label_commitment!(self.a_comm),
+            label_commitment!(self.b_comm),
+            label_commitment!(self.d_comm),
+        ];
+        let saw_evals = [
+            self.evaluations.permutation_eval,
+            self.evaluations.a_next_eval,
+            self.evaluations.b_next_eval,
+            self.evaluations.d_next_eval,
+        ];
         match PC::check(
             verifier_key,
-            &[label_commitment!(aw_commitment)],
+            //&[label_commitment!(aw_commitment)],
+            &aw_commits,
             &z_challenge,
-            [aw_eval],
+            //[aw_eval],
+            aw_evals,
             &self.aw_opening,
             aw_challenge,
             None,
@@ -321,9 +335,11 @@ where
         .and_then(|_| {
             match PC::check(
                 verifier_key,
-                &[label_commitment!(saw_commitment)],
+                &saw_commits,
+                //&[label_commitment!(saw_commitment)],
                 &(z_challenge * domain.element(1)),
-                [saw_eval],
+                saw_evals,
+                //[saw_eval],
                 &self.saw_opening,
                 saw_challenge,
                 None,
