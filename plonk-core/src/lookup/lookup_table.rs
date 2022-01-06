@@ -176,15 +176,54 @@ where
 
         Ok(self.0[pos][2])
     }
+
+    /// Creates an addition table for addends from the lower bound up to the
+    /// upper bound 2^n
+    pub fn add_table(lower_bound: usize, n: u32) -> LookupTable<F> {
+        let upper_bound = 2usize.pow(n);
+        let mut table = LookupTable::new();
+        for i in lower_bound..upper_bound {
+            for j in lower_bound..upper_bound {
+                table.insert_add_row(i as u64, j as u64, upper_bound as u64);
+            }
+        }
+        table
+    }
+
+    /// Creates an xor table for addends from the lower bound up to the upper
+    /// bound 2^n
+    pub fn xor_table(lower_bound: usize, n: u32) -> LookupTable<F> {
+        let upper_bound = 2usize.pow(n);
+        let mut table = LookupTable::new();
+        for i in lower_bound..upper_bound {
+            for j in lower_bound..upper_bound {
+                table.insert_xor_row(i as u64, j as u64, upper_bound as u64);
+            }
+        }
+        table
+    }
+
+    /// Creates an addition table for addends from the lower bound up to the
+    /// upper bound 2^n
+    pub fn mul_table(lower_bound: usize, n: u32) -> LookupTable<F> {
+        let upper_bound = 2usize.pow(n);
+        let mut table = LookupTable::new();
+        for i in lower_bound..upper_bound {
+            for j in lower_bound..upper_bound {
+                table.insert_mul_row(i as u64, j as u64, upper_bound as u64);
+            }
+        }
+        table
+    }
 }
 
 #[cfg(test)]
 mod test {
-    // TODO: use super::*;
+    use super::*;
+    use crate::batch_field_test;
+    use ark_bls12_377::Fr as bls12_377_scalar_field;
+    use ark_bls12_381::Fr as bls12_381_scalar_field;
 
-    // FIXME: Run tests on both BLS fields.
-
-    /* FIXME: Implement ADD table.
     fn test_add_table<F>()
     where
         F: Field,
@@ -208,9 +247,7 @@ mod test {
             2u64.pow(n as u32) * 2u64.pow(n as u32)
         );
     }
-    */
 
-    /* FIXME: Implement XOR table.
     fn test_xor_table<F>()
     where
         F: Field,
@@ -222,7 +259,7 @@ mod test {
         let p = 2u64.pow(n as u32);
         (0..p).for_each(|a| {
             (0..p).for_each(|b| {
-                let c = (a ^ b) % p;
+                let c = a ^ b;
                 assert_eq!(F::from(c), table.0[i][2]);
                 i += 1;
             })
@@ -232,16 +269,14 @@ mod test {
             2u64.pow(n as u32) * 2u64.pow(n as u32)
         );
     }
-    */
 
-    /* FIXME: Implement MUL table.
     fn test_mul_table<F>()
     where
         F: Field,
     {
         let n = 4;
         let table = LookupTable::mul_table(0, n);
-        // println!("{:?}", table);
+
         let mut i = 0;
         let p = 2u64.pow(n as u32);
         (0..p).for_each(|a| {
@@ -256,43 +291,79 @@ mod test {
             2u64.pow(n as u32) * 2u64.pow(n as u32)
         );
     }
-    */
 
-    /* FIXME: Implement ADD table.
     fn test_lookup_arity_3<F>()
     where
         F: Field,
     {
         let add_table = LookupTable::add_table(0, 3);
-        assert!(add_table.lookup(F::from(2u32), F::from(3u32)).is_ok());
+        assert!(add_table
+            .lookup(F::from(2u32), F::from(3u32), F::from(0u32))
+            .is_ok());
         let output = add_table.0[1][0] + add_table.0[1][1];
         assert_eq!(output, F::one());
         let second_output = add_table.0[12][0] + add_table.0[12][1];
         assert_eq!(second_output, F::from(5u32));
     }
-    */
 
-    /* FIXME: Implement XOR table.
     fn test_missing_lookup_value<F>()
     where
         F: Field,
     {
         let xor_table = LookupTable::xor_table(0, 5);
-        assert!(xor_table.lookup(F::from(17u32), F::from(367u32)).is_err());
+        assert!(xor_table
+            .lookup(F::from(17u32), F::from(367u32), F::from(0u32))
+            .is_err());
     }
-    */
 
-    /* FIXME: Check XOR implemenation for fields.
-    fn test_concatenated_table<F>()
+    /* FIXME: Check XOR implemenation for fields. */
+    fn test_concatenated_table<F: ark_ff::PrimeField>()
     where
         F: Field,
     {
+        use ark_ff::BigInteger;
         let mut table = LookupTable::<F>::new();
         table.insert_multi_xor(0, 5);
         table.insert_multi_add(4, 7);
         assert_eq!(table.0.last().unwrap()[2], F::from(126u64));
-        let xor: F = table.0[36][0] ^ table.0[36][1];
+        let xor: F = F::from_repr(BigInteger::from_bits_le(
+            table.0[36][0]
+                .into_repr()
+                .to_bits_le()
+                .iter()
+                .zip(table.0[36][1].into_repr().to_bits_le().iter())
+                .map(|(l, r)| l ^ r)
+                .collect::<Vec<_>>()
+                .as_slice(),
+        ))
+        .unwrap();
+
         assert_eq!(xor, F::from(5u64));
     }
-    */
+
+    // Bls12-381 tests
+    batch_field_test!(
+        [
+            test_add_table,
+            test_xor_table,
+            test_mul_table,
+            test_lookup_arity_3,
+            test_missing_lookup_value,
+            test_concatenated_table
+        ],
+        [] => bls12_381_scalar_field
+    );
+
+    // Bls12-377 tests
+    batch_field_test!(
+        [
+            test_add_table,
+            test_xor_table,
+            test_mul_table,
+            test_lookup_arity_3,
+            test_missing_lookup_value,
+            test_concatenated_table
+        ],
+        [] => bls12_377_scalar_field
+    );
 }

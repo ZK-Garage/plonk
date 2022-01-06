@@ -158,6 +158,12 @@ impl std::fmt::Display for Error {
             Self::NotEnoughBytes => write!(f, "not enough bytes left to read"),
             Self::PointMalformed => write!(f, "point bytes malformed"),
             Self::ScalarMalformed => write!(f, "scalar bytes malformed"),
+            Self::ElementNotIndexed => {
+                write!(f, "element not found in lookup table")
+            }
+            Self::TablePreProcessingError => {
+                write!(f, "lookup table not preprocessed correctly")
+            }
         }
     }
 }
