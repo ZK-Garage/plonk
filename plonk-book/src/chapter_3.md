@@ -302,13 +302,35 @@ q_O(X) &= \sum_{i=1}^nq_{Oi}L_i(X)       &  q_C(X) &=\sum_{i=1}^nq_{Ci}L_i(X)  &
 q_K(X) &= \sum_{i=1}^nq_{Ki}L_i(X)  &  S_{\sigma _1}(X) &=\sum_{i=1}^n \sigma^*(i)L_i(X)          &   S_{\sigma _2}(X) &=\sum_{i=1}^n \sigma^*(n+i)L_i(X) \\
  S_{\sigma_3}(X) &=\sum_{i=1}^n \sigma^*(2n+i)L_i(X) &  S_{\sigma_4}(X) &=\sum_{i=1}^n \sigma^*(3n+i)L_i(X)  
 \end{align*}$
+Public input: $x= (w_i)_{i\in[ℓ]}$
+
+
 **Prover Algorithm**
 
 Input: the pair $(x,w) = (w_i)_{i\in[4n]}$ that satisfies the circuit.
+* Generate random blinding scalars $b_1,...,b_9\in\mathbb{F}$ and compute the wire polynomials $a(X),b(X),c(X)$ and $d(X)$.
+* Compute $[a(x)]_1,[b(x)]_1,[c(x)]_1,[d(x)]_1$
 
- 
- 
+* Compute the compression factor $ζ=Hash(transcript)$, we mean by $transcript$ the concatenation of the common preprocessed input, public input,and the proof element which we presented earlier.
 
+* Compute the query vector $f= (f_1,...,f_n)$ and the table vector $t= (t_1,...,t_n)$. We take a table of 4 elements. The witness table is then filled by the quieries to a lookup table for lookup gates (results from lookup table). If the values do no exists in the lookup table, then the proof will fail when witness and preprocessed tables are concatenated.
+
+* Compute the sorted version of the table vector $t$, denoted $t′$.
+
+* Generate random blinding scalars $b_{10},...,b_{19}$ which will be used to compute $f(x)$ and $s(X)$.
+
+* Compute the query polynomial $f(X)$, the table polynomial $t(X)$ and the sorted table polynomial $t′(X)$.
+
+* Compute $h_1(X)$ and h_2(X)$ such that:
+
+$$h_1(X) = (b_{12}X^2+b_{13}X+b_{14})Z_H(X) +\sum_{i=1}^ns_{2i−1}L_i(X)$$
+$$h_2(X) = (b_{15}X+b_{16})Z_H(X) +\sum_{i=1}^ns_{2i}L_i(X)$$
+
+* Compute $[f(x)]_1,[t′(x)]_1,[h_1(x)]_1$ and $[h_2(x)]_1$
+
+
+    
+   
 ### Modules
 * circuit: Tools & traits for PLONK circuits (ark_plonk::circuit)
   1. Structs
