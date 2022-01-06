@@ -360,9 +360,43 @@ $$u=Hash(transcript)$$
 **Verifier Algorithm**
 
 #### Multiple lookup tables
+In order to build a lookup table associated to different functions (for example XOR and mul operations) we define 
+$\tau_1,\tau_2,...,\tau_s\in\mathbb{F}^{n\times 4}$ such that:
 
-    
-   
+$\forall (a_i,b_i,c_i), \exists j\in {1,...,s}$ such that $(a_i,b_i,c_i)\in\tau_j$. 
+
+This is the case if and only if:
+
+$\forall \delta_1,\delta_2,\delta_3,\delta_4$  holds that:
+$$a_i+\delta_1b_i+\delta_2c_i+\delta_3d_i+\delta_4j\in\tau′$$
+
+where 
+$$\tau′=\{(\tau_l[k][1] +\delta_1\tau_l[k][2] +\delta_2\tau_l[k][3] +\delta_3\tau_l[k][4]+\delta_4l)\}_{l\in[s]}$$
+
+Let's take the example of a table defining both XOR and Mul operations, it is defined as follow:
+The function used to define multiple tables is:
+```rust
+pub fn insert_multi_xor(&mut self, lower_bound: u64, n: u8) {
+        let upper_bound = 2u64.pow(n.into());
+        let range = lower_bound..upper_bound;
+        for a in range.clone() {
+            range
+                .clone()
+                .for_each(|b| self.insert_xor_row(a, b, upper_bound));
+        }
+    }
+
+pub fn insert_multi_mul(&mut self, lower_bound: u64, n: u8) {
+        let upper_bound = 2u64.pow(n.into());
+        let range = lower_bound..upper_bound;
+        for a in range.clone() {
+            range
+                .clone()
+                .for_each(|b| self.insert_mul_row(a, b, upper_bound));
+        }
+    }  
+```
+The table uses the first $0..n/2$ rows for the Mul function and have the 4th wire storing index 0. For all indices $n/2..n$, an XOR gate can be added, where $n$ the index of the 4th wire is 0.   
 ### Modules
 * circuit: Tools & traits for PLONK circuits (ark_plonk::circuit)
   1. Structs
