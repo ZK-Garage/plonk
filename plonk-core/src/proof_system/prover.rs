@@ -372,6 +372,12 @@ where
             label_polynomial!(t_4_poly),
         ];
 
+        //dbg!(commit_key);
+        dbg!(t_1_poly.coeffs.len());
+        dbg!(t_2_poly.coeffs.len());
+        dbg!(t_3_poly.coeffs.len());
+        dbg!(t_4_poly.coeffs.len());
+
         // Commit to splitted quotient polynomial
         let (t_commits, _) = PC::commit(commit_key, t_polys.iter(), None)
             .map_err(to_pc_error::<F, PC>)?;

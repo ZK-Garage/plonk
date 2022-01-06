@@ -98,7 +98,7 @@ where
     // Compute Commit and Verifier Key
     let (ck, vk) = PC::trim(
         &universal_params,
-        10 * verifier.circuit_size().next_power_of_two() + 6,
+        verifier.circuit_size().next_power_of_two() + 6,
         0,
         None,
     )
