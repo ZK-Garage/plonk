@@ -254,7 +254,6 @@ mod test {
     {
         let n = 4;
         let table = LookupTable::xor_table(0, n);
-        // println!("{:?}", table);
         let mut i = 0;
         let p = 2u64.pow(n as u32);
         (0..p).for_each(|a| {
@@ -276,7 +275,6 @@ mod test {
     {
         let n = 4;
         let table = LookupTable::mul_table(0, n);
-
         let mut i = 0;
         let p = 2u64.pow(n as u32);
         (0..p).for_each(|a| {

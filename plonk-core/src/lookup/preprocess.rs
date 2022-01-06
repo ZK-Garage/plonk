@@ -59,6 +59,9 @@ where
         commit_key: &Powers<E>,
         n: u32,
     ) -> Result<Self, Error> {
+        // n should be a power of 2
+        assert!(n & (n - 1) == 0);
+
         let domain = EvaluationDomain::new(n as usize).unwrap();
 
         let columned_table = table.vec_to_multiset();
@@ -90,4 +93,92 @@ where
             t_4: (t_4, t_4_commit, t_4_poly),
         })
     }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::batch_test;
+    use crate::constraint_system::StandardComposer;
+    use crate::lookup::{LookupTable, PreprocessedLookupTable};
+    use ark_bls12_377::Bls12_377;
+    use ark_bls12_381::Bls12_381;
+    use ark_ec::{PairingEngine, TEModelParameters};
+    use ark_poly::univariate::DensePolynomial;
+    use ark_poly_commit::{
+        kzg10::{Powers, KZG10},
+        sonic_pc::SonicKZG10,
+        PolynomialCommitment,
+    };
+    use rand_core::OsRng;
+
+    /// This function creates a table and preprocesses it. Then it checks that
+    /// all table columns are the same length.
+    fn test_table_preprocessing<E, P>()
+    where
+        E: PairingEngine,
+        P: TEModelParameters<BaseField = E::Fr>,
+    {
+        let universal_params =
+            KZG10::<E, DensePolynomial<E::Fr>>::setup(32, false, &mut OsRng)
+                .unwrap();
+
+        // Commit Key
+        let (ck, _) = SonicKZG10::<E, DensePolynomial<E::Fr>>::trim(
+            &universal_params,
+            32,
+            0,
+            None,
+        )
+        .unwrap();
+
+        let powers: Powers<'_, E> = Powers {
+            powers_of_g: ck.powers_of_g.into(),
+            powers_of_gamma_g: ck.powers_of_gamma_g.into(),
+        };
+
+        let mut table: LookupTable<E::Fr> = LookupTable::new();
+
+        (0..11).for_each(|a| {
+            table.insert_xor_row(19u64, 6u64, 64u64);
+            table.insert_xor_row(4u64, 2u64, 64u64);
+        });
+
+        let preprocessed_table =
+            PreprocessedLookupTable::preprocess(&table, &powers, 32).unwrap();
+
+        assert!(
+            preprocessed_table.n as usize == preprocessed_table.t_1.0.len()
+        );
+        assert!(
+            preprocessed_table.n as usize == preprocessed_table.t_2.0.len()
+        );
+        assert!(
+            preprocessed_table.n as usize == preprocessed_table.t_3.0.len()
+        );
+        assert!(
+            preprocessed_table.n as usize == preprocessed_table.t_4.0.len()
+        );
+    }
+
+    // Bls12-381 tests
+    batch_test!(
+        [
+            test_table_preprocessing
+        ],
+        [] => (
+            Bls12_381,
+            ark_ed_on_bls12_381::EdwardsParameters
+        )
+    );
+
+    // Bls12-377 tests
+    batch_test!(
+        [
+            test_table_preprocessing
+        ],
+        [] => (
+            Bls12_377,
+            ark_ed_on_bls12_377::EdwardsParameters
+        )
+    );
 }
