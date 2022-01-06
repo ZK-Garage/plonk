@@ -321,13 +321,45 @@ Input: the pair $(x,w) = (w_i)_{i\in[4n]}$ that satisfies the circuit.
 
 * Compute the query polynomial $f(X)$, the table polynomial $t(X)$ and the sorted table polynomial $t′(X)$.
 
-* Compute $h_1(X)$ and h_2(X)$ such that:
+* Compute $h_1(X)$ and $h_2(X)$ such that:
 
 $$h_1(X) = (b_{12}X^2+b_{13}X+b_{14})Z_H(X) +\sum_{i=1}^ns_{2i−1}L_i(X)$$
 $$h_2(X) = (b_{15}X+b_{16})Z_H(X) +\sum_{i=1}^ns_{2i}L_i(X)$$
 
-* Compute $[f(x)]_1,[t′(x)]_1,[h_1(x)]_1$ and $[h_2(x)]_1$
+* Compute and output $[f(x)]_1,[t′(x)]_1,[h_1(x)]_1$ and $[h_2(x)]_1$
 
+* Compute the permutation challenges $\beta,\gamma,\delta,\varepsilon, \theta\in\mathbb{F}$, generate random blinding scalars and compute $z_1$ and $z_2$
+
+* Compute and output $[z_1(x)]_1,[z_2(x)]_1$
+
+* Compute the quotient challenges $\alpha\in\mathbb{F}$ and the quotient polynomial $q(X)$
+
+* Split $q(X)$ into three polynomials $q_{low}(X)$,$q_{mid}(X)$,$q_{high}(X)$ such that:
+$$q(X) =q_{low}(X) +X^{n+2}q_{mid}(X) +X^{2n+4}q_{high}(X)$$ 
+
+* Compute and output $[q_{low}(x)]1,[q_{mid}(x)]1,[q_{high}(x)]$
+
+* Compute the evaluation challenge $z\in\mathbb{F}$:
+$$z=Hash(transcript)$$
+
+* Compute and output the opening evaluations
+
+* Compute the opening challenge $v\in\mathbb{F}$
+
+* Compute linearization polynomial $r(X)\in\mathbb{F}$
+
+* Compute the opening proof polynomials $W_z(X)$ and $W_{zw}(X)$
+
+* Compute and output $[W_z(x)]_1$ and $[W_{zω}(x)]_1$
+
+* Use all the previous outputs to compute the PlonKup proof.
+
+* Compute multipoint evaluation challenge $u\in\mathbb{F}$:
+$$u=Hash(transcript)$$
+
+**Verifier Algorithm**
+
+#### Multiple lookup tables
 
     
    
