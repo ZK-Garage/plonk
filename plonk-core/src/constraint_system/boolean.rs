@@ -8,11 +8,11 @@
 
 use crate::constraint_system::{StandardComposer, Variable};
 use ark_ec::ModelParameters;
-use ark_ff::FftField;
+use ark_ff::{FftField, PrimeField};
 
 impl<F, P> StandardComposer<F, P>
 where
-    F: FftField,
+    F: FftField + PrimeField,
     P: ModelParameters<BaseField = F>,
 {
     /// Adds a boolean constraint (also known as binary constraint) where

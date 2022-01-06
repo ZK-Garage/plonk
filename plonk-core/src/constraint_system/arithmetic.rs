@@ -9,12 +9,12 @@
 use crate::constraint_system::StandardComposer;
 use crate::constraint_system::Variable;
 use ark_ec::TEModelParameters;
-use ark_ff::FftField;
+use ark_ff::{FftField, PrimeField};
 
 #[derive(Debug, Clone, Copy)]
 pub struct ArithmeticGate<F>
 where
-    F: FftField,
+    F: FftField + PrimeField,
 {
     pub(crate) witness: Option<(Variable, Variable, Option<Variable>)>,
     pub(crate) fan_in_3: Option<(F, Variable)>,
@@ -27,7 +27,7 @@ where
 
 impl<F> Default for ArithmeticGate<F>
 where
-    F: FftField,
+    F: FftField + PrimeField,
 {
     fn default() -> Self {
         Self {
@@ -44,7 +44,7 @@ where
 
 impl<F> ArithmeticGate<F>
 where
-    F: FftField,
+    F: FftField + PrimeField,
 {
     pub fn new() -> Self {
         Self::default()
@@ -97,7 +97,7 @@ where
 
 impl<F, P> StandardComposer<F, P>
 where
-    F: FftField,
+    F: FftField + PrimeField,
     P: TEModelParameters<BaseField = F>,
 {
     /// Function used to generate any arithmetic gate with fan-in-2 or fan-in-3.

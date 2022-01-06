@@ -11,8 +11,7 @@ use crate::constraint_system::StandardComposer;
 use crate::error::{to_pc_error, Error};
 use crate::proof_system::{widget, ProverKey};
 use ark_ec::TEModelParameters;
-use ark_ff::FftField;
-use ark_ff::PrimeField;
+use ark_ff::{FftField, PrimeField};
 use ark_poly::{polynomial::univariate::DensePolynomial, UVPolynomial};
 use ark_poly::{EvaluationDomain, Evaluations, GeneralEvaluationDomain};
 use ark_poly_commit::LabeledPolynomial;
@@ -46,7 +45,7 @@ where
 
 impl<F, P> StandardComposer<F, P>
 where
-    F: FftField,
+    F: FftField + PrimeField,
     P: TEModelParameters<BaseField = F>,
 {
     /// Pads the circuit to the next power of two.
@@ -496,7 +495,7 @@ mod test {
     // FIXME: We can do this test without dummy_gadget method.
     fn test_pad<F, P>()
     where
-        F: FftField,
+        F: FftField + PrimeField,
         P: TEModelParameters<BaseField = F>,
     {
         let mut composer: StandardComposer<F, P> = StandardComposer::new();

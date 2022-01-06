@@ -767,14 +767,14 @@ mod test {
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
     use ark_ec::TEModelParameters;
-    use ark_ff::Field;
+    use ark_ff::{Field, PrimeField};
     use ark_poly::univariate::DensePolynomial;
     use ark_poly::Polynomial;
     use rand::rngs::OsRng;
 
     fn test_multizip_permutation_poly<F, P>()
     where
-        F: FftField,
+        F: FftField + PrimeField,
         P: TEModelParameters<BaseField = F>,
     {
         let mut cs: StandardComposer<F, P> =

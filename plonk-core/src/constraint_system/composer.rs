@@ -18,9 +18,7 @@ use crate::constraint_system::Variable;
 use crate::permutation::Permutation;
 use alloc::collections::BTreeMap;
 
-#[cfg(feature = "trace")]
-use ark_ff::BigInteger;
-use ark_ff::FftField;
+use ark_ff::{FftField, PrimeField};
 use core::marker::PhantomData;
 use hashbrown::HashMap;
 
@@ -55,7 +53,7 @@ use ark_ec::{ModelParameters, TEModelParameters};
 #[derivative(Debug)]
 pub struct StandardComposer<F, P>
 where
-    F: FftField,
+    F: FftField + PrimeField,
     P: ModelParameters<BaseField = F>,
 {
     /// Number of arithmetic gates in the circuit
@@ -117,7 +115,7 @@ where
 
 impl<F, P> StandardComposer<F, P>
 where
-    F: FftField,
+    F: FftField + PrimeField,
     P: ModelParameters<BaseField = F>,
 {
     /// Returns the number of gates in the circuit
@@ -148,7 +146,7 @@ where
 
 impl<F, P> Default for StandardComposer<F, P>
 where
-    F: FftField,
+    F: FftField + PrimeField,
     P: TEModelParameters<BaseField = F>,
 {
     #[inline]
@@ -159,7 +157,7 @@ where
 
 impl<F, P> StandardComposer<F, P>
 where
-    F: FftField,
+    F: FftField + PrimeField,
     P: TEModelParameters<BaseField = F>,
 {
     /// Generates a new empty `StandardComposer` with all of it's fields
@@ -676,7 +674,7 @@ mod test {
     /// Tests that a circuit initially has 3 gates.
     fn test_initial_circuit_size<F, P>()
     where
-        F: FftField,
+        F: FftField + PrimeField,
         P: TEModelParameters<BaseField = F>,
     {
         // NOTE: Circuit size is n+3 because

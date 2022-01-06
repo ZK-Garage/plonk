@@ -6,10 +6,7 @@
 
 use ark_ec::{ModelParameters, TEModelParameters};
 use ark_ff::{BigInteger, FftField, Field, FpParameters, PrimeField};
-use ark_poly::{
-    univariate::DensePolynomial, EvaluationDomain, GeneralEvaluationDomain,
-    Polynomial, UVPolynomial,
-};
+use ark_poly::{EvaluationDomain, GeneralEvaluationDomain};
 
 /// Returns an iterator over increasing powers of the given `scalar` starting
 /// at `0`.

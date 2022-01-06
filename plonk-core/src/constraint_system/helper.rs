@@ -19,7 +19,7 @@ pub(crate) fn dummy_gadget<F, P>(
     n: usize,
     composer: &mut StandardComposer<F, P>,
 ) where
-    F: FftField,
+    F: FftField + PrimeField,
     P: TEModelParameters<BaseField = F>,
 {
     let one = F::one();

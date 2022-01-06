@@ -28,7 +28,7 @@ pub(crate) trait TranscriptProtocol {
     fn append_commitments<'a, F, PC>(
         &mut self,
         commitments: impl IntoIterator<Item = &'a LabeledCommitment<PC::Commitment>>,
-        __: PhantomData<PC>,
+        _phantom: PhantomData<PC>,
     ) where
         F: Field,
         PC: 'a + PolynomialCommitment<F, DensePolynomial<F>>;
@@ -49,7 +49,7 @@ impl TranscriptProtocol for Transcript {
     fn append_commitments<'a, F, PC>(
         &mut self,
         commitments: impl IntoIterator<Item = &'a LabeledCommitment<PC::Commitment>>,
-        __: PhantomData<PC>,
+        _phantom: PhantomData<PC>,
     ) where
         F: Field,
         PC: 'a + PolynomialCommitment<F, DensePolynomial<F>>,

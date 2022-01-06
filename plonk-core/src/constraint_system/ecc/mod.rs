@@ -14,7 +14,7 @@ use ark_ec::{
     twisted_edwards_extended::GroupAffine as TEGroupAffine, ModelParameters,
     TEModelParameters,
 };
-use ark_ff::FftField;
+use ark_ff::{FftField, PrimeField};
 use core::marker::PhantomData;
 
 /// Represents a point of the embeded curve in the circuit
@@ -36,7 +36,7 @@ where
 
 impl<F, P> Point<P>
 where
-    F: FftField,
+    F: FftField + PrimeField,
     P: TEModelParameters<BaseField = F>,
 {
     /// Builds a new [`Point`] from `X` and `Y` coordinates.
@@ -74,7 +74,7 @@ where
 
 impl<F, P> StandardComposer<F, P>
 where
-    F: FftField,
+    F: FftField + PrimeField,
     P: TEModelParameters<BaseField = F>,
 {
     /// Converts an embeded curve point into a constraint system Point
@@ -119,7 +119,7 @@ where
 
 impl<F, P> StandardComposer<F, P>
 where
-    F: FftField,
+    F: FftField + PrimeField,
     P: TEModelParameters<BaseField = F>,
 {
     /// Asserts that a point in the circuit is equal to another point in the

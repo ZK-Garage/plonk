@@ -301,7 +301,7 @@ where
 /// ```
 pub trait Circuit<F, P>
 where
-    F: FftField,
+    F: FftField + PrimeField,
     P: TEModelParameters<BaseField = F>,
 {
     /// Circuit identifier associated constant.
