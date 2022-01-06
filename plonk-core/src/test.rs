@@ -32,3 +32,26 @@ macro_rules! batch_test {
         }
     }
 }
+
+#[macro_export]
+macro_rules! batch_field_test {
+    ( [$($test_set:ident),*], [$($test_panic_set:ident),*] => $field:ty ) => {
+        paste::item! {
+            $(
+                #[test]
+                #[allow(non_snake_case)]
+                fn [< $test_set _on_ $field>]() {
+                    $test_set::<$field>()
+                }
+            )*
+            $(
+                #[test]
+                #[should_panic]
+                #[allow(non_snake_case)]
+                fn [< $test_panic_set _on_ $field>]() {
+                    $test_panic_set::<$field>()
+                }
+            )*
+        }
+    }
+}
