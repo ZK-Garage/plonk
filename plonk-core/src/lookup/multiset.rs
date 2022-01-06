@@ -258,7 +258,10 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::batch_field_test;
     use crate::lookup::WitnessTable;
+    use ark_bls12_377::Fr as bls12_377_scalar_field;
+    use ark_bls12_381::Fr as bls12_381_scalar_field;
     use ark_poly::EvaluationDomain;
 
     // FIXME: Run tests on both BLS fields.
@@ -442,4 +445,26 @@ mod test {
 
         assert_eq!(actual_set, compressed_element);
     }
+
+    // Bls12-381 tests
+    batch_field_test!(
+        [
+            test_halve,
+            test_to_polynomial,
+            test_is_subset,
+            test_full_compression_into_s
+        ],
+        [] => bls12_381_scalar_field
+    );
+
+    // Bls12-377 tests
+    batch_field_test!(
+        [
+            test_halve,
+            test_to_polynomial,
+            test_is_subset,
+            test_full_compression_into_s
+        ],
+        [] => bls12_377_scalar_field
+    );
 }
