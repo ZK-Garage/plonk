@@ -14,8 +14,6 @@ use crate::proof_system::widget::VerifierKey as PlonkVerifierKey;
 use crate::proof_system::Proof;
 use ark_ec::TEModelParameters;
 use ark_ff::{FftField, PrimeField};
-use ark_poly::univariate::DensePolynomial;
-use ark_poly_commit::PolynomialCommitment;
 use core::marker::PhantomData;
 use merlin::Transcript;
 

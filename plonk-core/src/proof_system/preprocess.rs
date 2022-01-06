@@ -15,7 +15,7 @@ use ark_ff::FftField;
 use ark_ff::PrimeField;
 use ark_poly::polynomial::univariate::DensePolynomial;
 use ark_poly::{EvaluationDomain, Evaluations, GeneralEvaluationDomain};
-use ark_poly_commit::{LabeledPolynomial, PolynomialCommitment};
+use ark_poly_commit::LabeledPolynomial;
 use core::marker::PhantomData;
 use merlin::Transcript;
 

@@ -350,7 +350,7 @@ mod test {
     use crate::{batch_test, constraint_system::StandardComposer};
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
-    use ark_ec::{models::TEModelParameters, PairingEngine};
+    use ark_ec::models::TEModelParameters;
     use ark_ff::{FftField, PrimeField};
     use ark_poly::univariate::DensePolynomial;
     fn test_logic_xor_and_constraint<F, P, PC>()

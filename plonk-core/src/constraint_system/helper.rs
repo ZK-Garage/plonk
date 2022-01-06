@@ -9,8 +9,6 @@ use crate::commitment::HomomorphicCommitment;
 use crate::error::{to_pc_error, Error};
 use crate::proof_system::{Prover, Verifier};
 use ark_ec::{ModelParameters, TEModelParameters};
-use ark_poly::univariate::DensePolynomial;
-use ark_poly_commit::PolynomialCommitment;
 use rand::rngs::OsRng;
 
 use ark_ff::{FftField, PrimeField};

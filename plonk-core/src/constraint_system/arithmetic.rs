@@ -10,7 +10,6 @@ use crate::constraint_system::StandardComposer;
 use crate::constraint_system::Variable;
 use ark_ec::{ModelParameters, TEModelParameters};
 use ark_ff::FftField;
-use core::marker::PhantomData;
 
 #[derive(Debug, Clone, Copy)]
 pub struct ArithmeticGate<F>
@@ -115,16 +114,9 @@ where
             panic!("Missing left and right wire witnesses")
         }
 
-        let (w4, q4) = if gate.fan_in_3.is_none() {
-            self.w_4.push(self.zero_var);
-            self.q_4.push(F::zero());
-            (self.zero_var, F::zero())
-        } else {
-            let (q4, w4) = gate.fan_in_3.unwrap();
-            self.w_4.push(w4);
-            self.q_4.push(q4);
-            (w4, q4)
-        };
+        let (q4, w4) = gate.fan_in_3.unwrap_or((F::zero(), self.zero_var));
+        self.w_4.push(w4);
+        self.q_4.push(q4);
 
         let gate_witness = gate.witness.unwrap();
         self.w_l.push(gate_witness.0);
@@ -186,10 +178,9 @@ mod test {
     use crate::{batch_test, batch_test_ipa};
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
-    use ark_ec::{PairingEngine, TEModelParameters};
+    use ark_ec::TEModelParameters;
     use ark_ff::{FftField, PrimeField};
     use ark_poly::univariate::DensePolynomial;
-    use ark_poly_commit::PolynomialCommitment;
 
     fn test_public_inputs<F, P, PC>()
     where

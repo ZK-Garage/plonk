@@ -25,9 +25,7 @@ use crate::util::EvaluationDomainExt;
 use ark_ec::{ModelParameters, TEModelParameters};
 
 use ark_ff::{fields::batch_inversion, FftField, PrimeField};
-use ark_poly::univariate::DensePolynomial;
 use ark_poly::{EvaluationDomain, GeneralEvaluationDomain};
-use ark_poly_commit::PolynomialCommitment;
 use ark_serialize::{
     CanonicalDeserialize, CanonicalSerialize, Read, SerializationError, Write,
 };

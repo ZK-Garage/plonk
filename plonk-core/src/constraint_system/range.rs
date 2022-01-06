@@ -201,10 +201,9 @@ mod test {
     use crate::{batch_test, constraint_system::helper::*};
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
-    use ark_ec::{models::TEModelParameters, PairingEngine};
+    use ark_ec::models::TEModelParameters;
     use ark_ff::{FftField, PrimeField};
     use ark_poly::univariate::DensePolynomial;
-    use ark_poly_commit::PolynomialCommitment;
     fn test_range_constraint<F, P, PC>()
     where
         F: FftField + PrimeField,

@@ -167,10 +167,9 @@ mod tests {
     use crate::{batch_test, constraint_system::helper::*, util};
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
-    use ark_ec::{group::Group, AffineCurve, PairingEngine};
+    use ark_ec::{group::Group, AffineCurve};
     use ark_ff::{FftField, PrimeField};
     use ark_poly::univariate::DensePolynomial;
-    use ark_poly_commit::PolynomialCommitment;
 
     fn test_ecc_constraint<F, P, PC>()
     where

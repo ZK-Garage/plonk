@@ -103,11 +103,10 @@ mod test {
     use ark_bls12_381::Bls12_381;
     use ark_ec::{
         twisted_edwards_extended::GroupAffine as TEGroupAffine, AffineCurve,
-        PairingEngine, TEModelParameters,
+        TEModelParameters,
     };
     use ark_ff::{FftField, PrimeField};
     use ark_poly::univariate::DensePolynomial;
-    use ark_poly_commit::PolynomialCommitment;
 
     fn test_var_base_scalar_mul<F, P, PC>()
     where

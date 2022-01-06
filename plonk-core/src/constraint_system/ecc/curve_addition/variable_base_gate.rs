@@ -98,12 +98,9 @@ mod test {
     use crate::{batch_test, constraint_system::helper::*};
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
-    use ark_ec::PairingEngine;
 
     use crate::commitment::HomomorphicCommitment;
     use ark_ff::{FftField, PrimeField};
-    use ark_poly::univariate::DensePolynomial;
-    use ark_poly_commit::PolynomialCommitment;
 
     /// Adds two curve points together using the classical point addition
     /// algorithm. This method is slower than WNAF and is just meant to be the
@@ -146,9 +143,9 @@ mod test {
             gate.witness(x1_y2, y1_x2, None).add(F::one(), F::one())
         });
 
-        // y1y2 - a * x1x2 (a=-1) => y1y2 + x1x2
+        // y1y2 - a * x1x2
         let y_numerator = composer.arithmetic_gate(|gate| {
-            gate.witness(y1_y2, x1_x2, None).add(F::one(), F::one())
+            gate.witness(y1_y2, x1_x2, None).add(F::one(), -P::COEFF_A)
         });
 
         // 1 + dx1x2y1y2
