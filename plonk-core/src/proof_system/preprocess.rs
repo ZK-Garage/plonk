@@ -432,21 +432,21 @@ where
         );
 
         let selectors = SelectorPolynomials {
-            q_m: q_m_poly.clone(),
-            q_l: q_l_poly.clone(),
-            q_r: q_r_poly.clone(),
-            q_o: q_o_poly.clone(),
-            q_c: q_c_poly.clone(),
-            q_4: q_4_poly.clone(),
-            q_arith: q_arith_poly.clone(),
-            q_range: q_range_poly.clone(),
-            q_logic: q_logic_poly.clone(),
-            q_fixed_group_add: q_fixed_group_add_poly.clone(),
-            q_variable_group_add: q_variable_group_add_poly.clone(),
-            left_sigma: left_sigma_poly.clone(),
-            right_sigma: right_sigma_poly.clone(),
-            out_sigma: out_sigma_poly.clone(),
-            fourth_sigma: fourth_sigma_poly.clone(),
+            q_m: q_m_poly,
+            q_l: q_l_poly,
+            q_r: q_r_poly,
+            q_o: q_o_poly,
+            q_c: q_c_poly,
+            q_4: q_4_poly,
+            q_arith: q_arith_poly,
+            q_range: q_range_poly,
+            q_logic: q_logic_poly,
+            q_fixed_group_add: q_fixed_group_add_poly,
+            q_variable_group_add: q_variable_group_add_poly,
+            left_sigma: left_sigma_poly,
+            right_sigma: right_sigma_poly,
+            out_sigma: out_sigma_poly,
+            fourth_sigma: fourth_sigma_poly,
         };
 
         // Add the circuit description to the transcript

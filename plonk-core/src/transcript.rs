@@ -18,11 +18,7 @@ use merlin::Transcript;
 /// For convenience
 pub(crate) trait TranscriptProtocol {
     /// Append an `item` with the given `label`.
-    fn append<'a>(
-        &mut self,
-        label: &'static [u8],
-        item: &impl CanonicalSerialize,
-    );
+    fn append(&mut self, label: &'static [u8], item: &impl CanonicalSerialize);
 
     /// Append some number of LabeledCommitments
     fn append_commitments<'a, F, PC>(

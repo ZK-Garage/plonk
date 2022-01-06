@@ -47,7 +47,7 @@ where
     /// This is copied each time, we make a proof.
     pub preprocessed_transcript: Transcript,
 
-    __: PhantomData<PC>,
+    _phantom: PhantomData<PC>,
 }
 impl<F, P, PC> Prover<F, P, PC>
 where
@@ -61,7 +61,7 @@ where
             prover_key: None,
             cs: StandardComposer::new(),
             preprocessed_transcript: Transcript::new(label),
-            __: PhantomData::<PC>,
+            _phantom: PhantomData::<PC>,
         }
     }
 
@@ -71,7 +71,7 @@ where
             prover_key: None,
             cs: StandardComposer::with_expected_size(size),
             preprocessed_transcript: Transcript::new(label),
-            __: PhantomData::<PC>,
+            _phantom: PhantomData::<PC>,
         }
     }
 
@@ -473,9 +473,9 @@ where
 
         let saw_polys = [
             label_polynomial!(z_poly),
-            label_polynomial!(w_l_poly.clone()),
-            label_polynomial!(w_r_poly.clone()),
-            label_polynomial!(w_4_poly.clone()),
+            label_polynomial!(w_l_poly),
+            label_polynomial!(w_r_poly),
+            label_polynomial!(w_4_poly),
         ];
 
         let (saw_commits, saw_rands) =
