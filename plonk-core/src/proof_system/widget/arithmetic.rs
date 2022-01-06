@@ -88,7 +88,13 @@ where
 
 /// Arithmetic Gates Verifier Key
 #[derive(CanonicalDeserialize, CanonicalSerialize, derivative::Derivative)]
-#[derivative(Clone, /*Copy, Debug, Eq, PartialEq*/)]
+#[derivative(
+    Clone,
+    Copy(bound = "PC::Commitment: Copy"),
+    Debug(bound = "PC::Commitment: std::fmt::Debug"),
+    Eq(bound = "PC::Commitment: Eq"),
+    PartialEq(bound = "PC::Commitment: PartialEq")
+)]
 pub struct VerifierKey<F, PC>
 where
     F: PrimeField,

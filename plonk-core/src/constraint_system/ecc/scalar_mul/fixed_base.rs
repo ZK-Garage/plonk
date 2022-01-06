@@ -12,7 +12,7 @@ use ark_ec::models::twisted_edwards_extended::{
     GroupAffine as TEGroupAffine, GroupProjective as TEGroupProjective,
 };
 use ark_ec::models::TEModelParameters;
-use ark_ec::{ModelParameters, ProjectiveCurve};
+use ark_ec::ProjectiveCurve;
 use ark_ff::{BigInteger, FftField, FpParameters, PrimeField};
 use num_traits::Zero;
 

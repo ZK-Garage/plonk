@@ -24,7 +24,7 @@ use ark_ff::FftField;
 use core::marker::PhantomData;
 use hashbrown::HashMap;
 
-use ark_ec::{ModelParameters, SWModelParameters, TEModelParameters};
+use ark_ec::{ModelParameters, TEModelParameters};
 
 /// The StandardComposer is the circuit-builder tool that the `plonk` repository
 /// provides so that circuit descriptions can be written, stored and transformed

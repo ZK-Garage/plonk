@@ -7,7 +7,7 @@
 //! Elliptic Curve Point Addition Gate
 
 use crate::proof_system::widget::{GateConstraint, GateValues};
-use ark_ec::{ModelParameters, SWModelParameters, TEModelParameters};
+use ark_ec::{ModelParameters, TEModelParameters};
 use ark_ff::Field;
 use core::marker::PhantomData;
 

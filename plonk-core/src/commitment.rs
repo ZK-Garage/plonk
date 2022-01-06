@@ -1,5 +1,5 @@
 //! Useful commitment stuff
-use ark_ec::{msm::VariableBaseMSM, PairingEngine};
+use ark_ec::{msm::VariableBaseMSM, AffineCurve, PairingEngine};
 use ark_ff::{Field, PrimeField};
 use ark_poly::univariate::DensePolynomial;
 use ark_poly_commit::sonic_pc::SonicKZG10;
@@ -8,9 +8,9 @@ use ark_poly_commit::PolynomialCommitment;
 /// A homomorphic polynomial commitment
 pub trait HomomorphicCommitment<F>:
     PolynomialCommitment<F, DensePolynomial<F>>
-//+ std::fmt::Debug + Eq + PartialEq
 where
     F: PrimeField,
+    Self::VerifierKey: std::fmt::Debug,
 {
     /// Combine a linear combination of homomorphic commitments
     fn multi_scalar_mul(
@@ -48,8 +48,6 @@ where
         )
     }
 }
-
-use ark_ec::AffineCurve;
 
 /// Shortened type for Inner Product Argument polynomial commitment schemes
 pub type IPA<G, D> = ark_poly_commit::ipa_pc::InnerProductArgPC<

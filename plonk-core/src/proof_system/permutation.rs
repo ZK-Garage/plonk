@@ -288,9 +288,9 @@ where
 #[derive(CanonicalDeserialize, CanonicalSerialize, derivative::Derivative)]
 #[derivative(
     Clone(bound = ""),
-    //Debug(bound = ""),
-    //Eq(bound = ""),
-    //PartialEq(bound = "")
+    Debug(bound = "PCC: std::fmt::Debug"),
+    Eq(bound = "PCC: Eq"),
+    PartialEq(bound = "PCC: PartialEq")
 )]
 pub struct VerifierKey<PCC>
 where

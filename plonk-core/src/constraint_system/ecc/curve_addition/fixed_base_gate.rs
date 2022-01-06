@@ -8,7 +8,7 @@
 
 use crate::constraint_system::StandardComposer;
 use crate::constraint_system::Variable;
-use ark_ec::models::{ModelParameters, TEModelParameters};
+use ark_ec::models::TEModelParameters;
 use ark_ff::PrimeField;
 
 /// Contains all of the components needed to verify that a bit scalar

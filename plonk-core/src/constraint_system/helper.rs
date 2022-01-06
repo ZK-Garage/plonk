@@ -8,7 +8,7 @@ use super::StandardComposer;
 use crate::commitment::HomomorphicCommitment;
 use crate::error::{to_pc_error, Error};
 use crate::proof_system::{Prover, Verifier};
-use ark_ec::{ModelParameters, TEModelParameters};
+use ark_ec::TEModelParameters;
 use rand::rngs::OsRng;
 
 use ark_ff::{FftField, PrimeField};

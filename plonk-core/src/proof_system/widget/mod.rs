@@ -140,9 +140,13 @@ where
 #[derive(CanonicalDeserialize, CanonicalSerialize, derivative::Derivative)]
 #[derivative(
     Clone(bound = ""),
-    //Debug(bound = ""),
-    //Eq(bound = ""),
-    //PartialEq(bound = "")
+    Debug(
+        bound = "arithmetic::VerifierKey<F,PC>: std::fmt::Debug, PC::Commitment: std::fmt::Debug"
+    ),
+    Eq(bound = "arithmetic::VerifierKey<F,PC>: Eq, PC::Commitment: Eq"),
+    PartialEq(
+        bound = "arithmetic::VerifierKey<F,PC>: PartialEq, PC::Commitment: PartialEq"
+    )
 )]
 pub struct VerifierKey<F, PC>
 where
@@ -449,7 +453,7 @@ mod test {
             ProverKey::deserialize_unchecked(prover_key_bytes.as_slice())
                 .unwrap();
 
-        assert!(prover_key == obtained_pk);
+        assert_eq!(prover_key, obtained_pk);
     }
 
     fn test_serialise_deserialise_verifier_key<F, P, PC>()
@@ -457,6 +461,7 @@ mod test {
         F: FftField + PrimeField,
         P: TEModelParameters<BaseField = F>,
         PC: HomomorphicCommitment<F>,
+        VerifierKey<F, PC>: PartialEq,
     {
         let n = 2usize.pow(5);
 
@@ -505,7 +510,7 @@ mod test {
             VerifierKey::deserialize_unchecked(verifier_key_bytes.as_slice())
                 .unwrap();
 
-        //assert!(verifier_key == obtained_vk);
+        assert!(verifier_key == obtained_vk);
     }
 
     // Test for Bls12_381

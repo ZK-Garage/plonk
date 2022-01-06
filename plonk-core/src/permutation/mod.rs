@@ -864,7 +864,7 @@ mod test {
             ),
         ));
 
-        assert!(mz == old_z);
+        assert_eq!(mz, old_z);
     }
 
     #[test]

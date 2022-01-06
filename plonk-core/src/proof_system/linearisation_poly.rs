@@ -11,7 +11,7 @@ use crate::proof_system::widget::GateConstraint;
 use crate::proof_system::GateValues;
 use crate::proof_system::ProverKey;
 use crate::util::EvaluationDomainExt;
-use ark_ec::{ModelParameters, TEModelParameters};
+use ark_ec::TEModelParameters;
 use ark_ff::FftField;
 use ark_ff::Field;
 use ark_poly::{

@@ -22,7 +22,7 @@ use crate::proof_system::GateConstraint;
 use crate::proof_system::VerifierKey as PlonkVerifierKey;
 use crate::transcript::TranscriptProtocol;
 use crate::util::EvaluationDomainExt;
-use ark_ec::{ModelParameters, TEModelParameters};
+use ark_ec::TEModelParameters;
 
 use ark_ff::{fields::batch_inversion, FftField, PrimeField};
 use ark_poly::{EvaluationDomain, GeneralEvaluationDomain};
@@ -43,11 +43,13 @@ use merlin::Transcript;
 /// construct the Proof.
 #[derive(CanonicalDeserialize, CanonicalSerialize, derivative::Derivative)]
 #[derivative(
-    Clone(bound = ""),
-    //Debug(bound = ""),
-    //Default(bound = ""),
-    //Eq(bound = ""),
-    //PartialEq(bound = "")
+    Clone(bound = "PC::Commitment: Clone, PC::Proof : Clone"),
+    Debug(
+        bound = "PC::Commitment: std::fmt::Debug, PC::Proof : std::fmt::Debug"
+    ),
+    Default(bound = "PC::Commitment: Default, PC::Proof : Default"),
+    Eq(bound = "PC::Commitment: Eq, PC::Proof : Eq"),
+    PartialEq(bound = "PC::Commitment: PartialEq, PC::Proof : PartialEq")
 )]
 pub struct Proof<F, PC>
 where
@@ -523,7 +525,7 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::{batch_test, batch_test_ipa};
+    use crate::batch_test;
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
     use ark_ff::PrimeField;
@@ -533,6 +535,7 @@ mod test {
         F: PrimeField,
         P: TEModelParameters<BaseField = F>,
         PC: HomomorphicCommitment<F>,
+        Proof<F, PC>: std::fmt::Debug + PartialEq,
     {
         let proof =
             crate::constraint_system::helper::gadget_tester::<F, P, PC>(
@@ -547,7 +550,7 @@ mod test {
         let obtained_proof =
             Proof::<F, PC>::deserialize(proof_bytes.as_slice()).unwrap();
 
-        //assert!(proof == obtained_proof);
+        assert_eq!(proof, obtained_proof);
     }
 
     // Bls12-381 tests
@@ -563,14 +566,6 @@ mod test {
         [test_serde_proof],
         [] => (
             Bls12_377, ark_ed_on_bls12_377::EdwardsParameters
-        )
-    );
-
-    // Bls12-381 tests
-    batch_test_ipa!(
-        [test_serde_proof],
-        [] => (
-            Bls12_381, ark_ed_on_bls12_381::EdwardsParameters
         )
     );
 }

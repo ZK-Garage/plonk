@@ -12,7 +12,7 @@ pub mod scalar_mul;
 use crate::constraint_system::{variable::Variable, StandardComposer};
 use ark_ec::{
     twisted_edwards_extended::GroupAffine as TEGroupAffine, ModelParameters,
-    SWModelParameters, TEModelParameters,
+    TEModelParameters,
 };
 use ark_ff::FftField;
 use core::marker::PhantomData;

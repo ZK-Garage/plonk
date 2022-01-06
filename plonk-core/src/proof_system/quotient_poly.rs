@@ -11,7 +11,7 @@ use crate::proof_system::range::Range;
 use crate::proof_system::widget::GateConstraint;
 use crate::proof_system::GateValues;
 use crate::{error::Error, proof_system::ProverKey};
-use ark_ec::{ModelParameters, TEModelParameters};
+use ark_ec::TEModelParameters;
 use ark_ff::{FftField, PrimeField};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, GeneralEvaluationDomain,

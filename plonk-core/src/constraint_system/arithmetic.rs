@@ -8,7 +8,7 @@
 
 use crate::constraint_system::StandardComposer;
 use crate::constraint_system::Variable;
-use ark_ec::{ModelParameters, TEModelParameters};
+use ark_ec::TEModelParameters;
 use ark_ff::FftField;
 
 #[derive(Debug, Clone, Copy)]

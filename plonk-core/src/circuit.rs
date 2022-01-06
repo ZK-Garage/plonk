@@ -10,7 +10,7 @@ use crate::commitment::HomomorphicCommitment;
 use crate::error::{to_pc_error, Error};
 use crate::prelude::StandardComposer;
 use crate::proof_system::{Proof, Prover, ProverKey, Verifier, VerifierKey};
-use ark_ec::models::{ModelParameters, SWModelParameters, TEModelParameters};
+use ark_ec::models::{SWModelParameters, TEModelParameters};
 use ark_ec::{
     short_weierstrass_jacobian::{
         GroupAffine as SWGroupAffine, GroupProjective as SWGroupProjective,
@@ -104,12 +104,6 @@ where
     }
 }
 
-/*
-pub enum EmbeddedCurve<F> {
-    TwistedEdwards { a: F, d: F },
-    ShortWeierstrass { a: F, b: F },
-}*/
-
 /// Collection of structs/objects that the Verifier will use in order to
 /// de/serialize data needed for Circuit proof verification.
 /// This structure can be seen as a link between the [`Circuit`] public input
@@ -117,9 +111,9 @@ pub enum EmbeddedCurve<F> {
 #[derive(CanonicalDeserialize, CanonicalSerialize, derivative::Derivative)]
 #[derivative(
     Clone(bound = ""),
-    //Debug(bound = ""),
-    //Eq(bound = ""),
-    //PartialEq(bound = "")
+    Debug(bound = "VerifierKey<F,PC>: std::fmt::Debug"),
+    Eq(bound = "VerifierKey<F,PC>: Eq"),
+    PartialEq(bound = "VerifierKey<F,PC>: PartialEq")
 )]
 pub struct VerifierData<F, PC>
 where
@@ -533,6 +527,7 @@ mod test {
         F: FftField + PrimeField,
         P: TEModelParameters<BaseField = F>,
         PC: HomomorphicCommitment<F>,
+        VerifierData<F, PC>: PartialEq,
     {
         // Generate CRS
         let pp = PC::setup(1 << 19, None, &mut OsRng)
@@ -569,10 +564,10 @@ mod test {
         let mut verifier_data_bytes = Vec::new();
         verifier_data.serialize(&mut verifier_data_bytes).unwrap();
 
-        let verif_data: VerifierData<F, PC> =
+        let deserialized_verifier_data: VerifierData<F, PC> =
             VerifierData::deserialize(verifier_data_bytes.as_slice()).unwrap();
 
-        //assert!(verif_data == verifier_data);
+        assert!(deserialized_verifier_data == verifier_data);
 
         // Verifier POV
         let public_inputs: Vec<PublicInputValue<F>> = vec![
