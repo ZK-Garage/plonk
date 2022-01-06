@@ -95,29 +95,39 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::batch_field_test;
     use crate::lookup::LookupTable;
+    use ark_bls12_377::Fr as bls12_377_scalar_field;
+    use ark_bls12_381::Fr as bls12_381_scalar_field;
 
-    // FIXME: Run tests on both BLS fields.
-
-    /* FIXME: Implement XOR table.
     fn test_lookup_fuctionality_1<F>()
     where
         F: Field,
     {
         // Build lookup table
         let lookup_table = LookupTable::<F>::xor_table(0, 3);
+
         // Instantiate empty multisets of wire values in witness table
         let mut f = WitnessTable::<F>::new();
         // Read values from lookup table and insert into witness table
         assert!(f
-            .value_from_table(&lookup_table, F::from(2), F::from(5))
+            .value_from_table(
+                &lookup_table,
+                F::from(2u64),
+                F::from(5u64),
+                -F::one()
+            )
             .is_ok());
         // Check that non existent elements cause a failure
         assert!(f
-            .value_from_table(&lookup_table, F::from(25), F::from(5))
+            .value_from_table(
+                &lookup_table,
+                F::from(25u64),
+                F::from(5u64),
+                -F::one()
+            )
             .is_err());
     }
-    */
 
     fn test_lookup_fuctionality_2<F>()
     where
@@ -167,4 +177,22 @@ mod test {
             .value_from_table(&lookup_table, F::zero(), F::one(), F::zero())
             .is_err());
     }
+
+    // Bls12-381 tests
+    batch_field_test!(
+        [
+            test_lookup_fuctionality_1,
+            test_lookup_fuctionality_2
+        ],
+        [] => bls12_381_scalar_field
+    );
+
+    // Bls12-377 tests
+    batch_field_test!(
+        [
+            test_lookup_fuctionality_1,
+            test_lookup_fuctionality_2
+        ],
+        [] => bls12_377_scalar_field
+    );
 }
