@@ -230,7 +230,7 @@ where
     /// The Composer then links the variable to the [`F`]
     /// and returns it for its use in the system.
     ///
-    /// [`F`]: Field
+    /// [`F`]: FftField + PrimeField
     pub fn add_input(&mut self, s: F) -> Variable {
         // Get a new Variable from the permutation
         let var = self.perm.new_variable();
@@ -502,6 +502,7 @@ where
     /// the cause is an unsatisfied gate equation, the function will panic.
     #[cfg(feature = "trace")]
     pub fn check_circuit_satisfied(&self) {
+        use ark_ff::BigInteger;
         let w_l: Vec<&F> = self
             .w_l
             .iter()
