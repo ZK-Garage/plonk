@@ -424,12 +424,12 @@ where
             commitments[6].commitment().clone(), // q_arith_poly_commit.0,
             commitments[7].commitment().clone(), // q_range_poly_commit.0,
             commitments[8].commitment().clone(), // q_logic_poly_commit.0,
-            commitments[9].commitment().clone(), // q_fixed_group_add_poly_commit.0,
-            commitments[10].commitment().clone(), // q_variable_group_add_poly_commit.0,
+            commitments[9].commitment().clone(), /* q_fixed_group_add_poly_commit.0, */
+            commitments[10].commitment().clone(), /* q_variable_group_add_poly_commit.0, */
             commitments[11].commitment().clone(), // left_sigma_poly_commit.0,
             commitments[12].commitment().clone(), // right_sigma_poly_commit.0,
             commitments[13].commitment().clone(), // out_sigma_poly_commit.0,
-            commitments[14].commitment().clone(), // fourth_sigma_poly_commit.0,
+            commitments[14].commitment().clone(), /* fourth_sigma_poly_commit.0, */
         );
 
         let selectors = SelectorPolynomials {

@@ -56,7 +56,8 @@ impl TranscriptProtocol for Transcript {
     {
         for commitment in commitments {
             self.append(
-                // TODO: don't leak memory here by allowing Transcript::append_message to take non-static lifetimes
+                // TODO: don't leak memory here by allowing
+                // Transcript::append_message to take non-static lifetimes
                 Box::leak::<'static>(
                     commitment.label().clone().into_boxed_str(),
                 )
