@@ -106,7 +106,6 @@ mod test {
         TEModelParameters,
     };
     use ark_ff::{FftField, PrimeField};
-    use ark_poly::univariate::DensePolynomial;
 
     fn test_var_base_scalar_mul<F, P, PC>()
     where

@@ -203,7 +203,6 @@ mod test {
     use ark_bls12_381::Bls12_381;
     use ark_ec::models::TEModelParameters;
     use ark_ff::{FftField, PrimeField};
-    use ark_poly::univariate::DensePolynomial;
     fn test_range_constraint<F, P, PC>()
     where
         F: FftField + PrimeField,

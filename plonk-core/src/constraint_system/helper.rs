@@ -37,7 +37,7 @@ pub(crate) fn dummy_gadget<F, P>(
 pub(crate) fn gadget_tester<F, P, PC>(
     gadget: fn(&mut StandardComposer<F, P>),
     n: usize,
-) -> Result<(), Error>
+) -> Result<crate::proof_system::Proof<F, PC>, Error>
 where
     F: FftField + PrimeField,
     P: TEModelParameters<BaseField = F>,
@@ -106,5 +106,6 @@ where
     verifier.preprocess(&ck)?;
 
     // Verify proof
-    verifier.verify(&proof, &vk, &public_inputs)
+    verifier.verify(&proof, &vk, &public_inputs)?;
+    Ok(proof)
 }

@@ -169,7 +169,6 @@ mod tests {
     use ark_bls12_381::Bls12_381;
     use ark_ec::{group::Group, AffineCurve};
     use ark_ff::{FftField, PrimeField};
-    use ark_poly::univariate::DensePolynomial;
 
     fn test_ecc_constraint<F, P, PC>()
     where

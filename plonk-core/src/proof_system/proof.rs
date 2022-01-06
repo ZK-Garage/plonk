@@ -269,40 +269,6 @@ where
         let saw_challenge: F =
             transcript.challenge_scalar(b"aggregate_witness");
 
-        /*let (aw_commitment, aw_eval) =
-            crate::commitment::linear_combination::<F, PC>(
-                &evals,
-                &[
-                    t_comm,
-                    lin_comm,
-                    plonk_verifier_key.permutation.left_sigma.clone(),
-                    plonk_verifier_key.permutation.right_sigma.clone(),
-                    plonk_verifier_key.permutation.out_sigma.clone(),
-                    self.a_comm.clone(),
-                    self.b_comm.clone(),
-                    self.c_comm.clone(),
-                    self.d_comm.clone(),
-                ],
-                aw_challenge,
-            );
-
-        let (saw_commitment, saw_eval) =
-            crate::commitment::linear_combination::<F, PC>(
-                &[
-                    self.evaluations.permutation_eval,
-                    self.evaluations.a_next_eval,
-                    self.evaluations.b_next_eval,
-                    self.evaluations.d_next_eval,
-                ],
-                &[
-                    self.z_comm.clone(),
-                    self.a_comm.clone(),
-                    self.b_comm.clone(),
-                    self.d_comm.clone(),
-                ],
-                saw_challenge,
-            );*/
-
         let saw_commits = [
             label_commitment!(self.z_comm),
             label_commitment!(self.a_comm),
@@ -317,10 +283,8 @@ where
         ];
         match PC::check(
             verifier_key,
-            //&[label_commitment!(aw_commitment)],
             &aw_commits,
             &z_challenge,
-            //[aw_eval],
             aw_evals,
             &self.aw_opening,
             aw_challenge,
@@ -334,10 +298,8 @@ where
             match PC::check(
                 verifier_key,
                 &saw_commits,
-                //&[label_commitment!(saw_commitment)],
                 &(z_challenge * domain.element(1)),
                 saw_evals,
-                //[saw_eval],
                 &self.saw_opening,
                 saw_challenge,
                 None,
@@ -560,74 +522,55 @@ where
 
 #[cfg(test)]
 mod test {
-    /*
     use super::*;
-    use crate::batch_test_field;
+    use crate::{batch_test, batch_test_ipa};
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
-    use ark_ff::{PrimeField, UniformRand};
-    use rand_core::OsRng;
+    use ark_ff::PrimeField;
 
-    fn test_serde_proof<F, PC>()
+    fn test_serde_proof<F, P, PC>()
     where
         F: PrimeField,
-        PC: PolynomialCommitment<F, DensePolynomial<F>>
-            + HomomorphicCommitment<F>,
+        P: TEModelParameters<BaseField = F>,
+        PC: HomomorphicCommitment<F>,
     {
-        let proof = Proof::<F, PC> {
-            a_comm: Default::default(),
-            b_comm: Default::default(),
-            c_comm: Default::default(),
-            d_comm: Default::default(),
-            z_comm: Default::default(),
-            t_1_comm: Default::default(),
-            t_2_comm: Default::default(),
-            t_3_comm: Default::default(),
-            t_4_comm: Default::default(),
-            aw_opening: Default::default(),
-            saw_opening: Default::default(),
-            evaluations: ProofEvaluations {
-                a_eval: F::rand(&mut OsRng),
-                b_eval: F::rand(&mut OsRng),
-                c_eval: F::rand(&mut OsRng),
-                d_eval: F::rand(&mut OsRng),
-                a_next_eval: F::rand(&mut OsRng),
-                b_next_eval: F::rand(&mut OsRng),
-                d_next_eval: F::rand(&mut OsRng),
-                q_arith_eval: F::rand(&mut OsRng),
-                q_c_eval: F::rand(&mut OsRng),
-                q_l_eval: F::rand(&mut OsRng),
-                q_r_eval: F::rand(&mut OsRng),
-                left_sigma_eval: F::rand(&mut OsRng),
-                right_sigma_eval: F::rand(&mut OsRng),
-                out_sigma_eval: F::rand(&mut OsRng),
-                linearisation_polynomial_eval: F::rand(&mut OsRng),
-                permutation_eval: F::rand(&mut OsRng),
-            },
-        };
+        let proof =
+            crate::constraint_system::helper::gadget_tester::<F, P, PC>(
+                |_: &mut crate::constraint_system::StandardComposer<F, P>| {},
+                200,
+            )
+            .expect("Empty circuit failed");
 
         let mut proof_bytes = vec![];
         proof.serialize(&mut proof_bytes).unwrap();
 
         let obtained_proof =
-            Proof::deserialize(proof_bytes.as_slice()).unwrap();
+            Proof::<F, PC>::deserialize(proof_bytes.as_slice()).unwrap();
 
         //assert!(proof == obtained_proof);
     }
 
     // Bls12-381 tests
-    batch_test_field!(
+    batch_test!(
         [test_serde_proof],
         [] => (
-            Bls12_381
+            Bls12_381, ark_ed_on_bls12_381::EdwardsParameters
         )
     );
 
     // Bls12-377 tests
-    batch_test_field!(
+    batch_test!(
         [test_serde_proof],
         [] => (
-            Bls12_377
+            Bls12_377, ark_ed_on_bls12_377::EdwardsParameters
         )
-    );*/
+    );
+
+    // Bls12-381 tests
+    batch_test_ipa!(
+        [test_serde_proof],
+        [] => (
+            Bls12_381, ark_ed_on_bls12_381::EdwardsParameters
+        )
+    );
 }

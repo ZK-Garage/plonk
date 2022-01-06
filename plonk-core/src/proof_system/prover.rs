@@ -276,7 +276,7 @@ where
         ];
 
         // Commit to witness polynomials.
-        let (w_commits, _) = PC::commit(commit_key, w_polys.iter(), None)
+        let (w_commits, w_rands) = PC::commit(commit_key, w_polys.iter(), None)
             .map_err(to_pc_error::<F, PC>)?;
 
         // Add witness polynomial commitments to transcript.
@@ -452,10 +452,6 @@ where
             label_polynomial!(prover_key.permutation.left_sigma.0.clone()),
             label_polynomial!(prover_key.permutation.right_sigma.0.clone()),
             label_polynomial!(prover_key.permutation.out_sigma.0.clone()),
-            label_polynomial!(w_l_poly.clone()),
-            label_polynomial!(w_r_poly.clone()),
-            label_polynomial!(w_o_poly.clone()),
-            label_polynomial!(w_4_poly.clone()),
         ];
 
         let (aw_commits, aw_rands) =
@@ -463,11 +459,11 @@ where
 
         let aw_opening = PC::open(
             commit_key,
-            &aw_polys,
-            &aw_commits,
+            aw_polys.iter().chain(w_polys.iter()),
+            aw_commits.iter().chain(w_commits.iter()),
             &z_challenge,
             aw_challenge,
-            &aw_rands,
+            aw_rands.iter().chain(w_rands.iter()),
             None,
         )
         .map_err(to_pc_error::<F, PC>)?;
@@ -497,10 +493,10 @@ where
         .map_err(to_pc_error::<F, PC>)?;
 
         Ok(Proof {
-            a_comm: aw_commits[5].commitment().clone(),
-            b_comm: aw_commits[6].commitment().clone(),
-            c_comm: aw_commits[7].commitment().clone(),
-            d_comm: aw_commits[8].commitment().clone(),
+            a_comm: w_commits[0].commitment().clone(),
+            b_comm: w_commits[1].commitment().clone(),
+            c_comm: w_commits[2].commitment().clone(),
+            d_comm: w_commits[3].commitment().clone(),
             z_comm: saw_commits[0].commitment().clone(),
             t_1_comm: t_commits[0].commitment().clone(),
             t_2_comm: t_commits[1].commitment().clone(),
