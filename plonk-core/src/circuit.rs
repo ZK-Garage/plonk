@@ -173,7 +173,7 @@ where
 /// use ark_ff::{FftField, PrimeField, BigInteger};
 /// use plonk_core::circuit::{Circuit, PublicInputValue, verify_proof, GeIntoPubInput};
 /// use plonk_core::constraint_system::StandardComposer;
-/// use plonk_core::error::Error;
+/// use plonk_core::error::{to_pc_error,Error};
 /// use ark_poly::polynomial::univariate::DensePolynomial;
 /// use ark_poly_commit::{PolynomialCommitment, sonic_pc::SonicKZG10};
 /// use plonk_core::prelude::*;
@@ -256,7 +256,7 @@ where
 ///
 /// let mut circuit = TestCircuit::<BlsScalar, JubJubParameters>::default();
 /// // Compile the circuit
-/// let (pk_p, verifier_data) = circuit.compile::<PC>(&pp).map_err(to_pc_error::<F, PC>)?;
+/// let (pk_p, verifier_data) = circuit.compile::<PC>(&pp)?;
 ///
 /// let (x, y) = JubJubParameters::AFFINE_GENERATOR_COEFFS;
 /// let generator: GroupAffine<JubJubParameters> = GroupAffine::new(x, y);
