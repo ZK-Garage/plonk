@@ -264,13 +264,51 @@ $h_1$ and $h_2$ represent the lower and upper halves of the vector $s$ defined a
 $h_1= (s_0,s_1,s_2,...,s_{n−1})$ and $h_2= (s_n,s_{n+1},s_{n+2},...,s_{2n−1})$
 
 #### PLONKUP
+PlonKup is a ZK-SNARK that integrates plookup into PlonK in an efficient way. It introduces a new selector $q_K$ that activates or switches off the lookup gates as follows:
 
-Plonkup uses an alternative method for dividing the sorted vector $s$ which reduces the verifier's complexity. In PLOOKUP, the prover devides $s$ into an upper and lower bounds:
+$\begin{equation}
+q_{Ki}=
+    \begin{cases}
+      1 \text{, if the i-th gate is a lookup gate }\\
+      0 \text{, otherwise}
+    \end{cases}\,
+\end{equation}$
+
+Lookup gates are thus used only when necessary and the table vector takes dummy values when it's not the case (for $q_{Ki}=0$).
+
+ 
+Plonkup also uses an alternative method for dividing the sorted vector $s$ which reduces the verifier's complexity. In PLOOKUP, the prover devides $s$ into an upper and lower bounds:
 
 $h_1=(s_0,s_1,s_2,...,s_{n−1})$ and $h_2= (s_n,s_{n+1},s_{n+2},...,s_{2n−1})$. 
 This method adds another check for the verifier $L_{n−1}(X)h_1(X)−L_0(X)h_2(X) = 0$ and can be avoided if those halves are divided differently. 
 
 In PLONKUP, the prover uses alternating halves $h_1=(s_0,s_2,s_4,...,s_{2n−2})$ and $h_2=(s_1,s_3,s_5,...,s_{2n−1})$ and thus no need to check if they overlap.
+
+**Common preprocessed input**
+
+Let $\tau\in\mathbb{F}^{n×4}$ be a publicly known table of 4 columns and $n$ rows such that:
+
+$\tau_1(X)=\sum_{i=1}^n\tau_{1,i}L_i(X))$,   $\tau_2(X)=\sum_{i=1}^n\tau_{2,i}L_i(X))$,
+
+$\tau_3(X)=\sum_{i=1}^n\tau_{3,i}L_i(X))$,   $\tau_4(X)=\sum_{i=1}^n\tau_{4,i}L_i(X))$
+
+
+This table will be the preprocessed version of the precomputed table.
+
+
+$\begin{align*}
+q_M(X) &=\sum_{i=1}^nq_{Mi}L_i(X),           &  q_L(X) &=\sum_{i=1}^nq_{Li}L_i(X),              &  q_R(X) &=\sum_{i=1}^nq_{Ri}L_i(X)\\
+q_O(X) &= \sum_{i=1}^nq_{Oi}L_i(X)       &  q_C(X) &=\sum_{i=1}^nq_{Ci}L_i(X)  &  q_d(X) &= \sum_{i=1}^nq_{di}L_i(X) \\
+q_K(X) &= \sum_{i=1}^nq_{Ki}L_i(X)  &  S_{\sigma _1}(X) &=\sum_{i=1}^n \sigma^*(i)L_i(X)          &   S_{\sigma _2}(X) &=\sum_{i=1}^n \sigma^*(n+i)L_i(X) \\
+ S_{\sigma_3}(X) &=\sum_{i=1}^n \sigma^*(2n+i)L_i(X) &  S_{\sigma_4}(X) &=\sum_{i=1}^n \sigma^*(3n+i)L_i(X)  
+\end{align*}$
+**Prover Algorithm**
+
+Input: the pair $(x,w) = (w_i)_{i\in[4n]}$ that satisfies the circuit.
+
+ 
+ 
+
 ### Modules
 * circuit: Tools & traits for PLONK circuits (ark_plonk::circuit)
   1. Structs
