@@ -73,9 +73,9 @@ where
         &mut self.cs
     }
 
-    /// Preprocess a circuit to obtain a [`PlonkVerifierKey<F, PC>`] and a circuit
-    /// descriptor so that the `Verifier` instance can verify [`Proof`]s
-    /// for this circuit descriptor instance.
+    /// Preprocess a circuit to obtain a [`PlonkVerifierKey<F, PC>`] and a
+    /// circuit descriptor so that the `Verifier` instance can verify
+    /// [`Proof`]s for this circuit descriptor instance.
     pub fn preprocess(
         &mut self,
         commit_key: &PC::CommitterKey,
