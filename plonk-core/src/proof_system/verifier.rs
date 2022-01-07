@@ -73,7 +73,7 @@ where
         &mut self.cs
     }
 
-    /// Preprocess a circuit to obtain a [`VerifierKey`] and a circuit
+    /// Preprocess a circuit to obtain a [`VerifierKey<F, PC>`] and a circuit
     /// descriptor so that the `Verifier` instance can verify [`Proof`]s
     /// for this circuit descriptor instance.
     pub fn preprocess(
