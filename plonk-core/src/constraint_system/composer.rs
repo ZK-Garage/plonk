@@ -19,8 +19,6 @@ use crate::permutation::Permutation;
 use alloc::collections::BTreeMap;
 
 use ark_ec::models::TEModelParameters;
-#[cfg(feature = "trace")]
-use ark_ff::BigInteger;
 use ark_ff::{FftField, PrimeField};
 use core::marker::PhantomData;
 use hashbrown::HashMap;
@@ -230,10 +228,8 @@ where
     /// Add Input first calls the Permutation
     /// to generate and allocate a new [`Variable`] `var`.
     ///
-    /// The Composer then links the variable to the [`F`]
+    /// The Composer then links the variable to the [`PrimeField`]
     /// and returns it for its use in the system.
-    ///
-    /// [`F`]: FftField + PrimeField
     pub fn add_input(&mut self, s: F) -> Variable {
         // Get a new Variable from the permutation
         let var = self.perm.new_variable();
