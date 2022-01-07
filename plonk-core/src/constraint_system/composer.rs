@@ -18,11 +18,14 @@ use crate::constraint_system::Variable;
 use crate::permutation::Permutation;
 use alloc::collections::BTreeMap;
 
+use ark_ec::models::TEModelParameters;
+#[cfg(feature = "trace")]
+use ark_ff::BigInteger;
 use ark_ff::{FftField, PrimeField};
 use core::marker::PhantomData;
 use hashbrown::HashMap;
 
-use ark_ec::{ModelParameters, TEModelParameters};
+use ark_ec::ModelParameters;
 
 /// The StandardComposer is the circuit-builder tool that the `plonk` repository
 /// provides so that circuit descriptions can be written, stored and transformed
@@ -332,6 +335,47 @@ where
             F::zero(),
             None,
         );
+    }
+
+    /// A gate which outputs a variable whose value is 1 if
+    /// the input is 0 and whose value is 0 otherwise
+    pub fn is_zero_with_output(&mut self, a: Variable) -> Variable {
+        // Get relevant field values
+        let a_value = self.variables.get(&a).unwrap();
+        let y_value = a_value.inverse().unwrap_or_else(F::one);
+
+        // This has value 1 if input value is zero, value 0 otherwise
+        let b_value = F::one() - *a_value * y_value;
+
+        let y = self.add_input(y_value);
+        let b = self.add_input(b_value);
+        let zero = self.zero_var();
+
+        // Enforce constraints. The constraint system being used here is
+        // a * y + b - 1 = 0
+        // a * b = 0
+        // where y is auxiliary and b is the boolean (a == 0).
+        let _a_times_b = self.arithmetic_gate(|gate| {
+            gate.witness(a, b, Some(zero)).mul(F::one())
+        });
+
+        let _first_constraint = self.arithmetic_gate(|gate| {
+            gate.witness(a, y, Some(zero))
+                .mul(F::one())
+                .fan_in_3(F::one(), b)
+                .constant(-F::one())
+        });
+
+        b
+    }
+
+    /// A gate which outputs a variable whose value is 1 if the
+    /// two input variables have equal values and whose value is 0 otherwise.
+    pub fn is_eq_with_output(&mut self, a: Variable, b: Variable) -> Variable {
+        let difference = self.arithmetic_gate(|gate| {
+            gate.witness(a, b, None).add(F::one(), -F::one())
+        });
+        self.is_zero_with_output(difference)
     }
 
     /// Conditionally selects a [`Variable`] based on an input bit.
@@ -701,6 +745,70 @@ mod test {
         assert!(res.is_ok());
     }
 
+    fn test_correct_is_zero_with_output<F, P, PC>()
+    where
+        F: FftField + PrimeField,
+        P: TEModelParameters<BaseField = F>,
+        PC: HomomorphicCommitment<F>,
+    {
+        // Check that it gives true on zero input:
+        let res = gadget_tester::<F, P, PC>(
+            |composer: &mut StandardComposer<F, P>| {
+                let one = composer.add_input(F::one());
+                let is_zero = composer.is_zero_with_output(composer.zero_var());
+                composer.assert_equal(is_zero, one);
+            },
+            32,
+        );
+
+        // Check that it gives false on non-zero input:
+        let res2 = gadget_tester::<F, P, PC>(
+            |composer: &mut StandardComposer<F, P>| {
+                let one = composer.add_input(F::one());
+                let is_zero = composer.is_zero_with_output(one);
+                composer.assert_equal(is_zero, composer.zero_var());
+            },
+            32,
+        );
+
+        assert!(res.is_ok() && res2.is_ok())
+    }
+
+    fn test_correct_is_eq_with_output<F, P, PC>()
+    where
+        F: FftField + PrimeField,
+        P: TEModelParameters<BaseField = F>,
+        PC: HomomorphicCommitment<F>,
+    {
+        // Check that it gives true on equal inputs:
+        let res = gadget_tester::<F, P, PC>(
+            |composer: &mut StandardComposer<F, P>| {
+                let one = composer.add_input(F::one());
+
+                let field_element = F::one().double();
+                let a = composer.add_input(field_element);
+                let b = composer.add_input(field_element);
+                let is_eq = composer.is_eq_with_output(a, b);
+                composer.assert_equal(is_eq, one);
+            },
+            32,
+        );
+
+        // Check that it gives false on non-equal inputs:
+        let res2 = gadget_tester::<F, P, PC>(
+            |composer: &mut StandardComposer<F, P>| {
+                let field_element = F::one().double();
+                let a = composer.add_input(field_element);
+                let b = composer.add_input(field_element.double());
+                let is_eq = composer.is_eq_with_output(a, b);
+                composer.assert_equal(is_eq, composer.zero_var());
+            },
+            32,
+        );
+
+        assert!(res.is_ok() && res2.is_ok())
+    }
+
     fn test_conditional_select<F, P, PC>()
     where
         F: FftField + PrimeField,
@@ -803,8 +911,11 @@ mod test {
     batch_test!(
         [
             test_prove_verify,
-            test_multiple_proofs,
-            test_conditional_select ],
+            test_correct_is_zero_with_output,
+            test_correct_is_eq_with_output,
+            test_conditional_select,
+            test_multiple_proofs
+        ],
         [] => (
             Bls12_381,
             ark_ed_on_bls12_381::EdwardsParameters
@@ -815,9 +926,11 @@ mod test {
     batch_test!(
         [
             test_prove_verify,
-            test_multiple_proofs,
-            test_conditional_select
-                    ],
+            test_correct_is_zero_with_output,
+            test_correct_is_eq_with_output,
+            test_conditional_select,
+            test_multiple_proofs
+        ],
         [] => (
             Bls12_377,
             ark_ed_on_bls12_377::EdwardsParameters
