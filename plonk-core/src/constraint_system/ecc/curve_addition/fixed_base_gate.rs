@@ -101,6 +101,7 @@ where
         self.q_arith.push(E::Fr::zero());
         self.q_range.push(E::Fr::zero());
         self.q_logic.push(E::Fr::zero());
+        self.q_lookup.push(E::Fr::zero());
 
         self.perm.add_variables_to_map(
             wnaf_round.acc_x,

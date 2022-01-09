@@ -248,6 +248,7 @@ where
             self.q_range.push(E::Fr::zero());
             self.q_fixed_group_add.push(E::Fr::zero());
             self.q_variable_group_add.push(E::Fr::zero());
+            self.q_lookup.push(E::Fr::zero());
             match is_xor_gate {
                 true => {
                     self.q_c.push(-E::Fr::one());
@@ -269,6 +270,7 @@ where
         self.q_range.push(E::Fr::zero());
         self.q_fixed_group_add.push(E::Fr::zero());
         self.q_variable_group_add.push(E::Fr::zero());
+        self.q_fixed_group_add.push(E::Fr::zero());
 
         self.q_c.push(E::Fr::zero());
         self.q_logic.push(E::Fr::zero());

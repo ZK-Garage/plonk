@@ -73,6 +73,7 @@ where
         self.q_range.extend(&zeros);
         self.q_logic.extend(&zeros);
         self.q_fixed_group_add.extend(&zeros);
+        self.q_lookup.extend(&zeros);
 
         self.q_variable_group_add.push(E::Fr::one());
         self.q_variable_group_add.push(E::Fr::zero());

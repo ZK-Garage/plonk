@@ -130,6 +130,7 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
         self.q_logic.push(E::Fr::zero());
         self.q_fixed_group_add.push(E::Fr::zero());
         self.q_variable_group_add.push(E::Fr::zero());
+        self.q_lookup.push(E::Fr::zero());
 
         if let Some(pi) = gate.pi {
             let insert_res = self.public_inputs_sparse_store.insert(self.n, pi);

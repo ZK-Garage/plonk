@@ -375,3 +375,20 @@ where
         points.push(self.fourth_sigma.0);
     }
 }
+
+        // p(X) * (1+δ) * (ε+f(X)) * (ε*(1+δ) + t(X) + δt(Xω)) * α_1^3
+        let c = {
+            let c_1 = epsilon + f_i;
+            let c_2 = epsilon_one_plus_delta + t_i + delta * t_i_next;
+
+            p_i * one_plus_delta * c_1 * c_2 * l_sep_3
+        };
+
+        // − p(Xω) * (ε*(1+δ) + h1(X) + δ*h2(X)) * (ε*(1+δ) + h2(X) + δ*h1(Xω))
+        // * α_1^3
+        let d = {
+            let d_1 = epsilon_one_plus_delta + h_1_i + delta * h_2_i;
+            let d_2 = epsilon_one_plus_delta + h_2_i + delta * h_1_i_next;
+
+            -p_i_next * d_1 * d_2 * l_sep_3
+        };

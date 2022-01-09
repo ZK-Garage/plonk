@@ -2,7 +2,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 //
-// Copyright (c) DUSK NETWORK. All rights reserved.
+// Copyright (c) ZK-Garage. All rights reserved.
 
 //! Proof System Widgets
 
@@ -10,6 +10,7 @@ pub mod arithmetic;
 pub mod ecc;
 pub mod logic;
 pub mod range;
+pub mod lookup;
 
 use crate::proof_system::linearisation_poly::ProofEvaluations;
 use crate::proof_system::permutation;
@@ -306,6 +307,8 @@ where
     /// Variable Group Addition Selector
     pub(crate) variable_group_add_selector:
         (DensePolynomial<F>, Evaluations<F>),
+    
+    pub (crate) lookup: lookup::ProverKey<F, E>,
 
     /// ProverKey for permutation checks
     pub(crate) permutation: permutation::ProverKey<F>,

@@ -26,6 +26,7 @@ use core::marker::PhantomData;
 use core::ops::Add;
 use num_traits::{One, Zero};
 use rand_core::OsRng;
+use crate::lookup::MultiSet;
 
 /// Abstraction structure designed to construct a circuit and generate
 /// [`Proof`]s for it.
@@ -243,6 +244,10 @@ where
         commit_key: &Powers<E>,
         prover_key: &ProverKey<E::Fr, P>,
     ) -> Result<Proof<E, P>, Error> {
+        // Construct the domain s.t. it is large enough to operate
+        // with both the number of gates in the circuit and the lookup 
+        // table
+        /// XXX: Add in lookups
         let domain =
             GeneralEvaluationDomain::new(self.cs.circuit_size()).unwrap();
         let n = domain.size();
@@ -261,6 +266,10 @@ where
         let w_r_scalar = &[&self.to_scalars(&self.cs.w_r)[..], &pad].concat();
         let w_o_scalar = &[&self.to_scalars(&self.cs.w_o)[..], &pad].concat();
         let w_4_scalar = &[&self.to_scalars(&self.cs.w_4)[..], &pad].concat();
+
+        // Ensure the lookup q_lookup selector is the correct size
+        // for building the witness polynomial, f 
+        let padded_q_lookup = [&self.cs.q_lookup[..], &pad].concat();
 
         // Witnesses are now in evaluation form, convert them to coefficients
         // so that we may commit to them.
@@ -290,13 +299,113 @@ where
         transcript.append_commitment(b"w_r", &w_r_poly_commit.0);
         transcript.append_commitment(b"w_o", &w_o_poly_commit.0);
         transcript.append_commitment(b"w_4", &w_4_poly_commit.0);
+    
+        // 2. Derive lookup polynomials
+        
+        // Generate table compression factor
+        let zeta = transcript.challenge_scalar(b"zeta");
 
-        // 2. Compute permutation polynomial
+        // Compress lookup table into vector of single elements
+        let compressed_t_multiset = MultiSet::compress_four_arity(
+            [
+                &prover_key.lookup.table_1.0,
+                &prover_key.lookup.table_2.0,
+                &prover_key.lookup.table_3.0,
+                &prover_key.lookup.table_4.0,
+            ],
+            zeta,
+        );
+
+        // Compute table f
+        // When q_lookup[i] is zero the wire value is replaced with a dummy
+        // value Currently set as the first row of the public table
+        // If q_lookup is one the wire values are preserved
+        let f_1_scalar = w_l_scalar
+            .iter()
+            .zip(&padded_q_lookup)
+            .map(|(w, s)| {
+                *w * s + (E::Fr::one() - s) * compressed_t_multiset.0[0]
+            })
+            .collect::<Vec<E::Fr>>();
+        let f_2_scalar = w_r_scalar
+            .iter()
+            .zip(&padded_q_lookup)
+            .map(|(w, s)| *w * s)
+            .collect::<Vec<E::Fr>>();
+        let f_3_scalar = w_o_scalar
+            .iter()
+            .zip(&padded_q_lookup)
+            .map(|(w, s)| *w * s)
+            .collect::<Vec<E::Fr>>();
+        let f_4_scalar = w_4_scalar
+            .iter()
+            .zip(&padded_q_lookup)
+            .map(|(w, s)| *w * s)
+            .collect::<Vec<E::Fr>>();
+
+        // Compress all wires into a single vector
+        let compressed_f_multiset = MultiSet::compress_four_arity(
+            [
+                &MultiSet::from(&f_1_scalar[..]),
+                &MultiSet::from(&f_2_scalar[..]),
+                &MultiSet::from(&f_3_scalar[..]),
+                &MultiSet::from(&f_4_scalar[..]),
+            ],
+            zeta,
+        );
+
+        // Compute long query poly
+        let f_poly = DensePolynomial::from_coefficients_vec(
+            domain.ifft(&compressed_f_multiset.0),
+        );
+
+        // Commit to query polynomial
+        let f_poly_commit = KZG10::commit(commit_key, &f_poly, None, None)?;
+
+        // Add f_poly commitment to transcript
+        transcript.append_commitment(b"f", &f_poly_commit.0);
+
+        // Compute s, as the sorted and concatenated version of f and t
+        let s = compressed_t_multiset
+            .sorted_concat(&compressed_f_multiset)
+            .unwrap();
+
+        // Compute first and second halves of s, as h_1 and h_2
+        let (h_1, h_2) = s.halve_alternating();
+
+        // Compute h polys
+        let h_1_poly = DensePolynomial::from_coefficients_vec(domain.ifft(&h_1.0));
+        let h_2_poly = DensePolynomial::from_coefficients_vec(domain.ifft(&h_2.0));
+
+        // Commit to h polys
+        let h_1_poly_commit = KZG10::commit(commit_key, &h_1_poly, None, None).unwrap();
+        let h_2_poly_commit = KZG10::commit(commit_key, &h_2_poly, None, None).unwrap();
+
+        // Add h polynomials to transcript
+        transcript.append_commitment(b"h1", &h_1_poly_commit.0);
+        transcript.append_commitment(b"h2", &h_2_poly_commit.0);
+
+        // 3. Compute permutation polynomials
         //
-        // Compute permutation challenges; `beta` and `gamma`.
+        // Compute permutation challenge `beta`.
         let beta = transcript.challenge_scalar(b"beta");
         transcript.append_scalar(b"beta", &beta);
+
+        // Compute permutation challenge `gamma`.
+        /// XXX: Is there a reason gammas is not appended?
         let gamma = transcript.challenge_scalar(b"gamma");
+
+        // Compute permutation challenge `delta`.
+        let delta = transcript.challenge_scalar(b"delta");
+        transcript.append_scalar(b"delta", &delta);
+
+        // Compute permutation challenge `epsilon`.
+        let epsilon = transcript.challenge_scalar(b"epsilon");
+        transcript.append_scalar(b"epsilon", &epsilon);
+
+        // Compute permutation challenge `theta`.
+        let theta = transcript.challenge_scalar(b"theta");
+        transcript.append_scalar(b"theta", &theta);
 
         assert!(beta != gamma, "challenges must be different");
 
@@ -325,6 +434,20 @@ where
 
         // Add permutation polynomial commitment to transcript.
         transcript.append_commitment(b"z", &z_poly_commit.0);
+
+        // Compute mega permutation polynomial.
+        // Compute lookup permutation poly
+        let p_poly = DensePolynomial::from_coefficients_slice(
+            &self.cs.perm.compute_mega_permutation_poly(
+                &domain,
+                &compressed_f_multiset.0,
+                &compressed_t_multiset.0,
+                &h_1.0,
+                &h_2.0,
+                &delta,
+                &epsilon,
+            ),
+        );
 
         // 3. Compute public inputs polynomial.
         let pi_poly = DensePolynomial::from_coefficients_vec(

@@ -32,10 +32,12 @@ pub fn compute<F, P>(
     alpha: &F,
     beta: &F,
     gamma: &F,
+    zeta: &F,
     range_challenge: &F,
     logic_challenge: &F,
     fixed_base_challenge: &F,
     var_base_challenge: &F,
+    lookup_challenge: &F,
 ) -> Result<DensePolynomial<F>, Error>
 where
     F: PrimeField,
@@ -92,6 +94,7 @@ where
         *logic_challenge,
         *fixed_base_challenge,
         *var_base_challenge,
+        *lookup_challenge,
         prover_key,
         &wl_eval_8n,
         &wr_eval_8n,
@@ -133,12 +136,14 @@ fn compute_gate_constraint_satisfiability<F, P>(
     logic_challenge: F,
     fixed_base_challenge: F,
     var_base_challenge: F,
+    lookup_challenge: F,
     prover_key: &ProverKey<F, P>,
     wl_eval_8n: &[F],
     wr_eval_8n: &[F],
     wo_eval_8n: &[F],
     w4_eval_8n: &[F],
     pi_poly: &DensePolynomial<F>,
+    zeta: F,
 ) -> Vec<F>
 where
     F: PrimeField,
@@ -188,7 +193,7 @@ where
                     prover_key.fixed_group_add_selector.1[i],
                     fixed_base_challenge,
                     values,
-                );
+            );
 
             let curve_addition = CurveAddition::<_, P>::quotient_term(
                 prover_key.variable_group_add_selector.1[i],
@@ -196,11 +201,22 @@ where
                 values,
             );
 
+            let lookup = prover_key.lookup.compute_quotient_i(
+                i,
+                values.left,
+                values.right,
+                values.output,
+                values.fourth,
+                prover_key.look
+            )
+
+
             (arithmetic + pi_eval_8n[i])
                 + range
                 + logic
                 + fixed_base_scalar_mul
-                + curve_addition
+                + curve_addition,
+                + lookup,
         })
         .collect()
 }
