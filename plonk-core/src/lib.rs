@@ -38,6 +38,7 @@ mod transcript;
 mod util;
 
 pub mod circuit;
+pub mod commitment;
 pub mod constraint_system;
 pub mod error;
 pub mod lookup;

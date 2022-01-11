@@ -9,16 +9,16 @@
 
 #![allow(non_snake_case)]
 
-use ark_ff::PrimeField;
+use ark_ff::FftField;
 
-pub(crate) fn K1<F: PrimeField>() -> F {
+pub(crate) fn K1<F: FftField>() -> F {
     F::from(7_u64)
 }
 
-pub(crate) fn K2<F: PrimeField>() -> F {
+pub(crate) fn K2<F: FftField>() -> F {
     F::from(13_u64)
 }
 
-pub(crate) fn K3<F: PrimeField>() -> F {
+pub(crate) fn K3<F: FftField>() -> F {
     F::from(17_u64)
 }

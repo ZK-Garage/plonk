@@ -11,8 +11,8 @@
 
 pub use crate::{
     circuit::{
-        self, verify_proof, Circuit, FeIntoPubInput, GeIntoPubInput,
-        PublicInputValue, VerifierData,
+        self, verify_proof, Circuit, GeIntoPubInput, PublicInputValue,
+        VerifierData,
     },
     constraint_system::{ecc::Point, StandardComposer, Variable},
     error::Error,

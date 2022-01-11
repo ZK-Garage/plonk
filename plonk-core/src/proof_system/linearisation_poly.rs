@@ -4,19 +4,22 @@
 //
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
-use crate::proof_system::ecc::{CurveAddition, FixedBaseScalarMul};
-use crate::proof_system::logic::Logic;
-use crate::proof_system::range::Range;
-use crate::proof_system::widget::GateConstraint;
-use crate::proof_system::GateValues;
-use crate::proof_system::ProverKey;
-use crate::util::EvaluationDomainExt;
+use crate::{
+    error::Error,
+    proof_system::{
+        ecc::{CurveAddition, FixedBaseScalarMul},
+        logic::Logic,
+        range::Range,
+        widget::GateConstraint,
+        GateValues, ProverKey,
+    },
+    util::EvaluationDomainExt,
+};
 use ark_ec::TEModelParameters;
-use ark_ff::Field;
-use ark_ff::PrimeField;
-use ark_poly::EvaluationDomain;
+use ark_ff::{FftField, Field};
 use ark_poly::{
-    univariate::DensePolynomial, GeneralEvaluationDomain, Polynomial,
+    univariate::DensePolynomial, EvaluationDomain, GeneralEvaluationDomain,
+    Polynomial,
 };
 use ark_serialize::{
     CanonicalDeserialize, CanonicalSerialize, Read, SerializationError, Write,
@@ -28,7 +31,7 @@ use ark_serialize::{
 /// * w` where `w` is a root of unit.
 pub struct Evaluations<F>
 where
-    F: PrimeField,
+    F: Field,
 {
     /// Proof-relevant Evaluations
     pub proof: ProofEvaluations<F>,
@@ -101,7 +104,7 @@ where
 /// Compute the linearisation polynomial.
 pub fn compute<F, P>(
     domain: &GeneralEvaluationDomain<F>,
-    prover_key: &ProverKey<F, P>,
+    prover_key: &ProverKey<F>,
     alpha: &F,
     beta: &F,
     gamma: &F,
@@ -116,9 +119,9 @@ pub fn compute<F, P>(
     w_4_poly: &DensePolynomial<F>,
     t_x_poly: &DensePolynomial<F>,
     z_poly: &DensePolynomial<F>,
-) -> (DensePolynomial<F>, Evaluations<F>)
+) -> Result<(DensePolynomial<F>, Evaluations<F>), Error>
 where
-    F: PrimeField,
+    F: FftField,
     P: TEModelParameters<BaseField = F>,
 {
     let quot_eval = t_x_poly.evaluate(z_challenge);
@@ -145,7 +148,7 @@ where
     let d_next_eval = w_4_poly.evaluate(&shifted_z_challenge);
     let permutation_eval = z_poly.evaluate(&shifted_z_challenge);
 
-    let gate_constraints = compute_gate_constraint_satisfiability(
+    let gate_constraints = compute_gate_constraint_satisfiability::<F, P>(
         range_separation_challenge,
         logic_separation_challenge,
         fixed_base_separation_challenge,
@@ -172,13 +175,13 @@ where
         (left_sigma_eval, right_sigma_eval, out_sigma_eval),
         permutation_eval,
         z_poly,
-    );
+    )?;
 
     let linearisation_polynomial = gate_constraints + permutation;
     let linearisation_polynomial_eval =
         linearisation_polynomial.evaluate(z_challenge);
 
-    (
+    Ok((
         linearisation_polynomial,
         Evaluations {
             proof: ProofEvaluations {
@@ -201,7 +204,7 @@ where
             },
             quot_eval,
         },
-    )
+    ))
 }
 
 /// Computes the gate constraint satisfiability portion of the linearisation
@@ -222,10 +225,10 @@ fn compute_gate_constraint_satisfiability<F, P>(
     q_c_eval: F,
     q_l_eval: F,
     q_r_eval: F,
-    prover_key: &ProverKey<F, P>,
+    prover_key: &ProverKey<F>,
 ) -> DensePolynomial<F>
 where
-    F: PrimeField,
+    F: FftField,
     P: TEModelParameters<BaseField = F>,
 {
     let values = GateValues {
@@ -248,7 +251,6 @@ where
         d_eval,
         q_arith_eval,
     );
-
     let range = Range::linearisation_term(
         &prover_key.range_selector.0,
         *range_separation_challenge,
@@ -261,13 +263,13 @@ where
         values,
     );
 
-    let fixed_base_scalar_mul = FixedBaseScalarMul::<_, P>::linearisation_term(
+    let fixed_base_scalar_mul = FixedBaseScalarMul::<F, P>::linearisation_term(
         &prover_key.fixed_group_add_selector.0,
         *fixed_base_separation_challenge,
         values,
     );
 
-    let curve_addition = CurveAddition::<_, P>::linearisation_term(
+    let curve_addition = CurveAddition::<F, P>::linearisation_term(
         &prover_key.variable_group_add_selector.0,
         *var_base_separation_challenge,
         values,

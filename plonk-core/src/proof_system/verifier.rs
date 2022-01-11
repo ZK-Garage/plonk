@@ -6,25 +6,30 @@
 
 //! Verifier-side of the PLONK Proving System
 
-use crate::constraint_system::StandardComposer;
-use crate::error::Error;
-use crate::proof_system::widget::VerifierKey as PlonkVerifierKey;
-use crate::proof_system::Proof;
-use crate::transcript::TranscriptWrapper;
-use ark_ec::{PairingEngine, TEModelParameters};
-use ark_poly_commit::kzg10::{Powers, VerifierKey};
+//use crate::circuit::EmbeddedCurve;
+use crate::{
+    commitment::HomomorphicCommitment,
+    constraint_system::StandardComposer,
+    error::Error,
+    proof_system::{widget::VerifierKey as PlonkVerifierKey, Proof},
+};
+use ark_ec::TEModelParameters;
+use ark_ff::PrimeField;
+use core::marker::PhantomData;
+use merlin::Transcript;
 
 /// Abstraction structure designed verify [`Proof`]s.
-pub struct Verifier<E, P>
+pub struct Verifier<F, P, PC>
 where
-    E: PairingEngine,
-    P: TEModelParameters<BaseField = E::Fr>,
+    F: PrimeField,
+    P: TEModelParameters<BaseField = F>,
+    PC: HomomorphicCommitment<F>,
 {
     /// VerificationKey which is used to verify a specific PLONK circuit
-    pub verifier_key: Option<PlonkVerifierKey<E, P>>,
+    pub verifier_key: Option<PlonkVerifierKey<F, PC>>,
 
     /// Circuit Description
-    pub(crate) cs: StandardComposer<E, P>,
+    pub(crate) cs: StandardComposer<F, P>,
 
     /// Store the messages exchanged during the preprocessing stage.
     ///
@@ -32,20 +37,21 @@ where
     /// verifier to verify multiple proofs from the same circuit. If this is
     /// not copied, then the verification procedure will modify the transcript,
     /// making it unusable for future proofs.
-    pub preprocessed_transcript: TranscriptWrapper<E>,
+    pub preprocessed_transcript: Transcript,
 }
 
-impl<E, P> Verifier<E, P>
+impl<F, P, PC> Verifier<F, P, PC>
 where
-    E: PairingEngine,
-    P: TEModelParameters<BaseField = E::Fr>,
+    F: PrimeField,
+    P: TEModelParameters<BaseField = F>,
+    PC: HomomorphicCommitment<F>,
 {
     /// Creates a new `Verifier` instance.
     pub fn new(label: &'static [u8]) -> Self {
         Self {
             verifier_key: None,
             cs: StandardComposer::new(),
-            preprocessed_transcript: TranscriptWrapper::new(label),
+            preprocessed_transcript: Transcript::new(label),
         }
     }
 
@@ -54,7 +60,7 @@ where
         Self {
             verifier_key: None,
             cs: StandardComposer::with_expected_size(size),
-            preprocessed_transcript: TranscriptWrapper::new(label),
+            preprocessed_transcript: Transcript::new(label),
         }
     }
 
@@ -64,17 +70,21 @@ where
     }
 
     /// Returns a mutable copy of the underlying composer.
-    pub fn mut_cs(&mut self) -> &mut StandardComposer<E, P> {
+    pub fn mut_cs(&mut self) -> &mut StandardComposer<F, P> {
         &mut self.cs
     }
 
-    /// Preprocess a circuit to obtain a [`VerifierKey`] and a circuit
-    /// descriptor so that the `Verifier` instance can verify [`Proof`]s
-    /// for this circuit descriptor instance.
-    pub fn preprocess(&mut self, commit_key: &Powers<E>) -> Result<(), Error> {
+    /// Preprocess a circuit to obtain a [`PlonkVerifierKey<F, PC>`] and a
+    /// circuit descriptor so that the `Verifier` instance can verify
+    /// [`Proof`]s for this circuit descriptor instance.
+    pub fn preprocess(
+        &mut self,
+        commit_key: &PC::CommitterKey,
+    ) -> Result<(), Error> {
         let vk = self.cs.preprocess_verifier(
             commit_key,
             &mut self.preprocessed_transcript,
+            PhantomData::<PC>,
         )?;
 
         self.verifier_key = Some(vk);
@@ -87,19 +97,17 @@ where
     /// [`Transcript`]: merlin::Transcript
     /// [`Transcript::append_message`]: merlin::Transcript::append_message
     pub fn key_transcript(&mut self, label: &'static [u8], message: &[u8]) {
-        self.preprocessed_transcript
-            .transcript
-            .append_message(label, message);
+        self.preprocessed_transcript.append_message(label, message);
     }
 
     /// Verifies a [`Proof`] using `pc_verifier_key` and `public_inputs`.
     pub fn verify(
         &self,
-        proof: &Proof<E, P>,
-        pc_verifier_key: &VerifierKey<E>,
-        public_inputs: &[E::Fr],
+        proof: &Proof<F, PC>,
+        pc_verifier_key: &PC::VerifierKey,
+        public_inputs: &[F],
     ) -> Result<(), Error> {
-        proof.verify(
+        proof.verify::<P>(
             self.verifier_key.as_ref().unwrap(),
             &mut self.preprocessed_transcript.clone(),
             pc_verifier_key,
@@ -108,13 +116,14 @@ where
     }
 }
 
-impl<E, P> Default for Verifier<E, P>
+impl<F, P, PC> Default for Verifier<F, P, PC>
 where
-    E: PairingEngine,
-    P: TEModelParameters<BaseField = E::Fr>,
+    F: PrimeField,
+    P: TEModelParameters<BaseField = F>,
+    PC: HomomorphicCommitment<F>,
 {
     #[inline]
-    fn default() -> Verifier<E, P> {
+    fn default() -> Verifier<F, P, PC> {
         Verifier::new(b"plonk")
     }
 }

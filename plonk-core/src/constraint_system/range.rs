@@ -7,14 +7,13 @@
 //! Range Gate
 
 use crate::constraint_system::{StandardComposer, Variable, WireData};
-use ark_ec::{PairingEngine, TEModelParameters};
+use ark_ec::TEModelParameters;
 use ark_ff::{BigInteger, PrimeField};
-use num_traits::{One, Zero};
 
-impl<E, P> StandardComposer<E, P>
+impl<F, P> StandardComposer<F, P>
 where
-    E: PairingEngine,
-    P: TEModelParameters<BaseField = E::Fr>,
+    F: PrimeField,
+    P: TEModelParameters<BaseField = F>,
 {
     /// Adds a range-constraint gate that checks and constrains a
     /// [`Variable`] to be inside of the range \[0,num_bits\].
@@ -28,7 +27,7 @@ where
     pub fn range_gate(&mut self, witness: Variable, num_bits: usize) {
         // Adds `variable` into the appropriate witness position
         // based on the accumulator number a_i
-        let add_wire = |composer: &mut StandardComposer<E, P>,
+        let add_wire = |composer: &mut StandardComposer<F, P>,
                         i: usize,
                         variable: Variable| {
             // Since four quads can fit into one gate, the gate index does
@@ -135,8 +134,8 @@ where
         // We collect the set of accumulators to return back to the user
         // and keep a running count of the current accumulator
         let mut accumulators: Vec<Variable> = Vec::new();
-        let mut accumulator = E::Fr::zero();
-        let four = E::Fr::from(4u64);
+        let mut accumulator = F::zero();
+        let four = F::from(4u64);
 
         // First we pad our gates by the necessary amount
         for i in 0..pad {
@@ -152,7 +151,7 @@ where
 
             // Compute the next accumulator term
             accumulator = four * accumulator;
-            accumulator += E::Fr::from(quad);
+            accumulator += F::from(quad);
 
             let accumulator_var = self.add_input(accumulator);
             accumulators.push(accumulator_var);
@@ -161,8 +160,8 @@ where
         }
 
         // Set the selector polynomials for all of the gates we used
-        let zeros = vec![E::Fr::zero(); used_gates];
-        let ones = vec![E::Fr::one(); used_gates];
+        let zeros = vec![F::zero(); used_gates];
+        let ones = vec![F::one(); used_gates];
 
         self.q_m.extend(zeros.iter());
         self.q_l.extend(zeros.iter());
@@ -181,7 +180,7 @@ where
         // last gate Remember; it will contain one quad in the fourth
         // wire, which will be used in the gate before it
         // Furthermore, we set the left, right and output wires to zero
-        *self.q_range.last_mut().unwrap() = E::Fr::zero();
+        *self.q_range.last_mut().unwrap() = F::zero();
         self.w_l.push(self.zero_var);
         self.w_r.push(self.zero_var);
         self.w_o.push(self.zero_var);
@@ -198,20 +197,25 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::{batch_test, constraint_system::helper::*};
+    use crate::{
+        batch_test, commitment::HomomorphicCommitment,
+        constraint_system::helper::*,
+    };
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
-
-    fn test_range_constraint<E, P>()
+    use ark_ec::models::TEModelParameters;
+    use ark_ff::PrimeField;
+    fn test_range_constraint<F, P, PC>()
     where
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
+        F: PrimeField,
+        P: TEModelParameters<BaseField = F>,
+        PC: HomomorphicCommitment<F>,
     {
         // Should fail as the number is not 32 bits
-        let res = gadget_tester(
-            |composer: &mut StandardComposer<E, P>| {
-                let witness = composer
-                    .add_input(E::Fr::from((u32::max_value() as u64) + 1));
+        let res = gadget_tester::<F, P, PC>(
+            |composer: &mut StandardComposer<F, P>| {
+                let witness =
+                    composer.add_input(F::from((u32::max_value() as u64) + 1));
                 composer.range_gate(witness, 32);
             },
             200,
@@ -219,9 +223,9 @@ mod test {
         assert!(res.is_err());
 
         // Should fail as number is greater than 32 bits
-        let res = gadget_tester(
-            |composer: &mut StandardComposer<E, P>| {
-                let witness = composer.add_input(E::Fr::from(u64::max_value()));
+        let res = gadget_tester::<F, P, PC>(
+            |composer: &mut StandardComposer<F, P>| {
+                let witness = composer.add_input(F::from(u64::max_value()));
                 composer.range_gate(witness, 32);
             },
             200,
@@ -229,9 +233,9 @@ mod test {
         assert!(res.is_err());
 
         // Should pass as the number is within 34 bits
-        let res = gadget_tester(
-            |composer: &mut StandardComposer<E, P>| {
-                let witness = composer.add_input(E::Fr::from(2u64.pow(34) - 1));
+        let res = gadget_tester::<F, P, PC>(
+            |composer: &mut StandardComposer<F, P>| {
+                let witness = composer.add_input(F::from(2u64.pow(34) - 1));
                 composer.range_gate(witness, 34);
             },
             200,
@@ -239,16 +243,17 @@ mod test {
         assert!(res.is_ok());
     }
 
-    fn test_odd_bit_range<E, P>()
+    fn test_odd_bit_range<F, P, PC>()
     where
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
+        F: PrimeField,
+        P: TEModelParameters<BaseField = F>,
+        PC: HomomorphicCommitment<F>,
     {
         // Should fail as the number we we need a even number of bits
-        let _ok = gadget_tester(
-            |composer: &mut StandardComposer<E, P>| {
+        let _ok = gadget_tester::<F, P, PC>(
+            |composer: &mut StandardComposer<F, P>| {
                 let witness =
-                    composer.add_input(E::Fr::from(u32::max_value() as u64));
+                    composer.add_input(F::from(u32::max_value() as u64));
                 composer.range_gate(witness, 33);
             },
             200,
@@ -260,8 +265,7 @@ mod test {
         [test_range_constraint],
         [test_odd_bit_range]
         => (
-            Bls12_381,
-            ark_ed_on_bls12_381::EdwardsParameters
+            Bls12_381, ark_ed_on_bls12_381::EdwardsParameters
         )
     );
 
@@ -270,8 +274,7 @@ mod test {
         [test_range_constraint],
         [test_odd_bit_range]
         => (
-            Bls12_377,
-            ark_ed_on_bls12_377::EdwardsParameters
+            Bls12_377, ark_ed_on_bls12_377::EdwardsParameters
         )
     );
 }

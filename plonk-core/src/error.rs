@@ -15,8 +15,8 @@ pub enum Error {
     InvalidEvalDomainSize {
         /// Log size of the group
         log_size_of_group: u32,
-        /// Two adacity generated
-        adacity: u32,
+        /// Two adicity generated
+        adicity: u32,
     },
 
     // Prover/Verifier errors
@@ -42,7 +42,7 @@ pub enum Error {
     /// Polynomial Commitment errors
     PCError {
         /// Polynomial Commitment errors
-        error: ark_poly_commit::error::Error,
+        error: String,
     },
 
     // KZG10 errors
@@ -84,7 +84,23 @@ pub enum Error {
 
 impl From<ark_poly_commit::error::Error> for Error {
     fn from(error: ark_poly_commit::error::Error) -> Self {
-        Self::PCError { error }
+        Self::PCError {
+            error: format!("Polynomial Commitment Error: {:?}", error),
+        }
+    }
+}
+
+/// Convert an ark_poly_commit error
+pub fn to_pc_error<F, PC>(error: PC::Error) -> Error
+where
+    F: ark_ff::Field,
+    PC: ark_poly_commit::PolynomialCommitment<
+        F,
+        ark_poly::univariate::DensePolynomial<F>,
+    >,
+{
+    Error::PCError {
+        error: format!("Polynomial Commitment Error: {:?}", error),
     }
 }
 
@@ -93,12 +109,12 @@ impl std::fmt::Display for Error {
         match self {
             Self::InvalidEvalDomainSize {
                 log_size_of_group,
-                adacity,
+                adicity,
             } => write!(
                 f,
-                "Log-size of the EvaluationDomain group > TWO_ADACITY\
-            Size: {:?} > TWO_ADACITY = {:?}",
-                log_size_of_group, adacity
+                "Log-size of the EvaluationDomain group > TWO_ADICITY\
+            Size: {:?} > TWO_ADICITY = {:?}",
+                log_size_of_group, adicity
             ),
             Self::ProofVerificationError => {
                 write!(f, "proof verification failed")

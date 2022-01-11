@@ -10,29 +10,28 @@
 //! This module contains the implementation of the `StandardComposer`s
 //! `Proof` structure and it's methods.
 
-use crate::proof_system::ecc::CurveAddition;
-use crate::proof_system::ecc::FixedBaseScalarMul;
-use crate::proof_system::linearisation_poly::ProofEvaluations;
-use crate::proof_system::logic::Logic;
-use crate::proof_system::range::Range;
-use crate::proof_system::GateConstraint;
-use crate::proof_system::VerifierKey as PlonkVerifierKey;
-use crate::transcript::TranscriptProtocol;
-use crate::util;
-use crate::util::EvaluationDomainExt;
-use crate::{error::Error, transcript::TranscriptWrapper};
-use ark_ec::{msm::VariableBaseMSM, AffineCurve, TEModelParameters};
-use ark_ec::{PairingEngine, ProjectiveCurve};
-use ark_ff::{fields::batch_inversion, Field, PrimeField};
-use ark_poly::univariate::DensePolynomial;
+use crate::{
+    commitment::HomomorphicCommitment,
+    error::Error,
+    label_commitment,
+    proof_system::{
+        ecc::{CurveAddition, FixedBaseScalarMul},
+        linearisation_poly::ProofEvaluations,
+        logic::Logic,
+        range::Range,
+        GateConstraint, VerifierKey as PlonkVerifierKey,
+    },
+    transcript::TranscriptProtocol,
+    util::EvaluationDomainExt,
+};
+use ark_ec::TEModelParameters;
+
+use ark_ff::{fields::batch_inversion, FftField, PrimeField};
 use ark_poly::{EvaluationDomain, GeneralEvaluationDomain};
-use ark_poly_commit::kzg10;
-use ark_poly_commit::kzg10::{Commitment, VerifierKey, KZG10};
 use ark_serialize::{
     CanonicalDeserialize, CanonicalSerialize, Read, SerializationError, Write,
 };
-use core::marker::PhantomData;
-use rand_core::OsRng;
+use merlin::Transcript;
 
 /// A Proof is a composition of `Commitment`s to the Witness, Permutation,
 /// Quotient, Shifted and Opening polynomials as well as the
@@ -46,73 +45,77 @@ use rand_core::OsRng;
 /// construct the Proof.
 #[derive(CanonicalDeserialize, CanonicalSerialize, derivative::Derivative)]
 #[derivative(
-    Clone(bound = ""),
-    Debug(bound = ""),
-    Default(bound = ""),
-    Eq(bound = ""),
-    PartialEq(bound = "")
+    Clone(bound = "PC::Commitment: Clone, PC::Proof: Clone"),
+    Debug(
+        bound = "PC::Commitment: std::fmt::Debug, PC::Proof: std::fmt::Debug"
+    ),
+    Default(bound = "PC::Commitment: Default, PC::Proof: Default"),
+    Eq(bound = "PC::Commitment: Eq, PC::Proof: Eq"),
+    PartialEq(bound = "PC::Commitment: PartialEq, PC::Proof: PartialEq")
 )]
-pub struct Proof<E, P>
+pub struct Proof<F, PC>
 where
-    E: PairingEngine,
-    P: TEModelParameters<BaseField = E::Fr>,
+    F: PrimeField,
+    PC: HomomorphicCommitment<F>,
 {
     /// Commitment to the witness polynomial for the left wires.
-    pub(crate) a_comm: Commitment<E>,
+    pub(crate) a_comm: PC::Commitment,
 
     /// Commitment to the witness polynomial for the right wires.
-    pub(crate) b_comm: Commitment<E>,
+    pub(crate) b_comm: PC::Commitment,
 
     /// Commitment to the witness polynomial for the output wires.
-    pub(crate) c_comm: Commitment<E>,
+    pub(crate) c_comm: PC::Commitment,
 
     /// Commitment to the witness polynomial for the fourth wires.
-    pub(crate) d_comm: Commitment<E>,
+    pub(crate) d_comm: PC::Commitment,
 
     /// Commitment to the permutation polynomial.
-    pub(crate) z_comm: Commitment<E>,
+    pub(crate) z_comm: PC::Commitment,
 
     /// Commitment to the quotient polynomial.
-    pub(crate) t_1_comm: Commitment<E>,
+    pub(crate) t_1_comm: PC::Commitment,
 
     /// Commitment to the quotient polynomial.
-    pub(crate) t_2_comm: Commitment<E>,
+    pub(crate) t_2_comm: PC::Commitment,
 
     /// Commitment to the quotient polynomial.
-    pub(crate) t_3_comm: Commitment<E>,
+    pub(crate) t_3_comm: PC::Commitment,
 
     /// Commitment to the quotient polynomial.
-    pub(crate) t_4_comm: Commitment<E>,
+    pub(crate) t_4_comm: PC::Commitment,
 
-    /// Commitment to the opening proof polynomial.
-    pub(crate) w_z_comm: Commitment<E>,
+    /// Batch opening proof of the aggregated witnesses
+    pub aw_opening: PC::Proof,
 
-    /// Commitment to the shifted opening proof polynomial.
-    pub(crate) w_zw_comm: Commitment<E>,
+    /// Batch opening proof of the shifted aggregated witnesses
+    pub saw_opening: PC::Proof,
 
     /// Subset of all of the evaluations added to the proof.
-    pub(crate) evaluations: ProofEvaluations<E::Fr>,
-
-    /// Type Parameter Marker
-    pub(crate) __: PhantomData<P>,
+    pub(crate) evaluations: ProofEvaluations<F>,
 }
 
-impl<E, P> Proof<E, P>
+impl<F, PC> Proof<F, PC>
 where
-    E: PairingEngine,
-    P: TEModelParameters<BaseField = E::Fr>,
+    F: PrimeField,
+    PC: HomomorphicCommitment<F>,
 {
     /// Performs the verification of a [`Proof`] returning a boolean result.
-    pub(crate) fn verify(
+    pub(crate) fn verify<P>(
         &self,
-        plonk_verifier_key: &PlonkVerifierKey<E, P>,
-        transcript: &mut TranscriptWrapper<E>,
-        verifier_key: &VerifierKey<E>,
-        pub_inputs: &[E::Fr],
-    ) -> Result<(), Error> {
+        plonk_verifier_key: &PlonkVerifierKey<F, PC>,
+        transcript: &mut Transcript,
+        verifier_key: &PC::VerifierKey,
+        pub_inputs: &[F],
+    ) -> Result<(), Error>
+    where
+        P: TEModelParameters<BaseField = F>,
+    {
         let domain =
-            GeneralEvaluationDomain::<E::Fr>::new(plonk_verifier_key.n)
-                .unwrap();
+            GeneralEvaluationDomain::<F>::new(plonk_verifier_key.n).ok_or(Error::InvalidEvalDomainSize {
+                log_size_of_group: plonk_verifier_key.n.trailing_zeros(),
+                adicity: <<F as FftField>::FftParams as ark_ff::FftParameters>::TWO_ADICITY,
+            })?;
 
         // Subgroup checks are done when the proof is deserialised.
 
@@ -124,20 +127,20 @@ where
         // same challenges
         //
         // Add commitment to witness polynomials to transcript
-        transcript.append_commitment(b"w_l", &self.a_comm);
-        transcript.append_commitment(b"w_r", &self.b_comm);
-        transcript.append_commitment(b"w_o", &self.c_comm);
-        transcript.append_commitment(b"w_4", &self.d_comm);
+        transcript.append(b"w_l", &self.a_comm);
+        transcript.append(b"w_r", &self.b_comm);
+        transcript.append(b"w_o", &self.c_comm);
+        transcript.append(b"w_4", &self.d_comm);
 
         // Compute beta and gamma challenges
         let beta = transcript.challenge_scalar(b"beta");
-        transcript.append_scalar(b"beta", &beta);
+        transcript.append(b"beta", &beta);
         let gamma = transcript.challenge_scalar(b"gamma");
 
         assert!(beta != gamma, "challenges must be different");
 
         // Add commitment to permutation polynomial to transcript
-        transcript.append_commitment(b"z", &self.z_comm);
+        transcript.append(b"z", &self.z_comm);
 
         // Compute quotient challenge
         let alpha = transcript.challenge_scalar(b"alpha");
@@ -151,10 +154,10 @@ where
             transcript.challenge_scalar(b"variable base separation challenge");
 
         // Add commitment to quotient polynomial to transcript
-        transcript.append_commitment(b"t_1", &self.t_1_comm);
-        transcript.append_commitment(b"t_2", &self.t_2_comm);
-        transcript.append_commitment(b"t_3", &self.t_3_comm);
-        transcript.append_commitment(b"t_4", &self.t_4_comm);
+        transcript.append(b"t_1", &self.t_1_comm);
+        transcript.append(b"t_2", &self.t_2_comm);
+        transcript.append(b"t_3", &self.t_3_comm);
+        transcript.append(b"t_4", &self.t_4_comm);
 
         // Compute evaluation point challenge
         let z_challenge = transcript.challenge_scalar(b"z");
@@ -186,36 +189,28 @@ where
             self.compute_quotient_commitment(&z_challenge, domain.size());
 
         // Add evaluations to transcript
-        transcript.append_scalar(b"a_eval", &self.evaluations.a_eval);
-        transcript.append_scalar(b"b_eval", &self.evaluations.b_eval);
-        transcript.append_scalar(b"c_eval", &self.evaluations.c_eval);
-        transcript.append_scalar(b"d_eval", &self.evaluations.d_eval);
-        transcript.append_scalar(b"a_next_eval", &self.evaluations.a_next_eval);
-        transcript.append_scalar(b"b_next_eval", &self.evaluations.b_next_eval);
-        transcript.append_scalar(b"d_next_eval", &self.evaluations.d_next_eval);
+        transcript.append(b"a_eval", &self.evaluations.a_eval);
+        transcript.append(b"b_eval", &self.evaluations.b_eval);
+        transcript.append(b"c_eval", &self.evaluations.c_eval);
+        transcript.append(b"d_eval", &self.evaluations.d_eval);
+        transcript.append(b"a_next_eval", &self.evaluations.a_next_eval);
+        transcript.append(b"b_next_eval", &self.evaluations.b_next_eval);
+        transcript.append(b"d_next_eval", &self.evaluations.d_next_eval);
+        transcript.append(b"left_sig_eval", &self.evaluations.left_sigma_eval);
         transcript
-            .append_scalar(b"left_sig_eval", &self.evaluations.left_sigma_eval);
-        transcript.append_scalar(
-            b"right_sig_eval",
-            &self.evaluations.right_sigma_eval,
-        );
+            .append(b"right_sig_eval", &self.evaluations.right_sigma_eval);
+        transcript.append(b"out_sig_eval", &self.evaluations.out_sigma_eval);
+        transcript.append(b"q_arith_eval", &self.evaluations.q_arith_eval);
+        transcript.append(b"q_c_eval", &self.evaluations.q_c_eval);
+        transcript.append(b"q_l_eval", &self.evaluations.q_l_eval);
+        transcript.append(b"q_r_eval", &self.evaluations.q_r_eval);
+        transcript.append(b"perm_eval", &self.evaluations.permutation_eval);
+        transcript.append(b"t_eval", &t_eval);
         transcript
-            .append_scalar(b"out_sig_eval", &self.evaluations.out_sigma_eval);
-        transcript
-            .append_scalar(b"q_arith_eval", &self.evaluations.q_arith_eval);
-        transcript.append_scalar(b"q_c_eval", &self.evaluations.q_c_eval);
-        transcript.append_scalar(b"q_l_eval", &self.evaluations.q_l_eval);
-        transcript.append_scalar(b"q_r_eval", &self.evaluations.q_r_eval);
-        transcript
-            .append_scalar(b"perm_eval", &self.evaluations.permutation_eval);
-        transcript.append_scalar(b"t_eval", &t_eval);
-        transcript.append_scalar(
-            b"r_eval",
-            &self.evaluations.linearisation_polynomial_eval,
-        );
+            .append(b"r_eval", &self.evaluations.linearisation_polynomial_eval);
 
         // Compute linearisation commitment
-        let r_comm = self.compute_linearisation_commitment(
+        let lin_comm = self.compute_linearisation_commitment::<P>(
             alpha,
             beta,
             gamma,
@@ -243,117 +238,92 @@ where
 
         // Reconstruct the Aggregated Proof commitments and evals
         // The proof consists of the witness commitment with no blinder
-        let (aggregate_proof_commitment, aggregate_proof_eval) = self
-            .gen_aggregate_proof(
-                t_eval,
-                t_comm,
-                r_comm,
-                plonk_verifier_key,
-                transcript,
-            );
-        let aggregate_proof = kzg10::Proof {
-            w: self.w_z_comm.0,
-            random_v: None,
-        };
 
-        // Reconstruct the Aggregated Shift Proof commitments and evals
-        // The proof consists of the witness commitment with no blinder
-        let (aggregate_shift_proof_commitment, aggregate_shift_proof_eval) =
-            self.gen_shift_aggregate_proof(transcript);
+        // Compute aggregate witness to polynomials evaluated at the evaluation
+        // challenge `z`
+        let aw_challenge: F = transcript.challenge_scalar(b"aggregate_witness");
 
-        let aggregate_shift_proof = kzg10::Proof {
-            w: self.w_zw_comm.0,
-            random_v: None,
-        };
+        let aw_commits = [
+            label_commitment!(t_comm),
+            label_commitment!(lin_comm),
+            label_commitment!(plonk_verifier_key.permutation.left_sigma),
+            label_commitment!(plonk_verifier_key.permutation.right_sigma),
+            label_commitment!(plonk_verifier_key.permutation.out_sigma),
+            label_commitment!(self.a_comm),
+            label_commitment!(self.b_comm),
+            label_commitment!(self.c_comm),
+            label_commitment!(self.d_comm),
+        ];
 
-        // Add commitment to openings to transcript
-        transcript.append_commitment(b"w_z", &self.w_z_comm);
-        transcript.append_commitment(b"w_z_w", &self.w_zw_comm);
+        let aw_evals = [
+            t_eval,
+            self.evaluations.linearisation_polynomial_eval,
+            self.evaluations.left_sigma_eval,
+            self.evaluations.right_sigma_eval,
+            self.evaluations.out_sigma_eval,
+            self.evaluations.a_eval,
+            self.evaluations.b_eval,
+            self.evaluations.c_eval,
+            self.evaluations.d_eval,
+        ];
 
-        let group_gen = domain.group_gen();
+        let saw_challenge: F =
+            transcript.challenge_scalar(b"aggregate_witness");
 
-        match KZG10::<_, DensePolynomial<_>>::batch_check(
+        let saw_commits = [
+            label_commitment!(self.z_comm),
+            label_commitment!(self.a_comm),
+            label_commitment!(self.b_comm),
+            label_commitment!(self.d_comm),
+        ];
+        let saw_evals = [
+            self.evaluations.permutation_eval,
+            self.evaluations.a_next_eval,
+            self.evaluations.b_next_eval,
+            self.evaluations.d_next_eval,
+        ];
+        match PC::check(
             verifier_key,
-            &[aggregate_proof_commitment, aggregate_shift_proof_commitment],
-            &[z_challenge, (z_challenge * group_gen)],
-            &[aggregate_proof_eval, aggregate_shift_proof_eval],
-            &[aggregate_proof, aggregate_shift_proof],
-            &mut OsRng,
+            &aw_commits,
+            &z_challenge,
+            aw_evals,
+            &self.aw_opening,
+            aw_challenge,
+            None,
         ) {
             Ok(true) => Ok(()),
             Ok(false) => Err(Error::ProofVerificationError),
             Err(e) => panic!("{:?}", e),
         }
+        .and_then(|_| {
+            match PC::check(
+                verifier_key,
+                &saw_commits,
+                &(z_challenge * domain.element(1)),
+                saw_evals,
+                &self.saw_opening,
+                saw_challenge,
+                None,
+            ) {
+                Ok(true) => Ok(()),
+                Ok(false) => Err(Error::ProofVerificationError),
+                Err(e) => panic!("{:?}", e),
+            }
+        })
     }
-
-    // TODO: Doc this
-    fn gen_aggregate_proof(
-        &self,
-        t_eval: E::Fr,
-        t_comm: Commitment<E>,
-        r_comm: Commitment<E>,
-        plonk_verifier_key: &PlonkVerifierKey<E, P>,
-        transcript: &mut TranscriptWrapper<E>,
-    ) -> (Commitment<E>, E::Fr) {
-        let challenge = transcript.challenge_scalar(b"aggregate_witness");
-        util::linear_combination(
-            &[
-                t_eval,
-                self.evaluations.linearisation_polynomial_eval,
-                self.evaluations.a_eval,
-                self.evaluations.b_eval,
-                self.evaluations.c_eval,
-                self.evaluations.d_eval,
-                self.evaluations.left_sigma_eval,
-                self.evaluations.right_sigma_eval,
-                self.evaluations.out_sigma_eval,
-            ],
-            &[
-                t_comm,
-                r_comm,
-                self.a_comm,
-                self.b_comm,
-                self.c_comm,
-                self.d_comm,
-                plonk_verifier_key.permutation.left_sigma,
-                plonk_verifier_key.permutation.right_sigma,
-                plonk_verifier_key.permutation.out_sigma,
-            ],
-            challenge,
-        )
-    }
-
-    // TODO: Doc this
-    fn gen_shift_aggregate_proof(
-        &self,
-        transcript: &mut TranscriptWrapper<E>,
-    ) -> (Commitment<E>, E::Fr) {
-        let challenge = transcript.challenge_scalar(b"aggregate_witness");
-        util::linear_combination(
-            &[
-                self.evaluations.permutation_eval,
-                self.evaluations.a_next_eval,
-                self.evaluations.b_next_eval,
-                self.evaluations.d_next_eval,
-            ],
-            &[self.z_comm, self.a_comm, self.b_comm, self.d_comm],
-            challenge,
-        )
-    }
-
     // TODO: Doc this
     fn compute_quotient_evaluation(
         &self,
-        domain: &GeneralEvaluationDomain<E::Fr>,
-        pub_inputs: &[E::Fr],
-        alpha: E::Fr,
-        beta: E::Fr,
-        gamma: E::Fr,
-        z_challenge: E::Fr,
-        z_h_eval: E::Fr,
-        l1_eval: E::Fr,
-        z_hat_eval: E::Fr,
-    ) -> E::Fr {
+        domain: &GeneralEvaluationDomain<F>,
+        pub_inputs: &[F],
+        alpha: F,
+        beta: F,
+        gamma: F,
+        z_challenge: F,
+        z_h_eval: F,
+        l1_eval: F,
+        z_hat_eval: F,
+    ) -> F {
         // Compute the public input polynomial evaluated at `z_challenge`
         let pi_eval = compute_barycentric_eval(pub_inputs, z_challenge, domain);
 
@@ -384,38 +354,45 @@ where
         // Return t_eval
         (a - b - c) * z_h_eval.inverse().unwrap()
     }
-
     /// Computes the quotient polynomial commitment at `z_challenge`.
     fn compute_quotient_commitment(
         &self,
-        z_challenge: &E::Fr,
+        z_challenge: &F,
         n: usize,
-    ) -> Commitment<E> {
+    ) -> PC::Commitment {
         let n = n as u64;
         let z_n = z_challenge.pow(&[n, 0, 0, 0]);
         let z_two_n = z_challenge.pow(&[2 * n, 0, 0, 0]);
         let z_three_n = z_challenge.pow(&[3 * n, 0, 0, 0]);
-        let t_comm = self.t_1_comm.0.into_projective()
-            + self.t_2_comm.0.mul(z_n.into_repr())
-            + self.t_3_comm.0.mul(z_two_n.into_repr())
-            + self.t_4_comm.0.mul(z_three_n.into_repr());
-        Commitment(t_comm.into_affine())
+
+        PC::multi_scalar_mul(
+            &[
+                self.t_1_comm.clone(),
+                self.t_2_comm.clone(),
+                self.t_3_comm.clone(),
+                self.t_4_comm.clone(),
+            ],
+            &[F::one(), z_n, z_two_n, z_three_n],
+        )
     }
 
     /// Computes the commitment to `[r]_1`.
-    fn compute_linearisation_commitment(
+    fn compute_linearisation_commitment<P>(
         &self,
-        alpha: E::Fr,
-        beta: E::Fr,
-        gamma: E::Fr,
-        range_sep_challenge: E::Fr,
-        logic_sep_challenge: E::Fr,
-        fixed_base_sep_challenge: E::Fr,
-        var_base_sep_challenge: E::Fr,
-        z_challenge: E::Fr,
-        l1_eval: E::Fr,
-        plonk_verifier_key: &PlonkVerifierKey<E, P>,
-    ) -> Commitment<E> {
+        alpha: F,
+        beta: F,
+        gamma: F,
+        range_sep_challenge: F,
+        logic_sep_challenge: F,
+        fixed_base_sep_challenge: F,
+        var_base_sep_challenge: F,
+        z_challenge: F,
+        l1_eval: F,
+        plonk_verifier_key: &PlonkVerifierKey<F, PC>,
+    ) -> PC::Commitment
+    where
+        P: TEModelParameters<BaseField = F>,
+    {
         let mut scalars = Vec::with_capacity(6);
         let mut points = Vec::with_capacity(6);
 
@@ -426,39 +403,36 @@ where
                 &mut points,
                 &self.evaluations,
             );
-
-        Range::extend_linearisation_commitment::<E>(
-            plonk_verifier_key.range_selector_commitment,
+        Range::extend_linearisation_commitment::<PC>(
+            &plonk_verifier_key.range_selector_commitment,
             range_sep_challenge,
             &self.evaluations,
             &mut scalars,
             &mut points,
         );
 
-        Logic::extend_linearisation_commitment::<E>(
-            plonk_verifier_key.logic_selector_commitment,
+        Logic::extend_linearisation_commitment::<PC>(
+            &plonk_verifier_key.logic_selector_commitment,
             logic_sep_challenge,
             &self.evaluations,
             &mut scalars,
             &mut points,
         );
 
-        FixedBaseScalarMul::<_, P>::extend_linearisation_commitment::<E>(
-            plonk_verifier_key.fixed_group_add_selector_commitment,
+        FixedBaseScalarMul::<_, P>::extend_linearisation_commitment::<PC>(
+            &plonk_verifier_key.fixed_group_add_selector_commitment,
             fixed_base_sep_challenge,
             &self.evaluations,
             &mut scalars,
             &mut points,
         );
-
-        CurveAddition::<_, P>::extend_linearisation_commitment::<E>(
-            plonk_verifier_key.variable_group_add_selector_commitment,
+        CurveAddition::<_, P>::extend_linearisation_commitment::<PC>(
+            &plonk_verifier_key.variable_group_add_selector_commitment,
             var_base_sep_challenge,
             &self.evaluations,
             &mut scalars,
             &mut points,
         );
-
         plonk_verifier_key
             .permutation
             .compute_linearisation_commitment(
@@ -468,15 +442,9 @@ where
                 z_challenge,
                 (alpha, beta, gamma),
                 l1_eval,
-                self.z_comm.0,
+                self.z_comm.clone(),
             );
-
-        let scalars_repr =
-            scalars.iter().map(E::Fr::into_repr).collect::<Vec<_>>();
-
-        Commitment(
-            VariableBaseMSM::multi_scalar_mul(&points, &scalars_repr).into(),
-        )
+        PC::multi_scalar_mul(&points, &scalars)
     }
 }
 
@@ -556,74 +524,45 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::batch_test;
+    use crate::batch_test_kzg;
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
-    use ark_ff::UniformRand;
-    use rand_core::OsRng;
 
-    fn test_serde_proof<E, P>()
+    fn test_serde_proof<F, P, PC>()
     where
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
+        F: PrimeField,
+        P: TEModelParameters<BaseField = F>,
+        PC: HomomorphicCommitment<F>,
+        Proof<F, PC>: std::fmt::Debug + PartialEq,
     {
-        let proof = Proof::<E, P> {
-            a_comm: Default::default(),
-            b_comm: Default::default(),
-            c_comm: Default::default(),
-            d_comm: Default::default(),
-            z_comm: Default::default(),
-            t_1_comm: Default::default(),
-            t_2_comm: Default::default(),
-            t_3_comm: Default::default(),
-            t_4_comm: Default::default(),
-            w_z_comm: Default::default(),
-            w_zw_comm: Default::default(),
-            evaluations: ProofEvaluations {
-                a_eval: E::Fr::rand(&mut OsRng),
-                b_eval: E::Fr::rand(&mut OsRng),
-                c_eval: E::Fr::rand(&mut OsRng),
-                d_eval: E::Fr::rand(&mut OsRng),
-                a_next_eval: E::Fr::rand(&mut OsRng),
-                b_next_eval: E::Fr::rand(&mut OsRng),
-                d_next_eval: E::Fr::rand(&mut OsRng),
-                q_arith_eval: E::Fr::rand(&mut OsRng),
-                q_c_eval: E::Fr::rand(&mut OsRng),
-                q_l_eval: E::Fr::rand(&mut OsRng),
-                q_r_eval: E::Fr::rand(&mut OsRng),
-                left_sigma_eval: E::Fr::rand(&mut OsRng),
-                right_sigma_eval: E::Fr::rand(&mut OsRng),
-                out_sigma_eval: E::Fr::rand(&mut OsRng),
-                linearisation_polynomial_eval: E::Fr::rand(&mut OsRng),
-                permutation_eval: E::Fr::rand(&mut OsRng),
-            },
-            __: PhantomData,
-        };
+        let proof =
+            crate::constraint_system::helper::gadget_tester::<F, P, PC>(
+                |_: &mut crate::constraint_system::StandardComposer<F, P>| {},
+                200,
+            )
+            .expect("Empty circuit failed");
 
         let mut proof_bytes = vec![];
         proof.serialize(&mut proof_bytes).unwrap();
 
         let obtained_proof =
-            Proof::deserialize(proof_bytes.as_slice()).unwrap();
+            Proof::<F, PC>::deserialize(proof_bytes.as_slice()).unwrap();
 
-        assert!(proof == obtained_proof);
+        assert_eq!(proof, obtained_proof);
     }
 
     // Bls12-381 tests
-    batch_test!(
+    batch_test_kzg!(
         [test_serde_proof],
         [] => (
-            Bls12_381,
-            ark_ed_on_bls12_381::EdwardsParameters
+            Bls12_381, ark_ed_on_bls12_381::EdwardsParameters
         )
     );
-
     // Bls12-377 tests
-    batch_test!(
+    batch_test_kzg!(
         [test_serde_proof],
         [] => (
-            Bls12_377,
-            ark_ed_on_bls12_377::EdwardsParameters
+            Bls12_377, ark_ed_on_bls12_377::EdwardsParameters
         )
     );
 }
