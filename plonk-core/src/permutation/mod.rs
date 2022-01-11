@@ -9,35 +9,28 @@
 pub(crate) mod constants;
 
 use crate::constraint_system::{Variable, WireData};
-use ark_ff::PrimeField;
-use ark_poly::domain::{EvaluationDomain, GeneralEvaluationDomain};
-use ark_poly::{univariate::DensePolynomial, UVPolynomial};
+use ark_ff::FftField;
+use ark_poly::{
+    domain::{EvaluationDomain, GeneralEvaluationDomain},
+    univariate::DensePolynomial,
+    UVPolynomial,
+};
 use constants::*;
-use core::marker::PhantomData;
 use hashbrown::HashMap;
 use itertools::izip;
-use rand_core::RngCore;
+use rand::RngCore;
 
 /// Permutation provides the necessary state information and functions
 /// to create the permutation polynomial. In the literature, Z(X) is the
 /// "accumulator", this is what this codebase calls the permutation polynomial.
 #[derive(derivative::Derivative)]
 #[derivative(Debug)]
-pub(crate) struct Permutation<F>
-where
-    F: PrimeField,
-{
+pub(crate) struct Permutation {
     /// Maps a variable to the wires that it is associated to.
     pub variable_map: HashMap<Variable, Vec<WireData>>,
-
-    /// Type Parameter Marker
-    __: PhantomData<F>,
 }
 
-impl<F> Permutation<F>
-where
-    F: PrimeField,
-{
+impl Permutation {
     /// Creates a Permutation struct with an expected capacity of zero.
     pub fn new() -> Self {
         Permutation::with_capacity(0)
@@ -47,7 +40,6 @@ where
     pub fn with_capacity(expected_size: usize) -> Self {
         Self {
             variable_map: HashMap::with_capacity(expected_size),
-            __: PhantomData,
         }
     }
 
@@ -105,7 +97,6 @@ where
         let vec_wire_data = self.variable_map.get_mut(&var).unwrap();
         vec_wire_data.push(wire_data);
     }
-
     /// Performs shift by one permutation and computes `sigma_1`, `sigma_2` and
     /// `sigma_3`, `sigma_4` permutations from the variable maps.
     pub(super) fn compute_sigma_permutations(
@@ -144,8 +135,9 @@ where
 
         sigmas
     }
-
-    fn compute_permutation_lagrange(
+}
+impl Permutation {
+    fn compute_permutation_lagrange<F: FftField>(
         &self,
         sigma_mapping: &[WireData],
         domain: &GeneralEvaluationDomain<F>,
@@ -179,7 +171,7 @@ where
 
     /// Computes the sigma polynomials which are used to build the permutation
     /// polynomial.
-    pub fn compute_sigma_polynomials(
+    pub fn compute_sigma_polynomials<F: FftField>(
         &mut self,
         n: usize,
         domain: &GeneralEvaluationDomain<F>,
@@ -222,7 +214,7 @@ where
     }
 
     #[allow(dead_code)]
-    fn compute_slow_permutation_poly<I>(
+    fn compute_slow_permutation_poly<I, F: FftField>(
         &self,
         domain: &GeneralEvaluationDomain<F>,
         w_l: I,
@@ -412,7 +404,7 @@ where
     }
 
     #[allow(dead_code)]
-    fn compute_fast_permutation_poly(
+    fn compute_fast_permutation_poly<F: FftField>(
         &self,
         domain: &GeneralEvaluationDomain<F>,
         w_l: &[F],
@@ -635,11 +627,17 @@ where
 
     // These are the formulas for the irreducible factors used in the product
     // argument
-    fn numerator_irreducible(root: F, w: F, k: F, beta: F, gamma: F) -> F {
+    fn numerator_irreducible<F: FftField>(
+        root: F,
+        w: F,
+        k: F,
+        beta: F,
+        gamma: F,
+    ) -> F {
         w + beta * k * root + gamma
     }
 
-    fn denominator_irreducible(
+    fn denominator_irreducible<F: FftField>(
         _root: F,
         w: F,
         sigma: F,
@@ -652,7 +650,7 @@ where
     // This can be adapted into a general product argument
     // for any number of wires, with specific formulas defined
     // in the numerator_irreducible and denominator_irreducible functions
-    pub fn compute_permutation_poly(
+    pub fn compute_permutation_poly<F: FftField>(
         &self,
         domain: &GeneralEvaluationDomain<F>,
         wires: (&[F], &[F], &[F], &[F]),
@@ -758,43 +756,41 @@ where
 /// The `bls_12-381` library does not provide a `random` method for `F`.
 /// We wil use this helper function to compensate.
 #[allow(dead_code)]
-pub(crate) fn random_scalar<F: PrimeField, R: RngCore>(rng: &mut R) -> F {
+pub(crate) fn random_scalar<F: FftField, R: RngCore>(rng: &mut R) -> F {
     F::rand(rng)
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::batch_test;
+    use crate::{batch_test_field, batch_test_field_params};
     use crate::{
         constraint_system::StandardComposer, util::EvaluationDomainExt,
     };
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
-    use ark_ff::Field;
-    use ark_ff::UniformRand;
+    use ark_ec::TEModelParameters;
+    use ark_ff::{Field, PrimeField};
     use ark_poly::univariate::DensePolynomial;
     use ark_poly::Polynomial;
-    use num_traits::{One, Zero};
-    // use rand::{rngs::StdRng, SeedableRng};
-    use ark_ec::{PairingEngine, TEModelParameters};
-    use rand_core::OsRng;
+    use rand::rngs::OsRng;
 
-    fn test_multizip_permutation_poly<
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
-    >() {
-        let mut cs: StandardComposer<E, P> =
-            StandardComposer::with_expected_size(4);
+    fn test_multizip_permutation_poly<F, P>()
+    where
+        F: PrimeField,
+        P: TEModelParameters<BaseField = F>,
+    {
+        let mut cs: StandardComposer<F, P> =
+            StandardComposer::<F, P>::with_expected_size(4);
 
-        let zero = E::Fr::zero();
-        let one = E::Fr::one();
+        let zero = F::zero();
+        let one = F::one();
         let two = one + one;
 
-        let x1 = cs.add_input(E::Fr::from(4u64));
-        let x2 = cs.add_input(E::Fr::from(12u64));
-        let x3 = cs.add_input(E::Fr::from(8u64));
-        let x4 = cs.add_input(E::Fr::from(3u64));
+        let x1 = cs.add_input(F::from(4u64));
+        let x2 = cs.add_input(F::from(12u64));
+        let x3 = cs.add_input(F::from(8u64));
+        let x4 = cs.add_input(F::from(3u64));
 
         // x1 * x4 = x2
         cs.poly_gate(x1, x4, x2, one, zero, zero, -one, zero, None);
@@ -809,15 +805,15 @@ mod test {
         cs.poly_gate(x3, x4, x2, one, zero, zero, -two, zero, None);
 
         let domain =
-            GeneralEvaluationDomain::<E::Fr>::new(cs.circuit_size()).unwrap();
-        let pad = vec![E::Fr::zero(); domain.size() - cs.w_l.len()];
-        let mut w_l_scalar: Vec<E::Fr> =
+            GeneralEvaluationDomain::<F>::new(cs.circuit_size()).unwrap();
+        let pad = vec![F::zero(); domain.size() - cs.w_l.len()];
+        let mut w_l_scalar: Vec<F> =
             cs.w_l.iter().map(|v| cs.variables[v]).collect();
-        let mut w_r_scalar: Vec<E::Fr> =
+        let mut w_r_scalar: Vec<F> =
             cs.w_r.iter().map(|v| cs.variables[v]).collect();
-        let mut w_o_scalar: Vec<E::Fr> =
+        let mut w_o_scalar: Vec<F> =
             cs.w_o.iter().map(|v| cs.variables[v]).collect();
-        let mut w_4_scalar: Vec<E::Fr> =
+        let mut w_4_scalar: Vec<F> =
             cs.w_4.iter().map(|v| cs.variables[v]).collect();
 
         w_l_scalar.extend(&pad);
@@ -825,17 +821,17 @@ mod test {
         w_o_scalar.extend(&pad);
         w_4_scalar.extend(&pad);
 
-        let sigmas: Vec<Vec<E::Fr>> = cs
+        let sigmas: Vec<Vec<F>> = cs
             .perm
             .compute_sigma_permutations(7)
             .iter()
             .map(|wd| cs.perm.compute_permutation_lagrange(wd, &domain))
             .collect();
 
-        let beta = E::Fr::rand(&mut OsRng);
-        let gamma = E::Fr::rand(&mut OsRng);
+        let beta = F::rand(&mut OsRng);
+        let gamma = F::rand(&mut OsRng);
 
-        let sigma_polys: Vec<DensePolynomial<E::Fr>> = sigmas
+        let sigma_polys: Vec<DensePolynomial<F>> = sigmas
             .iter()
             .map(|v| DensePolynomial::from_coefficients_vec(domain.ifft(v)))
             .collect();
@@ -871,14 +867,13 @@ mod test {
             ),
         ));
 
-        assert!(mz == old_z);
+        assert_eq!(mz, old_z);
     }
 
-    fn test_permutation_format<
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
-    >() {
-        let mut perm: Permutation<E::Fr> = Permutation::new();
+    #[test]
+    #[allow(non_snake_case)]
+    fn test_permutation_format() {
+        let mut perm: Permutation = Permutation::new();
 
         let num_variables = 10u8;
         for i in 0..num_variables {
@@ -909,11 +904,8 @@ mod test {
         }
     }
 
-    fn test_permutation_compute_sigmas_only_left_wires<
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
-    >() {
-        let mut perm = Permutation::<E::Fr>::new();
+    fn test_permutation_compute_sigmas_only_left_wires<F: FftField>() {
+        let mut perm = Permutation::new();
 
         let var_zero = perm.new_variable();
         let var_two = perm.new_variable();
@@ -979,7 +971,7 @@ mod test {
         assert_eq!(fourth_sigma[3], WireData::Fourth(0));
 
         let domain =
-            GeneralEvaluationDomain::<E::Fr>::new(num_wire_mappings).unwrap();
+            GeneralEvaluationDomain::<F>::new(num_wire_mappings).unwrap();
         let w = domain.group_gen();
         let w_squared = w.pow(&[2, 0, 0, 0]);
         let w_cubed = w.pow(&[3, 0, 0, 0]);
@@ -989,10 +981,10 @@ mod test {
         // Should turn into {1 * K1, w^2, w^3, 1}
         let encoded_left_sigma =
             perm.compute_permutation_lagrange(left_sigma, &domain);
-        assert_eq!(encoded_left_sigma[0], E::Fr::one() * K1::<E::Fr>());
+        assert_eq!(encoded_left_sigma[0], F::one() * K1::<F>());
         assert_eq!(encoded_left_sigma[1], w_squared);
         assert_eq!(encoded_left_sigma[2], w_cubed);
-        assert_eq!(encoded_left_sigma[3], E::Fr::one());
+        assert_eq!(encoded_left_sigma[3], F::one());
 
         // Check the right sigmas have been encoded properly
         // Right_sigma = {L1, R1, R2, R3}
@@ -1000,9 +992,9 @@ mod test {
         let encoded_right_sigma =
             perm.compute_permutation_lagrange(right_sigma, &domain);
         assert_eq!(encoded_right_sigma[0], w);
-        assert_eq!(encoded_right_sigma[1], w * K1::<E::Fr>());
-        assert_eq!(encoded_right_sigma[2], w_squared * K1::<E::Fr>());
-        assert_eq!(encoded_right_sigma[3], w_cubed * K1::<E::Fr>());
+        assert_eq!(encoded_right_sigma[1], w * K1::<F>());
+        assert_eq!(encoded_right_sigma[2], w_squared * K1::<F>());
+        assert_eq!(encoded_right_sigma[3], w_cubed * K1::<F>());
 
         // Check the output sigmas have been encoded properly
         // Out_sigma = {O0, O1, O2, O3}
@@ -1010,31 +1002,26 @@ mod test {
 
         let encoded_output_sigma =
             perm.compute_permutation_lagrange(out_sigma, &domain);
-        assert_eq!(encoded_output_sigma[0], E::Fr::one() * K2::<E::Fr>());
-        assert_eq!(encoded_output_sigma[1], w * K2::<E::Fr>());
-        assert_eq!(encoded_output_sigma[2], w_squared * K2::<E::Fr>());
-        assert_eq!(encoded_output_sigma[3], w_cubed * K2::<E::Fr>());
+        assert_eq!(encoded_output_sigma[0], F::one() * K2::<F>());
+        assert_eq!(encoded_output_sigma[1], w * K2::<F>());
+        assert_eq!(encoded_output_sigma[2], w_squared * K2::<F>());
+        assert_eq!(encoded_output_sigma[3], w_cubed * K2::<F>());
 
         // Check the fourth sigmas have been encoded properly
         // Out_sigma = {F1, F2, F3, F0}
         // Should turn into {w * K3, w^2 * K3, w^3 * K3, 1 * K3}
         let encoded_fourth_sigma =
             perm.compute_permutation_lagrange(fourth_sigma, &domain);
-        assert_eq!(encoded_fourth_sigma[0], w * K3::<E::Fr>());
-        assert_eq!(encoded_fourth_sigma[1], w_squared * K3::<E::Fr>());
-        assert_eq!(encoded_fourth_sigma[2], w_cubed * K3::<E::Fr>());
+        assert_eq!(encoded_fourth_sigma[0], w * K3::<F>());
+        assert_eq!(encoded_fourth_sigma[1], w_squared * K3::<F>());
+        assert_eq!(encoded_fourth_sigma[2], w_cubed * K3::<F>());
         assert_eq!(encoded_fourth_sigma[3], K3());
 
-        let w_l = vec![
-            E::Fr::from(2u64),
-            E::Fr::from(2u64),
-            E::Fr::from(2u64),
-            E::Fr::from(2u64),
-        ];
-        let w_r =
-            vec![E::Fr::from(2_u64), E::Fr::one(), E::Fr::one(), E::Fr::one()];
-        let w_o = vec![E::Fr::one(), E::Fr::one(), E::Fr::one(), E::Fr::one()];
-        let w_4 = vec![E::Fr::one(), E::Fr::one(), E::Fr::one(), E::Fr::one()];
+        let w_l =
+            vec![F::from(2u64), F::from(2u64), F::from(2u64), F::from(2u64)];
+        let w_r = vec![F::from(2_u64), F::one(), F::one(), F::one()];
+        let w_o = vec![F::one(), F::one(), F::one(), F::one()];
+        let w_4 = vec![F::one(), F::one(), F::one(), F::one()];
 
         test_correct_permutation_poly(
             num_wire_mappings,
@@ -1046,11 +1033,8 @@ mod test {
             w_4,
         );
     }
-    fn test_permutation_compute_sigmas<
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
-    >() {
-        let mut perm: Permutation<E::Fr> = Permutation::new();
+    fn test_permutation_compute_sigmas<F: FftField>() {
+        let mut perm: Permutation = Permutation::new();
 
         let var_one = perm.new_variable();
         let var_two = perm.new_variable();
@@ -1118,7 +1102,7 @@ mod test {
             When encoded using w, K1, K2,K3 we have {w * K3, w^2 * K3, w^3 * K3, 1 * K3}
         */
         let domain =
-            GeneralEvaluationDomain::<E::Fr>::new(num_wire_mappings).unwrap();
+            GeneralEvaluationDomain::<F>::new(num_wire_mappings).unwrap();
         let w = domain.group_gen();
         let w_squared = w.pow(&[2, 0, 0, 0]);
         let w_cubed = w.pow(&[3, 0, 0, 0]);
@@ -1126,43 +1110,40 @@ mod test {
         let encoded_left_sigma =
             perm.compute_permutation_lagrange(left_sigma, &domain);
         assert_eq!(encoded_left_sigma[0], K1());
-        assert_eq!(encoded_left_sigma[1], w * K2::<E::Fr>());
-        assert_eq!(encoded_left_sigma[2], w_squared * K1::<E::Fr>());
-        assert_eq!(encoded_left_sigma[3], E::Fr::one() * K2::<E::Fr>());
+        assert_eq!(encoded_left_sigma[1], w * K2::<F>());
+        assert_eq!(encoded_left_sigma[2], w_squared * K1::<F>());
+        assert_eq!(encoded_left_sigma[3], F::one() * K2::<F>());
 
         // check the right sigmas have been encoded properly
         let encoded_right_sigma =
             perm.compute_permutation_lagrange(right_sigma, &domain);
-        assert_eq!(encoded_right_sigma[0], w * K1::<E::Fr>());
-        assert_eq!(encoded_right_sigma[1], w_squared * K2::<E::Fr>());
-        assert_eq!(encoded_right_sigma[2], w_cubed * K2::<E::Fr>());
-        assert_eq!(encoded_right_sigma[3], E::Fr::one());
+        assert_eq!(encoded_right_sigma[0], w * K1::<F>());
+        assert_eq!(encoded_right_sigma[1], w_squared * K2::<F>());
+        assert_eq!(encoded_right_sigma[2], w_cubed * K2::<F>());
+        assert_eq!(encoded_right_sigma[3], F::one());
 
         // check the output sigmas have been encoded properly
         let encoded_output_sigma =
             perm.compute_permutation_lagrange(out_sigma, &domain);
         assert_eq!(encoded_output_sigma[0], w);
         assert_eq!(encoded_output_sigma[1], w_cubed);
-        assert_eq!(encoded_output_sigma[2], w_cubed * K1::<E::Fr>());
+        assert_eq!(encoded_output_sigma[2], w_cubed * K1::<F>());
         assert_eq!(encoded_output_sigma[3], w_squared);
 
         // check the fourth sigmas have been encoded properly
         let encoded_fourth_sigma =
             perm.compute_permutation_lagrange(fourth_sigma, &domain);
-        assert_eq!(encoded_fourth_sigma[0], w * K3::<E::Fr>());
-        assert_eq!(encoded_fourth_sigma[1], w_squared * K3::<E::Fr>());
-        assert_eq!(encoded_fourth_sigma[2], w_cubed * K3::<E::Fr>());
+        assert_eq!(encoded_fourth_sigma[0], w * K3::<F>());
+        assert_eq!(encoded_fourth_sigma[1], w_squared * K3::<F>());
+        assert_eq!(encoded_fourth_sigma[2], w_cubed * K3::<F>());
         assert_eq!(encoded_fourth_sigma[3], K3());
     }
 
-    fn test_basic_slow_permutation_poly<
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
-    >() {
+    fn test_basic_slow_permutation_poly<F: FftField>() {
         let num_wire_mappings = 2;
         let mut perm = Permutation::new();
         let domain =
-            GeneralEvaluationDomain::<E::Fr>::new(num_wire_mappings).unwrap();
+            GeneralEvaluationDomain::<F>::new(num_wire_mappings).unwrap();
 
         let var_one = perm.new_variable();
         let var_two = perm.new_variable();
@@ -1172,10 +1153,10 @@ mod test {
         perm.add_variables_to_map(var_one, var_two, var_three, var_four, 0);
         perm.add_variables_to_map(var_three, var_two, var_one, var_four, 1);
 
-        let w_l = vec![E::Fr::one(), E::Fr::from(3u64)];
-        let w_r = vec![E::Fr::from(2u64), E::Fr::from(2u64)];
-        let w_o = vec![E::Fr::from(3u64), E::Fr::one()];
-        let w_4 = vec![E::Fr::one(), E::Fr::one()];
+        let w_l = vec![F::one(), F::from(3u64)];
+        let w_r = vec![F::from(2u64), F::from(2u64)];
+        let w_o = vec![F::from(3u64), F::one()];
+        let w_4 = vec![F::one(), F::one()];
 
         test_correct_permutation_poly(
             num_wire_mappings,
@@ -1189,16 +1170,16 @@ mod test {
     }
 
     // shifts the polynomials by one root of unity
-    fn shift_poly_by_one<F: PrimeField>(z_coefficients: Vec<F>) -> Vec<F> {
+    fn shift_poly_by_one<F: Field>(z_coefficients: Vec<F>) -> Vec<F> {
         let mut shifted_z_coefficients = z_coefficients;
         shifted_z_coefficients.push(shifted_z_coefficients[0]);
         shifted_z_coefficients.remove(0);
         shifted_z_coefficients
     }
 
-    fn test_correct_permutation_poly<F: PrimeField>(
+    fn test_correct_permutation_poly<F: FftField>(
         n: usize,
-        mut perm: Permutation<F>,
+        mut perm: Permutation,
         domain: &GeneralEvaluationDomain<F>,
         w_l: Vec<F>,
         w_r: Vec<F>,
@@ -1336,32 +1317,48 @@ mod test {
     }
 
     // Test on Bls12-381
-    batch_test!(
-        [test_multizip_permutation_poly,
-        test_permutation_format,
-        test_permutation_compute_sigmas_only_left_wires,
+    batch_test_field!(
+        [test_permutation_compute_sigmas_only_left_wires,
         test_permutation_compute_sigmas,
         test_basic_slow_permutation_poly
         ],
         []
         => (
-        Bls12_381,
-        ark_ed_on_bls12_381::EdwardsParameters
+            Bls12_381
         )
     );
 
     // Test on Bls12-377
-    batch_test!(
-        [test_multizip_permutation_poly,
-        test_permutation_format,
-        test_permutation_compute_sigmas_only_left_wires,
+    batch_test_field!(
+        [test_permutation_compute_sigmas_only_left_wires,
         test_permutation_compute_sigmas,
         test_basic_slow_permutation_poly
         ],
         []
         => (
-        Bls12_377,
-        ark_ed_on_bls12_377::EdwardsParameters
+            Bls12_377
+        )
+    );
+
+    // Test on Bls12-381
+    batch_test_field_params!(
+        [test_multizip_permutation_poly
+        ],
+        []
+        => (
+            Bls12_381,
+            ark_ed_on_bls12_381::EdwardsParameters
+        )
+    );
+
+    // Test on Bls12-377
+    batch_test_field_params!(
+        [test_multizip_permutation_poly
+        ],
+        []
+        => (
+            Bls12_377,
+            ark_ed_on_bls12_377::EdwardsParameters
         )
     );
 }

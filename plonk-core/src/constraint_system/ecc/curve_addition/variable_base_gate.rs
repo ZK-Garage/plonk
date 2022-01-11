@@ -6,17 +6,16 @@
 
 //! Variable-base Curve Addition Gate
 
-use crate::constraint_system::ecc::Point;
-use crate::constraint_system::StandardComposer;
-use ark_ec::models::twisted_edwards_extended::GroupAffine;
-use ark_ec::models::TEModelParameters;
-use ark_ec::PairingEngine;
-use num_traits::{One, Zero};
+use crate::constraint_system::{ecc::Point, StandardComposer};
+use ark_ec::models::{
+    twisted_edwards_extended::GroupAffine as TEGroupAffine, TEModelParameters,
+};
+use ark_ff::PrimeField;
 
-impl<E, P> StandardComposer<E, P>
+impl<F, P> StandardComposer<F, P>
 where
-    E: PairingEngine,
-    P: TEModelParameters<BaseField = E::Fr>,
+    F: PrimeField,
+    P: TEModelParameters<BaseField = F>,
 {
     /// Adds two curve points together using a curve addition gate
     /// Note that since the points are not fixed the generator is not a part of
@@ -24,9 +23,9 @@ where
     /// width of 4.
     pub fn point_addition_gate(
         &mut self,
-        point_a: Point<E, P>,
-        point_b: Point<E, P>,
-    ) -> Point<E, P> {
+        point_a: Point<P>,
+        point_b: Point<P>,
+    ) -> Point<P> {
         // In order to verify that two points were correctly added
         // without going over a degree 4 polynomial, we will need
         // x_1, y_1, x_2, y_2
@@ -43,8 +42,8 @@ where
         let x_2_scalar = self.variables.get(&x_2).unwrap();
         let y_2_scalar = self.variables.get(&y_2).unwrap();
 
-        let p1 = GroupAffine::<P>::new(*x_1_scalar, *y_1_scalar);
-        let p2 = GroupAffine::<P>::new(*x_2_scalar, *y_2_scalar);
+        let p1 = TEGroupAffine::<P>::new(*x_1_scalar, *y_1_scalar);
+        let p2 = TEGroupAffine::<P>::new(*x_2_scalar, *y_2_scalar);
 
         let point = p1 + p2;
         let x_3_scalar = point.x;
@@ -61,7 +60,7 @@ where
         self.w_r.extend(&[y_1, y_3]);
         self.w_o.extend(&[x_2, self.zero_var]);
         self.w_4.extend(&[y_2, x_1_y_2]);
-        let zeros = [E::Fr::zero(), E::Fr::zero()];
+        let zeros = [F::zero(), F::zero()];
 
         self.q_l.extend(&zeros);
         self.q_r.extend(&zeros);
@@ -74,8 +73,8 @@ where
         self.q_logic.extend(&zeros);
         self.q_fixed_group_add.extend(&zeros);
 
-        self.q_variable_group_add.push(E::Fr::one());
-        self.q_variable_group_add.push(E::Fr::zero());
+        self.q_variable_group_add.push(F::one());
+        self.q_variable_group_add.push(F::zero());
 
         self.perm.add_variables_to_map(x_1, y_1, x_2, y_2, self.n);
         self.n += 1;
@@ -89,7 +88,7 @@ where
         );
         self.n += 1;
 
-        Point::<E, P>::new(x_3, y_3)
+        Point::<P>::new(x_3, y_3)
     }
 }
 
@@ -99,19 +98,20 @@ mod test {
     use crate::{batch_test, constraint_system::helper::*};
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
-    use ark_ff::Field;
+
+    use crate::commitment::HomomorphicCommitment;
 
     /// Adds two curve points together using the classical point addition
     /// algorithm. This method is slower than WNAF and is just meant to be the
     /// source of truth to test the WNAF method.
-    pub fn classical_point_addition<E, P>(
-        composer: &mut StandardComposer<E, P>,
-        point_a: Point<E, P>,
-        point_b: Point<E, P>,
-    ) -> Point<E, P>
+    pub fn classical_point_addition<F, P>(
+        composer: &mut StandardComposer<P::BaseField, P>,
+        point_a: Point<P>,
+        point_b: Point<P>,
+    ) -> Point<P>
     where
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
+        F: PrimeField,
+        P: TEModelParameters<BaseField = F>,
     {
         let zero = composer.zero_var;
         let x1 = point_a.x;
@@ -121,21 +121,17 @@ mod test {
         let y2 = point_b.y;
 
         // x1 * y2
-        let x1_y2 = composer.arithmetic_gate(|gate| {
-            gate.mul(E::Fr::one()).witness(x1, y2, None)
-        });
+        let x1_y2 = composer
+            .arithmetic_gate(|gate| gate.mul(F::one()).witness(x1, y2, None));
         // y1 * x2
-        let y1_x2 = composer.arithmetic_gate(|gate| {
-            gate.mul(E::Fr::one()).witness(y1, x2, None)
-        });
+        let y1_x2 = composer
+            .arithmetic_gate(|gate| gate.mul(F::one()).witness(y1, x2, None));
         // y1 * y2
-        let y1_y2 = composer.arithmetic_gate(|gate| {
-            gate.mul(E::Fr::one()).witness(y1, y2, None)
-        });
+        let y1_y2 = composer
+            .arithmetic_gate(|gate| gate.mul(F::one()).witness(y1, y2, None));
         // x1 * x2
-        let x1_x2 = composer.arithmetic_gate(|gate| {
-            gate.mul(E::Fr::one()).witness(x1, x2, None)
-        });
+        let x1_x2 = composer
+            .arithmetic_gate(|gate| gate.mul(F::one()).witness(x1, x2, None));
         // d x1x2 * y1y2
         let d_x1_x2_y1_y2 = composer.arithmetic_gate(|gate| {
             gate.mul(P::COEFF_D).witness(x1_x2, y1_y2, None)
@@ -143,21 +139,19 @@ mod test {
 
         // x1y2 + y1x2
         let x_numerator = composer.arithmetic_gate(|gate| {
-            gate.witness(x1_y2, y1_x2, None)
-                .add(E::Fr::one(), E::Fr::one())
+            gate.witness(x1_y2, y1_x2, None).add(F::one(), F::one())
         });
 
         // y1y2 - a * x1x2
         let y_numerator = composer.arithmetic_gate(|gate| {
-            gate.witness(y1_y2, x1_x2, None)
-                .add(E::Fr::one(), -P::COEFF_A)
+            gate.witness(y1_y2, x1_x2, None).add(F::one(), -P::COEFF_A)
         });
 
         // 1 + dx1x2y1y2
         let x_denominator = composer.arithmetic_gate(|gate| {
             gate.witness(d_x1_x2_y1_y2, zero, None)
-                .add(E::Fr::one(), E::Fr::zero())
-                .constant(E::Fr::one())
+                .add(F::one(), F::zero())
+                .constant(F::one())
         });
 
         // Compute the inverse
@@ -173,15 +167,15 @@ mod test {
         // inv_x * x = 1
         composer.arithmetic_gate(|gate| {
             gate.witness(x_denominator, inv_x_denom, Some(zero))
-                .mul(E::Fr::one())
-                .constant(-E::Fr::one())
+                .mul(F::one())
+                .constant(-F::one())
         });
 
         // 1 - dx1x2y1y2
         let y_denominator = composer.arithmetic_gate(|gate| {
             gate.witness(d_x1_x2_y1_y2, zero, None)
-                .add(-E::Fr::one(), E::Fr::zero())
-                .constant(E::Fr::one())
+                .add(-F::one(), F::zero())
+                .constant(F::one())
         });
 
         let inv_y_denom = composer
@@ -195,35 +189,34 @@ mod test {
         // Assert that we actually have the inverse
         // inv_y * y = 1
         composer.arithmetic_gate(|gate| {
-            gate.mul(E::Fr::one())
+            gate.mul(F::one())
                 .witness(y_denominator, inv_y_denom, Some(zero))
-                .constant(-E::Fr::one())
+                .constant(-F::one())
         });
 
         // We can now use the inverses
 
         let x_3 = composer.arithmetic_gate(|gate| {
-            gate.mul(E::Fr::one())
-                .witness(inv_x_denom, x_numerator, None)
+            gate.mul(F::one()).witness(inv_x_denom, x_numerator, None)
         });
 
         let y_3 = composer.arithmetic_gate(|gate| {
-            gate.mul(E::Fr::one())
-                .witness(inv_y_denom, y_numerator, None)
+            gate.mul(F::one()).witness(inv_y_denom, y_numerator, None)
         });
 
         Point::new(x_3, y_3)
     }
 
-    fn test_curve_addition<E, P>()
+    fn test_curve_addition<F, P, PC>()
     where
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
+        F: PrimeField,
+        P: TEModelParameters<BaseField = F>,
+        PC: HomomorphicCommitment<F>,
     {
-        let res = gadget_tester(
-            |composer: &mut StandardComposer<E, P>| {
+        let res = gadget_tester::<F, P, PC>(
+            |composer: &mut StandardComposer<F, P>| {
                 let (x, y) = P::AFFINE_GENERATOR_COEFFS;
-                let generator = GroupAffine::new(x, y);
+                let generator = TEGroupAffine::<P>::new(x, y);
                 let x_var = composer.add_input(x);
                 let y_var = composer.add_input(y);
                 let expected_point = generator + generator;

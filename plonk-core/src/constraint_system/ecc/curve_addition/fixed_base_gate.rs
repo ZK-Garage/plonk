@@ -6,21 +6,17 @@
 
 //! Fixed-Base Curve Addition Gate
 
-use crate::constraint_system::StandardComposer;
-use crate::constraint_system::Variable;
+use crate::constraint_system::{StandardComposer, Variable};
 use ark_ec::models::TEModelParameters;
-use ark_ec::PairingEngine;
-use core::marker::PhantomData;
-use num_traits::{One, Zero};
+use ark_ff::PrimeField;
 
 /// Contains all of the components needed to verify that a bit scalar
 /// multiplication was computed correctly.
 #[derive(derivative::Derivative)]
 #[derivative(Clone, Copy, Debug)]
-pub struct WnafRound<E, P>
+pub struct WnafRound<P>
 where
-    E: PairingEngine,
-    P: TEModelParameters<BaseField = E::Fr>,
+    P: TEModelParameters,
 {
     /// This is the accumulated x coordinate point that we wish to add (so
     /// far, it depends on where you are in the scalar mul) it is linked to
@@ -49,15 +45,12 @@ where
 
     /// This is the multiplication of x_\beta * y_\beta
     pub xy_beta: P::BaseField,
-
-    /// Type Parameter Marker
-    __: PhantomData<E>,
 }
 
-impl<E, P> StandardComposer<E, P>
+impl<F, P> StandardComposer<F, P>
 where
-    E: PairingEngine,
-    P: TEModelParameters<BaseField = E::Fr>,
+    F: PrimeField,
+    P: TEModelParameters<BaseField = F>,
 {
     /// Generates a new structure for preparing a [`WnafRound`] ROUND.
     pub(crate) fn new_wnaf(
@@ -65,10 +58,10 @@ where
         acc_y: Variable,
         accumulated_bit: Variable,
         xy_alpha: Variable,
-        x_beta: P::BaseField,
-        y_beta: P::BaseField,
-        xy_beta: P::BaseField,
-    ) -> WnafRound<E, P> {
+        x_beta: F,
+        y_beta: F,
+        xy_beta: F,
+    ) -> WnafRound<P> {
         WnafRound {
             acc_x,
             acc_y,
@@ -77,12 +70,11 @@ where
             x_beta,
             y_beta,
             xy_beta,
-            __: PhantomData,
         }
     }
 
     /// Fixed group addition of a point.
-    pub(crate) fn fixed_group_add(&mut self, wnaf_round: WnafRound<E, P>) {
+    pub(crate) fn fixed_group_add(&mut self, wnaf_round: WnafRound<P>) {
         self.w_l.push(wnaf_round.acc_x);
         self.w_r.push(wnaf_round.acc_y);
         self.w_o.push(wnaf_round.xy_alpha);
@@ -92,15 +84,15 @@ where
         self.q_r.push(wnaf_round.y_beta);
 
         self.q_c.push(wnaf_round.xy_beta);
-        self.q_o.push(E::Fr::zero());
-        self.q_fixed_group_add.push(E::Fr::one());
-        self.q_variable_group_add.push(E::Fr::zero());
+        self.q_o.push(F::zero());
+        self.q_fixed_group_add.push(F::one());
+        self.q_variable_group_add.push(F::zero());
 
-        self.q_m.push(E::Fr::zero());
-        self.q_4.push(E::Fr::zero());
-        self.q_arith.push(E::Fr::zero());
-        self.q_range.push(E::Fr::zero());
-        self.q_logic.push(E::Fr::zero());
+        self.q_m.push(F::zero());
+        self.q_4.push(F::zero());
+        self.q_arith.push(F::zero());
+        self.q_range.push(F::zero());
+        self.q_logic.push(F::zero());
 
         self.perm.add_variables_to_map(
             wnaf_round.acc_x,

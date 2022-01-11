@@ -11,15 +11,15 @@ pub mod ecc;
 pub mod logic;
 pub mod range;
 
-use crate::proof_system::linearisation_poly::ProofEvaluations;
-use crate::proof_system::permutation;
-use crate::transcript::TranscriptProtocol;
-use ark_ec::{PairingEngine, TEModelParameters};
-use ark_ff::{Field, PrimeField};
+use crate::{
+    commitment::HomomorphicCommitment,
+    proof_system::{linearisation_poly::ProofEvaluations, permutation},
+    transcript::TranscriptProtocol,
+};
+use ark_ff::{FftField, Field, PrimeField};
 use ark_poly::{univariate::DensePolynomial, Evaluations};
-use ark_poly_commit::sonic_pc::Commitment;
+use ark_poly_commit::PolynomialCommitment;
 use ark_serialize::*;
-use core::marker::PhantomData;
 
 /// Gate Values
 ///
@@ -105,14 +105,14 @@ where
     /// Extends `scalars` and `points` to build the linearisation commitment
     /// with the given instantiation of `evaluations` and
     /// `separation_challenge`.
-    fn extend_linearisation_commitment<E>(
-        selector_commitment: Commitment<E>,
-        separation_challenge: E::Fr,
-        evaluations: &ProofEvaluations<E::Fr>,
-        scalars: &mut Vec<E::Fr>,
-        points: &mut Vec<E::G1Affine>,
+    fn extend_linearisation_commitment<PC>(
+        selector_commitment: &PC::Commitment,
+        separation_challenge: F,
+        evaluations: &ProofEvaluations<F>,
+        scalars: &mut Vec<F>,
+        points: &mut Vec<PC::Commitment>,
     ) where
-        E: PairingEngine<Fr = F>,
+        PC: PolynomialCommitment<F, DensePolynomial<F>>,
     {
         let coefficient = Self::constraints(
             separation_challenge,
@@ -130,7 +130,7 @@ where
             },
         );
         scalars.push(coefficient);
-        points.push(selector_commitment.0);
+        points.push(selector_commitment.clone());
     }
 }
 
@@ -141,65 +141,66 @@ where
 #[derive(CanonicalDeserialize, CanonicalSerialize, derivative::Derivative)]
 #[derivative(
     Clone(bound = ""),
-    Debug(bound = ""),
-    Eq(bound = ""),
-    PartialEq(bound = "")
+    Debug(
+        bound = "arithmetic::VerifierKey<F,PC>: std::fmt::Debug, PC::Commitment: std::fmt::Debug"
+    ),
+    Eq(bound = "arithmetic::VerifierKey<F,PC>: Eq, PC::Commitment: Eq"),
+    PartialEq(
+        bound = "arithmetic::VerifierKey<F,PC>: PartialEq, PC::Commitment: PartialEq"
+    )
 )]
-pub struct VerifierKey<E, P>
+pub struct VerifierKey<F, PC>
 where
-    E: PairingEngine,
-    P: TEModelParameters<BaseField = E::Fr>,
+    F: PrimeField,
+    PC: HomomorphicCommitment<F>,
 {
     /// Circuit size (not padded to a power of two).
     pub(crate) n: usize,
 
     /// Arithmetic Verifier Key
-    pub(crate) arithmetic: arithmetic::VerifierKey<E>,
+    pub(crate) arithmetic: arithmetic::VerifierKey<F, PC>,
 
     /// Range Gate Selector Commitment
-    pub(crate) range_selector_commitment: Commitment<E>,
+    pub(crate) range_selector_commitment: PC::Commitment,
 
     /// Logic Gate Selector Commitment
-    pub(crate) logic_selector_commitment: Commitment<E>,
+    pub(crate) logic_selector_commitment: PC::Commitment,
 
     /// Fixed Group Addition Selector Commitment
-    pub(crate) fixed_group_add_selector_commitment: Commitment<E>,
+    pub(crate) fixed_group_add_selector_commitment: PC::Commitment,
 
     /// Variable Group Addition Selector Commitment
-    pub(crate) variable_group_add_selector_commitment: Commitment<E>,
+    pub(crate) variable_group_add_selector_commitment: PC::Commitment,
 
     /// VerifierKey for permutation checks
-    pub(crate) permutation: permutation::VerifierKey<E>,
-
-    /// Type Parameter Marker
-    __: PhantomData<P>,
+    pub(crate) permutation: permutation::VerifierKey<PC::Commitment>,
 }
 
-impl<E, P> VerifierKey<E, P>
+impl<F, PC> VerifierKey<F, PC>
 where
-    E: PairingEngine,
-    P: TEModelParameters<BaseField = E::Fr>,
+    F: PrimeField,
+    PC: HomomorphicCommitment<F>,
 {
     /// Constructs a [`VerifierKey`] from the widget VerifierKey's that are
     /// constructed based on the selector polynomial commitments and the
     /// sigma polynomial commitments.
     pub(crate) fn from_polynomial_commitments(
         n: usize,
-        q_m: Commitment<E>,
-        q_l: Commitment<E>,
-        q_r: Commitment<E>,
-        q_o: Commitment<E>,
-        q_4: Commitment<E>,
-        q_c: Commitment<E>,
-        q_arith: Commitment<E>,
-        q_range: Commitment<E>,
-        q_logic: Commitment<E>,
-        q_fixed_group_add: Commitment<E>,
-        q_variable_group_add: Commitment<E>,
-        left_sigma: Commitment<E>,
-        right_sigma: Commitment<E>,
-        out_sigma: Commitment<E>,
-        fourth_sigma: Commitment<E>,
+        q_m: PC::Commitment,
+        q_l: PC::Commitment,
+        q_r: PC::Commitment,
+        q_o: PC::Commitment,
+        q_4: PC::Commitment,
+        q_c: PC::Commitment,
+        q_arith: PC::Commitment,
+        q_range: PC::Commitment,
+        q_logic: PC::Commitment,
+        q_fixed_group_add: PC::Commitment,
+        q_variable_group_add: PC::Commitment,
+        left_sigma: PC::Commitment,
+        right_sigma: PC::Commitment,
+        out_sigma: PC::Commitment,
+        fourth_sigma: PC::Commitment,
     ) -> Self {
         Self {
             n,
@@ -222,7 +223,6 @@ where
                 out_sigma,
                 fourth_sigma,
             },
-            __: PhantomData,
         }
     }
 
@@ -232,42 +232,37 @@ where
     }
 }
 
-impl<E, P> VerifierKey<E, P>
+impl<F, PC> VerifierKey<F, PC>
 where
-    E: PairingEngine,
-    P: TEModelParameters<BaseField = E::Fr>,
+    F: PrimeField,
+    PC: HomomorphicCommitment<F>,
 {
     /// Adds the circuit description to the transcript.
     pub(crate) fn seed_transcript<T>(&self, transcript: &mut T)
     where
-        T: TranscriptProtocol<E>,
+        T: TranscriptProtocol,
     {
-        transcript.append_commitment(b"q_m", &self.arithmetic.q_m);
-        transcript.append_commitment(b"q_l", &self.arithmetic.q_l);
-        transcript.append_commitment(b"q_r", &self.arithmetic.q_r);
-        transcript.append_commitment(b"q_o", &self.arithmetic.q_o);
-        transcript.append_commitment(b"q_c", &self.arithmetic.q_c);
-        transcript.append_commitment(b"q_4", &self.arithmetic.q_4);
-        transcript.append_commitment(b"q_arith", &self.arithmetic.q_arith);
-        transcript
-            .append_commitment(b"q_range", &self.range_selector_commitment);
-        transcript
-            .append_commitment(b"q_logic", &self.logic_selector_commitment);
-        transcript.append_commitment(
+        transcript.append(b"q_m", &self.arithmetic.q_m);
+        transcript.append(b"q_l", &self.arithmetic.q_l);
+        transcript.append(b"q_r", &self.arithmetic.q_r);
+        transcript.append(b"q_o", &self.arithmetic.q_o);
+        transcript.append(b"q_c", &self.arithmetic.q_c);
+        transcript.append(b"q_4", &self.arithmetic.q_4);
+        transcript.append(b"q_arith", &self.arithmetic.q_arith);
+        transcript.append(b"q_range", &self.range_selector_commitment);
+        transcript.append(b"q_logic", &self.logic_selector_commitment);
+        transcript.append(
             b"q_variable_group_add",
             &self.variable_group_add_selector_commitment,
         );
-        transcript.append_commitment(
+        transcript.append(
             b"q_fixed_group_add",
             &self.fixed_group_add_selector_commitment,
         );
-        transcript
-            .append_commitment(b"left_sigma", &self.permutation.left_sigma);
-        transcript
-            .append_commitment(b"right_sigma", &self.permutation.right_sigma);
-        transcript.append_commitment(b"out_sigma", &self.permutation.out_sigma);
-        transcript
-            .append_commitment(b"fourth_sigma", &self.permutation.fourth_sigma);
+        transcript.append(b"left_sigma", &self.permutation.left_sigma);
+        transcript.append(b"right_sigma", &self.permutation.right_sigma);
+        transcript.append(b"out_sigma", &self.permutation.out_sigma);
+        transcript.append(b"fourth_sigma", &self.permutation.fourth_sigma);
         transcript.circuit_domain_sep(self.n as u64);
     }
 }
@@ -283,10 +278,9 @@ where
     Eq(bound = ""),
     PartialEq(bound = "")
 )]
-pub struct ProverKey<F, P>
+pub struct ProverKey<F>
 where
-    F: PrimeField,
-    P: TEModelParameters<BaseField = F>,
+    F: FftField,
 {
     /// Circuit size
     pub(crate) n: usize,
@@ -317,15 +311,11 @@ where
     /// in their evaluation phase and divide by the quotient
     /// polynomial without having to perform IFFT
     pub(crate) v_h_coset_8n: Evaluations<F>,
-
-    /// Type Parameter Marker
-    __: PhantomData<P>,
 }
 
-impl<F, P> ProverKey<F, P>
+impl<F> ProverKey<F>
 where
-    F: PrimeField,
-    P: TEModelParameters<BaseField = F>,
+    F: FftField,
 {
     pub(crate) fn v_h_coset_8n(&self) -> &Evaluations<F> {
         &self.v_h_coset_8n
@@ -377,7 +367,6 @@ where
                 linear_evaluations,
             },
             v_h_coset_8n,
-            __: PhantomData,
         }
     }
 }
@@ -385,39 +374,34 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::batch_test;
+    use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
-    use ark_bls12_381::Fr as BlsScalar;
-    use ark_bls12_381::G1Affine;
-    use ark_ed_on_bls12_381::EdwardsParameters;
-    use ark_ff::{Fp256, UniformRand};
+    use ark_ec::models::TEModelParameters;
     use ark_poly::polynomial::univariate::DensePolynomial;
     use ark_poly::{EvaluationDomain, GeneralEvaluationDomain, UVPolynomial};
-    use ark_poly_commit::kzg10::Commitment;
-    use rand_core::OsRng;
+    use rand::rngs::OsRng;
 
-    fn rand_poly_eval(
-        n: usize,
-    ) -> (
-        DensePolynomial<Fp256<ark_bls12_381::FrParameters>>,
-        Evaluations<Fp256<ark_bls12_381::FrParameters>>,
-    ) {
+    fn rand_poly_eval<F>(n: usize) -> (DensePolynomial<F>, Evaluations<F>)
+    where
+        F: FftField,
+    {
         let polynomial = DensePolynomial::rand(n, &mut OsRng);
         (polynomial, rand_evaluations(n))
     }
 
-    fn rand_evaluations(
-        n: usize,
-    ) -> Evaluations<Fp256<ark_bls12_381::FrParameters>> {
-        let domain: GeneralEvaluationDomain<
-            Fp256<ark_bls12_381::FrParameters>,
-        > = GeneralEvaluationDomain::new(4 * n).unwrap();
-        let values: Vec<_> =
-            (0..8 * n).map(|_| BlsScalar::rand(&mut OsRng)).collect();
+    fn rand_evaluations<F>(n: usize) -> Evaluations<F>
+    where
+        F: FftField,
+    {
+        let domain = GeneralEvaluationDomain::new(4 * n).unwrap();
+        let values: Vec<_> = (0..8 * n).map(|_| F::rand(&mut OsRng)).collect();
         Evaluations::from_vec_and_domain(values, domain)
     }
 
     #[test]
     fn test_serialise_deserialise_prover_key() {
+        type F = ark_bls12_381::Fr;
         let n = 1 << 11;
 
         let q_m = rand_poly_eval(n);
@@ -466,37 +450,40 @@ mod test {
             .serialize_unchecked(&mut prover_key_bytes)
             .unwrap();
 
-        let obtained_pk: ProverKey<
-            Fp256<ark_bls12_381::FrParameters>,
-            ark_ed_on_bls12_381::EdwardsParameters,
-        > = ProverKey::deserialize_unchecked(prover_key_bytes.as_slice())
-            .unwrap();
+        let obtained_pk: ProverKey<F> =
+            ProverKey::deserialize_unchecked(prover_key_bytes.as_slice())
+                .unwrap();
 
-        assert!(prover_key == obtained_pk);
+        assert_eq!(prover_key, obtained_pk);
     }
 
-    #[test]
-    fn test_serialise_deserialise_verifier_key() {
+    fn test_serialise_deserialise_verifier_key<F, P, PC>()
+    where
+        F: PrimeField,
+        P: TEModelParameters<BaseField = F>,
+        PC: HomomorphicCommitment<F>,
+        VerifierKey<F, PC>: PartialEq,
+    {
         let n = 2usize.pow(5);
 
-        let q_m = Commitment::<Bls12_381>(G1Affine::default());
-        let q_l = Commitment(G1Affine::default());
-        let q_r = Commitment(G1Affine::default());
-        let q_o = Commitment(G1Affine::default());
-        let q_4 = Commitment(G1Affine::default());
-        let q_c = Commitment(G1Affine::default());
-        let q_arith = Commitment(G1Affine::default());
-        let q_range = Commitment(G1Affine::default());
-        let q_logic = Commitment(G1Affine::default());
-        let q_fixed_group_add = Commitment(G1Affine::default());
-        let q_variable_group_add = Commitment(G1Affine::default());
+        let q_m = PC::Commitment::default();
+        let q_l = PC::Commitment::default();
+        let q_r = PC::Commitment::default();
+        let q_o = PC::Commitment::default();
+        let q_4 = PC::Commitment::default();
+        let q_c = PC::Commitment::default();
+        let q_arith = PC::Commitment::default();
+        let q_range = PC::Commitment::default();
+        let q_logic = PC::Commitment::default();
+        let q_fixed_group_add = PC::Commitment::default();
+        let q_variable_group_add = PC::Commitment::default();
 
-        let left_sigma = Commitment(G1Affine::default());
-        let right_sigma = Commitment(G1Affine::default());
-        let out_sigma = Commitment(G1Affine::default());
-        let fourth_sigma = Commitment(G1Affine::default());
+        let left_sigma = PC::Commitment::default();
+        let right_sigma = PC::Commitment::default();
+        let out_sigma = PC::Commitment::default();
+        let fourth_sigma = PC::Commitment::default();
 
-        let verifier_key = VerifierKey::from_polynomial_commitments(
+        let verifier_key = VerifierKey::<F, PC>::from_polynomial_commitments(
             n,
             q_m,
             q_l,
@@ -520,10 +507,24 @@ mod test {
             .serialize_unchecked(&mut verifier_key_bytes)
             .unwrap();
 
-        let obtained_vk: VerifierKey<Bls12_381, EdwardsParameters> =
+        let obtained_vk: VerifierKey<F, PC> =
             VerifierKey::deserialize_unchecked(verifier_key_bytes.as_slice())
                 .unwrap();
 
         assert!(verifier_key == obtained_vk);
     }
+
+    // Test for Bls12_381
+    batch_test!(
+        [test_serialise_deserialise_verifier_key],
+        [] => (
+            Bls12_381, ark_ed_on_bls12_381::EdwardsParameters      )
+    );
+
+    // Test for Bls12_377
+    batch_test!(
+        [test_serialise_deserialise_verifier_key],
+        [] => (
+            Bls12_377, ark_ed_on_bls12_377::EdwardsParameters       )
+    );
 }

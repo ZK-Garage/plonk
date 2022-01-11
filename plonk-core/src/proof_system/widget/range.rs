@@ -6,8 +6,7 @@
 
 //! Range Gate
 
-use crate::proof_system::GateConstraint;
-use crate::proof_system::GateValues;
+use crate::proof_system::{GateConstraint, GateValues};
 use ark_ff::Field;
 use core::marker::PhantomData;
 
