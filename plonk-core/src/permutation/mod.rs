@@ -841,7 +841,7 @@ where
         theta: &F,
         f: &F,
         t_prime: &F,
-        t_prime_next: F,
+        t_prime_next: &F,
     ) -> F {
         let prod_1 = F::one() + delta;
         let prod_2 = epsilon + f;
@@ -870,7 +870,7 @@ where
 
 
 /// The `bls_12-381` library does not provide a `random` method for `F`.
-/// We wil use this helper function to compensate.
+/// We will use this helper function to compensate.
 #[allow(dead_code)]
 pub(crate) fn random_scalar<F: PrimeField, R: RngCore>(rng: &mut R) -> F {
     F::rand(rng)
