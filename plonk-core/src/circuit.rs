@@ -313,7 +313,7 @@ where
     fn compile(
         &mut self,
         u_params: &UniversalParams<E>,
-    ) -> Result<(ProverKey<E::Fr, P>, VerifierData<E, P>), Error> {
+    ) -> Result<(ProverKey<E, E::Fr, P>, VerifierData<E, P>), Error> {
         // Setup PublicParams
         // XXX: KZG10 does not have a trim function so we use sonics and
         // then do a transformation between sonic CommiterKey to KZG10
@@ -359,7 +359,7 @@ where
     fn gen_proof(
         &mut self,
         u_params: &UniversalParams<E>,
-        prover_key: ProverKey<E::Fr, P>,
+        prover_key: ProverKey<E, E::Fr, P>,
         transcript_init: &'static [u8],
     ) -> Result<Proof<E, P>, Error> {
         // XXX: KZG10 does not have a trim function so we use sonics and

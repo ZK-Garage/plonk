@@ -197,6 +197,7 @@ where
         q_logic: Commitment<E>,
         q_fixed_group_add: Commitment<E>,
         q_variable_group_add: Commitment<E>,
+        q_lookup: Commitment<E>,
         left_sigma: Commitment<E>,
         right_sigma: Commitment<E>,
         out_sigma: Commitment<E>,
@@ -284,8 +285,9 @@ where
     Eq(bound = ""),
     PartialEq(bound = "")
 )]
-pub struct ProverKey<F, P>
+pub struct ProverKey<E, F, P>
 where
+    E: PairingEngine,
     F: PrimeField,
     P: TEModelParameters<BaseField = F>,
 {
@@ -325,8 +327,9 @@ where
     __: PhantomData<P>,
 }
 
-impl<F, P> ProverKey<F, P>
+impl<E, F, P> ProverKey<E, F, P>
 where
+    E: PairingEngine,
     F: PrimeField,
     P: TEModelParameters<BaseField = F>,
 {
@@ -350,6 +353,7 @@ where
         q_logic: (DensePolynomial<F>, Evaluations<F>),
         q_fixed_group_add: (DensePolynomial<F>, Evaluations<F>),
         q_variable_group_add: (DensePolynomial<F>, Evaluations<F>),
+        q_lookup: (DensePolynomial<F>, Evaluations<F>),
         left_sigma: (DensePolynomial<F>, Evaluations<F>),
         right_sigma: (DensePolynomial<F>, Evaluations<F>),
         out_sigma: (DensePolynomial<F>, Evaluations<F>),
@@ -372,6 +376,13 @@ where
             logic_selector: q_logic,
             fixed_group_add_selector: q_fixed_group_add,
             variable_group_add_selector: q_variable_group_add,
+            lookup: lookup::ProverKey {
+                q_lookup,
+                table_1,
+                table_2,
+                table_3,
+                table_4,
+            },
             permutation: permutation::ProverKey {
                 left_sigma,
                 right_sigma,

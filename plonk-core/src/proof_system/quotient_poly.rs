@@ -11,7 +11,7 @@ use crate::proof_system::range::Range;
 use crate::proof_system::widget::GateConstraint;
 use crate::proof_system::GateValues;
 use crate::{error::Error, proof_system::ProverKey};
-use ark_ec::TEModelParameters;
+use ark_ec::{PairingEngine, TEModelParameters};
 use ark_ff::PrimeField;
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, GeneralEvaluationDomain,
@@ -20,15 +20,16 @@ use ark_poly::{
 
 /// Computes the Quotient [`DensePolynomial`] given the [`EvaluationDomain`], a
 /// [`ProverKey`], and some other info.
-pub fn compute<F, P>(
+pub fn compute<E, F, P>(
     domain: &GeneralEvaluationDomain<F>,
-    prover_key: &ProverKey<F, P>,
+    prover_key: &ProverKey<E, F, P>,
     z_poly: &DensePolynomial<F>,
     w_l_poly: &DensePolynomial<F>,
     w_r_poly: &DensePolynomial<F>,
     w_o_poly: &DensePolynomial<F>,
     w_4_poly: &DensePolynomial<F>,
     public_inputs_poly: &DensePolynomial<F>,
+    f_poly: &DensePolynomial<F>,
     alpha: &F,
     beta: &F,
     gamma: &F,
@@ -40,6 +41,7 @@ pub fn compute<F, P>(
     lookup_challenge: &F,
 ) -> Result<DensePolynomial<F>, Error>
 where
+    E: PairingEngine,
     F: PrimeField,
     P: TEModelParameters<BaseField = F>,
 {
@@ -88,6 +90,8 @@ where
     w4_eval_8n.push(w4_eval_8n[6]);
     w4_eval_8n.push(w4_eval_8n[7]);
 
+    let mut f_eval_8n = domain_8n.coset_fft(f_poly);
+
     let gate_constraints = compute_gate_constraint_satisfiability(
         domain,
         *range_challenge,
@@ -101,6 +105,8 @@ where
         &wo_eval_8n,
         &w4_eval_8n,
         public_inputs_poly,
+        &f_eval_8n,
+        *zeta,
     );
 
     let permutation = compute_permutation_checks(
@@ -130,22 +136,24 @@ where
 }
 
 /// Ensures that the gate constraints are satisfied.
-fn compute_gate_constraint_satisfiability<F, P>(
+fn compute_gate_constraint_satisfiability<E, F, P>(
     domain: &GeneralEvaluationDomain<F>,
     range_challenge: F,
     logic_challenge: F,
     fixed_base_challenge: F,
     var_base_challenge: F,
     lookup_challenge: F,
-    prover_key: &ProverKey<F, P>,
+    prover_key: &ProverKey<E, F, P>,
     wl_eval_8n: &[F],
     wr_eval_8n: &[F],
     wo_eval_8n: &[F],
     w4_eval_8n: &[F],
     pi_poly: &DensePolynomial<F>,
+    f_eval_8n: &[F],
     zeta: F,
 ) -> Vec<F>
 where
+    E: PairingEngine,
     F: PrimeField,
     P: TEModelParameters<BaseField = F>,
 {
@@ -201,31 +209,35 @@ where
                 values,
             );
 
+            let f = f_eval_8n[i];
+
             let lookup = prover_key.lookup.compute_quotient_i(
                 i,
                 values.left,
                 values.right,
                 values.output,
                 values.fourth,
-                prover_key.look
-            )
+                f,
+                zeta,
+                lookup_challenge,
+            );
 
 
             (arithmetic + pi_eval_8n[i])
                 + range
                 + logic
                 + fixed_base_scalar_mul
-                + curve_addition,
-                + lookup,
+                + curve_addition
+                + lookup
         })
         .collect()
 }
 
 /// Computes the permutation contribution to the quotient polynomial over
 /// `domain`.
-fn compute_permutation_checks<F, P>(
+fn compute_permutation_checks<E, F, P>(
     domain: &GeneralEvaluationDomain<F>,
-    prover_key: &ProverKey<F, P>,
+    prover_key: &ProverKey<E, F, P>,
     wl_eval_8n: &[F],
     wr_eval_8n: &[F],
     wo_eval_8n: &[F],
@@ -236,6 +248,7 @@ fn compute_permutation_checks<F, P>(
     gamma: F,
 ) -> Vec<F>
 where
+    E: PairingEngine,
     F: PrimeField,
     P: TEModelParameters<BaseField = F>,
 {

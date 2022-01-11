@@ -36,6 +36,7 @@ where
     q_logic: DensePolynomial<F>,
     q_fixed_group_add: DensePolynomial<F>,
     q_variable_group_add: DensePolynomial<F>,
+    q_lookup: DensePolynomial<F>,
     left_sigma: DensePolynomial<F>,
     right_sigma: DensePolynomial<F>,
     out_sigma: DensePolynomial<F>,
@@ -70,6 +71,7 @@ where
         self.q_logic.extend(zeroes_scalar.iter());
         self.q_fixed_group_add.extend(zeroes_scalar.iter());
         self.q_variable_group_add.extend(zeroes_scalar.iter());
+        self.q_lookup.extend(zeroes_scalar.iter());
 
         self.w_l.extend(zeroes_var.iter());
         self.w_r.extend(zeroes_var.iter());
@@ -94,6 +96,7 @@ where
             && self.q_logic.len() == k
             && self.q_fixed_group_add.len() == k
             && self.q_variable_group_add.len() == k
+            && self.q_lookup.len() == k
             && self.w_l.len() == k
             && self.w_r.len() == k
             && self.w_o.len() == k
@@ -113,7 +116,7 @@ where
         &mut self,
         commit_key: &Powers<E>,
         transcript: &mut TranscriptWrapper<E>,
-    ) -> Result<ProverKey<E::Fr, P>, Error> {
+    ) -> Result<ProverKey<E, E::Fr, P>, Error> {
         let (_, selectors, domain) =
             self.preprocess_shared(commit_key, transcript)?;
 
@@ -163,6 +166,10 @@ where
             domain_8n.coset_fft(&selectors.q_variable_group_add),
             domain_8n,
         );
+        let q_lookup_eval_8n = Evaluations::from_vec_and_domain(
+            domain_8n.coset_fft(&selectors.q_lookup),
+            domain_8n,
+        );
 
         let left_sigma_eval_8n = Evaluations::from_vec_and_domain(
             domain_8n.coset_fft(&selectors.left_sigma),
@@ -203,6 +210,7 @@ where
             (selectors.q_logic, q_logic_eval_8n),
             (selectors.q_fixed_group_add, q_fixed_group_add_eval_8n),
             (selectors.q_variable_group_add, q_variable_group_add_eval_8n),
+            (selectors.q_lookup, q_lookup_eval_8n),
             (selectors.left_sigma, left_sigma_eval_8n),
             (selectors.right_sigma, right_sigma_eval_8n),
             (selectors.out_sigma, out_sigma_eval_8n),
@@ -284,6 +292,9 @@ where
             DensePolynomial {
                 coeffs: domain.ifft(&self.q_variable_group_add),
             };
+        let q_lookup_poly: DensePolynomial<E::Fr> = DensePolynomial {
+            coeffs: domain.ifft(&self.q_lookup),
+        };
 
         // 2. Compute the sigma polynomials
         let (
@@ -354,6 +365,14 @@ where
                 None,
             )?;
 
+        let q_lookup_poly_commit =
+            KZG10::<E, DensePolynomial<E::Fr>>::commit(
+                commit_key,
+                &q_lookup_poly,
+                None,
+                None,
+            )?;
+
         let left_sigma_poly_commit =
             KZG10::<E, DensePolynomial<E::Fr>>::commit(
                 commit_key,
@@ -398,6 +417,7 @@ where
             q_logic_poly_commit.0,
             q_fixed_group_add_poly_commit.0,
             q_variable_group_add_poly_commit.0,
+            q_lookup_poly_commit.0,
             left_sigma_poly_commit.0,
             right_sigma_poly_commit.0,
             out_sigma_poly_commit.0,
@@ -416,6 +436,7 @@ where
             q_logic: q_logic_poly,
             q_fixed_group_add: q_fixed_group_add_poly,
             q_variable_group_add: q_variable_group_add_poly,
+            q_lookup: q_lookup_poly,
             left_sigma: left_sigma_poly,
             right_sigma: right_sigma_poly,
             out_sigma: out_sigma_poly,

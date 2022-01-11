@@ -37,7 +37,7 @@ where
 {
     /// Proving Key which is used to create proofs about a specific PLONK
     /// circuit.
-    pub prover_key: Option<ProverKey<E::Fr, P>>,
+    pub prover_key: Option<ProverKey<E, E::Fr, P>>,
 
     /// Circuit Description
     pub(crate) cs: StandardComposer<E, P>,
@@ -242,7 +242,7 @@ where
     pub fn prove_with_preprocessed(
         &self,
         commit_key: &Powers<E>,
-        prover_key: &ProverKey<E::Fr, P>,
+        prover_key: &ProverKey<E, E::Fr, P>,
     ) -> Result<Proof<E, P>, Error> {
         // Construct the domain s.t. it is large enough to operate
         // with both the number of gates in the circuit and the lookup 
@@ -467,6 +467,8 @@ where
             transcript.challenge_scalar(b"fixed base separation challenge");
         let var_base_sep_challenge =
             transcript.challenge_scalar(b"variable base separation challenge");
+        let lookup_challenge =
+            transcript.challenge_scalar(b"lookup separation challenge");
 
         let t_poly = quotient_poly::compute(
             &domain,
@@ -477,13 +479,16 @@ where
             &w_o_poly,
             &w_4_poly,
             &pi_poly,
+            &f_poly,
             &alpha,
             &beta,
             &gamma,
+            &zeta,
             &range_sep_challenge,
             &logic_sep_challenge,
             &fixed_base_sep_challenge,
             &var_base_sep_challenge,
+            &lookup_challenge,
         )?;
 
         // Split quotient polynomial into 4 degree `n` polynomials
