@@ -12,6 +12,8 @@ The `plonk-core` module is an implemention of the PLONK proving system, that lev
 
 The `plonk-hashing` module is set to contain several hashing algorithms, commencing with an optimised implementation of the Poseidon hashing algorithm generic for both plonk-style arithmetic representation and R1CS. Which will be extended but not limited to Reinforced Concrete and Blake2s.  
 
+The `plonk-book` is a module which contains a detailed overview of the working parts within a EC based ZKP system, with explanation of some of the characteristics particular to PLONK, e.g. Lagrange bases. There is a also a chapter on the construction of the PLONK algorithms, as well as an explanation of the implementations features and details specific to this repository. 
+
 Please, if you're interested in collaborating, contributing or just discussing, you can join our Discord here: <https://discord.gg/XWJdhVf37F>
 
 ## Features
