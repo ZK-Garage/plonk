@@ -345,16 +345,17 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::commitment::HomomorphicCommitment;
-    use crate::constraint_system::helper::*;
-    use crate::{batch_test, constraint_system::StandardComposer};
+    use crate::{
+        batch_test, commitment::HomomorphicCommitment,
+        constraint_system::helper::*, constraint_system::StandardComposer,
+    };
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
-    use ark_ec::models::TEModelParameters;
-    use ark_ff::{FftField, PrimeField};
+    use ark_ec::TEModelParameters;
+    use ark_ff::PrimeField;
     fn test_logic_xor_and_constraint<F, P, PC>()
     where
-        F: FftField + PrimeField,
+        F: PrimeField,
         P: TEModelParameters<BaseField = F>,
         PC: HomomorphicCommitment<F>,
     {
@@ -430,7 +431,7 @@ mod test {
 
     fn test_logical_gate_odd_bit_num<F, P, PC>()
     where
-        F: FftField + PrimeField,
+        F: PrimeField,
         P: TEModelParameters<BaseField = F>,
         PC: HomomorphicCommitment<F>,
     {
@@ -461,13 +462,5 @@ mod test {
         [test_logical_gate_odd_bit_num]
         => (
             Bls12_377, ark_ed_on_bls12_377::EdwardsParameters       )
-    );
-
-    // Test for Bls12_381
-    crate::batch_test_ipa!(
-        [test_logic_xor_and_constraint],
-        [test_logical_gate_odd_bit_num]
-        => (
-            Bls12_381, ark_ed_on_bls12_381::EdwardsParameters      )
     );
 }

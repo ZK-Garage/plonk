@@ -2,8 +2,7 @@
 use ark_ec::{msm::VariableBaseMSM, AffineCurve, PairingEngine};
 use ark_ff::{Field, PrimeField};
 use ark_poly::univariate::DensePolynomial;
-use ark_poly_commit::sonic_pc::SonicKZG10;
-use ark_poly_commit::PolynomialCommitment;
+use ark_poly_commit::{sonic_pc::SonicKZG10, PolynomialCommitment};
 
 /// A homomorphic polynomial commitment
 pub trait HomomorphicCommitment<F>:

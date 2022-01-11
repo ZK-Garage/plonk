@@ -8,11 +8,11 @@
 
 use crate::constraint_system::{StandardComposer, Variable};
 use ark_ec::ModelParameters;
-use ark_ff::{FftField, PrimeField};
+use ark_ff::PrimeField;
 
 impl<F, P> StandardComposer<F, P>
 where
-    F: FftField + PrimeField,
+    F: PrimeField,
     P: ModelParameters<BaseField = F>,
 {
     /// Adds a boolean constraint (also known as binary constraint) where
@@ -53,17 +53,17 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::batch_test;
-    use crate::commitment::HomomorphicCommitment;
-    use crate::constraint_system::helper::*;
+    use crate::{
+        batch_test, commitment::HomomorphicCommitment,
+        constraint_system::helper::*,
+    };
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
     use ark_ec::TEModelParameters;
-    use ark_ff::{FftField, PrimeField};
 
     fn test_correct_bool_gate<F, P, PC>()
     where
-        F: FftField + PrimeField,
+        F: PrimeField,
         P: TEModelParameters<BaseField = F>,
         PC: HomomorphicCommitment<F>,
     {
@@ -81,7 +81,7 @@ mod test {
 
     fn test_incorrect_bool_gate<F, P, PC>()
     where
-        F: FftField + PrimeField,
+        F: PrimeField,
         P: TEModelParameters<BaseField = F>,
         PC: HomomorphicCommitment<F>,
     {
@@ -116,16 +116,5 @@ mod test {
         ],
         [] => (
             Bls12_377, ark_ed_on_bls12_377::EdwardsParameters        )
-    );
-
-    // Test for Bls12_381
-    crate::batch_test_ipa!(
-        [
-            test_correct_bool_gate,
-            test_incorrect_bool_gate
-        ],
-        [] => (
-            Bls12_381, ark_ed_on_bls12_381::EdwardsParameters
-        )
     );
 }

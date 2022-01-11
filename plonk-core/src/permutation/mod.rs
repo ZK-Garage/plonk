@@ -10,8 +10,11 @@ pub(crate) mod constants;
 
 use crate::constraint_system::{Variable, WireData};
 use ark_ff::FftField;
-use ark_poly::domain::{EvaluationDomain, GeneralEvaluationDomain};
-use ark_poly::{univariate::DensePolynomial, UVPolynomial};
+use ark_poly::{
+    domain::{EvaluationDomain, GeneralEvaluationDomain},
+    univariate::DensePolynomial,
+    UVPolynomial,
+};
 use constants::*;
 use hashbrown::HashMap;
 use itertools::izip;
@@ -774,7 +777,7 @@ mod test {
 
     fn test_multizip_permutation_poly<F, P>()
     where
-        F: FftField + PrimeField,
+        F: PrimeField,
         P: TEModelParameters<BaseField = F>,
     {
         let mut cs: StandardComposer<F, P> =

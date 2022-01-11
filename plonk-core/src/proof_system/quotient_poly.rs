@@ -4,13 +4,16 @@
 //
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
-use crate::proof_system::ecc::CurveAddition;
-use crate::proof_system::ecc::FixedBaseScalarMul;
-use crate::proof_system::logic::Logic;
-use crate::proof_system::range::Range;
-use crate::proof_system::widget::GateConstraint;
-use crate::proof_system::GateValues;
-use crate::{error::Error, proof_system::ProverKey};
+use crate::{
+    error::Error,
+    proof_system::{
+        ecc::{CurveAddition, FixedBaseScalarMul},
+        logic::Logic,
+        range::Range,
+        widget::GateConstraint,
+        GateValues, ProverKey,
+    },
+};
 use ark_ec::TEModelParameters;
 use ark_ff::{FftField, PrimeField};
 use ark_poly::{
@@ -38,11 +41,15 @@ pub fn compute<F, P>(
     var_base_challenge: &F,
 ) -> Result<DensePolynomial<F>, Error>
 where
-    F: FftField + PrimeField,
+    F: PrimeField,
     P: TEModelParameters<BaseField = F>,
 {
-    let domain_8n =
-        GeneralEvaluationDomain::<F>::new(8 * domain.size()).unwrap();
+    let domain_8n = GeneralEvaluationDomain::<F>::new(8 * domain.size())
+        .ok_or(Error::InvalidEvalDomainSize {
+        log_size_of_group: (8 * domain.size()).trailing_zeros(),
+        adicity:
+            <<F as FftField>::FftParams as ark_ff::FftParameters>::TWO_ADICITY,
+    })?;
 
     let mut z_eval_8n = domain_8n.coset_fft(z_poly);
     z_eval_8n.push(z_eval_8n[0]);
@@ -98,7 +105,7 @@ where
         &wo_eval_8n,
         &w4_eval_8n,
         public_inputs_poly,
-    );
+    )?;
 
     let permutation = compute_permutation_checks::<F>(
         domain,
@@ -111,7 +118,7 @@ where
         *alpha,
         *beta,
         *gamma,
-    );
+    )?;
 
     let quotient = (0..domain_8n.size())
         .map(|i| {
@@ -139,16 +146,20 @@ fn compute_gate_constraint_satisfiability<F, P>(
     wo_eval_8n: &[F],
     w4_eval_8n: &[F],
     pi_poly: &DensePolynomial<F>,
-) -> Vec<F>
+) -> Result<Vec<F>, Error>
 where
-    F: FftField + PrimeField,
+    F: PrimeField,
     P: TEModelParameters<BaseField = F>,
 {
-    let domain_8n =
-        GeneralEvaluationDomain::<F>::new(8 * domain.size()).unwrap();
+    let domain_8n = GeneralEvaluationDomain::<F>::new(8 * domain.size())
+        .ok_or(Error::InvalidEvalDomainSize {
+        log_size_of_group: (8 * domain.size()).trailing_zeros(),
+        adicity:
+            <<F as FftField>::FftParams as ark_ff::FftParameters>::TWO_ADICITY,
+    })?;
     let pi_eval_8n = domain_8n.coset_fft(pi_poly);
 
-    (0..domain_8n.size())
+    Ok((0..domain_8n.size())
         .map(|i| {
             let values = GateValues {
                 left: wl_eval_8n[i],
@@ -202,7 +213,7 @@ where
                 + fixed_base_scalar_mul
                 + curve_addition
         })
-        .collect()
+        .collect())
 }
 
 /// Computes the permutation contribution to the quotient polynomial over
@@ -218,17 +229,21 @@ fn compute_permutation_checks<F>(
     alpha: F,
     beta: F,
     gamma: F,
-) -> Vec<F>
+) -> Result<Vec<F>, Error>
 where
     F: FftField,
 {
-    let domain_8n =
-        GeneralEvaluationDomain::<F>::new(8 * domain.size()).unwrap();
+    let domain_8n = GeneralEvaluationDomain::<F>::new(8 * domain.size())
+        .ok_or(Error::InvalidEvalDomainSize {
+        log_size_of_group: (8 * domain.size()).trailing_zeros(),
+        adicity:
+            <<F as FftField>::FftParams as ark_ff::FftParameters>::TWO_ADICITY,
+    })?;
     let l1_poly_alpha =
         compute_first_lagrange_poly_scaled(domain, alpha.square());
     let l1_alpha_sq_evals = domain_8n.coset_fft(&l1_poly_alpha.coeffs);
 
-    (0..domain_8n.size())
+    Ok((0..domain_8n.size())
         .map(|i| {
             prover_key.permutation.compute_quotient_i(
                 i,
@@ -244,7 +259,7 @@ where
                 gamma,
             )
         })
-        .collect()
+        .collect())
 }
 
 /// Computes the first lagrange polynomial with the given `scale` over `domain`.

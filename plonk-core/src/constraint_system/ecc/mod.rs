@@ -14,7 +14,7 @@ use ark_ec::{
     twisted_edwards_extended::GroupAffine as TEGroupAffine, ModelParameters,
     TEModelParameters,
 };
-use ark_ff::{FftField, PrimeField};
+use ark_ff::PrimeField;
 use core::marker::PhantomData;
 
 /// Represents a point of the embeded curve in the circuit
@@ -36,7 +36,7 @@ where
 
 impl<F, P> Point<P>
 where
-    F: FftField + PrimeField,
+    F: PrimeField,
     P: TEModelParameters<BaseField = F>,
 {
     /// Builds a new [`Point`] from `X` and `Y` coordinates.
@@ -74,7 +74,7 @@ where
 
 impl<F, P> StandardComposer<F, P>
 where
-    F: FftField + PrimeField,
+    F: PrimeField,
     P: TEModelParameters<BaseField = F>,
 {
     /// Converts an embeded curve point into a constraint system Point
@@ -119,7 +119,7 @@ where
 
 impl<F, P> StandardComposer<F, P>
 where
-    F: FftField + PrimeField,
+    F: PrimeField,
     P: TEModelParameters<BaseField = F>,
 {
     /// Asserts that a point in the circuit is equal to another point in the
@@ -209,16 +209,16 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::commitment::HomomorphicCommitment;
-    use crate::{batch_test, constraint_system::helper::*};
+    use crate::{
+        batch_test, commitment::HomomorphicCommitment,
+        constraint_system::helper::*,
+    };
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
-    use ark_ec::TEModelParameters;
-    use ark_ff::{FftField, PrimeField};
 
     fn test_conditional_select_point<F, P, PC>()
     where
-        F: FftField + PrimeField,
+        F: PrimeField,
         P: TEModelParameters<BaseField = F>,
         PC: HomomorphicCommitment<F>,
     {
@@ -249,7 +249,7 @@ mod test {
 
     fn test_conditional_point_neg<F, P, PC>()
     where
-        F: FftField + PrimeField,
+        F: PrimeField,
         P: TEModelParameters<BaseField = F>,
         PC: HomomorphicCommitment<F>,
     {

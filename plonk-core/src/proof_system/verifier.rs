@@ -7,20 +7,21 @@
 //! Verifier-side of the PLONK Proving System
 
 //use crate::circuit::EmbeddedCurve;
-use crate::commitment::HomomorphicCommitment;
-use crate::constraint_system::StandardComposer;
-use crate::error::Error;
-use crate::proof_system::widget::VerifierKey as PlonkVerifierKey;
-use crate::proof_system::Proof;
+use crate::{
+    commitment::HomomorphicCommitment,
+    constraint_system::StandardComposer,
+    error::Error,
+    proof_system::{widget::VerifierKey as PlonkVerifierKey, Proof},
+};
 use ark_ec::TEModelParameters;
-use ark_ff::{FftField, PrimeField};
+use ark_ff::PrimeField;
 use core::marker::PhantomData;
 use merlin::Transcript;
 
 /// Abstraction structure designed verify [`Proof`]s.
 pub struct Verifier<F, P, PC>
 where
-    F: FftField + PrimeField,
+    F: PrimeField,
     P: TEModelParameters<BaseField = F>,
     PC: HomomorphicCommitment<F>,
 {
@@ -41,7 +42,7 @@ where
 
 impl<F, P, PC> Verifier<F, P, PC>
 where
-    F: FftField + PrimeField,
+    F: PrimeField,
     P: TEModelParameters<BaseField = F>,
     PC: HomomorphicCommitment<F>,
 {
@@ -117,7 +118,7 @@ where
 
 impl<F, P, PC> Default for Verifier<F, P, PC>
 where
-    F: FftField + PrimeField,
+    F: PrimeField,
     P: TEModelParameters<BaseField = F>,
     PC: HomomorphicCommitment<F>,
 {

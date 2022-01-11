@@ -11,10 +11,11 @@ pub mod ecc;
 pub mod logic;
 pub mod range;
 
-use crate::commitment::HomomorphicCommitment;
-use crate::proof_system::linearisation_poly::ProofEvaluations;
-use crate::proof_system::permutation;
-use crate::transcript::TranscriptProtocol;
+use crate::{
+    commitment::HomomorphicCommitment,
+    proof_system::{linearisation_poly::ProofEvaluations, permutation},
+    transcript::TranscriptProtocol,
+};
 use ark_ff::{FftField, Field, PrimeField};
 use ark_poly::{univariate::DensePolynomial, Evaluations};
 use ark_poly_commit::PolynomialCommitment;
@@ -458,7 +459,7 @@ mod test {
 
     fn test_serialise_deserialise_verifier_key<F, P, PC>()
     where
-        F: FftField + PrimeField,
+        F: PrimeField,
         P: TEModelParameters<BaseField = F>,
         PC: HomomorphicCommitment<F>,
         VerifierKey<F, PC>: PartialEq,
@@ -525,12 +526,5 @@ mod test {
         [test_serialise_deserialise_verifier_key],
         [] => (
             Bls12_377, ark_ed_on_bls12_377::EdwardsParameters       )
-    );
-
-    // Test for Bls12_381
-    crate::batch_test_ipa!(
-        [test_serialise_deserialise_verifier_key],
-        [] => (
-            Bls12_381, ark_ed_on_bls12_381::EdwardsParameters      )
     );
 }

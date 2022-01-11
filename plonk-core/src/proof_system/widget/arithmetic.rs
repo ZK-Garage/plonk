@@ -7,10 +7,8 @@
 //! Arithmetic Gates
 
 use crate::proof_system::linearisation_poly::ProofEvaluations;
-use ark_ff::FftField;
-use ark_ff::PrimeField;
-use ark_poly::polynomial::univariate::DensePolynomial;
-use ark_poly::Evaluations;
+use ark_ff::{FftField, PrimeField};
+use ark_poly::{polynomial::univariate::DensePolynomial, Evaluations};
 use ark_poly_commit::PolynomialCommitment;
 use ark_serialize::*;
 

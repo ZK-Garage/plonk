@@ -9,8 +9,7 @@
 use crate::{
     commitment::HomomorphicCommitment,
     constraint_system::{StandardComposer, Variable},
-    error::to_pc_error,
-    error::Error,
+    error::{to_pc_error, Error},
     label_polynomial,
     proof_system::{
         linearisation_poly, proof::Proof, quotient_poly, ProverKey,
@@ -18,7 +17,7 @@ use crate::{
     transcript::TranscriptProtocol,
 };
 use ark_ec::{ModelParameters, TEModelParameters};
-use ark_ff::{FftField, PrimeField};
+use ark_ff::PrimeField;
 use ark_poly::{
     univariate::{DensePolynomial, SparsePolynomial},
     EvaluationDomain, GeneralEvaluationDomain, UVPolynomial,
@@ -31,7 +30,7 @@ use rand::rngs::OsRng;
 /// [`Proof`]s for it.
 pub struct Prover<F, P, PC>
 where
-    F: PrimeField + FftField,
+    F: PrimeField,
     P: ModelParameters<BaseField = F>,
     PC: HomomorphicCommitment<F>,
 {
@@ -51,7 +50,7 @@ where
 }
 impl<F, P, PC> Prover<F, P, PC>
 where
-    F: FftField + PrimeField,
+    F: PrimeField,
     P: TEModelParameters<BaseField = F>,
     PC: HomomorphicCommitment<F>,
 {
@@ -234,7 +233,10 @@ where
         _data: PhantomData<PC>,
     ) -> Result<Proof<F, PC>, Error> {
         let domain =
-            GeneralEvaluationDomain::new(self.cs.circuit_size()).unwrap();
+            GeneralEvaluationDomain::new(self.cs.circuit_size()).ok_or(Error::InvalidEvalDomainSize {
+                log_size_of_group: self.cs.circuit_size().trailing_zeros(),
+                adicity: <<F as ark_ff::FftField>::FftParams as ark_ff::FftParameters>::TWO_ADICITY,
+            })?;
         let n = domain.size();
 
         // Since the caller is passing a pre-processed circuit
@@ -403,7 +405,7 @@ where
             &w_4_poly,
             &t_poly,
             &z_poly,
-        );
+        )?;
 
         // Add evaluations to transcript.
         transcript.append(b"a_eval", &evaluations.proof.a_eval);
@@ -454,8 +456,8 @@ where
             label_polynomial!(prover_key.permutation.out_sigma.0.clone()),
         ];
 
-        let (aw_commits, aw_rands) =
-            PC::commit(commit_key, &aw_polys, None).unwrap();
+        let (aw_commits, aw_rands) = PC::commit(commit_key, &aw_polys, None)
+            .map_err(to_pc_error::<F, PC>)?;
 
         let aw_opening = PC::open(
             commit_key,
@@ -478,8 +480,8 @@ where
             label_polynomial!(w_4_poly),
         ];
 
-        let (saw_commits, saw_rands) =
-            PC::commit(commit_key, &saw_polys, None).unwrap();
+        let (saw_commits, saw_rands) = PC::commit(commit_key, &saw_polys, None)
+            .map_err(to_pc_error::<F, PC>)?;
 
         let saw_opening = PC::open(
             commit_key,
@@ -542,7 +544,7 @@ where
 
 impl<F, P, PC> Default for Prover<F, P, PC>
 where
-    F: FftField + PrimeField,
+    F: PrimeField,
     P: TEModelParameters<BaseField = F>,
     PC: HomomorphicCommitment<F>,
 {

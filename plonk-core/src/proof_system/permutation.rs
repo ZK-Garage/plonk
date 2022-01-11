@@ -6,11 +6,16 @@
 
 //! PLONK Permutation Prover and Verifier Data
 
-use crate::permutation::constants::{K1, K2, K3};
-use crate::proof_system::linearisation_poly::ProofEvaluations;
+use crate::{
+    error::Error,
+    permutation::constants::{K1, K2, K3},
+    proof_system::linearisation_poly::ProofEvaluations,
+};
 use ark_ff::FftField;
-use ark_poly::polynomial::univariate::DensePolynomial;
-use ark_poly::{EvaluationDomain, Evaluations, GeneralEvaluationDomain};
+use ark_poly::{
+    polynomial::univariate::DensePolynomial, EvaluationDomain, Evaluations,
+    GeneralEvaluationDomain,
+};
 use ark_poly_commit::PCCommitment;
 use ark_serialize::*;
 
@@ -156,7 +161,7 @@ where
         (sigma_1_eval, sigma_2_eval, sigma_3_eval): (F, F, F),
         z_eval: F,
         z_poly: &DensePolynomial<F>,
-    ) -> DensePolynomial<F> {
+    ) -> Result<DensePolynomial<F>, Error> {
         let a = self.compute_lineariser_identity_range_check(
             (a_eval, b_eval, c_eval, d_eval),
             z_challenge,
@@ -172,14 +177,18 @@ where
             (alpha, beta, gamma),
             &self.fourth_sigma.0,
         );
-        let domain = GeneralEvaluationDomain::new(n).unwrap();
+        let domain = GeneralEvaluationDomain::new(n).ok_or(Error::InvalidEvalDomainSize {
+            log_size_of_group: n.trailing_zeros(),
+            adicity:
+                <<F as FftField>::FftParams as ark_ff::FftParameters>::TWO_ADICITY,
+        })?;
         let c = self.compute_lineariser_check_is_one(
             &domain,
             z_challenge,
             alpha.square(),
             z_poly,
         );
-        &(&a + &b) + &c
+        Ok(&(&a + &b) + &c)
     }
 
     /// Computes the following:

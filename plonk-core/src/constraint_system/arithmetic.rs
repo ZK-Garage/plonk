@@ -6,15 +6,14 @@
 
 //! Simple Arithmetic Gates
 
-use crate::constraint_system::StandardComposer;
-use crate::constraint_system::Variable;
+use crate::constraint_system::{StandardComposer, Variable};
 use ark_ec::TEModelParameters;
-use ark_ff::{FftField, PrimeField};
+use ark_ff::PrimeField;
 
 #[derive(Debug, Clone, Copy)]
 pub struct ArithmeticGate<F>
 where
-    F: FftField + PrimeField,
+    F: PrimeField,
 {
     pub(crate) witness: Option<(Variable, Variable, Option<Variable>)>,
     pub(crate) fan_in_3: Option<(F, Variable)>,
@@ -27,7 +26,7 @@ where
 
 impl<F> Default for ArithmeticGate<F>
 where
-    F: FftField + PrimeField,
+    F: PrimeField,
 {
     fn default() -> Self {
         Self {
@@ -44,7 +43,7 @@ where
 
 impl<F> ArithmeticGate<F>
 where
-    F: FftField + PrimeField,
+    F: PrimeField,
 {
     pub fn new() -> Self {
         Self::default()
@@ -97,7 +96,7 @@ where
 
 impl<F, P> StandardComposer<F, P>
 where
-    F: FftField + PrimeField,
+    F: PrimeField,
     P: TEModelParameters<BaseField = F>,
 {
     /// Function used to generate any arithmetic gate with fan-in-2 or fan-in-3.
@@ -173,18 +172,16 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::commitment::HomomorphicCommitment;
-    use crate::constraint_system::helper::*;
-    use crate::{batch_test, batch_test_ipa};
+    use crate::{
+        batch_test, commitment::HomomorphicCommitment,
+        constraint_system::helper::*,
+    };
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
-    use ark_ec::TEModelParameters;
-    use ark_ff::{FftField, PrimeField};
-    use ark_poly::univariate::DensePolynomial;
 
     fn test_public_inputs<F, P, PC>()
     where
-        F: FftField + PrimeField,
+        F: PrimeField,
         P: TEModelParameters<BaseField = F>,
         PC: HomomorphicCommitment<F>,
     {
@@ -223,7 +220,7 @@ mod test {
 
     fn test_correct_add_mul_gate<F, P, PC>()
     where
-        F: FftField + PrimeField,
+        F: PrimeField,
         P: TEModelParameters<BaseField = F>,
         PC: HomomorphicCommitment<F>,
     {
@@ -267,7 +264,7 @@ mod test {
 
     fn test_correct_add_gate<F, P, PC>()
     where
-        F: FftField + PrimeField,
+        F: PrimeField,
         P: TEModelParameters<BaseField = F>,
         PC: HomomorphicCommitment<F>,
     {
@@ -291,7 +288,7 @@ mod test {
 
     fn test_correct_big_add_mul_gate<F, P, PC>()
     where
-        F: FftField + PrimeField,
+        F: PrimeField,
         P: TEModelParameters<BaseField = F>,
         PC: HomomorphicCommitment<F>,
     {
@@ -331,7 +328,7 @@ mod test {
 
     fn test_correct_big_arith_gate<F, P, PC>()
     where
-        F: FftField + PrimeField,
+        F: PrimeField,
         P: TEModelParameters<BaseField = F>,
         PC: HomomorphicCommitment<F>,
     {
@@ -364,7 +361,7 @@ mod test {
 
     fn test_incorrect_big_arith_gate<F, P, PC>()
     where
-        F: FftField + PrimeField,
+        F: PrimeField,
         P: TEModelParameters<BaseField = F>,
         PC: HomomorphicCommitment<F>,
     {
@@ -397,7 +394,7 @@ mod test {
 
     fn test_incorrect_add_mul_gate<F, P, PC>()
     where
-        F: FftField + PrimeField,
+        F: PrimeField,
         P: TEModelParameters<BaseField = F>,
         PC: HomomorphicCommitment<F>,
     {
@@ -459,32 +456,4 @@ mod test {
             Bls12_377, ark_ed_on_bls12_377::EdwardsParameters
         )
     );
-    batch_test_ipa!(
-        [
-            test_public_inputs,
-            test_correct_add_mul_gate,
-            test_correct_add_gate,
-            test_correct_big_add_mul_gate,
-            test_correct_big_arith_gate,
-            test_incorrect_add_mul_gate,
-            test_incorrect_big_arith_gate
-        ],
-        [] => (
-            Bls12_381, ark_ed_on_bls12_381::EdwardsParameters
-        )
-    );
-
-    #[test]
-    #[allow(non_snake_case)]
-    fn test_ipa() {
-        test_correct_big_arith_gate::<
-            ark_bls12_381::Fr,
-            ark_ed_on_bls12_381::EdwardsParameters,
-            ark_poly_commit::ipa_pc::InnerProductArgPC<
-                ark_bls12_381::G1Affine,
-                blake2::Blake2b,
-                DensePolynomial<ark_bls12_381::Fr>,
-            >,
-        >();
-    }
 }

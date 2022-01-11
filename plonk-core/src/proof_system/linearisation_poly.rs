@@ -4,16 +4,19 @@
 //
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
-use crate::proof_system::ecc::{CurveAddition, FixedBaseScalarMul};
-use crate::proof_system::logic::Logic;
-use crate::proof_system::range::Range;
-use crate::proof_system::widget::GateConstraint;
-use crate::proof_system::GateValues;
-use crate::proof_system::ProverKey;
-use crate::util::EvaluationDomainExt;
+use crate::{
+    error::Error,
+    proof_system::{
+        ecc::{CurveAddition, FixedBaseScalarMul},
+        logic::Logic,
+        range::Range,
+        widget::GateConstraint,
+        GateValues, ProverKey,
+    },
+    util::EvaluationDomainExt,
+};
 use ark_ec::TEModelParameters;
-use ark_ff::FftField;
-use ark_ff::Field;
+use ark_ff::{FftField, Field};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, GeneralEvaluationDomain,
     Polynomial,
@@ -116,7 +119,7 @@ pub fn compute<F, P>(
     w_4_poly: &DensePolynomial<F>,
     t_x_poly: &DensePolynomial<F>,
     z_poly: &DensePolynomial<F>,
-) -> (DensePolynomial<F>, Evaluations<F>)
+) -> Result<(DensePolynomial<F>, Evaluations<F>), Error>
 where
     F: FftField,
     P: TEModelParameters<BaseField = F>,
@@ -172,13 +175,13 @@ where
         (left_sigma_eval, right_sigma_eval, out_sigma_eval),
         permutation_eval,
         z_poly,
-    );
+    )?;
 
     let linearisation_polynomial = gate_constraints + permutation;
     let linearisation_polynomial_eval =
         linearisation_polynomial.evaluate(z_challenge);
 
-    (
+    Ok((
         linearisation_polynomial,
         Evaluations {
             proof: ProofEvaluations {
@@ -201,7 +204,7 @@ where
             },
             quot_eval,
         },
-    )
+    ))
 }
 
 /// Computes the gate constraint satisfiability portion of the linearisation

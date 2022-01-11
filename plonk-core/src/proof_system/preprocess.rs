@@ -6,15 +6,19 @@
 
 //! Methods to preprocess the constraint system for use in a proof.
 
-use crate::commitment::HomomorphicCommitment;
-use crate::constraint_system::StandardComposer;
-use crate::error::{to_pc_error, Error};
-use crate::proof_system::{widget, ProverKey};
+use crate::{
+    commitment::HomomorphicCommitment,
+    constraint_system::StandardComposer,
+    error::{to_pc_error, Error},
+    label_polynomial,
+    proof_system::{widget, ProverKey},
+};
 use ark_ec::TEModelParameters;
 use ark_ff::{FftField, PrimeField};
-use ark_poly::{polynomial::univariate::DensePolynomial, UVPolynomial};
-use ark_poly::{EvaluationDomain, Evaluations, GeneralEvaluationDomain};
-use ark_poly_commit::LabeledPolynomial;
+use ark_poly::{
+    polynomial::univariate::DensePolynomial, EvaluationDomain, Evaluations,
+    GeneralEvaluationDomain, UVPolynomial,
+};
 use core::marker::PhantomData;
 use merlin::Transcript;
 
@@ -45,7 +49,7 @@ where
 
 impl<F, P> StandardComposer<F, P>
 where
-    F: FftField + PrimeField,
+    F: PrimeField,
     P: TEModelParameters<BaseField = F>,
 {
     /// Pads the circuit to the next power of two.
@@ -108,7 +112,7 @@ where
 }
 impl<F, P> StandardComposer<F, P>
 where
-    F: FftField + PrimeField,
+    F: PrimeField,
     P: TEModelParameters<BaseField = F>,
 {
     /// These are the parts of preprocessing that the prover must compute
@@ -128,7 +132,11 @@ where
             self.preprocess_shared(commit_key, transcript, _pc)?;
 
         let domain_8n =
-            GeneralEvaluationDomain::new(8 * domain.size()).unwrap();
+            GeneralEvaluationDomain::new(8 * domain.size()).ok_or(Error::InvalidEvalDomainSize {
+                log_size_of_group: (8 * domain.size()).trailing_zeros(),
+                adicity:
+                    <<F as FftField>::FftParams as ark_ff::FftParameters>::TWO_ADICITY,
+            })?;
         let q_m_eval_8n = Evaluations::from_vec_and_domain(
             domain_8n.coset_fft(&selectors.q_m),
             domain_8n,
@@ -235,7 +243,7 @@ where
         PC: HomomorphicCommitment<F>,
     {
         let (verifier_key, _, _) =
-            self.preprocess_shared(commit_key, transcript, _pc).unwrap();
+            self.preprocess_shared(commit_key, transcript, _pc)?;
         Ok(verifier_key)
     }
 
@@ -260,8 +268,11 @@ where
     where
         PC: HomomorphicCommitment<F>,
     {
-        let domain = GeneralEvaluationDomain::new(self.circuit_size()).unwrap();
-
+        let domain = GeneralEvaluationDomain::new(self.circuit_size()).ok_or(Error::InvalidEvalDomainSize {
+            log_size_of_group: (self.circuit_size()).trailing_zeros(),
+            adicity:
+                <<F as FftField>::FftParams as ark_ff::FftParameters>::TWO_ADICITY,
+        })?;
         // Check that the length of the wires is consistent.
         self.check_poly_same_len()?;
 
@@ -316,96 +327,21 @@ where
         let (commitments, _) = PC::commit(
             commit_key,
             [
-                LabeledPolynomial::new(
-                    "q_m_poly".to_owned(),
-                    q_m_poly.clone(),
-                    None,
-                    None,
-                ),
-                LabeledPolynomial::new(
-                    "q_l_poly".to_owned(),
-                    q_l_poly.clone(),
-                    None,
-                    None,
-                ),
-                LabeledPolynomial::new(
-                    "q_r_poly".to_owned(),
-                    q_r_poly.clone(),
-                    None,
-                    None,
-                ),
-                LabeledPolynomial::new(
-                    "q_o_poly".to_owned(),
-                    q_o_poly.clone(),
-                    None,
-                    None,
-                ),
-                LabeledPolynomial::new(
-                    "q_4_poly".to_owned(),
-                    q_4_poly.clone(),
-                    None,
-                    None,
-                ),
-                LabeledPolynomial::new(
-                    "q_c_poly".to_owned(),
-                    q_c_poly.clone(),
-                    None,
-                    None,
-                ),
-                LabeledPolynomial::new(
-                    "q_arith_poly".to_owned(),
-                    q_arith_poly.clone(),
-                    None,
-                    None,
-                ),
-                LabeledPolynomial::new(
-                    "q_range_poly".to_owned(),
-                    q_range_poly.clone(),
-                    None,
-                    None,
-                ),
-                LabeledPolynomial::new(
-                    "q_logic_poly".to_owned(),
-                    q_logic_poly.clone(),
-                    None,
-                    None,
-                ),
-                LabeledPolynomial::new(
-                    "q_fixed_group_add_poly".to_owned(),
-                    q_fixed_group_add_poly.clone(),
-                    None,
-                    None,
-                ),
-                LabeledPolynomial::new(
-                    "q_variable_group_add_poly".to_owned(),
-                    q_variable_group_add_poly.clone(),
-                    None,
-                    None,
-                ),
-                LabeledPolynomial::new(
-                    "left_sigma_poly".to_owned(),
-                    left_sigma_poly.clone(),
-                    None,
-                    None,
-                ),
-                LabeledPolynomial::new(
-                    "right_sigma_poly".to_owned(),
-                    right_sigma_poly.clone(),
-                    None,
-                    None,
-                ),
-                LabeledPolynomial::new(
-                    "out_sigma_poly".to_owned(),
-                    out_sigma_poly.clone(),
-                    None,
-                    None,
-                ),
-                LabeledPolynomial::new(
-                    "fourth_sigma_poly".to_owned(),
-                    fourth_sigma_poly.clone(),
-                    None,
-                    None,
-                ),
+                label_polynomial!(q_m_poly),
+                label_polynomial!(q_l_poly),
+                label_polynomial!(q_r_poly),
+                label_polynomial!(q_o_poly),
+                label_polynomial!(q_4_poly),
+                label_polynomial!(q_c_poly),
+                label_polynomial!(q_arith_poly),
+                label_polynomial!(q_range_poly),
+                label_polynomial!(q_logic_poly),
+                label_polynomial!(q_fixed_group_add_poly),
+                label_polynomial!(q_variable_group_add_poly),
+                label_polynomial!(left_sigma_poly),
+                label_polynomial!(right_sigma_poly),
+                label_polynomial!(out_sigma_poly),
+                label_polynomial!(fourth_sigma_poly),
             ]
             .iter(),
             None,
@@ -495,7 +431,7 @@ mod test {
     // FIXME: We can do this test without dummy_gadget method.
     fn test_pad<F, P>()
     where
-        F: FftField + PrimeField,
+        F: PrimeField,
         P: TEModelParameters<BaseField = F>,
     {
         let mut composer: StandardComposer<F, P> = StandardComposer::new();

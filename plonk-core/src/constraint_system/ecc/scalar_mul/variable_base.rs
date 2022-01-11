@@ -6,14 +6,15 @@
 
 //! Variable-base Scalar Multiplication Gate
 
-use crate::constraint_system::ecc::Point;
-use crate::constraint_system::{variable::Variable, StandardComposer};
+use crate::constraint_system::{
+    ecc::Point, variable::Variable, StandardComposer,
+};
 use ark_ec::TEModelParameters;
-use ark_ff::{BigInteger, FftField, FpParameters, PrimeField};
+use ark_ff::{BigInteger, FpParameters, PrimeField};
 
 impl<F, P> StandardComposer<F, P>
 where
-    F: FftField + PrimeField,
+    F: PrimeField,
     P: TEModelParameters<BaseField = F>,
 {
     /// Adds a variable-base scalar multiplication to the circuit description.
@@ -97,19 +98,20 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::commitment::HomomorphicCommitment;
-    use crate::{batch_test, constraint_system::helper::*, util};
+    use crate::{
+        batch_test, commitment::HomomorphicCommitment,
+        constraint_system::helper::*, util,
+    };
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
     use ark_ec::{
         twisted_edwards_extended::GroupAffine as TEGroupAffine, AffineCurve,
         TEModelParameters,
     };
-    use ark_ff::{FftField, PrimeField};
 
     fn test_var_base_scalar_mul<F, P, PC>()
     where
-        F: FftField + PrimeField,
+        F: PrimeField,
         P: TEModelParameters<BaseField = F>,
         PC: HomomorphicCommitment<F>,
     {
@@ -161,15 +163,6 @@ mod test {
         [] => (
             Bls12_377,
             ark_ed_on_bls12_377::EdwardsParameters
-        )
-    );
-
-    // Tests for Bls12_381
-    crate::batch_test_ipa!(
-        [test_var_base_scalar_mul],
-        [] => (
-            Bls12_381,
-            ark_ed_on_bls12_381::EdwardsParameters
         )
     );
 }

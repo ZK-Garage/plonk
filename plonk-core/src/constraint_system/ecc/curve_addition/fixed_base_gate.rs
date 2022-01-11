@@ -6,8 +6,7 @@
 
 //! Fixed-Base Curve Addition Gate
 
-use crate::constraint_system::StandardComposer;
-use crate::constraint_system::Variable;
+use crate::constraint_system::{StandardComposer, Variable};
 use ark_ec::models::TEModelParameters;
 use ark_ff::PrimeField;
 

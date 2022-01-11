@@ -6,14 +6,14 @@
 
 //! Fixed-base Scalar Multiplication Gate
 
-use crate::constraint_system::ecc::Point;
-use crate::constraint_system::{variable::Variable, StandardComposer};
+use crate::constraint_system::{
+    ecc::Point, variable::Variable, StandardComposer,
+};
 use ark_ec::models::twisted_edwards_extended::{
     GroupAffine as TEGroupAffine, GroupProjective as TEGroupProjective,
 };
-use ark_ec::models::TEModelParameters;
-use ark_ec::ProjectiveCurve;
-use ark_ff::{BigInteger, FftField, FpParameters, PrimeField};
+use ark_ec::{models::TEModelParameters, ProjectiveCurve};
+use ark_ff::{BigInteger, FpParameters, PrimeField};
 use num_traits::Zero;
 
 fn compute_wnaf_point_multiples<P>(
@@ -37,7 +37,7 @@ where
 
 impl<F, P> StandardComposer<F, P>
 where
-    F: FftField + PrimeField,
+    F: PrimeField,
     P: TEModelParameters<BaseField = F>,
 {
     /// Adds an elliptic curve scalar multiplication gate to the circuit
@@ -163,16 +163,17 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::commitment::HomomorphicCommitment;
-    use crate::{batch_test, constraint_system::helper::*, util};
+    use crate::{
+        batch_test, commitment::HomomorphicCommitment,
+        constraint_system::helper::*, util,
+    };
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
     use ark_ec::{group::Group, AffineCurve};
-    use ark_ff::{FftField, PrimeField};
 
     fn test_ecc_constraint<F, P, PC>()
     where
-        F: FftField + PrimeField,
+        F: PrimeField,
         P: TEModelParameters<BaseField = F>,
         PC: HomomorphicCommitment<F>,
     {
@@ -208,7 +209,7 @@ mod tests {
 
     fn test_ecc_constraint_zero<F, P, PC>()
     where
-        F: FftField + PrimeField,
+        F: PrimeField,
         P: TEModelParameters<BaseField = F>,
         PC: HomomorphicCommitment<F>,
     {
@@ -238,7 +239,7 @@ mod tests {
 
     fn test_ecc_constraint_should_fail<F, P, PC>()
     where
-        F: FftField + PrimeField,
+        F: PrimeField,
         P: TEModelParameters<BaseField = F>,
         PC: HomomorphicCommitment<F>,
     {
@@ -272,7 +273,7 @@ mod tests {
 
     fn test_point_addition<F, P, PC>()
     where
-        F: FftField + PrimeField,
+        F: PrimeField,
         P: TEModelParameters<BaseField = F>,
         PC: HomomorphicCommitment<F>,
     {
@@ -310,7 +311,7 @@ mod tests {
 
     fn test_pedersen_hash<F, P, PC>()
     where
-        F: FftField + PrimeField,
+        F: PrimeField,
         P: TEModelParameters<BaseField = F>,
         PC: HomomorphicCommitment<F>,
     {
@@ -385,7 +386,7 @@ mod tests {
 
     fn test_pedersen_balance<F, P, PC>()
     where
-        F: FftField + PrimeField,
+        F: PrimeField,
         P: TEModelParameters<BaseField = F>,
         PC: HomomorphicCommitment<F>,
     {
@@ -476,22 +477,6 @@ mod tests {
         [] => (
             Bls12_377,
             ark_ed_on_bls12_377::EdwardsParameters
-        )
-    );
-
-    // Bls12-381 tests
-    crate::batch_test_ipa!(
-        [
-            test_ecc_constraint,
-            test_ecc_constraint_zero,
-            test_ecc_constraint_should_fail,
-            test_point_addition,
-            test_pedersen_hash,
-            test_pedersen_balance
-        ],
-        [] => (
-            Bls12_381,
-            ark_ed_on_bls12_381::EdwardsParameters
         )
     );
 }

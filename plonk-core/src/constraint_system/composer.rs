@@ -14,16 +14,13 @@
 //! It allows us not only to build Add and Mul constraints but also to build
 //! ECC op. gates, Range checks, Logical gates (Bitwise ops) etc.
 
-use crate::constraint_system::Variable;
-use crate::permutation::Permutation;
+use crate::{constraint_system::Variable, permutation::Permutation};
 use alloc::collections::BTreeMap;
 
-use ark_ec::models::TEModelParameters;
-use ark_ff::{FftField, PrimeField};
+use ark_ec::{models::TEModelParameters, ModelParameters};
+use ark_ff::PrimeField;
 use core::marker::PhantomData;
 use hashbrown::HashMap;
-
-use ark_ec::ModelParameters;
 
 /// The StandardComposer is the circuit-builder tool that the `plonk` repository
 /// provides so that circuit descriptions can be written, stored and transformed
@@ -54,7 +51,7 @@ use ark_ec::ModelParameters;
 #[derivative(Debug)]
 pub struct StandardComposer<F, P>
 where
-    F: FftField + PrimeField,
+    F: PrimeField,
     P: ModelParameters<BaseField = F>,
 {
     /// Number of arithmetic gates in the circuit
@@ -116,7 +113,7 @@ where
 
 impl<F, P> StandardComposer<F, P>
 where
-    F: FftField + PrimeField,
+    F: PrimeField,
     P: ModelParameters<BaseField = F>,
 {
     /// Returns the number of gates in the circuit
@@ -147,7 +144,7 @@ where
 
 impl<F, P> Default for StandardComposer<F, P>
 where
-    F: FftField + PrimeField,
+    F: PrimeField,
     P: TEModelParameters<BaseField = F>,
 {
     #[inline]
@@ -158,7 +155,7 @@ where
 
 impl<F, P> StandardComposer<F, P>
 where
-    F: FftField + PrimeField,
+    F: PrimeField,
     P: TEModelParameters<BaseField = F>,
 {
     /// Generates a new empty `StandardComposer` with all of it's fields
@@ -702,20 +699,20 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::commitment::HomomorphicCommitment;
-    use crate::constraint_system::helper::*;
-    use crate::proof_system::{Prover, Verifier};
-    use crate::{batch_test, batch_test_field_params};
+    use crate::{
+        batch_test, batch_test_field_params,
+        commitment::HomomorphicCommitment,
+        constraint_system::helper::*,
+        proof_system::{Prover, Verifier},
+    };
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
-    use ark_ec::models::TEModelParameters;
-    use ark_ff::{FftField, PrimeField};
     use rand::rngs::OsRng;
 
     /// Tests that a circuit initially has 3 gates.
     fn test_initial_circuit_size<F, P>()
     where
-        F: FftField + PrimeField,
+        F: PrimeField,
         P: TEModelParameters<BaseField = F>,
     {
         // NOTE: Circuit size is n+3 because
@@ -731,7 +728,7 @@ mod test {
     /// Tests that an empty circuit proof passes.
     fn test_prove_verify<F, P, PC>()
     where
-        F: FftField + PrimeField,
+        F: PrimeField,
         P: TEModelParameters<BaseField = F>,
         PC: HomomorphicCommitment<F>,
     {
@@ -743,7 +740,7 @@ mod test {
 
     fn test_correct_is_zero_with_output<F, P, PC>()
     where
-        F: FftField + PrimeField,
+        F: PrimeField,
         P: TEModelParameters<BaseField = F>,
         PC: HomomorphicCommitment<F>,
     {
@@ -772,7 +769,7 @@ mod test {
 
     fn test_correct_is_eq_with_output<F, P, PC>()
     where
-        F: FftField + PrimeField,
+        F: PrimeField,
         P: TEModelParameters<BaseField = F>,
         PC: HomomorphicCommitment<F>,
     {
@@ -807,7 +804,7 @@ mod test {
 
     fn test_conditional_select<F, P, PC>()
     where
-        F: FftField + PrimeField,
+        F: PrimeField,
         P: TEModelParameters<BaseField = F>,
         PC: HomomorphicCommitment<F>,
     {
@@ -835,7 +832,7 @@ mod test {
     // FIXME: Move this to integration tests
     fn test_multiple_proofs<F, P, PC>()
     where
-        F: FftField + PrimeField,
+        F: PrimeField,
         P: TEModelParameters<BaseField = F>,
         PC: HomomorphicCommitment<F>,
     {
@@ -930,18 +927,6 @@ mod test {
         [] => (
             Bls12_377,
             ark_ed_on_bls12_377::EdwardsParameters
-        )
-    );
-
-    // Tests for Bls12_381
-    crate::batch_test_ipa!(
-        [
-            test_prove_verify,
-            test_multiple_proofs,
-            test_conditional_select ],
-        [] => (
-            Bls12_381,
-            ark_ed_on_bls12_381::EdwardsParameters
         )
     );
 }

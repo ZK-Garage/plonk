@@ -15,8 +15,8 @@ pub enum Error {
     InvalidEvalDomainSize {
         /// Log size of the group
         log_size_of_group: u32,
-        /// Two adacity generated
-        adacity: u32,
+        /// Two adicity generated
+        adicity: u32,
     },
 
     // Prover/Verifier errors
@@ -103,12 +103,12 @@ impl std::fmt::Display for Error {
         match self {
             Self::InvalidEvalDomainSize {
                 log_size_of_group,
-                adacity,
+                adicity,
             } => write!(
                 f,
-                "Log-size of the EvaluationDomain group > TWO_ADACITY\
-            Size: {:?} > TWO_ADACITY = {:?}",
-                log_size_of_group, adacity
+                "Log-size of the EvaluationDomain group > TWO_ADICITY\
+            Size: {:?} > TWO_ADICITY = {:?}",
+                log_size_of_group, adicity
             ),
             Self::ProofVerificationError => {
                 write!(f, "proof verification failed")

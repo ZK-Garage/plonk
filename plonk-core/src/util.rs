@@ -94,7 +94,7 @@ pub fn from_embedded_curve_scalar<F, P>(
     embedded_scalar: <P as ModelParameters>::ScalarField,
 ) -> F
 where
-    F: FftField + PrimeField,
+    F: PrimeField,
     P: TEModelParameters<BaseField = F>,
 {
     let scalar_repr = embedded_scalar.into_repr();

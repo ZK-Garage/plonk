@@ -6,10 +6,10 @@
 
 //! Variable-base Curve Addition Gate
 
-use crate::constraint_system::ecc::Point;
-use crate::constraint_system::StandardComposer;
-use ark_ec::models::twisted_edwards_extended::GroupAffine as TEGroupAffine;
-use ark_ec::models::TEModelParameters;
+use crate::constraint_system::{ecc::Point, StandardComposer};
+use ark_ec::models::{
+    twisted_edwards_extended::GroupAffine as TEGroupAffine, TEModelParameters,
+};
 use ark_ff::PrimeField;
 
 impl<F, P> StandardComposer<F, P>
@@ -100,7 +100,6 @@ mod test {
     use ark_bls12_381::Bls12_381;
 
     use crate::commitment::HomomorphicCommitment;
-    use ark_ff::{FftField, PrimeField};
 
     /// Adds two curve points together using the classical point addition
     /// algorithm. This method is slower than WNAF and is just meant to be the
@@ -210,7 +209,7 @@ mod test {
 
     fn test_curve_addition<F, P, PC>()
     where
-        F: FftField + PrimeField,
+        F: PrimeField,
         P: TEModelParameters<BaseField = F>,
         PC: HomomorphicCommitment<F>,
     {

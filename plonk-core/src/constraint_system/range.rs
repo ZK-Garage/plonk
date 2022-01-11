@@ -197,15 +197,17 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::commitment::HomomorphicCommitment;
-    use crate::{batch_test, constraint_system::helper::*};
+    use crate::{
+        batch_test, commitment::HomomorphicCommitment,
+        constraint_system::helper::*,
+    };
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
     use ark_ec::models::TEModelParameters;
-    use ark_ff::{FftField, PrimeField};
+    use ark_ff::PrimeField;
     fn test_range_constraint<F, P, PC>()
     where
-        F: FftField + PrimeField,
+        F: PrimeField,
         P: TEModelParameters<BaseField = F>,
         PC: HomomorphicCommitment<F>,
     {
@@ -243,7 +245,7 @@ mod test {
 
     fn test_odd_bit_range<F, P, PC>()
     where
-        F: FftField + PrimeField,
+        F: PrimeField,
         P: TEModelParameters<BaseField = F>,
         PC: HomomorphicCommitment<F>,
     {
@@ -273,15 +275,6 @@ mod test {
         [test_odd_bit_range]
         => (
             Bls12_377, ark_ed_on_bls12_377::EdwardsParameters
-        )
-    );
-
-    // Test on Bls12-381
-    crate::batch_test_ipa!(
-        [test_range_constraint],
-        [test_odd_bit_range]
-        => (
-            Bls12_381, ark_ed_on_bls12_381::EdwardsParameters
         )
     );
 }

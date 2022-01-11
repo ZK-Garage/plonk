@@ -6,12 +6,14 @@
 
 //! Tools & traits for PLONK circuits
 
-use crate::commitment::HomomorphicCommitment;
-use crate::error::{to_pc_error, Error};
-use crate::prelude::StandardComposer;
-use crate::proof_system::{Proof, Prover, ProverKey, Verifier, VerifierKey};
-use ark_ec::models::{SWModelParameters, TEModelParameters};
+use crate::{
+    commitment::HomomorphicCommitment,
+    error::{to_pc_error, Error},
+    prelude::StandardComposer,
+    proof_system::{Proof, Prover, ProverKey, Verifier, VerifierKey},
+};
 use ark_ec::{
+    models::{SWModelParameters, TEModelParameters},
     short_weierstrass_jacobian::{
         GroupAffine as SWGroupAffine, GroupProjective as SWGroupProjective,
     },
@@ -20,7 +22,7 @@ use ark_ec::{
     },
     ProjectiveCurve,
 };
-use ark_ff::{FftField, Field, PrimeField};
+use ark_ff::{Field, PrimeField};
 use ark_serialize::*;
 
 /// Group Element Into Public Input
@@ -186,7 +188,7 @@ where
 ///    #[derivative(Debug(bound = ""), Default(bound = ""))]
 /// pub struct TestCircuit<F, P>
 /// where
-///     F: FftField + PrimeField,
+///     F: PrimeField,
 ///     P: TEModelParameters<BaseField = F>,
 /// {
 ///        a: F,
@@ -199,7 +201,7 @@ where
 ///
 /// impl<F, P> Circuit<F, P> for TestCircuit<F, P>
 /// where
-///     F: FftField + PrimeField,
+///     F: PrimeField,
 ///     P: TEModelParameters<BaseField = F>,
 ///    {
 ///        const CIRCUIT_ID: [u8; 32] = [0xff; 32];
@@ -301,7 +303,7 @@ where
 /// ```
 pub trait Circuit<F, P>
 where
-    F: FftField + PrimeField,
+    F: PrimeField,
     P: TEModelParameters<BaseField = F>,
 {
     /// Circuit identifier associated constant.
@@ -321,7 +323,7 @@ where
         u_params: &PC::UniversalParams,
     ) -> Result<(ProverKey<F>, VerifierData<F, PC>), Error>
     where
-        F: FftField + PrimeField,
+        F: PrimeField,
         PC: HomomorphicCommitment<F>,
     {
         // Setup PublicParams
@@ -367,7 +369,7 @@ where
         transcript_init: &'static [u8],
     ) -> Result<Proof<F, PC>, Error>
     where
-        F: FftField + PrimeField,
+        F: PrimeField,
         P: TEModelParameters<BaseField = F>,
         PC: HomomorphicCommitment<F>,
     {
@@ -404,7 +406,7 @@ pub fn verify_proof<F, P, PC>(
     transcript_init: &'static [u8],
 ) -> Result<(), Error>
 where
-    F: FftField + PrimeField,
+    F: PrimeField,
     P: TEModelParameters<BaseField = F>,
     PC: HomomorphicCommitment<F>,
 {
@@ -454,8 +456,9 @@ mod test {
     use crate::{constraint_system::StandardComposer, util};
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
-    use ark_ec::twisted_edwards_extended::GroupAffine;
-    use ark_ec::{AffineCurve, PairingEngine};
+    use ark_ec::{
+        twisted_edwards_extended::GroupAffine, AffineCurve, PairingEngine,
+    };
     use ark_ff::{FftField, PrimeField};
     use rand::rngs::OsRng;
 
@@ -478,7 +481,7 @@ mod test {
 
     impl<F, P> Circuit<F, P> for TestCircuit<F, P>
     where
-        F: FftField + PrimeField,
+        F: PrimeField,
         P: TEModelParameters<BaseField = F>,
     {
         const CIRCUIT_ID: [u8; 32] = [0xff; 32];
@@ -524,7 +527,7 @@ mod test {
 
     fn test_full<F, P, PC>() -> Result<(), Error>
     where
-        F: FftField + PrimeField,
+        F: PrimeField,
         P: TEModelParameters<BaseField = F>,
         PC: HomomorphicCommitment<F>,
         VerifierData<F, PC>: PartialEq,
@@ -599,8 +602,12 @@ mod test {
             <Bls12_381 as PairingEngine>::Fr,
             ark_ed_on_bls12_381::EdwardsParameters,
             crate::commitment::KZG10<Bls12_381>,
-        >()?;
+        >()
+    }
 
+    #[test]
+    #[allow(non_snake_case)]
+    fn test_full_on_Bls12_381_ipa() -> Result<(), Error> {
         test_full::<
             <Bls12_381 as PairingEngine>::Fr,
             ark_ed_on_bls12_381::EdwardsParameters,
@@ -618,6 +625,18 @@ mod test {
             <Bls12_377 as PairingEngine>::Fr,
             ark_ed_on_bls12_377::EdwardsParameters,
             crate::commitment::KZG10<Bls12_377>,
+        >()
+    }
+    #[test]
+    #[allow(non_snake_case)]
+    fn test_full_on_Bls12_377_ipa() -> Result<(), Error> {
+        test_full::<
+            <Bls12_377 as PairingEngine>::Fr,
+            ark_ed_on_bls12_377::EdwardsParameters,
+            crate::commitment::IPA<
+                <Bls12_377 as PairingEngine>::G1Affine,
+                blake2::Blake2b,
+            >,
         >()
     }
 }

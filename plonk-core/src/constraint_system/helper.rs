@@ -5,13 +5,15 @@
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
 use super::StandardComposer;
-use crate::commitment::HomomorphicCommitment;
-use crate::error::{to_pc_error, Error};
-use crate::proof_system::{Prover, Verifier};
+use crate::{
+    commitment::HomomorphicCommitment,
+    error::{to_pc_error, Error},
+    proof_system::{Prover, Verifier},
+};
 use ark_ec::TEModelParameters;
 use rand::rngs::OsRng;
 
-use ark_ff::{FftField, PrimeField};
+use ark_ff::PrimeField;
 
 /// Adds dummy constraints using arithmetic gates.
 #[allow(dead_code)]
@@ -19,7 +21,7 @@ pub(crate) fn dummy_gadget<F, P>(
     n: usize,
     composer: &mut StandardComposer<F, P>,
 ) where
-    F: FftField + PrimeField,
+    F: PrimeField,
     P: TEModelParameters<BaseField = F>,
 {
     let one = F::one();
@@ -39,7 +41,7 @@ pub(crate) fn gadget_tester<F, P, PC>(
     n: usize,
 ) -> Result<crate::proof_system::Proof<F, PC>, Error>
 where
-    F: FftField + PrimeField,
+    F: PrimeField,
     P: TEModelParameters<BaseField = F>,
     PC: HomomorphicCommitment<F>,
 {
