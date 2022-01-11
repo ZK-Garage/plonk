@@ -85,10 +85,10 @@ where
     /// Commitment to the quotient polynomial.
     pub(crate) t_4_comm: PC::Commitment,
 
-    /// Batch opening of the commitments
+    /// Batch opening proof of the aggregated witnesses
     pub aw_opening: PC::Proof,
 
-    /// Batch openings of the shifted commitments
+    /// Batch opening proof of the shifted aggregated witnesses
     pub saw_opening: PC::Proof,
 
     /// Subset of all of the evaluations added to the proof.
