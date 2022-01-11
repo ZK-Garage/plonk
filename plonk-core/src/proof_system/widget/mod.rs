@@ -284,8 +284,9 @@ where
     Eq(bound = ""),
     PartialEq(bound = "")
 )]
-pub struct ProverKey<F, P>
+pub struct ProverKey<E, F, P>
 where
+    E: PairingEngine,
     F: PrimeField,
     P: TEModelParameters<BaseField = F>,
 {
@@ -325,8 +326,9 @@ where
     __: PhantomData<P>,
 }
 
-impl<F, P> ProverKey<F, P>
+impl<E, F, P> ProverKey<E, F, P>
 where
+    E: PairingEngine,
     F: PrimeField,
     P: TEModelParameters<BaseField = F>,
 {

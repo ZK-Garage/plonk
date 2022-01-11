@@ -37,7 +37,7 @@ where
 {
     /// Proving Key which is used to create proofs about a specific PLONK
     /// circuit.
-    pub prover_key: Option<ProverKey<E::Fr, P>>,
+    pub prover_key: Option<ProverKey<E, E::Fr, P>>,
 
     /// Circuit Description
     pub(crate) cs: StandardComposer<E, P>,
@@ -242,7 +242,7 @@ where
     pub fn prove_with_preprocessed(
         &self,
         commit_key: &Powers<E>,
-        prover_key: &ProverKey<E::Fr, P>,
+        prover_key: &ProverKey<E, E::Fr, P>,
     ) -> Result<Proof<E, P>, Error> {
         // Construct the domain s.t. it is large enough to operate
         // with both the number of gates in the circuit and the lookup 

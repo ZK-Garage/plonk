@@ -756,7 +756,7 @@ where
 
     pub(crate) fn compute_mega_permutation_poly(
         &self,
-        domain: &EvaluationDomain,
+        domain: &GeneralEvaluationDomain<F>,
         f: &[F],
         t: &[F],
         t_prime: &[F], 
@@ -765,7 +765,7 @@ where
         delta: &F,
         epsilon: &F,
         theta: &F,
-    ) -> DensePolynomial {
+    ) -> DensePolynomial<F> {
         let n = domain.size();
 
         assert_eq!(f.len(), domain.size());
@@ -807,10 +807,10 @@ where
             // gate and pair the results
             .map(|(((((f, t), t_next), h_1), h_1_next), h_2)| {
                 (
-                    lookup_numerator_irreducible(
+                    Self::lookup_numerator_irreducible(
                         delta, epsilon, &f, &t, t_next,
                     ),
-                    lookup_denominator_irreducible(
+                    Self::lookup_denominator_irreducible(
                         delta, epsilon, &h_1, &h_1_next, &h_2,
                     ),
                 )

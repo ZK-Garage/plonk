@@ -113,7 +113,7 @@ where
         &mut self,
         commit_key: &Powers<E>,
         transcript: &mut TranscriptWrapper<E>,
-    ) -> Result<ProverKey<E::Fr, P>, Error> {
+    ) -> Result<ProverKey<E, E::Fr, P>, Error> {
         let (_, selectors, domain) =
             self.preprocess_shared(commit_key, transcript)?;
 

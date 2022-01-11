@@ -11,7 +11,7 @@ use crate::proof_system::widget::GateConstraint;
 use crate::proof_system::GateValues;
 use crate::proof_system::ProverKey;
 use crate::util::EvaluationDomainExt;
-use ark_ec::TEModelParameters;
+use ark_ec::{PairingEngine, TEModelParameters};
 use ark_ff::Field;
 use ark_ff::PrimeField;
 use ark_poly::EvaluationDomain;
@@ -99,9 +99,9 @@ where
 }
 
 /// Compute the linearisation polynomial.
-pub fn compute<F, P>(
+pub fn compute<E, F, P>(
     domain: &GeneralEvaluationDomain<F>,
-    prover_key: &ProverKey<F, P>,
+    prover_key: &ProverKey<E, F, P>,
     alpha: &F,
     beta: &F,
     gamma: &F,
@@ -118,6 +118,7 @@ pub fn compute<F, P>(
     z_poly: &DensePolynomial<F>,
 ) -> (DensePolynomial<F>, Evaluations<F>)
 where
+    E: PairingEngine,
     F: PrimeField,
     P: TEModelParameters<BaseField = F>,
 {
@@ -206,7 +207,7 @@ where
 
 /// Computes the gate constraint satisfiability portion of the linearisation
 /// polynomial.
-fn compute_gate_constraint_satisfiability<F, P>(
+fn compute_gate_constraint_satisfiability<E, F, P>(
     range_separation_challenge: &F,
     logic_separation_challenge: &F,
     fixed_base_separation_challenge: &F,
@@ -222,9 +223,10 @@ fn compute_gate_constraint_satisfiability<F, P>(
     q_c_eval: F,
     q_l_eval: F,
     q_r_eval: F,
-    prover_key: &ProverKey<F, P>,
+    prover_key: &ProverKey<E, F, P>,
 ) -> DensePolynomial<F>
 where
+    E: PairingEngine,
     F: PrimeField,
     P: TEModelParameters<BaseField = F>,
 {

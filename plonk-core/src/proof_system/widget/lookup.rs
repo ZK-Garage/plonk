@@ -10,13 +10,10 @@ use ark_ff::{Field, PrimeField};
 use core::marker::PhantomData;
 use crate::proof_system::linearisation_poly::ProofEvaluations;
 use ark_ec::PairingEngine;
-use ark_ff::PrimeField;
 use ark_poly::polynomial::univariate::DensePolynomial;
 use ark_poly::Evaluations;
 use ark_poly_commit::sonic_pc::Commitment;
 use ark_serialize::*;
-use ark_ec::PairingEngine;
-use super::compress;
 
 /// Lookup Gates Prover Key
 // #[derive(CanonicalDeserialize, CanonicalSerialize, derivative::Derivative)]
@@ -56,7 +53,7 @@ E: PairingEngine,
         let a = {
             let q_lookup_i = self.q_lookup.1[index];
             let compressed_tuple =
-                compress(w_l_i, w_r_i, w_o_i, w_4_i, zeta);
+                Self::compress(w_l_i, w_r_i, w_o_i, w_4_i, zeta);
 
             q_lookup_i * (compressed_tuple - f_i) * lookup_challenge
         };
