@@ -376,7 +376,7 @@ where
     }
 }
 
-/*
+
         // p(X) * (1+δ) * (ε+f(X)) * (ε*(1+δ) + t(X) + δt(Xω)) * α_1^3
         let c = {
             let c_1 = epsilon + f_i;
@@ -393,4 +393,3 @@ where
 
             -p_i_next * d_1 * d_2 * l_sep_3
         };
-        */

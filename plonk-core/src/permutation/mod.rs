@@ -762,9 +762,9 @@ where
         t_prime: &[F], 
         h_1: &[F],
         h_2: &[F],
-        delta: &F,
-        epsilon: &F,
-        theta: &F,
+        delta: F,
+        epsilon: F,
+        theta: F,
     ) -> DensePolynomial<F> {
         let n = domain.size();
 
@@ -788,7 +788,7 @@ where
                             delta, epsilon, f, t, t_next,
                         ),
                         plonkup_denominator_irreducible(
-                            delta, epsilon, h_1, &h_1_next, h_2,
+                            delta, epsilon, h_1, h_1_next, h_2,
                         ),
                     )
                 })
@@ -808,14 +808,14 @@ where
             .map(|(((((f, t), t_next), h_1), h_1_next), h_2)| {
                 (
                     Self::lookup_numerator_irreducible(
-                        delta, epsilon, &f, &t, t_next,
+                        delta, epsilon, theta, *f, *t, t_next,
                     ),
                     Self::lookup_denominator_irreducible(
-                        delta, epsilon, &h_1, &h_1_next, &h_2,
+                        delta, epsilon, *h_1, h_1_next, *h_2,
                     ),
                 )
             })
-            .map(|(num, den)| num * den.invert().unwrap())
+            .map(|(num, den)| num * den.inverse().unwrap())
             .collect();
 
         let mut state = F::one();
@@ -836,11 +836,11 @@ where
     }
     
     fn lookup_numerator_irreducible(
-        delta: &F,
-        epsilon: &F,
-        theta: &F,
-        f: &F,
-        t_prime: &F,
+        delta: F,
+        epsilon: F,
+        theta: F,
+        f: F,
+        t_prime: F,
         t_prime_next: F,
     ) -> F {
         let prod_1 = F::one() + delta;
@@ -851,11 +851,11 @@ where
     }
     
     fn lookup_denominator_irreducible(
-        delta: &F,
-        epsilon: &F,
-        h_1: &F,
-        h_1_next: &F,
-        h_2: &F,
+        delta: F,
+        epsilon: F,
+        h_1: F,
+        h_1_next: F,
+        h_2: F,
     ) -> F {
         let epsilon_plus_one_delta = epsilon * (F::one() + delta);
         let prod_1 = epsilon_plus_one_delta + h_1 + (h_2 * delta);

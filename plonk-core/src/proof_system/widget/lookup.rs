@@ -95,31 +95,31 @@ E: PairingEngine,
             let a_0 =
                 a_eval + zeta * b_eval + zeta_sq * c_eval + zeta_cu * d_eval;
 
-            &self.q_lookup.0 * &((a_0 - f_eval) * lookup_separation_challenge)
+            &self.q_lookup.0 * ((a_0 - f_eval) * lookup_separation_challenge)
         };
 
         // p(X) * L0(z) * α_1^2
-        let b = { p_poly * &(l1_eval * l_sep_2) };
+        let b = { p_poly * (l1_eval * l_sep_2) };
 
         // p(X) * (1 + δ) * (ε + f_bar) * (ε(1+δ) + t_bar + δ*tω_bar) * α_1^3
         let c = {
             let c_0 = epsilon + f_eval;
             let c_1 = epsilon_one_plus_delta + t_eval + delta * t_next_eval;
 
-            p_poly * &(one_plus_delta * c_0 * c_1 * l_sep_3)
+            (one_plus_delta * c_0 * c_1 * l_sep_3) * p_poly
         };
 
         // − pω_bar * (ε(1+δ) + h1_bar + δh2_bar) * h2(X) * α_1^3
         let d = {
             let d_0 = epsilon_one_plus_delta + h_1_eval + delta * h_2_eval;
 
-            &(-p_next_eval * d_0 * l_sep_3) * h_2_poly;
+            (-p_next_eval * d_0 * l_sep_3) * h_2_poly
         };
 
         let mut r = a;
-        r += &b;
-        r += &c;
-        r += &d;
+        r += b;
+        r += c;
+        r += d;
 
         r
     }

@@ -467,6 +467,8 @@ where
             transcript.challenge_scalar(b"fixed base separation challenge");
         let var_base_sep_challenge =
             transcript.challenge_scalar(b"variable base separation challenge");
+        let lookup_challenge =
+            transcript.challenge_scalar(b"lookup separation challenge");
 
         let t_poly = quotient_poly::compute(
             &domain,
@@ -477,13 +479,16 @@ where
             &w_o_poly,
             &w_4_poly,
             &pi_poly,
+            &f_poly,
             &alpha,
             &beta,
             &gamma,
+            &zeta,
             &range_sep_challenge,
             &logic_sep_challenge,
             &fixed_base_sep_challenge,
             &var_base_sep_challenge,
+            &lookup_challenge,
         )?;
 
         // Split quotient polynomial into 4 degree `n` polynomials
