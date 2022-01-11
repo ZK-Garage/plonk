@@ -58,14 +58,14 @@ macro_rules! batch_test_field_params {
 }
 
 #[macro_export]
-macro_rules! batch_test_engine {
-    ( [$($test_set:ident),*], [$($test_panic_set:ident),*] => ($engine:ty) ) => {
+macro_rules! batch_test_kzg {
+    ( [$($test_set:ident),*], [$($test_panic_set:ident),*] => ($engine:ty, $params:ty) ) => {
         paste::item! {
             $(
                 #[test]
                 #[allow(non_snake_case)]
                 fn [< $test_set _on_ $engine>]() {
-                    $test_set::<$engine>()
+                    $test_set::<<$engine as ark_ec::PairingEngine>::Fr, $params, crate::commitment::KZG10<$engine>>()
                 }
             )*
             $(
@@ -73,7 +73,7 @@ macro_rules! batch_test_engine {
                 #[should_panic]
                 #[allow(non_snake_case)]
                 fn [< $test_panic_set _on_ $engine>]() {
-                    $test_panic_set::<$engine>()
+                    $test_panic_set::<<$engine as ark_ec::PairingEngine>::Fr, $params, crate::commitment::KZG10<$engine>>()
                 }
             )*
         }

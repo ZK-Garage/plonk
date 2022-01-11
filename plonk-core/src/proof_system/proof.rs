@@ -45,13 +45,13 @@ use merlin::Transcript;
 /// construct the Proof.
 #[derive(CanonicalDeserialize, CanonicalSerialize, derivative::Derivative)]
 #[derivative(
-    Clone(bound = "PC::Commitment: Clone, PC::Proof : Clone"),
+    Clone(bound = "PC::Commitment: Clone, PC::Proof: Clone"),
     Debug(
-        bound = "PC::Commitment: std::fmt::Debug, PC::Proof : std::fmt::Debug"
+        bound = "PC::Commitment: std::fmt::Debug, PC::Proof: std::fmt::Debug"
     ),
-    Default(bound = "PC::Commitment: Default, PC::Proof : Default"),
-    Eq(bound = "PC::Commitment: Eq, PC::Proof : Eq"),
-    PartialEq(bound = "PC::Commitment: PartialEq, PC::Proof : PartialEq")
+    Default(bound = "PC::Commitment: Default, PC::Proof: Default"),
+    Eq(bound = "PC::Commitment: Eq, PC::Proof: Eq"),
+    PartialEq(bound = "PC::Commitment: PartialEq, PC::Proof: PartialEq")
 )]
 pub struct Proof<F, PC>
 where
@@ -524,7 +524,7 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::batch_test;
+    use crate::batch_test_kzg;
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
 
@@ -551,19 +551,18 @@ mod test {
         assert_eq!(proof, obtained_proof);
     }
 
-    /*    // Bls12-381 tests
-    batch_test!(
+    // Bls12-381 tests
+    batch_test_kzg!(
         [test_serde_proof],
         [] => (
             Bls12_381, ark_ed_on_bls12_381::EdwardsParameters
         )
     );
-
     // Bls12-377 tests
-    batch_test!(
+    batch_test_kzg!(
         [test_serde_proof],
         [] => (
             Bls12_377, ark_ed_on_bls12_377::EdwardsParameters
         )
-    );*/
+    );
 }
