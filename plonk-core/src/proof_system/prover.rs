@@ -304,6 +304,7 @@ where
         
         // Generate table compression factor
         let zeta = transcript.challenge_scalar(b"zeta");
+        transcript.append_scalar(b"zeta", &zeta);
 
         // Compress lookup table into vector of single elements
         let compressed_t_multiset = MultiSet::compress_four_arity(
@@ -316,7 +317,7 @@ where
             zeta,
         );
 
-        // Compute table f
+        // Compute query table f
         // When q_lookup[i] is zero the wire value is replaced with a dummy
         // value Currently set as the first row of the public table
         // If q_lookup is one the wire values are preserved
@@ -407,6 +408,15 @@ where
         transcript.append_scalar(b"theta", &theta);
 
         assert!(beta != gamma, "challenges must be different");
+        assert!(beta != delta, "challenges must be different");
+        assert!(beta != epsilon, "challenges must be different");
+        assert!(beta != theta, "challenges must be different");
+        assert!(gamma != delta, "challenges must be different");
+        assert!(gamma != epsilon, "challenges must be different");
+        assert!(gamma != theta, "challenges must be different");
+        assert!(delta != epsilon, "challenges must be different");
+        assert!(delta != theta, "challenges must be different");
+        assert!(epsilon != theta, "challenges must be different");
 
         let mut z_poly = DensePolynomial::from_coefficients_slice(
             &self.cs.perm.compute_permutation_poly(
