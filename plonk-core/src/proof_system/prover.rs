@@ -392,9 +392,8 @@ where
         transcript.append_scalar(b"beta", &beta);
 
         // Compute permutation challenge `gamma`.
-        /// XXX: Is there a reason gammas is not appended?
         let gamma = transcript.challenge_scalar(b"gamma");
-
+        transcript.append_scalar(b"gamma", &gamma);
         // Compute permutation challenge `delta`.
         let delta = transcript.challenge_scalar(b"delta");
         transcript.append_scalar(b"delta", &delta);
@@ -459,16 +458,27 @@ where
         // Compute quotient challenge; `alpha`, and gate-specific separation
         // challenges.
         let alpha = transcript.challenge_scalar(b"alpha");
+        transcript.append_scalar(b"alpha", &alpha);
+
         let range_sep_challenge =
             transcript.challenge_scalar(b"range separation challenge");
+        transcript.append_scalar(b"range seperation challenge", &range_sep_challenge);
+
         let logic_sep_challenge =
             transcript.challenge_scalar(b"logic separation challenge");
+        transcript.append_scalar(b"logic seperation challenge", &logic_sep_challenge);
+
         let fixed_base_sep_challenge =
             transcript.challenge_scalar(b"fixed base separation challenge");
+        transcript.append_scalar(b"fixed base separation challenge", &fixed_base_sep_challenge);
+
         let var_base_sep_challenge =
             transcript.challenge_scalar(b"variable base separation challenge");
+        transcript.append_scalar(b"variable base separation challenge", &var_base_sep_challenge);
+
         let lookup_challenge =
             transcript.challenge_scalar(b"lookup separation challenge");
+        transcript.append_scalar(b"lookup separation challenge", &lookup_challenge);
 
         let t_poly = quotient_poly::compute(
             &domain,
@@ -511,6 +521,7 @@ where
         //
         // Compute evaluation challenge; `z`.
         let z_challenge = transcript.challenge_scalar(b"z");
+        transcript.append_scalar(b"z", &z_challenge);
 
         let (lin_poly, evaluations) = linearisation_poly::compute(
             &domain,
