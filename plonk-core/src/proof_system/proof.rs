@@ -129,12 +129,41 @@ where
         transcript.append_commitment(b"w_o", &self.c_comm);
         transcript.append_commitment(b"w_4", &self.d_comm);
 
-        // Compute beta and gamma challenges
+        // Compute permutation challenges
+             
+
+        // Compute permutation challenge `beta`.
         let beta = transcript.challenge_scalar(b"beta");
         transcript.append_scalar(b"beta", &beta);
+
+        // Compute permutation challenge `gamma`.
         let gamma = transcript.challenge_scalar(b"gamma");
+        transcript.append_scalar(b"gamma", &gamma);
+
+        // Compute permutation challenge `delta`.
+        let delta = transcript.challenge_scalar(b"delta");
+        transcript.append_scalar(b"delta", &delta);
+
+        // Compute permutation challenge `epsilon`.
+        let epsilon = transcript.challenge_scalar(b"epsilon");
+        transcript.append_scalar(b"epsilon", &epsilon);
+
+        // Compute permutation challenge `theta`.
+        let theta = transcript.challenge_scalar(b"theta");
+        transcript.append_scalar(b"theta", &theta);
 
         assert!(beta != gamma, "challenges must be different");
+        assert!(beta != delta, "challenges must be different");
+        assert!(beta != epsilon, "challenges must be different");
+        assert!(beta != theta, "challenges must be different");
+        assert!(gamma != delta, "challenges must be different");
+        assert!(gamma != epsilon, "challenges must be different");
+        assert!(gamma != theta, "challenges must be different");
+        assert!(delta != epsilon, "challenges must be different");
+        assert!(delta != theta, "challenges must be different");
+        assert!(epsilon != theta, "challenges must be different");
+
+   
 
         // Add commitment to permutation polynomial to transcript
         transcript.append_commitment(b"z", &self.z_comm);
