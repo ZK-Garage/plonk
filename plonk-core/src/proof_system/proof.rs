@@ -129,7 +129,7 @@ where
         transcript.append_commitment(b"w_o", &self.c_comm);
         transcript.append_commitment(b"w_4", &self.d_comm);
 
-        // Compute permutation challenges
+        // Compute permutation challenges and add them to transcript
              
 
         // Compute permutation challenge `beta`.
@@ -152,6 +152,7 @@ where
         let theta = transcript.challenge_scalar(b"theta");
         transcript.append_scalar(b"theta", &theta);
 
+        // Challenges must be different 
         assert!(beta != gamma, "challenges must be different");
         assert!(beta != delta, "challenges must be different");
         assert!(beta != epsilon, "challenges must be different");
@@ -170,14 +171,27 @@ where
 
         // Compute quotient challenge
         let alpha = transcript.challenge_scalar(b"alpha");
+        transcript.append_scalar(b"alpha", &alpha);
         let range_sep_challenge =
             transcript.challenge_scalar(b"range separation challenge");
+        transcript.append_scalar(b"range seperation challenge", &range_sep_challenge);
+
         let logic_sep_challenge =
             transcript.challenge_scalar(b"logic separation challenge");
+        transcript.append_scalar(b"logic seperation challenge", &logic_sep_challenge);
+
         let fixed_base_sep_challenge =
             transcript.challenge_scalar(b"fixed base separation challenge");
+        transcript.append_scalar(b"fixed base separation challenge", &fixed_base_sep_challenge);
+
         let var_base_sep_challenge =
             transcript.challenge_scalar(b"variable base separation challenge");
+        transcript.append_scalar(b"variable base separation challenge", &var_base_sep_challenge);
+
+        let lookup_challenge =
+            transcript.challenge_scalar(b"lookup separation challenge");
+        transcript.append_scalar(b"lookup separation challenge", &lookup_challenge);
+
 
         // Add commitment to quotient polynomial to transcript
         transcript.append_commitment(b"t_1", &self.t_1_comm);
@@ -187,6 +201,7 @@ where
 
         // Compute evaluation point challenge
         let z_challenge = transcript.challenge_scalar(b"z");
+        transcript.append_scalar(b"z", &z_challenge);
 
         // Compute zero polynomial evaluated at `z_challenge`
         let z_h_eval = domain.evaluate_vanishing_polynomial(z_challenge);

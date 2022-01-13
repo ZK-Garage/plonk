@@ -386,7 +386,7 @@ where
         transcript.append_commitment(b"h1", &h_1_poly_commit.0);
         transcript.append_commitment(b"h2", &h_2_poly_commit.0);
 
-        // 3. Compute permutation polynomials
+        // 3. Compute permutation polynomial 
         //
         // Compute permutation challenge `beta`.
         let beta = transcript.challenge_scalar(b"beta");
@@ -406,7 +406,8 @@ where
         // Compute permutation challenge `theta`.
         let theta = transcript.challenge_scalar(b"theta");
         transcript.append_scalar(b"theta", &theta);
-
+        
+        // Challenges must be different
         assert!(beta != gamma, "challenges must be different");
         assert!(beta != delta, "challenges must be different");
         assert!(beta != epsilon, "challenges must be different");
@@ -551,6 +552,8 @@ where
             &t_poly,
             &z_poly,
         );
+
+        
 
         // Add evaluations to transcript.
         transcript.append_scalar(b"a_eval", &evaluations.proof.a_eval);
