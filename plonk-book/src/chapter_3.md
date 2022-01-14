@@ -205,7 +205,7 @@ On each round, we get the ith quads of $a$ and $b$ and then
 compute `out_quad` of $c_i$ logical OP result `&` or `^`) and `prod_quad` of $p_i$ (intermediate prod result).
 The result of the operation ends up in the 4th wire of the last subgate. 
 
-### TurboPlonk 
+
 
 
 
@@ -263,7 +263,8 @@ $h_1$ and $h_2$ represent the lower and upper halves of the vector $s$ defined a
 
 $h_1= (s_0,s_1,s_2,...,s_{n−1})$ and $h_2= (s_n,s_{n+1},s_{n+2},...,s_{2n−1})$
 
-#### PLONKUP
+**PLONKUP**
+
 PlonKup is a ZK-SNARK that integrates plookup into PlonK in an efficient way. It introduces a new selector $q_K$ that activates or switches off the lookup gates as follows:
 
 $\begin{equation}
@@ -277,12 +278,64 @@ q_{Ki}=
 Lookup gates are thus used only when necessary and the table vector takes dummy values when it's not the case (for $q_{Ki}=0$).
 
  
-Plonkup also uses an alternative method for dividing the sorted vector $s$ which reduces the verifier's complexity. In PLOOKUP, the prover devides $s$ into an upper and lower bounds:
+Plonkup also uses an alternative method for dividing the sorted vector $s$ which reduces the verifier's complexity. In PLOOKUP, the prover uses a continuous method and devides $s$ into an upper and lower bounds:
 
 $h_1=(s_0,s_1,s_2,...,s_{n−1})$ and $h_2= (s_n,s_{n+1},s_{n+2},...,s_{2n−1})$. 
 This method adds another check for the verifier $L_{n−1}(X)h_1(X)−L_0(X)h_2(X) = 0$ and can be avoided if those halves are divided differently. 
 
 In PLONKUP, the prover uses alternating halves $h_1=(s_0,s_2,s_4,...,s_{2n−2})$ and $h_2=(s_1,s_3,s_5,...,s_{2n−1})$ and thus no need to check if they overlap.
+
+#### **Alternating vs. Continuous Methods**
+ 
+
+Let $\Delta s = (\Delta s_0, ..., \Delta s_{2n-1})$ be the randomized difference set for $\mathbf{s}$, i.e. $\Delta s_i = s_i+\delta s_{i+1}$ for $i \in \{0,...,2n-2\}$ and $\Delta s_{2n-1} = s_{2n-1} + \delta s_0$.
+
+We need to accumulate an expression that runs through the entire difference set $\Delta s$ . To do this, two elements of $\Delta s$ must be checked in the denominator of each expression we accumulate which is exhausting in both continuous and alternating methods. 
+
+*  **Alternating Method**
+
+   In the alternating method the prover divides $\mathbf{s}$ into alternating halves $\mathbf{h_1}$ and $\mathbf{h_2}$ so that:
+   $$\mathbf{h_1} = (s_0, s_2, s_4, ..., s_{2n-2})$$ 
+   and
+   $$\mathbf{h_2} = (s_1, s_3, s_5, ..., s_{2n-1})$$
+
+   This way we can write the randomized difference set expression  $\Delta s_{2i} = s_{2i} + \delta s_{2i+1}$ as:
+   ${h_1}_i+\delta {h_2}_i$, and the expression $\Delta s_{2i+1} = s_{2i+1} + \delta s_{2i+2}$ as ${h_2}_i+\delta {h_1}_{i+1}$.
+   
+
+  We can write the permutation polynomial as the following:
+  $\begin{align*}
+Z(X\omega) &= Z(X)\frac{(1+\delta)(\epsilon + f(X))(\epsilon(1+\delta) + t(X) + \delta t(X\omega))}
+  {(\epsilon(1+\delta) + {h_1}(X) + \delta {h_2}(X)(\epsilon(1+\delta) + {h_2}(X) + \delta {h_1}(X\omega))}
+  \end{align*}$
+
+* **Continuous Method**
+
+  In the continuous method, the prover divides $\mathbf{s}$ into lower and upper halves $\mathbf{h_1}$ and $\mathbf{h_2}$ so that:
+  $$\mathbf{h_1} = (s_0, s_1, s_2, ..., s_{n-1})$$
+  and
+  $$\mathbf{h_2} = (s_n, s_{n+1}, s_{n+2}, ..., s_{2n-1})$$
+
+  Now the expression $\Delta s_{i} = s_{i} + \delta s_{i+1}$ can be written as ${h_1}_i+\delta {h_1}_{i+1}$, and the expression $\Delta s_{n+i} = s_{n+i} + \delta s_{n+i+1}$ can be written as ${h_2}_i+\delta {h_2}_{i+1}$.
+
+  The permutation polynomial is written such way:
+  $\begin{align*}
+  Z(X\omega) &= Z(X)\frac{(1+\delta)(\epsilon + f(X))(\epsilon(1+\delta) + t(X) + \delta t(X\omega))}
+  {(\epsilon(1+\delta) + {h_1}(X) + \delta {h_1}(X\omega)(\epsilon(1+\delta) + {h_2}(X) + \delta {h_2}(X\omega))}
+  \end{align*}$
+
+#### Drawback to the continuous method
+
+In the continuous method, there is an unnatural "seam" between the two vectors $\mathbf{h_1}$ and $\mathbf{h_2}$ that must be fixed. This is because $\Delta s_{n-1}$ = $s_{n-1} + \delta s_n$ and $s_{n-1}$ lives in $\mathbf{h_1}$, $s_n$ lives in $\mathbf{h_2}$. The plookup authors fix this by shrinking $\mathbf{f}$ and $\mathbf{s}$ by one element and having the two vectors $\mathbf{h_1}$ and $\mathbf{h_2}$ overlap.
+
+In either case, an additional check must be performed. In original Plookup we must check that $\mathbf{h_1}$ and $\mathbf{h_2}$ overlap, i.e. $L_{n-1}(X)h_1(X) - L_0(X)h_2(X) = 0$. 
+
+The alternating method does not contain a "seam" that needs to be patched with an additional polynomial or an overlap, so these additional checks are not needed. 
+
+
+ 
+
+
 
 **Common preprocessed input**
 
