@@ -16,6 +16,51 @@ use ark_ec::models::TEModelParameters;
 use ark_ff::{Field, PrimeField, ToConstraintField};
 use ark_serialize::*;
 
+/// Public Input Builder
+#[derive(derivative::Derivative)]
+#[derivative(Default(bound = ""))]
+pub struct PublicInputBuilder<F>
+where
+    F: PrimeField,
+{
+    input: Vec<F>,
+}
+
+impl<F> PublicInputBuilder<F>
+where
+    F: PrimeField,
+{
+    /// Creates a new PublicInputBuilder
+    pub fn new() -> Self {
+        Self { input: vec![] }
+    }
+    /// Pushes a new input `item` into `self`, returning `None` if `item` could
+    /// not be converted into constraint field elements.
+    pub fn add_input<T>(self, item: &T) -> Option<Self>
+    where
+        T: ToConstraintField<F>,
+    {
+        self.extend([item])
+    }
+    /// Extends the input buffer by appending all the elements of `iter`
+    /// converted into constraint field elements, returning `None` if any of
+    /// the conversions failed.
+    pub fn extend<'t, T, I>(mut self, iter: I) -> Option<Self>
+    where
+        T: 't + ToConstraintField<F>,
+        I: IntoIterator<Item = &'t T>,
+    {
+        for item in iter {
+            self.input.append(&mut item.to_field_elements()?);
+        }
+        Some(self)
+    }
+    /// Returns the vector of input elements.
+    pub fn finish(self) -> Vec<F> {
+        self.input
+    }
+}
+
 /// Collection of structs/objects that the Verifier will use in order to
 /// de/serialize data needed for Circuit proof verification.
 /// This structure can be seen as a link between the [`Circuit`] public input
@@ -77,7 +122,7 @@ where
 ///     EdwardsProjective as JubJubProjective, Fr as JubJubScalar,
 /// };
 /// use ark_ff::{FftField, PrimeField, BigInteger, ToConstraintField};
-/// use plonk_core::circuit::{Circuit, verify_proof};
+/// use plonk_core::circuit::{Circuit, verify_proof, PublicInputBuilder};
 /// use plonk_core::constraint_system::StandardComposer;
 /// use plonk_core::error::{to_pc_error,Error};
 /// use ark_poly::polynomial::univariate::DensePolynomial;
@@ -188,16 +233,20 @@ where
 /// let mut verifier_data_bytes = Vec::new();
 /// verifier_data.serialize(&mut verifier_data_bytes).unwrap();
 ///
-/// let verif_data: VerifierData<BlsScalar, PC> =
+/// let deserialized_verifier_data: VerifierData<BlsScalar, PC> =
 ///     VerifierData::deserialize(verifier_data_bytes.as_slice()).unwrap();
 ///
-/// // assert!(verif_data == verifier_data);
+/// assert!(deserialized_verifier_data == verifier_data);
+///
 /// // Verifier POV
-/// let public_inputs: Vec<Box<dyn ToConstraintField<BlsScalar>>> = vec![
-///     Box::new(BlsScalar::from(25u64)),
-///     Box::new(BlsScalar::from(100u64)),
-///     Box::new(point_f_pi),
-/// ];
+/// let public_inputs = PublicInputBuilder::new()
+///     .add_input(&BlsScalar::from(25u64))
+///     .unwrap()
+///     .add_input(&BlsScalar::from(100u64))
+///     .unwrap()
+///     .add_input(&point_f_pi)
+///     .unwrap()
+///     .finish();
 ///
 /// let VerifierData { key, pi_pos } = verifier_data;
 /// // TODO: non-ideal hack for a first functional version.
@@ -311,7 +360,7 @@ pub fn verify_proof<F, P, PC>(
     u_params: &PC::UniversalParams,
     plonk_verifier_key: VerifierKey<F, PC>,
     proof: &Proof<F, PC>,
-    pub_inputs_values: &[Box<dyn ToConstraintField<F>>],
+    pub_inputs_values: &[F],
     pub_inputs_positions: &[usize],
     transcript_init: &'static [u8],
 ) -> Result<(), Error>
@@ -342,7 +391,7 @@ where
 
 /// Build PI vector for Proof verifications.
 fn build_pi<'a, F>(
-    pub_input_values: impl IntoIterator<Item = &'a Box<dyn ToConstraintField<F>>>,
+    pub_input_values: impl IntoIterator<Item = &'a F>,
     pub_input_pos: &[usize],
     trim_size: usize,
 ) -> Vec<F>
@@ -352,14 +401,9 @@ where
     let mut pi = vec![F::zero(); trim_size];
     pub_input_values
         .into_iter()
-        .flat_map(|pub_input| {
-            pub_input
-                .to_field_elements()
-                .unwrap_or_else(|| vec![F::zero()])
-        })
         .zip(pub_input_pos.iter().copied())
         .for_each(|(value, pos)| {
-            pi[pos] = -value;
+            pi[pos] = -*value;
         });
     pi
 }
@@ -488,11 +532,14 @@ mod test {
         assert!(deserialized_verifier_data == verifier_data);
 
         // Verifier POV
-        let public_inputs: Vec<Box<dyn ToConstraintField<F>>> = vec![
-            Box::new(F::from(25u64)),
-            Box::new(F::from(100u64)),
-            Box::new(point_f_pi),
-        ];
+        let public_inputs = PublicInputBuilder::new()
+            .add_input(&F::from(25u64))
+            .unwrap()
+            .add_input(&F::from(100u64))
+            .unwrap()
+            .add_input(&point_f_pi)
+            .unwrap()
+            .finish();
 
         let VerifierData { key, pi_pos } = verifier_data;
 
