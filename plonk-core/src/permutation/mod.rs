@@ -808,7 +808,7 @@ where
             .map(|(((((f, t), t_next), h_1), h_1_next), h_2)| {
                 (
                     Self::lookup_numerator_irreducible(
-                        delta, epsilon, theta, *f, *t, t_next,
+                        &delta, &epsilon, &theta, &*f, &t, &t_next,
                     ),
                     Self::lookup_denominator_irreducible(
                         delta, epsilon, *h_1, h_1_next, *h_2,
@@ -844,8 +844,8 @@ where
         t_prime_next: &F,
     ) -> F {
         let prod_1 = F::one() + delta;
-        let prod_2 = epsilon + f;
-        let prod_3 = (epsilon * prod_1) + t_prime + (delta * t_prime_next);
+        let prod_2 = *epsilon + f;
+        let prod_3 = (*epsilon * prod_1) + t_prime + (*delta * t_prime_next);
     
         prod_1 * prod_2 * prod_3
     }
