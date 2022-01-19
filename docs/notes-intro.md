@@ -5,9 +5,9 @@ Table of Contents
 =================
 
 The following section explains the workings of PLONK components:
-* [Commitment schemes](notes-commitments.md#commitment-schemes)
-* [Proof construction components](notes-prove-verify.md#plonk-proof-construction)
-* [Permutation polynomials](notes-prove-verify.md#lagrangian-polynomials)
+* [Commitment schemes](commitment_schemes/index.html#commitment-schemes)
+* [Proof construction components](prove_verify/index.html#plonk-proof-construction)
+* [Permutation polynomials](prove_verify/index.html#lagrangian-polynomials)
 
 
 
@@ -16,5 +16,5 @@ and some of the unique features in this library:
 
 * [Prover and Verify algorithms](prove_verify/index.html)
 * [Unbalanced permutation arguments](unbalanced_perm_args/index.html)
-* [KZG10 commitment scheme](kzg10_docs/index.html)
+* [KZG10 commitment scheme](kzg10/index.html)
 
