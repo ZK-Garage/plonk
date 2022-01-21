@@ -333,40 +333,18 @@ In either case, an additional check must be performed. In original Plookup we mu
 The alternating method does not contain a "seam" that needs to be patched with an additional polynomial or an overlap, so these additional checks are not needed. 
 
 
- 
-
-
-
-**Common preprocessed input**
-
-Let $\tau\in\mathbb{F}^{n×4}$ be a publicly known table of 4 columns and $n$ rows such that:
-
-$\tau_1(X)=\sum_{i=1}^n\tau_{1,i}L_i(X))$,   $\tau_2(X)=\sum_{i=1}^n\tau_{2,i}L_i(X))$,
-
-$\tau_3(X)=\sum_{i=1}^n\tau_{3,i}L_i(X))$,   $\tau_4(X)=\sum_{i=1}^n\tau_{4,i}L_i(X))$
-
-
-This table will be the preprocessed version of the precomputed table.
-
-
-$\begin{align*}
-q_M(X) &=\sum_{i=1}^nq_{Mi}L_i(X),           &  q_L(X) &=\sum_{i=1}^nq_{Li}L_i(X),              &  q_R(X) &=\sum_{i=1}^nq_{Ri}L_i(X)\\
-q_O(X) &= \sum_{i=1}^nq_{Oi}L_i(X)       &  q_C(X) &=\sum_{i=1}^nq_{Ci}L_i(X)  &  q_d(X) &= \sum_{i=1}^nq_{di}L_i(X) \\
-q_K(X) &= \sum_{i=1}^nq_{Ki}L_i(X)  &  S_{\sigma _1}(X) &=\sum_{i=1}^n \sigma^*(i)L_i(X)          &   S_{\sigma _2}(X) &=\sum_{i=1}^n \sigma^*(n+i)L_i(X) \\
- S_{\sigma_3}(X) &=\sum_{i=1}^n \sigma^*(2n+i)L_i(X) &  S_{\sigma_4}(X) &=\sum_{i=1}^n \sigma^*(3n+i)L_i(X)  
-\end{align*}$
-Public input: $x= (w_i)_{i\in[ℓ]}$
 
 
 **Prover Algorithm**
 
-Input: the pair $(x,w) = (w_i)_{i\in[4n]}$ that satisfies the circuit.
 * Generate random blinding scalars $b_1,...,b_9\in\mathbb{F}$ and compute the wire polynomials $a(X),b(X),c(X)$ and $d(X)$.
-* Compute $[a(x)]_1,[b(x)]_1,[c(x)]_1,[d(x)]_1$
+* Compute the commitments $[a(x)]_1,[b(x)]_1,[c(x)]_1,[d(x)]_1$ which are sent to verifier.
 
 * Compute the compression factor $ζ=Hash(transcript)$, we mean by $transcript$ the concatenation of the common preprocessed input, public input,and the proof element which we presented earlier.
 
-* Compute the query vector $f= (f_1,...,f_n)$ and the table vector $t= (t_1,...,t_n)$. We take a table of 4 elements. The witness table is then filled by the quieries to a lookup table for lookup gates (results from lookup table). If the values do no exists in the lookup table, then the proof will fail when witness and preprocessed tables are concatenated.
+* Compute the query vector $f= (f_1,...,f_n)$ and the table vector $t= (t_1,...,t_n)$. In Plonk library, $n=4$ which means $t=(t_1,t_2,t_3,t_4)$ and $f=(f_1,f_2,f_3,f_4)$. 
+
+  The witness table is then filled by the quieries to a lookup table for lookup gates (results from lookup table). If the values do no exists in the lookup table, then the proof will fail when witness and preprocessed tables are concatenated.
 
 * Compute the sorted version of the table vector $t$, denoted $t′$.
 
@@ -379,40 +357,61 @@ Input: the pair $(x,w) = (w_i)_{i\in[4n]}$ that satisfies the circuit.
 $$h_1(X) = (b_{12}X^2+b_{13}X+b_{14})Z_H(X) +\sum_{i=1}^ns_{2i−1}L_i(X)$$
 $$h_2(X) = (b_{15}X+b_{16})Z_H(X) +\sum_{i=1}^ns_{2i}L_i(X)$$
 
-* Compute and output $[f(x)]_1,[t′(x)]_1,[h_1(x)]_1$ and $[h_2(x)]_1$
+* Compute and output $[f(x)]_1$ and $[t′(x)]_1$
 
-* Compute the permutation challenges $\beta,\gamma,\delta,\varepsilon, \theta\in\mathbb{F}$, generate random blinding scalars and compute $z_1$ and $z_2$
+* Compute the permutation challenges $\beta,\gamma,\delta,\varepsilon, \theta\in\mathbb{F}$, generate random blinding scalars and compute the permutation polynomial $z_1$ and the mega-permutation polynomial $z_2$ as follows:
 
-* Compute and output $[z_1(x)]_1,[z_2(x)]_1$
+$$z_1=L_1(X)+\sum_{i=1}^{n-1}\left(L_{i+1}(X)\prod_{j=1}^{i}\frac{(a_j+\beta w^{j-1}+\gamma)(b_j+\beta k_1w^{j-1}+\gamma)(c_j+\beta k_2w^{j-1}+\gamma)}{(a_j+\beta\sigma^*(j)+\gamma)(b_j+\beta\sigma^*(n+j)+\gamma)(c_j+\beta\sigma^*(2n+j)+\gamma)}\right)$$
+and
+$$z_2= L_1(X) + \sum_{i=1}^{n-1} \left( L_{i+1}(X)\prod_{j=1}^{i} \frac{(1+\delta)(\varepsilon+f_j)(\varepsilon(1+\delta)+t'_j+\delta t'_{j+1})(\theta+t'_j)}{(\varepsilon(1+\delta)+s_{2j-1}+\delta s_{2j})(\varepsilon(1+\delta)+s_{2j}+\delta s_{2j+1})(\theta+t_j)} \right)$$
 
-* Compute the quotient challenges $\alpha\in\mathbb{F}$ and the quotient polynomial $q(X)$
+where $\{t'\}_i$ is the sorted version of the table. The Prover computes the Plookup permutation argument slightly differently from the original Plookup paper, by using $t'$ in place of $t$, and appending $\frac{{t'}_i + \theta}{t_i + \theta}$.
 
-* Split $q(X)$ into three polynomials $q_{low}(X)$,$q_{mid}(X)$,$q_{high}(X)$ such that:
-$$q(X) =q_{low}(X) +X^{n+2}q_{mid}(X) +X^{2n+4}q_{high}(X)$$ 
-
-* Compute and output $[q_{low}(x)]1,[q_{mid}(x)]1,[q_{high}(x)]$
-
-* Compute the evaluation challenge $z\in\mathbb{F}$:
-$$z=Hash(transcript)$$
-
-* Compute and output the opening evaluations
-
-* Compute the opening challenge $v\in\mathbb{F}$
-
-* Compute linearization polynomial $r(X)\in\mathbb{F}$
-
-* Compute the opening proof polynomials $W_z(X)$ and $W_{zw}(X)$
-
-* Compute and output $[W_z(x)]_1$ and $[W_{zω}(x)]_1$
-
-* Use all the previous outputs to compute the PlonKup proof.
-
-* Compute multipoint evaluation challenge $u\in\mathbb{F}$:
-$$u=Hash(transcript)$$
+* Compute and send $[z_1(x)]_1$ to verifier.
 
 **Verifier Algorithm**
 
-#### Multiple lookup tables
+The Verifier chooses evaluation challenge $\mathfrak{z}$. The Prover sends ${\bar{z}_2}_\omega, \bar{f}, \bar{h}_2, {\bar{h}_1}_\omega, \bar{t}', {{\bar{t}'}_\omega}$ and $\bar{t}$ such that 
+$$\bar{z}_{2w} = z_{2w}(\mathfrak{z}), \bar{f} = f(\mathfrak{z}), \bar{h}_{2} = h_{2}(\mathfrak{z}), \bar{h}_{1w} = h_{1w}(\mathfrak{z})$$ 
+$$ \bar{t'} = t'(\mathfrak{z}), \bar{t'}_{w} = t'_{w}(\mathfrak{z}), \bar{t} = t(\mathfrak{z})$$
+
+ With these, the Verifier can compute commitments to each expression above as:
+
+$L_0(\mathfrak{z})([z_2]_1 - [1]_1)$
+
+and 
+
+${\bar{z}_2}_\omega([\epsilon(1+\delta)]_1 + [h_1]_1 + \delta [h_2]_1)(\epsilon(1+\delta) + \bar{h}_2 + \delta {\bar{h}_1}_\omega){(\bar{t} + \theta)}\\-(\epsilon + \bar{f})(1+\delta)(\epsilon(a+\delta)+{\bar{t'}}+\delta {{\bar{t'}}_\omega}){({\bar{t'}} + \theta)}[z_2]_1$
+
+
+such that $z_2(\omega^0)$ must equal $1$.
+
+$L_0(X)(z_2(X)-1) = 0$
+
+And the accumulation between adjacent terms must be checked:
+
+$$z_2(X\omega)(\epsilon(1+\delta) + h_1(X) + \delta h_2(X))(\epsilon(1+\delta) + h_2(X) + \delta h_1(X\omega)){(t(X) + \theta)}\\-(\epsilon + f(X))(1+\delta)(\epsilon(a+\delta)+{t'(X)}+\delta {t'(X\omega)}){(t'(X) + \theta)}z_2(X) = 0$$
+
+Naively, the Prover now must commit to $h_1, h_2,$ and $z_2$ and send evaluations $\bar{h_1} = h_1(\mathfrak{z})$, $\bar{h_2} = h_2(\mathfrak{z})$ and $\bar{z}_2 = z_2(\mathfrak{z})$. However we can get rid of some of these evaluations using the linearization trick.
+
+Here's one way to do the linearization that saves a few elements:
+
+The Prover *only* sends ${\bar{z}_2}_\omega$.
+
+The Verifier can compute the commitment to $L_0(\mathfrak{z})(z_2(X)-1)$ as $L_0(\mathfrak{z})([z_2]_1-[1]_1)$.
+
+The Verifier can compute the commitment to $$z_2(X\omega)(\epsilon(1+\delta) + h_1(X) + \delta h_2(X))(\epsilon(1+\delta) + h_2(X) + \delta h_1(X\omega)){(t(X) + \theta)}\\-(\epsilon + f(X))(1+\delta)(\epsilon(a+\delta)+{t'(X)}+\delta {t'(X\omega)}){(t'(X) + \theta)}z_2(X)$$ 
+as 
+
+
+$${\bar{z}_2}_\omega([\epsilon(1+\delta)]_1 + [h_1]_1 + \delta [h_2]_1)(\epsilon(1+\delta) + \bar{h}_2 + \delta {\bar{h}_1}_\omega){(\bar{t} + \theta)}\\-(\epsilon + \bar{f})(1+\delta)(\epsilon(a+\delta)+{\bar{t'}}+\delta {{\bar{t'}}_\omega}){({\bar{t'}} + \theta)}[z_2]_1$$
+
+
+This way the proof increases by 3 commitments and 1 evaluation
+
+
+
+#### **Multiple lookup tables**
 In order to build a lookup table associated to different functions (for example XOR and mul operations) we define 
 $\tau_1,\tau_2,...,\tau_s\in\mathbb{F}^{n\times 4}$ such that:
 
