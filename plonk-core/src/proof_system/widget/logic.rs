@@ -6,45 +6,126 @@
 
 //! Logic Gates
 
-use crate::proof_system::widget::{GateConstraint, GateValues};
-use ark_ff::Field;
+use crate::proof_system::widget::{GateConstraint, WitnessValues};
+use ark_ff::{FftField, Field};
+use ark_poly::{univariate::DensePolynomial, Polynomial};
+use ark_poly_commit::{LabeledCommitment, PolynomialCommitment};
 use core::marker::PhantomData;
+use std::collections::HashMap;
+
+use super::{CustomGateValues, ProverKey};
+
+pub struct LogicValues<F>
+where
+    F: Field,
+{
+    pub a_next: F,
+    pub b_next: F,
+    pub d_next: F,
+    pub q_c: F,
+}
+
+impl<F> CustomGateValues<F> for LogicValues<F>
+where
+    F: Field,
+{
+    fn new(vals: HashMap<String, F>) -> Self {
+        let a_next = *vals.get(&"a_next".to_string()).unwrap();
+        let b_next = *vals.get(&"b_next".to_string()).unwrap();
+        let d_next = *vals.get(&"d_next".to_string()).unwrap();
+        let q_c = *vals.get(&"q_c".to_string()).unwrap();
+        LogicValues {
+            a_next,
+            b_next,
+            d_next,
+            q_c,
+        }
+    }
+}
 
 /// Logic Gate
 #[derive(derivative::Derivative)]
 #[derivative(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
 pub struct Logic<F>(PhantomData<F>)
 where
-    F: Field;
+    F: FftField;
 
 impl<F> GateConstraint<F> for Logic<F>
 where
-    F: Field,
+    F: FftField,
 {
+    type CustomValues = LogicValues<F>;
     #[inline]
-    fn constraints(separation_challenge: F, values: GateValues<F>) -> F {
+    fn constraints(
+        separation_challenge: F,
+        witness_vals: WitnessValues<F>,
+        custom_vals: Self::CustomValues,
+    ) -> F {
         let four = F::from(4_u64);
         let kappa = separation_challenge.square();
         let kappa_sq = kappa.square();
         let kappa_cu = kappa_sq * kappa;
         let kappa_qu = kappa_cu * kappa;
 
-        let a = values.left_next - four * values.left;
+        let a = custom_vals.a_next - four * witness_vals.left;
         let c_0 = delta(a);
 
-        let b = values.right_next - four * values.right;
+        let b = custom_vals.b_next - four * witness_vals.right;
         let c_1 = delta(b) * kappa;
 
-        let d = values.fourth_next - four * values.fourth;
+        let d = custom_vals.d_next - four * witness_vals.fourth;
         let c_2 = delta(d) * kappa_sq;
 
-        let w = values.output;
+        let w = witness_vals.output;
         let c_3 = (w - a * b) * kappa_cu;
 
-        let c_4 =
-            delta_xor_and(a, b, w, d, values.constant_selector) * kappa_qu;
+        let c_4 = delta_xor_and(a, b, w, d, custom_vals.q_c) * kappa_qu;
 
         (c_0 + c_1 + c_2 + c_3 + c_4) * separation_challenge
+    }
+
+    fn evaluations(
+        prover_key: &ProverKey<F>,
+        w_l_poly: &DensePolynomial<F>,
+        w_r_poly: &DensePolynomial<F>,
+        w_o_poly: &DensePolynomial<F>,
+        w_4_poly: &DensePolynomial<F>,
+        z_challenge: &F,
+        omega: F,
+        custom_evals: HashMap<String, F>,
+    ) {
+        let shifted_z = *z_challenge * omega;
+
+        let a_next_label = "a_next".to_string();
+        let b_next_label = "b_next".to_string();
+        let d_next_label = "d_next".to_string();
+        let q_c_label = "q_c".to_string();
+
+        if !custom_evals.contains_key(&a_next_label) {
+            let a_next = w_l_poly.evaluate(&shifted_z);
+            custom_evals.insert(a_next_label, a_next);
+        }
+
+        if !custom_evals.contains_key(&b_next_label) {
+            let b_next = w_r_poly.evaluate(&shifted_z);
+            custom_evals.insert(b_next_label, b_next);
+        }
+
+        if !custom_evals.contains_key(&d_next_label) {
+            let d_next = w_4_poly.evaluate(&shifted_z);
+            custom_evals.insert(d_next_label, d_next);
+        }
+
+        if !custom_evals.contains_key(&q_c_label) {
+            let q_c = prover_key.arithmetic.q_c.0.evaluate(&z_challenge);
+            custom_evals.insert(q_c_label, q_c);
+        }
+    }
+    fn verifier_key_term<PC>() -> Vec<LabeledCommitment<PC::Commitment>>
+    where
+        PC: PolynomialCommitment<F, DensePolynomial<F>>,
+    {
+        unimplemented!();
     }
 }
 

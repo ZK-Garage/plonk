@@ -6,32 +6,93 @@
 
 //! Range Gate
 
-use crate::proof_system::{GateConstraint, GateValues};
-use ark_ff::Field;
+use crate::proof_system::{GateConstraint, WitnessValues};
+use ark_ff::{FftField, Field};
+use ark_poly::{univariate::DensePolynomial, Polynomial};
 use core::marker::PhantomData;
+use std::collections::HashMap;
+
+use super::{CustomGateValues, ProverKey};
+
+pub struct RangeValues<F>
+where
+    F: Field,
+{
+    pub d_next: F,
+}
+
+impl<F> CustomGateValues<F> for RangeValues<F>
+where
+    F: Field,
+{
+    fn new(vals: HashMap<String, F>) -> Self {
+        let d_next = *vals.get(&"d_next".to_string()).unwrap();
+        RangeValues { d_next }
+    }
+}
 
 /// Range Gate
 #[derive(derivative::Derivative)]
 #[derivative(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
 pub struct Range<F>(PhantomData<F>)
 where
-    F: Field;
+    F: FftField;
 
 impl<F> GateConstraint<F> for Range<F>
 where
-    F: Field,
+    F: FftField,
 {
+    type CustomValues = RangeValues<F>;
     #[inline]
-    fn constraints(separation_challenge: F, values: GateValues<F>) -> F {
+    fn constraints(
+        separation_challenge: F,
+        witness_vals: WitnessValues<F>,
+        custom_vals: Self::CustomValues,
+    ) -> F {
         let four = F::from(4u64);
         let kappa = separation_challenge.square();
         let kappa_sq = kappa.square();
         let kappa_cu = kappa_sq * kappa;
-        let b_1 = delta(values.output - four * values.fourth);
-        let b_2 = delta(values.right - four * values.output) * kappa;
-        let b_3 = delta(values.left - four * values.right) * kappa_sq;
-        let b_4 = delta(values.fourth_next - four * values.left) * kappa_cu;
+
+        //TODO Handle errors
+        let b_1 = delta(witness_vals.output - four * witness_vals.fourth);
+        let b_2 =
+            delta(witness_vals.right - four * witness_vals.output) * kappa;
+        let b_3 =
+            delta(witness_vals.left - four * witness_vals.right) * kappa_sq;
+        let b_4 =
+            delta(custom_vals.d_next - four * witness_vals.left) * kappa_cu;
         (b_1 + b_2 + b_3 + b_4) * separation_challenge
+    }
+
+    fn evaluations(
+        prover_key: &ProverKey<F>,
+        w_l_poly: &DensePolynomial<F>,
+        w_r_poly: &DensePolynomial<F>,
+        w_o_poly: &DensePolynomial<F>,
+        w_4_poly: &DensePolynomial<F>,
+        z_challenge: &F,
+        omega: F,
+        custom_evals: HashMap<String, F>,
+    ) {
+        let shifted_z = *z_challenge * omega;
+
+        let d_next_label = "d_next".to_string();
+
+        if !custom_evals.contains_key(&d_next_label) {
+            let d_next = w_4_poly.evaluate(&shifted_z);
+            custom_evals.insert(d_next_label, d_next);
+        }
+    }
+    fn verifier_key_term<PC>(
+    ) -> Vec<ark_poly_commit::LabeledCommitment<PC::Commitment>>
+    where
+        PC: ark_poly_commit::PolynomialCommitment<
+            F,
+            ark_poly::univariate::DensePolynomial<F>,
+        >,
+    {
+        unimplemented!();
     }
 }
 

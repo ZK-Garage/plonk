@@ -18,15 +18,20 @@ use crate::{
 };
 use ark_ff::{FftField, Field, PrimeField};
 use ark_poly::{univariate::DensePolynomial, Evaluations};
-use ark_poly_commit::PolynomialCommitment;
+use ark_poly_commit::{
+    LabeledCommitment, LabeledPolynomial, PolynomialCommitment,
+};
 use ark_serialize::*;
+use std::collections::HashMap;
 
-/// Gate Values
+type LabeledDPolynomial<F> = LabeledPolynomial<F, DensePolynomial<F>>;
+
+/// Witness Values
 ///
 /// This data structures holds the wire values for a given gate.
 #[derive(derivative::Derivative)]
-#[derivative(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
-pub struct GateValues<F>
+#[derivative(Clone, Debug, Default, Eq, Hash, PartialEq)]
+pub struct WitnessValues<F>
 where
     F: Field,
 {
@@ -41,44 +46,35 @@ where
 
     /// Fourth Value
     pub fourth: F,
+}
 
-    /// Next Left Value
-    ///
-    /// Only used in gates which use internal copy constraints.
-    pub left_next: F,
-
-    /// Next Right Value
-    ///
-    /// Only used in gates which use internal copy constraints.
-    pub right_next: F,
-
-    /// Next Fourth Value
-    ///
-    /// Only used in gates which use internal copy constraints.
-    pub fourth_next: F,
-
-    /// Left Wire Selector Weight
-    pub left_selector: F,
-
-    /// Right Wire Selector Weight
-    pub right_selector: F,
-
-    /// Constant Wire Selector Weight
-    pub constant_selector: F,
+/// Witness Values
+///
+/// Data structures that hold the extra necessary values for a custom gate
+pub trait CustomGateValues<F>
+where
+    F: Field,
+{
+    fn new(vals: HashMap<String, F>) -> Self;
 }
 
 /// Gate Constraint
 pub trait GateConstraint<F>
 where
-    F: Field,
+    F: FftField,
 {
+    type CustomValues: CustomGateValues<F>;
     /// Returns the coefficient of the quotient polynomial for this gate given
     /// an instantiation of the gate at `values` and a
     /// `separation_challenge` if this gate requires it for soundness.
     ///
     /// This method is an encoding of the polynomial constraint(s) that this
     /// gate represents whenever it is added to a circuit.
-    fn constraints(separation_challenge: F, values: GateValues<F>) -> F;
+    fn constraints(
+        separation_challenge: F,
+        witness_vals: WitnessValues<F>,
+        custom_vals: Self::CustomValues,
+    ) -> F;
 
     /// Computes the quotient polynomial term for the given gate type for the
     /// given value of `selector` instantiated with `separation_challenge` and
@@ -86,9 +82,11 @@ where
     fn quotient_term(
         selector: F,
         separation_challenge: F,
-        values: GateValues<F>,
+        witness_vals: WitnessValues<F>,
+        custom_vals: Self::CustomValues,
     ) -> F {
-        selector * Self::constraints(separation_challenge, values)
+        selector
+            * Self::constraints(separation_challenge, witness_vals, custom_vals)
     }
 
     /// Computes the linearisation polynomial term for the given gate type
@@ -97,9 +95,33 @@ where
     fn linearisation_term(
         selector_polynomial: &DensePolynomial<F>,
         separation_challenge: F,
-        values: GateValues<F>,
+        witness_vals: WitnessValues<F>,
+        custom_vals: Self::CustomValues,
     ) -> DensePolynomial<F> {
-        selector_polynomial * Self::constraints(separation_challenge, values)
+        selector_polynomial
+            * Self::constraints(separation_challenge, witness_vals, custom_vals)
+    }
+
+    /// Computes the necessary evaluations associated to the custom gate.
+    /// These evaluations are the apportation of the custom gate to the proof.
+    fn evaluations(
+        prover_key: &ProverKey<F>,
+        w_l_poly: &DensePolynomial<F>,
+        w_r_poly: &DensePolynomial<F>,
+        w_o_poly: &DensePolynomial<F>,
+        w_4_poly: &DensePolynomial<F>,
+        z_challenge: &F,
+        omega: F,
+        custom_evals: HashMap<String, F>,
+    );
+
+    /// Computes the commitments for the verifier key associated to the given
+    /// gate type
+    fn verifier_key_term<PC>() -> Vec<LabeledCommitment<PC::Commitment>>
+    where
+        PC: PolynomialCommitment<F, DensePolynomial<F>>,
+    {
+        unimplemented!();
     }
 
     /// Extends `scalars` and `points` to build the linearisation commitment
@@ -116,17 +138,11 @@ where
     {
         let coefficient = Self::constraints(
             separation_challenge,
-            GateValues {
+            WitnessValues {
                 left: evaluations.a_eval,
                 right: evaluations.b_eval,
                 output: evaluations.c_eval,
                 fourth: evaluations.d_eval,
-                left_next: evaluations.a_next_eval,
-                right_next: evaluations.b_next_eval,
-                fourth_next: evaluations.d_next_eval,
-                left_selector: evaluations.q_l_eval,
-                right_selector: evaluations.q_r_eval,
-                constant_selector: evaluations.q_c_eval,
             },
         );
         scalars.push(coefficient);
@@ -160,20 +176,11 @@ where
     /// Arithmetic Verifier Key
     pub(crate) arithmetic: arithmetic::VerifierKey<F, PC>,
 
-    /// Range Gate Selector Commitment
-    pub(crate) range_selector_commitment: PC::Commitment,
-
-    /// Logic Gate Selector Commitment
-    pub(crate) logic_selector_commitment: PC::Commitment,
-
-    /// Fixed Group Addition Selector Commitment
-    pub(crate) fixed_group_add_selector_commitment: PC::Commitment,
-
-    /// Variable Group Addition Selector Commitment
-    pub(crate) variable_group_add_selector_commitment: PC::Commitment,
-
     /// VerifierKey for permutation checks
     pub(crate) permutation: permutation::VerifierKey<PC::Commitment>,
+
+    /// Labeled commitment to custom gates polynomials
+    pub(crate) custom_gate: Vec<LabeledCommitment<PC::Commitment>>,
 }
 
 impl<F, PC> VerifierKey<F, PC>
@@ -193,14 +200,13 @@ where
         q_4: PC::Commitment,
         q_c: PC::Commitment,
         q_arith: PC::Commitment,
-        q_range: PC::Commitment,
-        q_logic: PC::Commitment,
-        q_fixed_group_add: PC::Commitment,
-        q_variable_group_add: PC::Commitment,
+
         left_sigma: PC::Commitment,
         right_sigma: PC::Commitment,
         out_sigma: PC::Commitment,
         fourth_sigma: PC::Commitment,
+
+        custom_gates: Vec<LabeledCommitment<PC::Commitment>>,
     ) -> Self {
         Self {
             n,
@@ -213,16 +219,13 @@ where
                 q_c,
                 q_arith,
             },
-            range_selector_commitment: q_range,
-            logic_selector_commitment: q_logic,
-            fixed_group_add_selector_commitment: q_fixed_group_add,
-            variable_group_add_selector_commitment: q_variable_group_add,
             permutation: permutation::VerifierKey {
                 left_sigma,
                 right_sigma,
                 out_sigma,
                 fourth_sigma,
             },
+            custom_gate: custom_gates,
         }
     }
 
@@ -248,21 +251,20 @@ where
         transcript.append(b"q_o", &self.arithmetic.q_o);
         transcript.append(b"q_c", &self.arithmetic.q_c);
         transcript.append(b"q_4", &self.arithmetic.q_4);
+
         transcript.append(b"q_arith", &self.arithmetic.q_arith);
-        transcript.append(b"q_range", &self.range_selector_commitment);
-        transcript.append(b"q_logic", &self.logic_selector_commitment);
-        transcript.append(
-            b"q_variable_group_add",
-            &self.variable_group_add_selector_commitment,
-        );
-        transcript.append(
-            b"q_fixed_group_add",
-            &self.fixed_group_add_selector_commitment,
-        );
         transcript.append(b"left_sigma", &self.permutation.left_sigma);
         transcript.append(b"right_sigma", &self.permutation.right_sigma);
         transcript.append(b"out_sigma", &self.permutation.out_sigma);
         transcript.append(b"fourth_sigma", &self.permutation.fourth_sigma);
+
+        self.custom_gate.iter().map(|labeled_commitment| {
+            transcript.append(
+                labeled_commitment.label().clone().as_bytes(),
+                labeled_commitment.commitment(),
+            );
+        });
+
         transcript.circuit_domain_sep(self.n as u64);
     }
 }
@@ -288,21 +290,11 @@ where
     /// Arithmetic Prover Key
     pub(crate) arithmetic: arithmetic::ProverKey<F>,
 
-    /// Range Gate Selector
-    pub(crate) range_selector: (DensePolynomial<F>, Evaluations<F>),
-
-    /// Logic Gate Selector
-    pub(crate) logic_selector: (DensePolynomial<F>, Evaluations<F>),
-
-    /// Fixed Group Addition Selector
-    pub(crate) fixed_group_add_selector: (DensePolynomial<F>, Evaluations<F>),
-
-    /// Variable Group Addition Selector
-    pub(crate) variable_group_add_selector:
-        (DensePolynomial<F>, Evaluations<F>),
-
     /// ProverKey for permutation checks
     pub(crate) permutation: permutation::ProverKey<F>,
+
+    pub(crate) custom_gates:
+        HashMap<String, (DensePolynomial<F>, Evaluations<F>)>,
 
     /// Pre-processes the 8n Evaluations for the vanishing polynomial, so
     /// they do not need to be computed at the proving stage.
@@ -333,14 +325,13 @@ where
         q_4: (DensePolynomial<F>, Evaluations<F>),
         q_c: (DensePolynomial<F>, Evaluations<F>),
         q_arith: (DensePolynomial<F>, Evaluations<F>),
-        q_range: (DensePolynomial<F>, Evaluations<F>),
-        q_logic: (DensePolynomial<F>, Evaluations<F>),
-        q_fixed_group_add: (DensePolynomial<F>, Evaluations<F>),
-        q_variable_group_add: (DensePolynomial<F>, Evaluations<F>),
         left_sigma: (DensePolynomial<F>, Evaluations<F>),
         right_sigma: (DensePolynomial<F>, Evaluations<F>),
         out_sigma: (DensePolynomial<F>, Evaluations<F>),
         fourth_sigma: (DensePolynomial<F>, Evaluations<F>),
+
+        custom_gates: HashMap<String, (DensePolynomial<F>, Evaluations<F>)>,
+
         linear_evaluations: Evaluations<F>,
         v_h_coset_8n: Evaluations<F>,
     ) -> Self {
@@ -355,10 +346,6 @@ where
                 q_c,
                 q_arith,
             },
-            range_selector: q_range,
-            logic_selector: q_logic,
-            fixed_group_add_selector: q_fixed_group_add,
-            variable_group_add_selector: q_variable_group_add,
             permutation: permutation::ProverKey {
                 left_sigma,
                 right_sigma,
@@ -366,6 +353,7 @@ where
                 fourth_sigma,
                 linear_evaluations,
             },
+            custom_gates,
             v_h_coset_8n,
         }
     }
@@ -382,6 +370,22 @@ mod test {
     use ark_poly::{EvaluationDomain, GeneralEvaluationDomain, UVPolynomial};
     use rand::rngs::OsRng;
 
+    fn rand_labeled_poly_eval<F>(
+        n: usize,
+        label: &str,
+    ) -> (LabeledDPolynomial<F>, Evaluations<F>)
+    where
+        F: FftField,
+    {
+        let polynomial = LabeledPolynomial::new(
+            label.to_string(),
+            DensePolynomial::rand(n, &mut OsRng),
+            None,
+            None,
+        );
+        (polynomial, rand_evaluations(n))
+    }
+
     fn rand_poly_eval<F>(n: usize) -> (DensePolynomial<F>, Evaluations<F>)
     where
         F: FftField,
@@ -394,7 +398,7 @@ mod test {
     where
         F: FftField,
     {
-        let domain = GeneralEvaluationDomain::new(4 * n).unwrap();
+        let domain = GeneralEvaluationDomain::new(8 * n).unwrap();
         let values: Vec<_> = (0..8 * n).map(|_| F::rand(&mut OsRng)).collect();
         Evaluations::from_vec_and_domain(values, domain)
     }
@@ -411,15 +415,18 @@ mod test {
         let q_4 = rand_poly_eval(n);
         let q_c = rand_poly_eval(n);
         let q_arith = rand_poly_eval(n);
-        let q_range = rand_poly_eval(n);
-        let q_logic = rand_poly_eval(n);
-        let q_fixed_group_add = rand_poly_eval(n);
-        let q_variable_group_add = rand_poly_eval(n);
 
         let left_sigma = rand_poly_eval(n);
         let right_sigma = rand_poly_eval(n);
         let out_sigma = rand_poly_eval(n);
         let fourth_sigma = rand_poly_eval(n);
+
+        let custom_gates = vec![
+            rand_labeled_poly_eval(n, "q_range"),
+            rand_labeled_poly_eval(n, "q_logic"),
+            rand_labeled_poly_eval(n, "q_fixed_group_add"),
+            rand_labeled_poly_eval(n, "q_variable_group_add"),
+        ];
 
         let linear_evaluations = rand_evaluations(n);
         let v_h_coset_8n = rand_evaluations(n);
@@ -433,14 +440,11 @@ mod test {
             q_4,
             q_c,
             q_arith,
-            q_range,
-            q_logic,
-            q_fixed_group_add,
-            q_variable_group_add,
             left_sigma,
             right_sigma,
             out_sigma,
             fourth_sigma,
+            custom_gates,
             linear_evaluations,
             v_h_coset_8n,
         );
@@ -473,15 +477,34 @@ mod test {
         let q_4 = PC::Commitment::default();
         let q_c = PC::Commitment::default();
         let q_arith = PC::Commitment::default();
-        let q_range = PC::Commitment::default();
-        let q_logic = PC::Commitment::default();
-        let q_fixed_group_add = PC::Commitment::default();
-        let q_variable_group_add = PC::Commitment::default();
 
         let left_sigma = PC::Commitment::default();
         let right_sigma = PC::Commitment::default();
         let out_sigma = PC::Commitment::default();
         let fourth_sigma = PC::Commitment::default();
+
+        let custom_gates = vec![
+            LabeledCommitment::new(
+                "q_range".to_string(),
+                PC::Commitment::default(),
+                None,
+            ),
+            LabeledCommitment::new(
+                "q_logic".to_string(),
+                PC::Commitment::default(),
+                None,
+            ),
+            LabeledCommitment::new(
+                "q_fixed_group_add".to_string(),
+                PC::Commitment::default(),
+                None,
+            ),
+            LabeledCommitment::new(
+                "q_variable_group_add".to_string(),
+                PC::Commitment::default(),
+                None,
+            ),
+        ];
 
         let verifier_key = VerifierKey::<F, PC>::from_polynomial_commitments(
             n,
@@ -492,14 +515,11 @@ mod test {
             q_4,
             q_c,
             q_arith,
-            q_range,
-            q_logic,
-            q_fixed_group_add,
-            q_variable_group_add,
             left_sigma,
             right_sigma,
             out_sigma,
             fourth_sigma,
+            custom_gates,
         );
 
         let mut verifier_key_bytes = vec![];
