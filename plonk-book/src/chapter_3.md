@@ -1,9 +1,11 @@
-# ARK-PLONK library
+# PLONK library
 
 
-ARK-PLONK is a generic Rust PLONK implementation using arkworks as a backend. ARK-PLONK is one of many projects implementing PLONK like: TurboPlonk, UltraPlonk. DuskPlonk, Plonky, ShPlonk, PLOOKUP, PLONKUP, halo2...etc.
+PLONK is a generic Rust PLONK implementation using arkworks as a backend. This PLONK library is one of many projects implementing PLONK like: 
+TurboPlonk, UltraPlonk, Plonky, ShPlonk, PLOOKUP, PLONKUP, halo2 etc.
 
-ARK-PLONK is however the only generic implementation which allows any curve implementation or commitment scheme to be used and isn’t restricted to only one implementation like other existing libraries (for example duskPlonk is based on bls12-281).
+PLONK is however the only generic implementation which allows any curve implementation or commitment scheme to be used and isn’t 
+restricted to only one implementation like other existing libraries.
 
 
 
@@ -11,7 +13,7 @@ ARK-PLONK is however the only generic implementation which allows any curve impl
 ## State of the art
 
 In 2020, AZTEC team has developed PLONK which uses KZG's pairing-based polynomial commitment scheme in order to bring a universal zkSNARK setup. 
-Since then, PLONK has become very popular and lots of projects like Dusk Network, Zcash's Halo 2, Mina, Mir...etc started using it and developing their own variations of it. 
+Since then, PLONK has become very popular and lots of projects like Matter Labs, Zcash's Halo 2, Mina, Mir...etc started using it and developing their own variations of it. 
 Both Mir and Zcash use PLONK combined with [Halo’s polynomial commitment scheme](https://eprint.iacr.org/2019/1021.pdf) for their libraries [Plonky](https://github.com/mir-protocol/plonky) and Halo2. Halo based schemes do recursive proofs without pairings using elliptic curves that are not pairing friendly and can run without the need for trusted setups. In a recursive proof, the verifier is written inside the circuit which allows us to verify a proof inside of another proof while in a standard proof system there is a prover and a verifier. 
 In a KZG system, the proof size is very small (less than a kilobyte) and it's constant and also the verification time is constant, it’s also easy to verify on Ethereum but recursion is hard to do with pairings. 
 Halo based schemes have decent proof size and prover time, but take linear time to verify and it’s not possible to verify on Ethereum.
@@ -19,15 +21,15 @@ Halo based schemes have decent proof size and prover time, but take linear time 
 Mir has recently developed a more optimized proving system Plonky2 based on PLONK and FRI. 
 FRI-based ZK-STARKs algorithm provides both quantum-resistance and does not require any trusted setups while the KZG scheme uses elliptic curve pairing which is not quantum resistant and requires a third-party trusted setup. FRI has a blowup factor which measures how much redundancy a polynomial needs to add before the commitment is generated and thus makes the prover faster. 
 Plonky2 claims a 100x speed up for ethereum for $170ms$ comparing to Plonky which takes $15s$ for proving times. 
-ARK-PLONK is an optimization of the original PLONK protocol and guarantees $3.44s$ for proving time and $4.50ms$ for verifier speed comparing to $60$ proof times in the original PLONK design.
+This PLONK repo is an optimization of the original PLONK protocol and guarantees $3.44s$ for proving time and $4.50ms$ for verifier speed comparing to $60$ proof times in the original PLONK design.
 
-A differentiating factor ARK-PLONK has is the fact that it uses Arkworks generic backend, a rust library that abstracts over the curves and over the fields so you can use any algorithm in a generic way. This makes ARK-PLONK valid for any curve implementation for pairing curves, for edwards twisted curves….etc.  
-ARK-PLONK also uses a generic polynomial commitment based on [ark-poly-commit](https://docs.rs/ark-poly-commit/0.3.0/ark_poly_commit/) which provides various constructions of polynomial commitment schemes. This will allow ARK-PLONK to use other commitment schemes like quantum resistent FRI and not be restricted only to KZG10.
+A differentiating factor this PLONK library is the fact that it uses Arkworks generic backend, a rust library that abstracts over the curves and over the fields so you can use any algorithm in a generic way. This implementations is therefore valid for any curve implementation for pairing curves, for edwards twisted curves….etc.  
+Our PLONK also uses a generic polynomial commitment based on [ark-poly-commit](https://docs.rs/ark-poly-commit/0.3.0/ark_poly_commit/) which provides various constructions of polynomial commitment schemes. As a result, this lib can leverage other commitment schemes like quantum resistent FRI and not be restricted only to KZG10.
 
-There is no other library right which allows you to have the freedom of using generic parameters. Zcash's Halo2 and Plonky use HALO commitment scheme while plonky2 uses only FRI scheme. In terms of elliptic curves, Aztek's implementation of PLonk is based on bn256, duskPlonk is based on bls12-281.
+There is no other library right which allows you to have the freedom of using generic parameters. Zcash's Halo2 and Plonky use HALO commitment scheme while plonky2 uses only FRI scheme. In terms of elliptic curves and Aztecs implementation of PLONK is based on BN256.
 ## Circuit implementation
 
-ARK-PLONK's implementation is an optimization of the original PLONK protocol as it enables lookup table to the PLONK circuit. This optimization allows for precomputation of some of the operations that are not snark friendly like bit operations (see [PLOOKUP](https://eprint.iacr.org/2020/315.pdf) for further explanation on PLONK + LOOKUP tables).
+The implementation is an optimization of the original PLONK protocol as it enables lookup table to the PLONK circuit. This optimization allows for precomputation of some of the operations that are not snark friendly like bit operations (see [PLOOKUP](https://eprint.iacr.org/2020/315.pdf) for further explanation on PLONK + LOOKUP tables).
 
 Our implementation also uses custom gates similarly to [TurboPolnk](https://docs.zkproof.org/pages/standards/accepted-workshop3/proposal-turbo_plonk.pdf) which allow us to define our own custom bit arithmetic operations like efficient Poseidon or MIMC hashes which are extremely efficient to evaluate inside of a snark. 
 
@@ -36,7 +38,7 @@ Our implementation also uses custom gates similarly to [TurboPolnk](https://docs
 The original Plonk proposes simple circuits whose gates only perform arithmetic operations: additions and multiplications. Plonk is able to extend an arithmetic "gate" and allows the creation of new customized gates which can perform so many different operations (EC additions, logical XOR, efficient Poseidon or Pedersen hashes....etc).
 
 
-The different types of gates in Ark-plonk are:
+The different types of gates in this implementation are:
 
 * [Arithmetic gate](https://github.com/ZK-Garage/plonk/blob/master/src/constraint_system/arithmetic.rs) (similar to Plonk)
 * [Logic gate](https://github.com/ZK-Garage/plonk/blob/master/src/constraint_system/logic.rs): Provide bitwise AND and XOR operations.
@@ -73,7 +75,7 @@ In order to use one of these gates, we set the value of its associated SP to $1$
 #### Design custom gates
 Before we explain how each of the previous mentioned custom gates are designed, we need to talk about fan-in 3 gates and why we use them at ark-plonk instead of fan-in 2 gates?
 The original Plonk design uses fan-in 2 gates which means each gates has two inputs and an output wires.
-Ark-plonk gates on the other hand are fan-in-3 gates, so they have one more wire which makes it 4 wires in total.
+These PLONK gates, on the other hand, are fan-in-3 gates, so they have one more wire which makes it 4 wires in total.
 We can see in the following figure how a fan-in 3 gate looks like:
 
 <p align="center">
@@ -105,7 +107,7 @@ PI
 = 0.
 $$
 
-Ark-plonk still allows the use of fan-in 2 gates only by setting the 4th wire selector $q_d$ to $0$. 
+This repository still allows the use of fan-in 2 gates only by setting the 4th wire selector, $q_d$, to $0$. 
 The reason why we use this design instead of the original one is to have one more witness available as a way to reduce gate counts.
 This method however has some negative implications on both the proof size and the verifier's time. It will increase the permutation polynomial degree (instead of 3 identity permutations it will become 4) and thus an n−degree increase in the quotient polynomial (from $3n$ to $4n$)
  and an increase in the FFT degrees. We can expect the proof size( additional commitment to the wire polynomial and an additional group element). The verification time will also increase(21 exponentiations in  $G_1$ instead of $18$ for classic Plonk):
@@ -156,7 +158,7 @@ We now have 21 quads and $21 \div 4 = 5$ remainder 1, so we will need 5 full gat
        
 ### Logic gates
 
-Ark-plonk logic gates can perform bitwise AND and XOR operations. 
+The plonk logic gates can perform bitwise AND and XOR operations. 
 Each gate adds $k = n \div 2 + 1$ constraints to the circuit where $n$ % $2==0$ ($n$ is number of bits).
 
 
@@ -213,7 +215,7 @@ The result of the operation ends up in the 4th wire of the last subgate.
 The concept of lookup tables is to use precomputed tables in Plonk which allows circuits to be encoded more efficiently. These tables contain the most commonly used computation units which are very expensive to compute each time like XOR or AND operation between bit strings, or common hash functions such as AES-128 or SHA-256...etc. This removes the aspect of circuit complexity needed to compute the function, so the complexity of the SNARK depends only on the size of the function's domain.
 
 The Plonk circuit would then contain another type of gates (lookup gates) besides the original addition, multiplication and constant gates.
-In ARK-PLONK, we use PlonKup, a ZK-SNARK that integrates plookup into PlonK in an efficient way. Before we explain how PlonKup works, we will introduce the original [plookup]((https://eprint.iacr.org/2020/315.pdf) ) definition.
+In this PLONK lib, we use PlonKup, a ZK-SNARK that integrates plookup into PlonK in an efficient way. Before we explain how PlonKup works, we will introduce the original [plookup]((https://eprint.iacr.org/2020/315.pdf) ) definition.
 
 #### PLOOKUP
 The PLOOKUP protocol takes sequences $(f_1,f_2,...,f_n)$ and $(t_1,t_2,...,t_d)$ and checks that every value in the first sequence $(f_i)_{i\in [n]}$ appears in the second $(t_i)_{i\in [d]}$: $$ (f_i)_{i\in [n]}\subset (t_i)_{i\in [d]}$$ where $f_i$ is the compressed tuple $(input_i,output_i)$ and $(t_1,t_2,...,t_d)$ is the lookup table containing all valid compressed input-output pairs. We define $(t_i)$ as: 
@@ -451,7 +453,7 @@ pub fn insert_multi_mul(&mut self, lower_bound: u64, n: u8) {
 ```
 The table uses the first $0..n/2$ rows for the Mul function and have the 4th wire storing index 0. For all indices $n/2..n$, an XOR gate can be added, where $n$ the index of the 4th wire is 0.   
 ### Modules
-* circuit: Tools & traits for PLONK circuits (ark_plonk::circuit)
+* circuit: Tools & traits for PLONK circuits (plonk::circuit)
   1. Structs
      - `PublicInputValue`: structure that represents a PLONK Circuit Public Input converted into its scalar representation.
      - `VerifierData`: Collection of structs/objects that the Verifier will use in order to de/serialize data needed for Circuit proof verification. This structure can be seen as a link between the Circuit public input positions and the VerifierKey that the Verifier needs to use.
@@ -471,7 +473,7 @@ The table uses the first $0..n/2$ rows for the Mul function and have the 4th wir
 * constraint_system: The constraint System module stores the implementation of the PLONK Standard Composer, as well as the circuit tools and abstractions, used by the Composer to generate, build, preprocess circuits.
 * proof_system: Proving system
 * error: Defines all possible errors that can be encountered in PLONK
-* prelude: collection of functions needed to use ark-plonk library.
+* prelude: collection of functions needed to use plonk library.
   - Structs:
      - `Circuit`
      - `PublicInputValue`
@@ -554,7 +556,7 @@ where
 ## Parameters
 
 ### Elliptic curve: 
-Circuits in ARK-PLONK depend on two generic parameters: 
+Circuits in PLONK depend on two generic parameters: 
 
 
 * The pairing engine which is a pairing friendly curve used for pairing operations and proof verification
@@ -583,7 +585,7 @@ Circuits in ARK-PLONK depend on two generic parameters:
   
 
          
-* Commitment scheme: The first implementation of ARK-PLONK used the KZG10 commitment scheme which needs a trusted setup as explained in the KZG10 section. However, in order for other projects who don’t wish to have a trusted setup like Mithril for example there is a generic implementation using  [ark-poly-commit](https://docs.rs/ark-poly-commit/0.3.0/ark_poly_commit/) library. 
+* Commitment scheme: The first implementation of PLONK used the KZG10 commitment scheme which needs a trusted setup as explained in the KZG10 section. However, in order for other projects who don’t wish to have a trusted setup like Mithril for example there is a generic implementation using  [ark-poly-commit](https://docs.rs/ark-poly-commit/0.3.0/ark_poly_commit/) library. 
 
 
 
@@ -597,7 +599,7 @@ TBD
 In order to translate a high level code into an arithmetic circuit we need to use gadgets. Gadgets provide modular and reusable abstractions for circuits as well as abstracting functions, elliptic curve points or integers of specific sizes. Some of the most famous zksnarks gadget libraries are Libsnark in C++ and Bellman in Rust.
 
 
-Every single gadget in ARK-PLONK takes mutable reference or a pointer to the composer which then generates the proof and defines the circuit. 
+Every single gadget in PLONK takes mutable reference or a pointer to the composer which then generates the proof and defines the circuit. 
 
 #### Simple example
 
@@ -672,7 +674,3 @@ The benchmarks for prover and verifier are done using the [Criterion.rs](https:/
 |    $2^{18}$     |    13.704s   |    6.8124ms   |                                     
 
 
-The ark-plonk benchmarks are outperforming those of dusk-plonk library. For example, in dusk-plonk the results are taken with Intel(R) Core(TM) i9-9900X for a circuit of size $2^{16}$ are:
-
-* Prover time: $5.46s$ which is higher than $3.44s$ in the case of ark-plonk 
-* Verifier time: $9.34ms$ which is higher than $4.50ms$ in the case of Plonk.
