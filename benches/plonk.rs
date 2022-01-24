@@ -1,152 +1,167 @@
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE
+// or https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+//
+// Copyright (c) ZK-GARAGE. All rights reserved.
+
+//! PLONK Benchmarks
+
 use ark_bls12_381::{Bls12_381, Fr as BlsScalar};
 use ark_ec::{PairingEngine, TEModelParameters};
 use ark_ed_on_bls12_381::EdwardsParameters;
-use ark_plonk::prelude::*;
-use ark_poly::univariate::DensePolynomial;
-use ark_poly_commit::kzg10::KZG10;
-use criterion::{
-    black_box, criterion_group, criterion_main, BenchmarkId, Criterion,
-};
-use rand_core::OsRng;
-use std::marker::PhantomData;
+use ark_ff::{FftField, PrimeField};
+use ark_poly_commit::PolynomialCommitment;
+use core::marker::PhantomData;
+use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
+use plonk::commitment::KZG10;
+use plonk::prelude::*;
+use rand::rngs::OsRng;
 
-#[derive(Debug)]
-pub struct BenchCircuit<
-    E: PairingEngine,
-    P: TEModelParameters<BaseField = E::Fr>,
-> {
-    degree: usize,
-    _marker: PhantomData<P>,
-    _marker2: PhantomData<E>,
+/// Benchmark Circuit
+#[derive(derivative::Derivative)]
+#[derivative(Debug, Default)]
+pub struct BenchCircuit<F, P> {
+    /// Circuit Size
+    size: usize,
+
+    /// Field and parameters
+    _phantom: PhantomData<(F, P)>,
 }
 
-impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Default
-    for BenchCircuit<E, P>
-{
-    fn default() -> Self {
+impl<F, P> BenchCircuit<F, P> {
+    /// Builds a new circuit with a constraint count of `2^degree`.
+    #[inline]
+    pub fn new(degree: usize) -> Self {
         Self {
-            degree: 1 << 2,
-            _marker: PhantomData,
-            _marker2: PhantomData,
+            size: 1 << degree,
+            _phantom: PhantomData::<(F, P)>,
         }
     }
 }
 
-impl<
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
-        T: Into<usize>,
-    > From<T> for BenchCircuit<E, P>
-{
-    fn from(degree: T) -> Self {
-        Self {
-            degree: 1 << degree.into(),
-            _marker: PhantomData,
-            _marker2: PhantomData,
-        }
-    }
-}
-
-impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>> Circuit<E, P>
-    for BenchCircuit<E, P>
+impl<F, P> Circuit<F, P> for BenchCircuit<F, P>
+where
+    F: FftField + PrimeField,
+    P: TEModelParameters<BaseField = F>,
 {
     const CIRCUIT_ID: [u8; 32] = [0xff; 32];
 
+    #[inline]
     fn gadget(
         &mut self,
-        composer: &mut StandardComposer<E, P>,
+        composer: &mut StandardComposer<F, P>,
     ) -> Result<(), Error> {
-        while composer.circuit_size() < self.degree - 1 {
+        while composer.circuit_size() < self.size - 1 {
             composer.add_dummy_constraints();
         }
-
         Ok(())
     }
 
+    #[inline]
     fn padded_circuit_size(&self) -> usize {
-        self.degree
+        self.size
     }
 }
 
-impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
-    BenchCircuit<E, P>
-{
-    pub fn degree(&self) -> usize {
-        self.degree
-    }
-}
-
+/// Generates full benchmark suite for compiling, proving, and verifying.
 fn constraint_system_benchmark(c: &mut Criterion) {
-    let initial_degree = 5usize;
-    let final_degree = 18usize;
     let label = b"ark".as_slice();
 
-    // Generate CRS
-    let pp = KZG10::<Bls12_381, DensePolynomial<BlsScalar>>::setup(
-        1 << 19,
-        false,
+    const MINIMUM_DEGREE: usize = 5;
+    const MAXIMUM_DEGREE: usize = 19;
+
+    let pp = KZG10::<Bls12_381>::setup(
+        // +1 per wire, +2 for the permutation poly
+        1 << MAXIMUM_DEGREE + 6,
+        None,
         &mut OsRng,
     )
-    .expect("UP generation err");
+    .expect("Unable to sample public parameters.");
 
-    for degree in initial_degree..=final_degree {
-        // Gen circuit instance with this round degree
-        let mut circuit =
-            BenchCircuit::<Bls12_381, EdwardsParameters>::from(degree);
-        // Compile the circuit
-        let (pk_p, verifier_data) =
-            circuit.compile(&pp).expect("Compilation err");
-        let description = format!("Prove 2^{} = {} gates", degree, 1 << degree);
-
-        c.bench_with_input(
-            BenchmarkId::new(description.as_str(), degree),
+    let mut compiling_benchmarks = c.benchmark_group("compile");
+    for degree in MINIMUM_DEGREE..MAXIMUM_DEGREE {
+        let mut circuit = BenchCircuit::<
+            BlsScalar,
+            ark_ed_on_bls12_381::EdwardsParameters,
+        >::new(degree);
+        compiling_benchmarks.bench_with_input(
+            BenchmarkId::from_parameter(degree),
             &degree,
-            |b, _degree| {
+            |b, _| {
                 b.iter(|| {
                     circuit
-                        .gen_proof(
-                            black_box(&pp),
-                            black_box(pk_p.clone()),
-                            black_box(&label),
+                        .compile::<KZG10<Bls12_381>>(&pp)
+                        .expect("Unable to compile circuit.")
+                })
+            },
+        );
+    }
+    compiling_benchmarks.finish();
+
+    let mut proving_benchmarks = c.benchmark_group("prove");
+    for degree in MINIMUM_DEGREE..MAXIMUM_DEGREE {
+        let mut circuit = BenchCircuit::<
+            BlsScalar,
+            ark_ed_on_bls12_381::EdwardsParameters,
+        >::new(degree);
+        let (pk_p, _) = circuit
+            .compile::<KZG10<Bls12_381>>(&pp)
+            .expect("Unable to compile circuit.");
+        proving_benchmarks.bench_with_input(
+            BenchmarkId::from_parameter(degree),
+            &degree,
+            |b, _| {
+                b.iter(|| {
+                    circuit
+                        .gen_proof::<KZG10<Bls12_381>>(
+                            &pp,
+                            pk_p.clone(),
+                            &label,
                         )
                         .unwrap()
                 })
             },
         );
+    }
+    proving_benchmarks.finish();
 
-        let description =
-            format!("Verify 2^{} = {} gates", degree, 1 << degree);
+    let mut verifying_benchmarks = c.benchmark_group("verify");
+    for degree in MINIMUM_DEGREE..MAXIMUM_DEGREE {
+        let mut circuit = BenchCircuit::<
+            BlsScalar,
+            ark_ed_on_bls12_381::EdwardsParameters,
+        >::new(degree);
+        let (pk_p, verifier_data) =
+            circuit.compile(&pp).expect("Unable to compile circuit.");
         let proof = circuit
-            .gen_proof(
-                black_box(&pp),
-                black_box(pk_p.clone()),
-                black_box(&label),
-            )
+            .gen_proof::<KZG10<Bls12_381>>(&pp, pk_p.clone(), &label)
             .unwrap();
-
-        c.bench_with_input(
-            BenchmarkId::new(description.as_str(), degree),
+        let VerifierData { key, pi_pos } = verifier_data;
+        verifying_benchmarks.bench_with_input(
+            BenchmarkId::from_parameter(degree),
             &degree,
-            |b, _degree| {
+            |b, _| {
                 b.iter(|| {
-                    ark_plonk::circuit::verify_proof(
-                        black_box(&pp),
-                        black_box(verifier_data.clone().key()),
-                        black_box(&proof),
-                        &[],
-                        black_box(&verifier_data.clone().pi_pos()),
-                        black_box(&label),
+                    plonk::circuit::verify_proof::<
+                        <Bls12_381 as PairingEngine>::Fr,
+                        EdwardsParameters,
+                        KZG10<Bls12_381>,
+                    >(
+                        &pp, key.clone(), &proof, &[], &pi_pos, &label
                     )
-                    .expect("Failed to verify bench circuit!");
+                    .expect("Unable to verify benchmark circuit.");
                 })
             },
         );
     }
+    verifying_benchmarks.finish();
 }
 
 criterion_group! {
-    name = ark_plonk;
+    name = plonk;
     config = Criterion::default().sample_size(10);
     targets = constraint_system_benchmark
 }
-criterion_main!(ark_plonk);
+criterion_main!(plonk);
