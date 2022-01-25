@@ -276,7 +276,7 @@ where
 
     /// Compiles the circuit by using a function that returns a `Result`
     /// with the `ProverKey`, `VerifierKey` and the circuit size.
-    #[allow(clippy::type_complexity)] // NOTE: Clippy is too hash here.
+    #[allow(clippy::type_complexity)] // NOTE: Clippy is too harsh here.
     fn compile<PC>(
         &mut self,
         u_params: &PC::UniversalParams,

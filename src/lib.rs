@@ -4,7 +4,7 @@
 //
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
-//! PLONK
+//! A crate for a generic Rust PLONK implementation using arkworks as a backend.
 
 #![cfg_attr(not(any(feature = "std", test)), no_std)]
 #![cfg_attr(doc_cfg, feature(doc_cfg))]
