@@ -167,3 +167,11 @@ macro_rules! label_commitment {
         )
     };
 }
+
+/// Macro to quickly label evaluations
+#[macro_export]
+macro_rules! label_eval {
+    ($eval:expr) => {
+        (stringify!($comm).to_owned(), $eval)
+    };
+}
