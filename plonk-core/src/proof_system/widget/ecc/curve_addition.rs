@@ -6,10 +6,27 @@
 
 //! Elliptic Curve Point Addition Gate
 
-use crate::proof_system::widget::{GateConstraint, GateValues};
+use crate::proof_system::{
+    widget::{GateConstraint, WitnessValues},
+    CustomValues,
+};
 use ark_ec::{ModelParameters, TEModelParameters};
 use ark_ff::PrimeField;
 use core::marker::PhantomData;
+
+pub struct CAVals<F>
+where
+    F: PrimeField,
+{
+    pub left_next: F,
+    pub right_next: F,
+    pub fourth_next: F,
+    pub left_selector: F,
+    pub right_selector: F,
+    pub constant_selector: F,
+}
+
+impl<F> CustomValues<F> for CAVals<F> where F: PrimeField {}
 
 /// Curve Addition Gate
 #[derive(derivative::Derivative)]
@@ -24,15 +41,20 @@ where
     F: PrimeField,
     P: TEModelParameters<BaseField = F>,
 {
+    type CustomVals = CAVals<F>;
     #[inline]
-    fn constraints(separation_challenge: F, values: GateValues<F>) -> F {
-        let x_1 = values.left;
-        let x_3 = values.left_next;
-        let y_1 = values.right;
-        let y_3 = values.right_next;
-        let x_2 = values.output;
-        let y_2 = values.fourth;
-        let x1_y2 = values.fourth_next;
+    fn constraints(
+        separation_challenge: F,
+        wit_vals: WitnessValues<F>,
+        custom_vals: Self::CustomVals,
+    ) -> F {
+        let x_1 = wit_vals.left;
+        let x_3 = custom_vals.left_next;
+        let y_1 = wit_vals.right;
+        let y_3 = custom_vals.right_next;
+        let x_2 = wit_vals.output;
+        let y_2 = wit_vals.fourth;
+        let x1_y2 = custom_vals.fourth_next;
 
         let kappa = separation_challenge.square();
 

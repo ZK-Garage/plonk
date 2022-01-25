@@ -18,11 +18,27 @@
 //! Bits are accumulated in base2. So we use d(Xw) - 2d(X) to extract the
 //! base2 bit.
 
-use crate::proof_system::widget::{GateConstraint, GateValues};
+use crate::proof_system::{
+    widget::{GateConstraint, WitnessValues},
+    CustomValues,
+};
 use ark_ec::{ModelParameters, TEModelParameters};
 use ark_ff::PrimeField;
 use core::marker::PhantomData;
 
+pub struct FSMVals<F>
+where
+    F: PrimeField,
+{
+    pub left_next: F,
+    pub right_next: F,
+    pub fourth_next: F,
+    pub left_selector: F,
+    pub right_selector: F,
+    pub constant_selector: F,
+}
+
+impl<F> CustomValues<F> for FSMVals<F> where F: PrimeField {}
 /// Fixed-Base Scalar Multiplication Gate
 #[derive(derivative::Derivative)]
 #[derivative(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
@@ -36,24 +52,30 @@ where
     F: PrimeField,
     P: TEModelParameters<BaseField = F>,
 {
+    type CustomVals = FSMVals<F>;
+
     #[inline]
-    fn constraints(separation_challenge: F, values: GateValues<F>) -> F {
+    fn constraints(
+        separation_challenge: F,
+        wit_vals: WitnessValues<F>,
+        custom_vals: Self::CustomVals,
+    ) -> F {
         let kappa = separation_challenge.square();
         let kappa_sq = kappa.square();
         let kappa_cu = kappa_sq * kappa;
 
-        let x_beta_eval = values.left_selector;
-        let y_beta_eval = values.right_selector;
+        let x_beta_eval = custom_vals.left_selector;
+        let y_beta_eval = custom_vals.right_selector;
 
-        let acc_x = values.left;
-        let acc_x_next = values.left_next;
-        let acc_y = values.right;
-        let acc_y_next = values.right_next;
+        let acc_x = wit_vals.left;
+        let acc_x_next = custom_vals.left_next;
+        let acc_y = wit_vals.right;
+        let acc_y_next = custom_vals.right_next;
 
-        let xy_alpha = values.output;
+        let xy_alpha = wit_vals.output;
 
-        let accumulated_bit = values.fourth;
-        let accumulated_bit_next = values.fourth_next;
+        let accumulated_bit = wit_vals.fourth;
+        let accumulated_bit_next = custom_vals.fourth_next;
         let bit = extract_bit(accumulated_bit, accumulated_bit_next);
 
         // Check bit consistency
@@ -64,7 +86,7 @@ where
 
         // xy_alpha consistency check
         let xy_consistency =
-            ((bit * values.constant_selector) - xy_alpha) * kappa;
+            ((bit * custom_vals.constant_selector) - xy_alpha) * kappa;
 
         // x accumulator consistency check
         let x_3 = acc_x_next;
