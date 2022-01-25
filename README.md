@@ -65,6 +65,8 @@ There are two main types of documentation in this repository:
   of PLONK and how they work with mathematical demonstrations. To check it, run `make doc` and open the resulting docs,
   which will be located under `/target/doc/plonk/index.html` with your browser.
 
+  **Examples**. Examples can be found in the `examples` folder. Run them, e.g., via `cargo run --example simple_circuit`.
+
 ## Performance
 
 Benches taken running: `RUSTFLAGS='-C target-cpu=native' cargo bench` with an `Intel(R) Core(TM) i9-10885H`
