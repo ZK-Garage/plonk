@@ -5,7 +5,6 @@
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
 use crate::{
-    constraint_system::WireData,
     error::Error,
     label_eval,
     proof_system::{
@@ -25,6 +24,13 @@ use ark_poly::{
 };
 use ark_serialize::{
     CanonicalDeserialize, CanonicalSerialize, Read, SerializationError, Write,
+};
+
+use super::{
+    ecc::{CAVals, FSMVals},
+    logic::LogicVals,
+    range::RangeVals,
+    CustomValues,
 };
 
 /// Polynomial Evaluations
@@ -98,6 +104,28 @@ where
     pub vals: Vec<(String, F)>,
 }
 
+impl<F> CustomEvaluations<F>
+where
+    F: Field,
+{
+    /// Get the evaluation of the specified label.
+    /// This funtions panics if the requested label is not found
+    pub fn get(&self, label: String) -> F {
+        if let Some(result) = &self.vals.iter().find(|entry| entry.0 == label) {
+            result.1
+        } else {
+            panic!("{} label not found in evaluations set", label)
+        }
+    }
+
+    /// Add evaluation of poly at point if the label is not already
+    /// in the set of evaluations
+    pub fn add(label: String, poly: DensePolynomial<F>, point: F) {
+        // TODO
+        unimplemented!()
+    }
+}
+
 /// Subset of all of the evaluations. These evaluations
 /// are added to the [`Proof`](super::Proof).
 #[derive(CanonicalDeserialize, CanonicalSerialize, derivative::Derivative)]
@@ -121,28 +149,6 @@ where
     // are no other gates (a purely arithmetic circuit)
     /// Evaluation of the arithmetic selector polynomial at `z`.
     pub q_arith_eval: F,
-
-    // These are now in CustomEvaluations
-    // /// Evaluation of the witness polynomial for the left wire at `z *
-    // omega` /// where `omega` is a root of unity.
-    // pub a_next_eval: F,
-
-    // /// Evaluation of the witness polynomial for the right wire at `z *
-    // omega` /// where `omega` is a root of unity.
-    // pub b_next_eval: F,
-
-    // /// Evaluation of the witness polynomial for the fourth wire at `z *
-    // omega` /// where `omega` is a root of unity.
-    // pub d_next_eval: F,
-
-    // /// Evaluation of the constant selector polynomial at `z`.
-    // pub q_c_eval: F,
-
-    // /// Evaluation of the left selector polynomial at `z`.
-    // pub q_l_eval: F,
-
-    // /// Evaluation of the right selector polynomial at `z`.
-    // pub q_r_eval: F,
 
     // TODO This evaluation can be removed, making the adjustment for the
     // linearisation polynomial proposed in the last version of the print
@@ -237,13 +243,8 @@ where
         b_eval,
         c_eval,
         d_eval,
-        a_next_eval,
-        b_next_eval,
-        d_next_eval,
         q_arith_eval,
-        q_c_eval,
-        q_l_eval,
-        q_r_eval,
+        custom_evals,
         prover_key,
     );
 
@@ -287,13 +288,8 @@ fn compute_gate_constraint_satisfiability<F, P>(
     b_eval: F,
     c_eval: F,
     d_eval: F,
-    a_next_eval: F,
-    b_next_eval: F,
-    d_next_eval: F,
     q_arith_eval: F,
-    q_c_eval: F,
-    q_l_eval: F,
-    q_r_eval: F,
+    custom_evals: CustomEvaluations<F>,
     prover_key: &ProverKey<F>,
 ) -> DensePolynomial<F>
 where
@@ -301,19 +297,11 @@ where
     P: TEModelParameters<BaseField = F>,
 {
     let wit_vals = WitnessValues {
-        left: a_eval,
-        right: b_eval,
-        output: c_eval,
-        fourth: d_eval,
+        a_eval,
+        b_eval,
+        c_eval,
+        d_eval,
     };
-    // let fsm_vals = FSM
-    //     left_next: a_next_eval,
-    //     right_next: b_next_eval,
-    //     fourth_next: d_next_eval,
-    //     left_selector: q_l_eval,
-    //     right_selector: q_r_eval,
-    //     constant_selector: q_c_eval,
-    // };
 
     let arithmetic = prover_key.arithmetic.compute_linearisation(
         a_eval,
@@ -322,28 +310,33 @@ where
         d_eval,
         q_arith_eval,
     );
+
     let range = Range::linearisation_term(
         &prover_key.range_selector.0,
         *range_separation_challenge,
-        values,
+        wit_vals,
+        RangeVals::from_evaluations(custom_evals),
     );
 
     let logic = Logic::linearisation_term(
         &prover_key.logic_selector.0,
         *logic_separation_challenge,
-        values,
+        wit_vals,
+        LogicVals::from_evaluations(custom_evals),
     );
 
     let fixed_base_scalar_mul = FixedBaseScalarMul::<F, P>::linearisation_term(
         &prover_key.fixed_group_add_selector.0,
         *fixed_base_separation_challenge,
-        values,
+        wit_vals,
+        FSMVals::from_evaluations(custom_evals),
     );
 
     let curve_addition = CurveAddition::<F, P>::linearisation_term(
         &prover_key.variable_group_add_selector.0,
         *var_base_separation_challenge,
-        values,
+        wit_vals,
+        CAVals::from_evaluations(custom_evals),
     );
 
     arithmetic + range + logic + fixed_base_scalar_mul + curve_addition
