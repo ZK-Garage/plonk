@@ -83,7 +83,7 @@ where
         let a = custom_vals.a_next_eval - four * wit_vals.a_eval;
         let c_0 = delta(a);
 
-        let b = custom_vals.b_next_eval - four * wit_vals.r_eval;
+        let b = custom_vals.b_next_eval - four * wit_vals.b_eval;
         let c_1 = delta(b) * kappa;
 
         let d = custom_vals.d_next_eval - four * wit_vals.d_eval;
