@@ -20,10 +20,15 @@ use ark_ff::{FftField, PrimeField};
 use ark_poly::{univariate::DensePolynomial, Evaluations};
 use ark_serialize::*;
 
+use super::linearisation_poly::CustomEvaluations;
+
+/// Constructs gate-specific values struct from the set of evaluations
+/// `CustomEvaluations`
 pub trait CustomValues<F>
 where
     F: PrimeField,
 {
+    fn from_evaluations(custom_evals: CustomEvaluations<F>) -> Self;
 }
 
 /// Witness Values
@@ -36,16 +41,16 @@ where
     F: PrimeField,
 {
     /// Left Value
-    pub left: F,
+    pub a_eval: F,
 
     /// Right Value
-    pub right: F,
+    pub b_eval: F,
 
     /// Output Value
-    pub output: F,
+    pub c_eval: F,
 
     /// Fourth Value
-    pub fourth: F,
+    pub d_eval: F,
 }
 
 /// Gate Constraint
@@ -108,10 +113,10 @@ where
         let coefficient = Self::constraints(
             separation_challenge,
             WitnessValues {
-                left: evaluations.a_eval,
-                right: evaluations.b_eval,
-                output: evaluations.c_eval,
-                fourth: evaluations.d_eval,
+                a_eval: evaluations.wire_evals.a_eval,
+                b_eval: evaluations.wire_evals.b_eval,
+                c_eval: evaluations.wire_evals.c_eval,
+                d_eval: evaluations.wire_evals.d_eval,
             },
             // TODO
             custom_vals,

@@ -6,9 +6,13 @@
 
 //! Elliptic Curve Point Addition Gate
 
-use crate::proof_system::{
-    widget::{GateConstraint, WitnessValues},
-    CustomValues,
+use crate::{
+    get_label,
+    proof_system::{
+        linearisation_poly::CustomEvaluations,
+        widget::{GateConstraint, WitnessValues},
+        CustomValues,
+    },
 };
 use ark_ec::{ModelParameters, TEModelParameters};
 use ark_ff::PrimeField;
@@ -18,15 +22,26 @@ pub struct CAVals<F>
 where
     F: PrimeField,
 {
-    pub left_next: F,
-    pub right_next: F,
-    pub fourth_next: F,
-    pub left_selector: F,
-    pub right_selector: F,
-    pub constant_selector: F,
+    pub a_next_eval: F,
+    pub b_next_eval: F,
+    pub d_next_eval: F,
 }
 
-impl<F> CustomValues<F> for CAVals<F> where F: PrimeField {}
+impl<F> CustomValues<F> for CAVals<F>
+where
+    F: PrimeField,
+{
+    fn from_evaluations(custom_evals: CustomEvaluations<F>) -> Self {
+        let a_next_eval = custom_evals.get(get_label!(a_next_eval));
+        let b_next_eval = custom_evals.get(get_label!(b_next_eval));
+        let d_next_eval = custom_evals.get(get_label!(d_next_eval));
+        CAVals {
+            a_next_eval,
+            b_next_eval,
+            d_next_eval,
+        }
+    }
+}
 
 /// Curve Addition Gate
 #[derive(derivative::Derivative)]
@@ -48,13 +63,13 @@ where
         wit_vals: WitnessValues<F>,
         custom_vals: Self::CustomVals,
     ) -> F {
-        let x_1 = wit_vals.left;
-        let x_3 = custom_vals.left_next;
-        let y_1 = wit_vals.right;
-        let y_3 = custom_vals.right_next;
-        let x_2 = wit_vals.output;
-        let y_2 = wit_vals.fourth;
-        let x1_y2 = custom_vals.fourth_next;
+        let x_1 = wit_vals.a_eval;
+        let x_3 = custom_vals.a_next_eval;
+        let y_1 = wit_vals.r_eval;
+        let y_3 = custom_vals.b_next_eval;
+        let x_2 = wit_vals.c_eval;
+        let y_2 = wit_vals.d_eval;
+        let x1_y2 = custom_vals.d_next_eval;
 
         let kappa = separation_challenge.square();
 
