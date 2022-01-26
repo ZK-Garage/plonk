@@ -175,3 +175,11 @@ macro_rules! label_eval {
         (stringify!($comm).to_owned(), $eval)
     };
 }
+
+/// Macro to get appropirate label
+#[macro_export]
+macro_rules! get_label {
+    ($eval:expr) => {
+        stringify!($comm).to_owned()
+    };
+}
