@@ -14,7 +14,6 @@ use ark_ff::PrimeField;
 use ark_poly::univariate::DensePolynomial;
 use ark_poly_commit::sonic_pc::SonicKZG10;
 use ark_poly_commit::PolynomialCommitment;
-use plonk::commitment::KZG10;
 use plonk::prelude::*;
 use rand::rngs::OsRng;
 
