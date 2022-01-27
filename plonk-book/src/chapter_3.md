@@ -8,12 +8,11 @@ PLONK is however the only generic implementation which allows any curve implemen
 restricted to only one implementation like other existing libraries.
 
 
-
-
 ## State of the art
 
 In 2020, AZTEC team has developed PLONK which uses KZG's pairing-based polynomial commitment scheme in order to bring a universal zkSNARK setup. 
 Since then, PLONK has become very popular and lots of projects like Matter Labs, Zcash's Halo 2, Mina, Mir...etc started using it and developing their own variations of it. 
+
 Both Mir and Zcash use PLONK combined with [Halo’s polynomial commitment scheme](https://eprint.iacr.org/2019/1021.pdf) for their libraries [Plonky](https://github.com/mir-protocol/plonky) and Halo2. Halo based schemes do recursive proofs without pairings using elliptic curves that are not pairing friendly and can run without the need for trusted setups. In a recursive proof, the verifier is written inside the circuit which allows us to verify a proof inside of another proof while in a standard proof system there is a prover and a verifier. 
 In a KZG system, the proof size is very small (less than a kilobyte) and it's constant and also the verification time is constant, it’s also easy to verify on Ethereum but recursion is hard to do with pairings. 
 Halo based schemes have decent proof size and prover time, but take linear time to verify and it’s not possible to verify on Ethereum.
@@ -37,8 +36,8 @@ Our implementation also uses custom gates similarly to [TurboPolnk](https://docs
 
 The original Plonk proposes simple circuits whose gates only perform arithmetic operations: additions and multiplications. Plonk is able to extend an arithmetic "gate" and allows the creation of new customized gates which can perform so many different operations (EC additions, logical XOR, efficient Poseidon or Pedersen hashes....etc).
 
-
 The different types of gates in this implementation are:
+
 
 * [Arithmetic gate](https://github.com/ZK-Garage/plonk/blob/master/src/constraint_system/arithmetic.rs) (similar to Plonk)
 * [Logic gate](https://github.com/ZK-Garage/plonk/blob/master/src/constraint_system/logic.rs): Provide bitwise AND and XOR operations.
@@ -215,7 +214,9 @@ The result of the operation ends up in the 4th wire of the last subgate.
 The concept of lookup tables is to use precomputed tables in Plonk which allows circuits to be encoded more efficiently. These tables contain the most commonly used computation units which are very expensive to compute each time like XOR or AND operation between bit strings, or common hash functions such as AES-128 or SHA-256...etc. This removes the aspect of circuit complexity needed to compute the function, so the complexity of the SNARK depends only on the size of the function's domain.
 
 The Plonk circuit would then contain another type of gates (lookup gates) besides the original addition, multiplication and constant gates.
+
 In this PLONK lib, we use PlonKup, a ZK-SNARK that integrates plookup into PlonK in an efficient way. Before we explain how PlonKup works, we will introduce the original [plookup]((https://eprint.iacr.org/2020/315.pdf) ) definition.
+
 
 #### PLOOKUP
 The PLOOKUP protocol takes sequences $(f_1,f_2,...,f_n)$ and $(t_1,t_2,...,t_d)$ and checks that every value in the first sequence $(f_i)_{i\in [n]}$ appears in the second $(t_i)_{i\in [d]}$: $$ (f_i)_{i\in [n]}\subset (t_i)_{i\in [d]}$$ where $f_i$ is the compressed tuple $(input_i,output_i)$ and $(t_1,t_2,...,t_d)$ is the lookup table containing all valid compressed input-output pairs. We define $(t_i)$ as: 
@@ -333,7 +334,6 @@ In the continuous method, there is an unnatural "seam" between the two vectors $
 In either case, an additional check must be performed. In original Plookup we must check that $\mathbf{h_1}$ and $\mathbf{h_2}$ overlap, i.e. $L_{n-1}(X)h_1(X) - L_0(X)h_2(X) = 0$. 
 
 The alternating method does not contain a "seam" that needs to be patched with an additional polynomial or an overlap, so these additional checks are not needed. 
-
 
  
 
@@ -454,6 +454,8 @@ pub fn insert_multi_mul(&mut self, lower_bound: u64, n: u8) {
 The table uses the first $0..n/2$ rows for the Mul function and have the 4th wire storing index 0. For all indices $n/2..n$, an XOR gate can be added, where $n$ the index of the 4th wire is 0.   
 ### Modules
 * circuit: Tools & traits for PLONK circuits (plonk::circuit)
+
+
   1. Structs
      - `PublicInputValue`: structure that represents a PLONK Circuit Public Input converted into its scalar representation.
      - `VerifierData`: Collection of structs/objects that the Verifier will use in order to de/serialize data needed for Circuit proof verification. This structure can be seen as a link between the Circuit public input positions and the VerifierKey that the Verifier needs to use.
@@ -473,7 +475,10 @@ The table uses the first $0..n/2$ rows for the Mul function and have the 4th wir
 * constraint_system: The constraint System module stores the implementation of the PLONK Standard Composer, as well as the circuit tools and abstractions, used by the Composer to generate, build, preprocess circuits.
 * proof_system: Proving system
 * error: Defines all possible errors that can be encountered in PLONK
+
 * prelude: collection of functions needed to use plonk library.
+
+
   - Structs:
      - `Circuit`
      - `PublicInputValue`
@@ -556,8 +561,8 @@ where
 ## Parameters
 
 ### Elliptic curve: 
-Circuits in PLONK depend on two generic parameters: 
 
+Circuits in PLONK depend on two generic parameters: 
 
 * The pairing engine which is a pairing friendly curve used for pairing operations and proof verification
 
@@ -583,8 +588,6 @@ Circuits in PLONK depend on two generic parameters:
   [Bls12_377](https://docs.rs/ark-ed-on-bls12-377/0.3.0/ark_ed_on_bls12_377/#) in order to check that the library is generic and can in fact work 
   correctly with different parameters and also to measure performance when changing the used curve.
   
-
-         
 * Commitment scheme: The first implementation of PLONK used the KZG10 commitment scheme which needs a trusted setup as explained in the KZG10 section. However, in order for other projects who don’t wish to have a trusted setup like Mithril for example there is a generic implementation using  [ark-poly-commit](https://docs.rs/ark-poly-commit/0.3.0/ark_poly_commit/) library. 
 
 
@@ -598,8 +601,8 @@ TBD
 
 In order to translate a high level code into an arithmetic circuit we need to use gadgets. Gadgets provide modular and reusable abstractions for circuits as well as abstracting functions, elliptic curve points or integers of specific sizes. Some of the most famous zksnarks gadget libraries are Libsnark in C++ and Bellman in Rust.
 
-
 Every single gadget in PLONK takes mutable reference or a pointer to the composer which then generates the proof and defines the circuit. 
+
 
 #### Simple example
 
@@ -666,7 +669,7 @@ micro-benchmarking tool. Benchmarks are repeated 10 times each and so far only b
 |    $2^9$        |    50.221ms  |    4.3023ms   |                          
 |    $2^{10}$     |    68.704ms  |    4.2228ms   |               
 |    $2^{11}$     |    127.49ms  |    4.1379ms   |               
-|    $2^{12}$     |    245.48ms  |    4.1467ms   |               
+|    $2^{12}$     |    245.48ms  |    4.1467ms   |                
 |    $2^{13}$     |    440.64ms  |    4.1770ms   |               
 |    $2^{14}$     |    869.66ms  |    4.1870ms   |               
 |    $2^{15}$     |    1.7712s   |    4.3390ms   |               

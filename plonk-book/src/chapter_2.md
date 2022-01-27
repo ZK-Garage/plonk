@@ -117,6 +117,7 @@ for all $i \in \mathbb{N}$.
 ### KZG10 Batched commitments:
 
 PLONK uses a batched kate commitment form in order to improve verifier efficiency by allowing for a parallel opening of commitments for each evaluation point possible. 
+
 Let’s take $t$ polynomials of degree $\leq d\;$. Let $F$ be a field of prime order. We denote by $F_{<d}[X]$ the set of polynomials over $F$ of degree $<d$. Let $G_1,G_2,G_t$ be groups of size $r$ and $e:G_1\times G_2\rightarrow G_t$ a bilinear pairing such that $e(g_1,g_2)=g_t$ with $g_1,g_2$ generators of $G_1$ and $G_2$ respectively.
  
  
@@ -563,3 +564,10 @@ $$
 $$
 
 
+<<<<<<< HEAD
+<<<<<<< HEAD
+
+=======
+>>>>>>> master
+=======
+>>>>>>> compile-book

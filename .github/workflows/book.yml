@@ -31,7 +31,7 @@ jobs:
 
       - name: Move book to docs
         run: |
-          mv ./target/doc ./docs
+          mv ./plonk-book/book/* ./docs
    
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
