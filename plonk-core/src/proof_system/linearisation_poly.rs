@@ -28,7 +28,7 @@ use ark_serialize::{
 };
 
 use super::{
-    ecc::{CAVals, FSMVals},
+    ecc::{CAVals, FBSMVals},
     logic::LogicVals,
     range::RangeVals,
     CustomValues,
@@ -324,7 +324,7 @@ where
         &prover_key.fixed_group_add_selector.0,
         *fixed_base_separation_challenge,
         wit_vals,
-        FSMVals::from_evaluations(custom_evals),
+        FBSMVals::from_evaluations(custom_evals),
     );
 
     let curve_addition = CurveAddition::<F, P>::linearisation_term(

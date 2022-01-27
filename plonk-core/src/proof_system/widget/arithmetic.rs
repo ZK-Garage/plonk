@@ -12,6 +12,8 @@ use ark_poly::{polynomial::univariate::DensePolynomial, Evaluations};
 use ark_poly_commit::PolynomialCommitment;
 use ark_serialize::*;
 
+use super::WitnessValues;
+
 /// Arithmetic Gates Prover Key
 #[derive(CanonicalDeserialize, CanonicalSerialize, derivative::Derivative)]
 #[derivative(Clone, Debug, Eq, PartialEq)]
@@ -43,23 +45,20 @@ where
 
 impl<F> ProverKey<F>
 where
-    F: FftField,
+    F: PrimeField,
 {
     /// Computes the arithmetic gate contribution to the quotient polynomial at
     /// the element of the domain at the given `index`.
     pub fn compute_quotient_i(
         &self,
         index: usize,
-        w_l_i: F,
-        w_r_i: F,
-        w_o_i: F,
-        w_4_i: F,
+        wit_vals: WitnessValues<F>,
     ) -> F {
-        ((w_l_i * w_r_i * self.q_m.1[index])
-            + (w_l_i * self.q_l.1[index])
-            + (w_r_i * self.q_r.1[index])
-            + (w_o_i * self.q_o.1[index])
-            + (w_4_i * self.q_4.1[index])
+        ((wit_vals.a_val * wit_vals.b_val * self.q_m.1[index])
+            + (wit_vals.a_val * self.q_l.1[index])
+            + (wit_vals.b_val * self.q_r.1[index])
+            + (wit_vals.c_val * self.q_o.1[index])
+            + (wit_vals.d_val * self.q_4.1[index])
             + self.q_c.1[index])
             * self.q_arith.1[index]
     }
