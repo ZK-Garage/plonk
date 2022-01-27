@@ -1,4 +1,3 @@
-
 # PLONK library
 
 
@@ -30,7 +29,6 @@ There is no other library right which allows you to have the freedom of using ge
 ## Circuit implementation
 
 The implementation is an optimization of the original PLONK protocol as it enables lookup table to the PLONK circuit. This optimization allows for precomputation of some of the operations that are not snark friendly like bit operations (see [PLOOKUP](https://eprint.iacr.org/2020/315.pdf) for further explanation on PLONK + LOOKUP tables).
-
 
 Our implementation also uses custom gates similarly to [TurboPolnk](https://docs.zkproof.org/pages/standards/accepted-workshop3/proposal-turbo_plonk.pdf) which allow us to define our own custom bit arithmetic operations like efficient Poseidon or MIMC hashes which are extremely efficient to evaluate inside of a snark. 
 
@@ -76,7 +74,6 @@ In order to use one of these gates, we set the value of its associated SP to $1$
 #### Design custom gates
 Before we explain how each of the previous mentioned custom gates are designed, we need to talk about fan-in 3 gates and why we use them at ark-plonk instead of fan-in 2 gates?
 The original Plonk design uses fan-in 2 gates which means each gates has two inputs and an output wires.
-
 These PLONK gates, on the other hand, are fan-in-3 gates, so they have one more wire which makes it 4 wires in total.
 We can see in the following figure how a fan-in 3 gate looks like:
 
@@ -418,7 +415,6 @@ $$u=Hash(transcript)$$
 **Verifier Algorithm**
 
 #### Multiple lookup tables
-
 In order to build a lookup table associated to different functions (for example XOR and mul operations) we define 
 $\tau_1,\tau_2,...,\tau_s\in\mathbb{F}^{n\times 4}$ such that:
 
@@ -664,7 +660,6 @@ micro-benchmarking tool. Benchmarks are repeated 10 times each and so far only b
 
 
 
-
 | Circuit size    | Prover speed | Verifier speed| 
 |-----------------|--------------| --------------|            
 |    $2^5$        |    9.5398ms  |    4.2881ms   |               
@@ -674,13 +669,12 @@ micro-benchmarking tool. Benchmarks are repeated 10 times each and so far only b
 |    $2^9$        |    50.221ms  |    4.3023ms   |                          
 |    $2^{10}$     |    68.704ms  |    4.2228ms   |               
 |    $2^{11}$     |    127.49ms  |    4.1379ms   |               
-|    $2^{12}$     |    245.48ms  |    4.1467ms   |               
+|    $2^{12}$     |    245.48ms  |    4.1467ms   |                
 |    $2^{13}$     |    440.64ms  |    4.1770ms   |               
 |    $2^{14}$     |    869.66ms  |    4.1870ms   |               
 |    $2^{15}$     |    1.7712s   |    4.3390ms   |               
 |    $2^{16}$     |    3.4499s   |    4.5020ms   |               
 |    $2^{17}$     |    6.7577s   |    5.1572ms   |              
 |    $2^{18}$     |    13.704s   |    6.8124ms   |                                     
-
 
 
