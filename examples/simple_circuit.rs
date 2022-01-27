@@ -26,7 +26,6 @@ use plonk_core::circuit::{verify_proof, Circuit, PublicInputBuilder};
 use plonk_core::constraint_system::StandardComposer;
 use plonk_core::error::Error;
 
-use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 
 fn main() -> Result<(), Error> {
     // Implements a circuit that checks:
