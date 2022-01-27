@@ -7,7 +7,7 @@
 //! Logic Gates
 
 use crate::proof_system::widget::{GateConstraint, GateValues};
-use ark_ff::Field;
+use ark_ff::PrimeField;
 use core::marker::PhantomData;
 
 /// Logic Gate
@@ -15,11 +15,11 @@ use core::marker::PhantomData;
 #[derivative(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
 pub struct Logic<F>(PhantomData<F>)
 where
-    F: Field;
+    F: PrimeField;
 
 impl<F> GateConstraint<F> for Logic<F>
 where
-    F: Field,
+    F: PrimeField,
 {
     #[inline]
     fn constraints(separation_challenge: F, values: GateValues<F>) -> F {
@@ -51,7 +51,7 @@ where
 /// Computes `f(f-1)(f-2)(f-3)`
 pub(crate) fn delta<F>(f: F) -> F
 where
-    F: Field,
+    F: PrimeField,
 {
     let f_1 = f - F::one();
     let f_2 = f - F::from(2_u64);
@@ -70,7 +70,7 @@ where
 #[allow(non_snake_case)]
 pub(crate) fn delta_xor_and<F>(a: F, b: F, w: F, c: F, q_c: F) -> F
 where
-    F: Field,
+    F: PrimeField,
 {
     let nine = F::from(9_u64);
     let two = F::from(2_u64);
