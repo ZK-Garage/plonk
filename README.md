@@ -13,6 +13,31 @@ The `plonk-core` module is an implemention of the PLONK proving system, that lev
 The `plonk-hashing` module is set to contain several hashing algorithms, commencing with an optimised implementation of the Poseidon hashing algorithm generic for both plonk-style arithmetic representation and R1CS. Which will be extended but not limited to Reinforced Concrete and Blake2s.  
 
 The `plonk-book` is a module which contains a detailed overview of the working parts within a EC based ZKP system, with explanation of some of the characteristics particular to PLONK, e.g. Lagrange bases. There is a also a chapter on the construction of the PLONK algorithms, as well as an explanation of the implementations features and details specific to this repository. 
+### Compile the Plonk book
+First, you need to install mdbook command line tool used to create books with Markdown.
+
+```cargo install mdbook```
+
+
+
+You should also install Katex preprocessor which renders Latex equations into HTML at build time
+
+```cargo install --git "https://github.com/lzanini/mdbook-katex"```
+
+
+Then, you build the book as follows:
+
+```mdbook build```
+ 
+Last but not least, you can read the book by doing this command 
+
+```mdbook serve --open```
+
+This will display the book in your default web browser after building it.
+
+
+
+### Join the effort
 
 Please, if you're interested in collaborating, contributing or just discussing, you can join our Discord here: <https://discord.gg/XWJdhVf37F>
 
@@ -39,6 +64,11 @@ There are two main types of documentation in this repository:
 - **Notes**. This is a specific subset of documentation which explains the key mathematical concepts
   of PLONK and how they work with mathematical demonstrations. To check it, run `make doc` and open the resulting docs,
   which will be located under `/target/doc/plonk/index.html` with your browser.
+<<<<<<< HEAD
+=======
+
+  **Examples**. Examples can be found in the `examples` folder. Run them, e.g., via `cargo run --example simple_circuit`.
+>>>>>>> 9d502649d608727c307e43dd5494848b0457779a
 
 ## Performance
 

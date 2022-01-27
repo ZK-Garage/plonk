@@ -53,6 +53,7 @@ rand = "0.8.0"
 rand_core = "0.6"
 tempdir = "0.3"
 ark-vesta = "0.3"
+ark-serialize = "0.3"
 
 
 [[bench]]

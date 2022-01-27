@@ -7,7 +7,7 @@ on:
 
 jobs:
   deploy:
-    runs-on: ubuntu-18.04
+    runs-on: macos-latest 
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
@@ -18,7 +18,7 @@ jobs:
       - name: Setup mdBook
         uses: peaceiris/actions-mdbook@v1
         with:
-          mdbook-version: "latest"
+          mdbook-version: 'latest'
 
       - name: Install mdbook-katex
         uses: actions-rs/cargo@v1
@@ -30,8 +30,9 @@ jobs:
         run: mdbook build plonk-book/
 
       - name: Move book to docs
-        run: mv ./plonk-book/book/* ./docs
-        
+        run: |
+          mv ./plonk-book/book/* ./docs
+   
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
