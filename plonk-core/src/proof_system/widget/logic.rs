@@ -6,10 +6,7 @@
 
 //! Logic Gates
 
-<<<<<<< HEAD
 use crate::proof_system::widget::{GateConstraint, WitnessValues};
-use ark_ff::PrimeField;
-=======
 use crate::{
     get_label,
     proof_system::{
@@ -17,8 +14,7 @@ use crate::{
         widget::{GateConstraint, WitnessValues},
     },
 };
-use ark_ff::Field;
->>>>>>> 8d683a0 (Add `from_evaluations` constructor)
+use ark_ff::PrimeField;
 use core::marker::PhantomData;
 
 use super::CustomValues;
@@ -51,10 +47,7 @@ where
     }
 }
 
-<<<<<<< HEAD
 impl<F> CustomValues<F> for LogicVals<F> where F: PrimeField {}
-=======
->>>>>>> 8d683a0 (Add `from_evaluations` constructor)
 /// Logic Gate
 #[derive(derivative::Derivative)]
 #[derivative(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
