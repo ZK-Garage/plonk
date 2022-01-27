@@ -320,24 +320,24 @@ where
             .iter()
             .zip(&padded_q_lookup)
             .map(|(w, s)| {
-                *w * s + (E::Fr::one() - s) * compressed_t_multiset.0[0]
+                *w * s + (F::one() - s) * compressed_t_multiset.0[0]
             })
-            .collect::<Vec<E::Fr>>();
+            .collect::<Vec<F>>();
         let f_2_scalar = w_r_scalar
             .iter()
             .zip(&padded_q_lookup)
             .map(|(w, s)| *w * s)
-            .collect::<Vec<E::Fr>>();
+            .collect::<Vec<F>>();
         let f_3_scalar = w_o_scalar
             .iter()
             .zip(&padded_q_lookup)
             .map(|(w, s)| *w * s)
-            .collect::<Vec<E::Fr>>();
+            .collect::<Vec<F>>();
         let f_4_scalar = w_4_scalar
             .iter()
             .zip(&padded_q_lookup)
             .map(|(w, s)| *w * s)
-            .collect::<Vec<E::Fr>>();
+            .collect::<Vec<F>>();
 
         // Compress all wires into a single vector
         let compressed_f_multiset = MultiSet::compress_four_arity(
@@ -356,10 +356,10 @@ where
         );
 
         // Commit to query polynomial
-        let f_poly_commit = KZG10::commit(commit_key, &f_poly, None, None)?;
+        let f_poly_commit = PC::commit(commit_key, &f_poly, None)?;
 
         // Add f_poly commitment to transcript
-        transcript.append_commitment(b"f", &f_poly_commit.0);
+        transcript.append(b"f", &f_poly_commit.0);
 
         // Compute s, as the sorted and concatenated version of f and t
         let s = compressed_t_multiset
@@ -374,8 +374,8 @@ where
         let h_2_poly = DensePolynomial::from_coefficients_vec(domain.ifft(&h_2.0));
 
         // Commit to h polys
-        let h_1_poly_commit = KZG10::commit(commit_key, &h_1_poly, None, None).unwrap();
-        let h_2_poly_commit = KZG10::commit(commit_key, &h_2_poly, None, None).unwrap();
+        let h_1_poly_commit = PC::commit(commit_key, &h_1_poly, None).map_err(to_pc_error::<F, PC>);
+        let h_2_poly_commit = PC::commit(commit_key, &h_2_poly, None).unwrap();
 
         // Add h polynomials to transcript
         transcript.append_commitment(b"h1", &h_1_poly_commit.0);
@@ -485,7 +485,7 @@ where
 
         let lookup_sep_challenge =
             transcript.challenge_scalar(b"lookup separation challenge");
-        transcript.append(b"lookup separation challenge", &lookup_challenge);
+        transcript.append(b"lookup separation challenge", &lookup_sep_challenge);
 
         let t_poly = quotient_poly::compute::<F, P>(
             &domain,

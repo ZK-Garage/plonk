@@ -752,7 +752,7 @@ impl Permutation {
         DensePolynomial::<F>::from_coefficients_vec(domain.ifft(&z))
     }
 
-    pub(crate) fn compute_mega_permutation_poly(
+    pub(crate) fn compute_mega_permutation_poly<F: FftField>(
         &self,
         domain: &GeneralEvaluationDomain<F>,
         f: &[F],
@@ -833,7 +833,7 @@ impl Permutation {
         DensePolynomial::from_coefficients_vec(domain.ifft(&p))
     }
     
-    fn lookup_numerator_irreducible(
+    fn lookup_numerator_irreducible<F: FftField>(
         delta: &F,
         epsilon: &F,
         theta: &F,
@@ -848,7 +848,7 @@ impl Permutation {
         prod_1 * prod_2 * prod_3
     }
     
-    fn lookup_denominator_irreducible(
+    fn lookup_denominator_irreducible<F: FftField>(
         delta: F,
         epsilon: F,
         h_1: F,

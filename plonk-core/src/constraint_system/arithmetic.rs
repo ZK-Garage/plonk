@@ -128,12 +128,12 @@ where
         self.q_o.push(gate.out_selector);
         self.q_c.push(gate.const_selector);
 
-        self.q_arith.push(E::Fr::one());
-        self.q_range.push(E::Fr::zero());
-        self.q_logic.push(E::Fr::zero());
-        self.q_fixed_group_add.push(E::Fr::zero());
-        self.q_variable_group_add.push(E::Fr::zero());
-        self.q_lookup.push(E::Fr::zero());
+        self.q_arith.push(F::one());
+        self.q_range.push(F::zero());
+        self.q_logic.push(F::zero());
+        self.q_fixed_group_add.push(F::zero());
+        self.q_variable_group_add.push(F::zero());
+        self.q_lookup.push(F::zero());
 
         if let Some(pi) = gate.pi {
             let insert_res = self.public_inputs_sparse_store.insert(self.n, pi);

@@ -81,9 +81,9 @@ where
     /// Fixed base group addition selector
     pub(crate) q_fixed_group_add: Vec<F>,
     /// Variable base group addition selector
-    pub(crate) q_variable_group_add: Vec<E::Fr>,
+    pub(crate) q_variable_group_add: Vec<F>,
     /// Lookup gate selector
-    pub(crate) q_lookup: Vec<E::Fr>,
+    pub(crate) q_lookup: Vec<F>,
 
     /// Sparse representation of the Public Inputs linking the positions of the
     /// non-zero ones to it's actual values.
@@ -101,7 +101,7 @@ where
     pub(crate) w_4: Vec<Variable>,
 
     /// Public lookup table
-    pub(crate) lookup_table: LookupTable<E::Fr>,
+    pub(crate) lookup_table: LookupTable<F>,
 
     /// A zero Variable that is a part of the circuit description.
     /// We reserve a variable to be zero in the system
@@ -282,11 +282,11 @@ where
         self.q_4.push(F::zero());
         self.q_arith.push(F::one());
 
-        self.q_range.push(E::Fr::zero());
-        self.q_logic.push(E::Fr::zero());
-        self.q_fixed_group_add.push(E::Fr::zero());
-        self.q_variable_group_add.push(E::Fr::zero());
-        self.q_lookup.push(E::Fr::zero());
+        self.q_range.push(F::zero());
+        self.q_logic.push(F::zero());
+        self.q_fixed_group_add.push(F::zero());
+        self.q_variable_group_add.push(F::zero());
+        self.q_lookup.push(F::zero());
 
         if let Some(pi) = pi {
             assert!(self
@@ -483,22 +483,22 @@ where
     /// description which are guaranteed to always satisfy the gate equation.
     pub fn add_dummy_constraints(&mut self) {
         // Add a dummy constraint so that we do not have zero polynomials
-        self.q_m.push(E::Fr::from(1u64));
-        self.q_l.push(E::Fr::from(2u64));
-        self.q_r.push(E::Fr::from(3u64));
-        self.q_o.push(E::Fr::from(4u64));
-        self.q_c.push(E::Fr::from(4u64));
-        self.q_4.push(E::Fr::one());
-        self.q_arith.push(E::Fr::one());
-        self.q_range.push(E::Fr::zero());
-        self.q_logic.push(E::Fr::zero());
-        self.q_fixed_group_add.push(E::Fr::zero());
-        self.q_variable_group_add.push(E::Fr::zero());
-        self.q_lookup.push(E::Fr::one());
-        let var_six = self.add_input(E::Fr::from(6u64));
-        let var_one = self.add_input(E::Fr::from(1u64));
-        let var_seven = self.add_input(E::Fr::from(7u64));
-        let var_min_twenty = self.add_input(-E::Fr::from(20u64));
+        self.q_m.push(F::from(1u64));
+        self.q_l.push(F::from(2u64));
+        self.q_r.push(F::from(3u64));
+        self.q_o.push(F::from(4u64));
+        self.q_c.push(F::from(4u64));
+        self.q_4.push(F::one());
+        self.q_arith.push(F::one());
+        self.q_range.push(F::zero());
+        self.q_logic.push(F::zero());
+        self.q_fixed_group_add.push(F::zero());
+        self.q_variable_group_add.push(F::zero());
+        self.q_lookup.push(F::one());
+        let var_six = self.add_input(F::from(6u64));
+        let var_one = self.add_input(F::from(1u64));
+        let var_seven = self.add_input(F::from(7u64));
+        let var_min_twenty = self.add_input(-F::from(20u64));
         self.w_l.push(var_six);
         self.w_r.push(var_seven);
         self.w_o.push(var_min_twenty);
@@ -513,18 +513,18 @@ where
         self.n += 1;
         //Add another dummy constraint so that we do not get the identity
         // permutation
-        self.q_m.push(E::Fr::from(1u64));
-        self.q_l.push(E::Fr::from(1u64));
-        self.q_r.push(E::Fr::from(1u64));
-        self.q_o.push(E::Fr::from(1u64));
-        self.q_c.push(E::Fr::from(127u64));
-        self.q_4.push(E::Fr::zero());
-        self.q_arith.push(E::Fr::one());
-        self.q_range.push(E::Fr::zero());
-        self.q_logic.push(E::Fr::zero());
-        self.q_fixed_group_add.push(E::Fr::zero());
-        self.q_variable_group_add.push(E::Fr::zero());
-        self.q_lookup.push(E::Fr::one());
+        self.q_m.push(F::from(1u64));
+        self.q_l.push(F::from(1u64));
+        self.q_r.push(F::from(1u64));
+        self.q_o.push(F::from(1u64));
+        self.q_c.push(F::from(127u64));
+        self.q_4.push(F::zero());
+        self.q_arith.push(F::one());
+        self.q_range.push(F::zero());
+        self.q_logic.push(F::zero());
+        self.q_fixed_group_add.push(F::zero());
+        self.q_variable_group_add.push(F::zero());
+        self.q_lookup.push(F::one());
         self.w_l.push(var_min_twenty);
         self.w_r.push(var_six);
         self.w_o.push(var_seven);
@@ -542,30 +542,30 @@ where
         self.lookup_table.0.insert(
             0,
             [
-                E::Fr::from(6u64),
-                E::Fr::from(7u64),
-                -E::Fr::from(20u64),
-                E::Fr::from(1u64),
+                F::from(6u64),
+                F::from(7u64),
+                -F::from(20u64),
+                F::from(1u64),
             ],
         );
 
         self.lookup_table.0.insert(
             0,
             [
-                -E::Fr::from(20u64),
-                E::Fr::from(6u64),
-                E::Fr::from(7u64),
-                E::Fr::from(0u64),
+                -F::from(20u64),
+                F::from(6u64),
+                F::from(7u64),
+                F::from(0u64),
             ],
         );
 
         self.lookup_table.0.insert(
             0,
             [
-                E::Fr::from(3u64),
-                E::Fr::from(1u64),
-                E::Fr::from(4u64),
-                E::Fr::from(9u64),
+                F::from(3u64),
+                F::from(1u64),
+                F::from(4u64),
+                F::from(9u64),
             ],
         );
 

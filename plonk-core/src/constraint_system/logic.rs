@@ -238,16 +238,16 @@ where
         // Now we just need to extend the selector polynomials with the
         // appropriate coefficients to form complete logic gates.
         for _ in 0..num_quads {
-            self.q_m.push(E::Fr::zero());
-            self.q_l.push(E::Fr::zero());
-            self.q_r.push(E::Fr::zero());
-            self.q_arith.push(E::Fr::zero());
-            self.q_o.push(E::Fr::zero());
-            self.q_4.push(E::Fr::zero());
-            self.q_range.push(E::Fr::zero());
-            self.q_fixed_group_add.push(E::Fr::zero());
-            self.q_variable_group_add.push(E::Fr::zero());
-            self.q_lookup.push(E::Fr::zero());
+            self.q_m.push(F::zero());
+            self.q_l.push(F::zero());
+            self.q_r.push(F::zero());
+            self.q_arith.push(F::zero());
+            self.q_o.push(F::zero());
+            self.q_4.push(F::zero());
+            self.q_range.push(F::zero());
+            self.q_fixed_group_add.push(F::zero());
+            self.q_variable_group_add.push(F::zero());
+            self.q_lookup.push(F::zero());
             match is_xor_gate {
                 true => {
                     self.q_c.push(-F::one());
@@ -260,16 +260,16 @@ where
             };
         }
         // For the last gate, `q_c` and `q_logic` we use no-op values (Zero).
-        self.q_m.push(E::Fr::zero());
-        self.q_l.push(E::Fr::zero());
-        self.q_r.push(E::Fr::zero());
-        self.q_arith.push(E::Fr::zero());
-        self.q_o.push(E::Fr::zero());
-        self.q_4.push(E::Fr::zero());
-        self.q_range.push(E::Fr::zero());
-        self.q_fixed_group_add.push(E::Fr::zero());
-        self.q_variable_group_add.push(E::Fr::zero());
-        self.q_fixed_group_add.push(E::Fr::zero());
+        self.q_m.push(F::zero());
+        self.q_l.push(F::zero());
+        self.q_r.push(F::zero());
+        self.q_arith.push(F::zero());
+        self.q_o.push(F::zero());
+        self.q_4.push(F::zero());
+        self.q_range.push(F::zero());
+        self.q_fixed_group_add.push(F::zero());
+        self.q_variable_group_add.push(F::zero());
+        self.q_fixed_group_add.push(F::zero());
 
         self.q_c.push(F::zero());
         self.q_logic.push(F::zero());

@@ -12,6 +12,7 @@ pub mod logic;
 pub mod range;
 pub mod lookup;
 
+
 use crate::{
     commitment::HomomorphicCommitment,
     proof_system::{linearisation_poly::ProofEvaluations, permutation},
@@ -340,9 +341,9 @@ where
         q_arith: (DensePolynomial<F>, Evaluations<F>),
         q_range: (DensePolynomial<F>, Evaluations<F>),
         q_logic: (DensePolynomial<F>, Evaluations<F>),
+        q_lookup: (DensePolynomial<F>, Evaluations<F>),
         q_fixed_group_add: (DensePolynomial<F>, Evaluations<F>),
         q_variable_group_add: (DensePolynomial<F>, Evaluations<F>),
-        q_lookup: (DensePolynomial<F>, Evaluations<F>),
         left_sigma: (DensePolynomial<F>, Evaluations<F>),
         right_sigma: (DensePolynomial<F>, Evaluations<F>),
         out_sigma: (DensePolynomial<F>, Evaluations<F>),
@@ -426,6 +427,7 @@ mod test {
         let q_arith = rand_poly_eval(n);
         let q_range = rand_poly_eval(n);
         let q_logic = rand_poly_eval(n);
+        let q_lookup = rand_poly_eval(n);
         let q_fixed_group_add = rand_poly_eval(n);
         let q_variable_group_add = rand_poly_eval(n);
 
@@ -448,6 +450,7 @@ mod test {
             q_arith,
             q_range,
             q_logic,
+            q_lookup,
             q_fixed_group_add,
             q_variable_group_add,
             left_sigma,
@@ -488,6 +491,7 @@ mod test {
         let q_arith = PC::Commitment::default();
         let q_range = PC::Commitment::default();
         let q_logic = PC::Commitment::default();
+        let q_lookup = PC::Commitment::default();
         let q_fixed_group_add = PC::Commitment::default();
         let q_variable_group_add = PC::Commitment::default();
 
@@ -507,6 +511,7 @@ mod test {
             q_arith,
             q_range,
             q_logic,
+            q_lookup,
             q_fixed_group_add,
             q_variable_group_add,
             left_sigma,

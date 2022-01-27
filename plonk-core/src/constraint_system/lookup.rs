@@ -4,15 +4,15 @@
 //
 // Copyright (c) ZK-Garage. All rights reserved.
 
-use crate::constraint_system::StandardComposer;
-use crate::constraint_system::Variable;
-use ark_ec::{PairingEngine, TEModelParameters};
 use num_traits::{One, Zero};
+use crate::constraint_system::{StandardComposer, Variable};
+use ark_ec::TEModelParameters;
+use ark_ff::PrimeField;
 
-impl<E, P> StandardComposer<E, P>
+impl<F, P> StandardComposer<F, P>
 where
-    E: PairingEngine,
-    P: TEModelParameters<BaseField = E::Fr>,
+    F: PrimeField,
+    P: TEModelParameters<BaseField = F>,  
 {
 
     /// Adds a plookup gate to the circuit with its corresponding 
@@ -28,12 +28,12 @@ where
         b: Variable,
         c: Variable,
         d: Option<Variable>,
-        q_l: E::Fr,
-        q_r: E::Fr,
-        q_o: E::Fr,
-        q_4: E::Fr,
-        q_c: E::Fr,
-        pi: Option<E::Fr>,
+        q_l: F,
+        q_r: F,
+        q_o: F,
+        q_4: F,
+        q_c: F,
+        pi: Option<F>,
     ) -> Variable {
         // Check if advice wire has a value
         let d = match d {
@@ -52,16 +52,16 @@ where
         self.q_o.push(q_o);
         self.q_c.push(q_c);
         self.q_4.push(q_4);
-        self.q_arith.push(E::Fr::zero());
-        self.q_m.push(E::Fr::zero());
-        self.q_range.push(E::Fr::zero());
-        self.q_logic.push(E::Fr::zero());
-        self.q_fixed_group_add.push(E::Fr::zero());
-        self.q_variable_group_add.push(E::Fr::zero());
+        self.q_arith.push(F::zero());
+        self.q_m.push(F::zero());
+        self.q_range.push(F::zero());
+        self.q_logic.push(F::zero());
+        self.q_fixed_group_add.push(F::zero());
+        self.q_variable_group_add.push(F::zero());
 
         // For a lookup gate, only one selector poly is 
         // turned on as the output is inputted directly
-        self.q_lookup.push(E::Fr::one());
+        self.q_lookup.push(F::one());
 
         if let Some(pi) = pi {
             assert!(self

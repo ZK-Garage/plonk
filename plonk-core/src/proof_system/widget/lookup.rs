@@ -6,7 +6,7 @@
 
 use crate::lookup::multiset::MultiSet;
 use crate::proof_system::widget::{GateConstraint, GateValues};
-use ark_ff::{Field, PrimeField};
+use ark_ff::{Field, PrimeField, FftField};
 use core::marker::PhantomData;
 use crate::proof_system::linearisation_poly::ProofEvaluations;
 use ark_ec::PairingEngine;
@@ -18,28 +18,28 @@ use ark_serialize::*;
 /// Lookup Gates Prover Key
 // #[derive(CanonicalDeserialize, CanonicalSerialize, derivative::Derivative)]
 #[derive(Debug, Eq, PartialEq, Clone)]
-pub struct ProverKey<E> 
+pub struct ProverKey<F> 
 where 
-E: PairingEngine,
+F: PrimeField,
 {
-    pub(crate) q_lookup: (DensePolynomial<E::Fr>, Evaluations<E::Fr>),
-    pub(crate) table_1: (MultiSet<E::Fr>, Commitment<E>, DensePolynomial<E::Fr>),
-    pub(crate) table_2: (MultiSet<E::Fr>, Commitment<E>, DensePolynomial<E::Fr>),
-    pub(crate) table_3: (MultiSet<E::Fr>, Commitment<E>, DensePolynomial<E::Fr>),
-    pub(crate) table_4: (MultiSet<E::Fr>, Commitment<E>, DensePolynomial<E::Fr>),
+    pub q_lookup: (DensePolynomial<F>, Evaluations<F>),
+    pub table_1: (MultiSet<F>, Commitment<F>, DensePolynomial<F>),
+    pub table_2: (MultiSet<F>, Commitment<F>, DensePolynomial<F>),
+    pub table_3: (MultiSet<F>, Commitment<F>, DensePolynomial<F>),
+    pub table_4: (MultiSet<F>, Commitment<F>, DensePolynomial<F>),
 }
 
-impl<F, E> ProverKey<F, E>
+impl<F> ProverKey<F>
 where
-E: PairingEngine, 
+F: PrimeField, 
 {
 
     pub fn compute_quotient_i(&self,
         index: usize,
-        w_l_i: E::Fr,
-        w_r_i: E::Fr,
-        w_o_i: E::Fr,
-        w_4_i: E::Fr,
+        w_l_i: F,
+        w_r_i: F,
+        w_o_i: F,
+        w_4_i: F,
         f_i: F,
         zeta: F,
         lookup_challenge: F,
@@ -63,28 +63,28 @@ E: PairingEngine,
     /// Compute linearization for lookup gates
     pub(crate) fn compute_linearization(
         &self,
-        a_eval: E::Fr,
-        b_eval: E::Fr,
-        c_eval: E::Fr,
-        d_eval: E::Fr,
-        f_eval: E::Fr,
-        t_eval: E::Fr,
-        t_next_eval: E::Fr,
-        h_1_eval: E::Fr,
-        h_2_eval: E::Fr,
-        p_next_eval: E::Fr,
-        l1_eval: E::Fr,
-        p_poly: DensePolynomial<E::Fr>,
-        h_2_poly: DensePolynomial<E::Fr>,
-        (delta, epsilon): (E::Fr, E::Fr),
-        zeta: E::Fr,
-        lookup_separation_challenge: E::Fr,
-    ) -> DensePolynomial<E::Fr> {
+        a_eval: F,
+        b_eval: F,
+        c_eval: F,
+        d_eval: F,
+        f_eval: F,
+        t_eval: F,
+        t_next_eval: F,
+        h_1_eval: F,
+        h_2_eval: F,
+        p_next_eval: F,
+        l1_eval: F,
+        p_poly: DensePolynomial<F>,
+        h_2_poly: DensePolynomial<F>,
+        (delta, epsilon): (F, F),
+        zeta: F,
+        lookup_separation_challenge: F,
+    ) -> DensePolynomial<F> {
         let l_sep_2 = lookup_separation_challenge.square();
         let l_sep_3 = l_sep_2 * lookup_separation_challenge;
         let zeta_sq = zeta * zeta;
         let zeta_cu = zeta * zeta_sq;
-        let one_plus_delta = delta + E::Fr::one();
+        let one_plus_delta = delta + F::one();
         let epsilon_one_plus_delta = epsilon * one_plus_delta;
 
         //
@@ -118,12 +118,12 @@ E: PairingEngine,
     }
 
     fn compress(
-        w_l: E::Fr,
-        w_r: E::Fr,
-        w_o: E::Fr,
-        w_4: E::Fr,
-        zeta: E::Fr,
-    ) -> E::Fr {
+        w_l: F,
+        w_r: F,
+        w_o: F,
+        w_4: F,
+        zeta: F,
+    ) -> F {
         let zeta_sq = zeta.square();
         let zeta_cu = zeta_sq * zeta;
     

@@ -36,11 +36,11 @@ where
         self.q_4.push(F::zero());
         self.q_arith.push(F::one());
 
-        self.q_range.push(E::Fr::zero());
-        self.q_logic.push(E::Fr::zero());
-        self.q_fixed_group_add.push(E::Fr::zero());
-        self.q_variable_group_add.push(E::Fr::zero());
-        self.q_lookup.push(E::Fr::zero());
+        self.q_range.push(F::zero());
+        self.q_logic.push(F::zero());
+        self.q_fixed_group_add.push(F::zero());
+        self.q_variable_group_add.push(F::zero());
+        self.q_lookup.push(F::zero());
 
         self.perm
             .add_variables_to_map(a, a, a, self.zero_var, self.n);

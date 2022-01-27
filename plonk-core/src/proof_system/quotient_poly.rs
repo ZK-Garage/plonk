@@ -23,7 +23,7 @@ use ark_poly::{
 
 /// Computes the Quotient [`DensePolynomial`] given the [`EvaluationDomain`], a
 /// [`ProverKey`], and some other info.
-pub fn compute<E, F, P>(
+pub fn compute<F, P>(
     domain: &GeneralEvaluationDomain<F>,
     prover_key: &ProverKey<F>,
     z_poly: &DensePolynomial<F>,
@@ -44,7 +44,6 @@ pub fn compute<E, F, P>(
     lookup_challenge: &F,
 ) -> Result<DensePolynomial<F>, Error>
 where
-    E: PairingEngine,
     F: PrimeField,
     P: TEModelParameters<BaseField = F>,
 {
