@@ -1,0 +1,76 @@
+[package]
+name = "plonk-core"
+version = "0.8.2"
+authors = ["ZK-GARAGE Authors"]
+readme = "README.md"
+repository = "https://github.com/zk-garage/plonk"
+keywords = ["cryptography", "plonk", "zk-snarks", "zero-knowledge", "crypto"]
+categories = ["algorithms", "cryptography", "science"]
+description = "A pure-Rust implementation of the PLONK ZK-Proof algorithm."
+license = "MIT OR Apache-2.0"
+edition = "2021"
+
+[package.metadata.docs.rs]
+# To build locally:
+# RUSTDOCFLAGS="--cfg doc_cfg" cargo +nightly doc --all-features --open
+all-features = true
+rustdoc-args = ["--cfg", "doc_cfg"]
+
+[features]
+# Default Features
+default = [
+    "asm",
+    "itertools/default",
+    "parallel",
+    "rand/std",
+]
+
+# Raw Assembly
+asm = ["ark-ff/asm"]
+
+# Parallelism Features
+parallel = [
+    "ark-ec/parallel",
+    "ark-ff/parallel",
+    "ark-poly-commit/parallel",
+    "ark-poly/parallel",
+]
+
+# Enable Standard Library
+std = [
+    "ark-ec/std",
+    "ark-ff/std",
+]
+
+# Minimal Tracing Features
+trace = []
+
+# Tracing Printing Features
+trace-print = ["trace"]
+
+[dependencies]
+ark-bls12-381 = "0.3"
+ark-std = { version = "0.3", features = ["std"] }
+blake2 = "0.9"
+ark-ec = { version = "0.3", default-features = false }
+ark-ff = { version = "0.3", default-features = false }
+ark-poly = { version = "0.3" }
+ark-poly-commit = { version = "0.3" }
+ark-serialize = { version = "0.3", features = ["derive"] }
+derivative = { version = "2.2.0", default-features = false, features = ["use_core"] }
+hashbrown = { version = "0.11.2", default-features = false, features = ["ahash"] }
+itertools = { version = "0.10.1", default-features = false }
+merlin = { version = "3.0", default-features = false }
+num-traits = { version = "0.2.14" }
+rand = { version = "0.8", default-features = false, features = ["getrandom"] }
+
+[dev-dependencies]
+ark-bls12-377 = "0.3"
+ark-bls12-381 = "0.3"
+ark-ed-on-bls12-377 = "0.3"
+ark-ed-on-bls12-381 = "0.3"
+criterion = "0.3"
+paste = "1.0.6"
+rand = "0.8.0"
+tempdir = "0.3"
+
