@@ -168,4 +168,8 @@ verify_proof::<BlsScalar, JubJubParameters, PC>(
     &pi_pos,
     b"Test",
 )
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> ea53a1c9e588c71291942f434eb23d04b1d9cff9
