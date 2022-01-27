@@ -8,7 +8,7 @@
 
 //! PLONK Example
 
-use ark_bls12_381::{Bls12381, Fr as BlsScalar};
+use ark_bls12_381::{Bls12_381, Fr as BlsScalar};
 use ark_ec::TEModelParameters;
 use ark_ff::PrimeField;
 use ark_poly::univariate::DensePolynomial;
