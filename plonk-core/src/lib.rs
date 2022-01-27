@@ -48,5 +48,3 @@ pub mod proof_system;
 
 #[cfg(test)]
 mod test;
-
-
