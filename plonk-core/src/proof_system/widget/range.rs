@@ -6,11 +6,8 @@
 
 //! Range Gate
 
-use crate::{
-    get_label,
-    proof_system::{
-        linearisation_poly::CustomEvaluations, GateConstraint, WitnessValues,
-    },
+use crate::proof_system::{
+    linearisation_poly::CustomEvaluations, GateConstraint, WitnessValues,
 };
 use ark_ff::PrimeField;
 use core::marker::PhantomData;
@@ -21,16 +18,16 @@ pub struct RangeVals<F>
 where
     F: PrimeField,
 {
-    pub d_next_eval: F,
+    pub d_next_val: F,
 }
 
 impl<F> CustomValues<F> for RangeVals<F>
 where
     F: PrimeField,
 {
-    fn from_evaluations(custom_evals: CustomEvaluations<F>) -> Self {
-        let d_next_eval = custom_evals.get(get_label!(d_next_eval));
-        RangeVals { d_next_eval }
+    fn from_evaluations(custom_vals: CustomEvaluations<F>) -> Self {
+        let d_next_val = custom_vals.get("d_next_eval");
+        RangeVals { d_next_val }
     }
 }
 /// Range Gate
@@ -55,11 +52,11 @@ where
         let kappa = separation_challenge.square();
         let kappa_sq = kappa.square();
         let kappa_cu = kappa_sq * kappa;
-        let b_1 = delta(wit_vals.c_eval - four * wit_vals.d_eval);
-        let b_2 = delta(wit_vals.r_eval - four * wit_vals.c_eval) * kappa;
-        let b_3 = delta(wit_vals.a_eval - four * wit_vals.r_eval) * kappa_sq;
+        let b_1 = delta(wit_vals.c_val - four * wit_vals.d_val);
+        let b_2 = delta(wit_vals.b_val - four * wit_vals.c_val) * kappa;
+        let b_3 = delta(wit_vals.a_val - four * wit_vals.b_val) * kappa_sq;
         let b_4 =
-            delta(custom_vals.d_next_eval - four * wit_vals.a_eval) * kappa_cu;
+            delta(custom_vals.d_next_val - four * wit_vals.a_val) * kappa_cu;
         (b_1 + b_2 + b_3 + b_4) * separation_challenge
     }
 }

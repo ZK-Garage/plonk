@@ -5,6 +5,7 @@
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
 use crate::{
+    constraint_system::WireData,
     error::Error,
     label_eval,
     proof_system::{
@@ -110,7 +111,7 @@ where
 {
     /// Get the evaluation of the specified label.
     /// This funtions panics if the requested label is not found
-    pub fn get(&self, label: String) -> F {
+    pub fn get(&self, label: &str) -> F {
         if let Some(result) = &self.vals.iter().find(|entry| entry.0 == label) {
             result.1
         } else {
@@ -239,10 +240,7 @@ where
         logic_separation_challenge,
         fixed_base_separation_challenge,
         var_base_separation_challenge,
-        a_eval,
-        b_eval,
-        c_eval,
-        d_eval,
+        wire_evals,
         q_arith_eval,
         custom_evals,
         prover_key,
@@ -284,10 +282,7 @@ fn compute_gate_constraint_satisfiability<F, P>(
     logic_separation_challenge: &F,
     fixed_base_separation_challenge: &F,
     var_base_separation_challenge: &F,
-    a_eval: F,
-    b_eval: F,
-    c_eval: F,
-    d_eval: F,
+    wire_evals: WireEvaluations<F>,
     q_arith_eval: F,
     custom_evals: CustomEvaluations<F>,
     prover_key: &ProverKey<F>,
@@ -297,17 +292,17 @@ where
     P: TEModelParameters<BaseField = F>,
 {
     let wit_vals = WitnessValues {
-        a_eval,
-        b_eval,
-        c_eval,
-        d_eval,
+        a_val: wire_evals.a_eval,
+        b_val: wire_evals.b_eval,
+        c_val: wire_evals.c_eval,
+        d_val: wire_evals.d_eval,
     };
 
     let arithmetic = prover_key.arithmetic.compute_linearisation(
-        a_eval,
-        b_eval,
-        c_eval,
-        d_eval,
+        wire_evals.a_eval,
+        wire_evals.b_eval,
+        wire_evals.c_eval,
+        wire_evals.d_eval,
         q_arith_eval,
     );
 

@@ -18,13 +18,10 @@
 //! Bits are accumulated in base2. So we use d(Xw) - 2d(X) to extract the
 //! base2 bit.
 
-use crate::{
-    get_label,
-    proof_system::{
-        linearisation_poly::CustomEvaluations,
-        widget::{GateConstraint, WitnessValues},
-        CustomValues,
-    },
+use crate::proof_system::{
+    linearisation_poly::CustomEvaluations,
+    widget::{GateConstraint, WitnessValues},
+    CustomValues,
 };
 use ark_ec::{ModelParameters, TEModelParameters};
 use ark_ff::PrimeField;
@@ -34,12 +31,12 @@ pub struct FSMVals<F>
 where
     F: PrimeField,
 {
-    pub a_next_eval: F,
-    pub b_next_eval: F,
-    pub d_next_eval: F,
-    pub q_l_eval: F,
-    pub q_r_eval: F,
-    pub q_c_eval: F,
+    pub a_next_val: F,
+    pub b_next_val: F,
+    pub d_next_val: F,
+    pub q_l_val: F,
+    pub q_r_val: F,
+    pub q_c_val: F,
 }
 
 impl<F> CustomValues<F> for FSMVals<F>
@@ -47,19 +44,19 @@ where
     F: PrimeField,
 {
     fn from_evaluations(custom_evals: CustomEvaluations<F>) -> Self {
-        let a_next_eval = custom_evals.get(get_label!(a_next_eval));
-        let b_next_eval = custom_evals.get(get_label!(b_next_eval));
-        let d_next_eval = custom_evals.get(get_label!(d_next_eval));
-        let q_l_eval = custom_evals.get(get_label!(q_l_eval));
-        let q_r_eval = custom_evals.get(get_label!(q_r_eval));
-        let q_c_eval = custom_evals.get(get_label!(q_c_eval));
+        let a_next_val = custom_evals.get("a_next_eval");
+        let b_next_val = custom_evals.get("b_next_eval");
+        let d_next_val = custom_evals.get("d_next_eval");
+        let q_l_val = custom_evals.get("q_l_eval");
+        let q_r_val = custom_evals.get("q_r_eval");
+        let q_c_val = custom_evals.get("q_c_eval");
         FSMVals {
-            a_next_eval,
-            b_next_eval,
-            d_next_eval,
-            q_l_eval,
-            q_r_eval,
-            q_c_eval,
+            a_next_val,
+            b_next_val,
+            d_next_val,
+            q_l_val,
+            q_r_val,
+            q_c_val,
         }
     }
 }
@@ -89,18 +86,18 @@ where
         let kappa_sq = kappa.square();
         let kappa_cu = kappa_sq * kappa;
 
-        let x_beta_eval = custom_vals.q_l_eval;
-        let y_beta_eval = custom_vals.q_r_eval;
+        let x_beta_eval = custom_vals.q_l_val;
+        let y_beta_eval = custom_vals.q_r_val;
 
-        let acc_x = wit_vals.a_eval;
-        let acc_x_next = custom_vals.a_next_eval;
-        let acc_y = wit_vals.r_eval;
-        let acc_y_next = custom_vals.b_next_eval;
+        let acc_x = wit_vals.a_val;
+        let acc_x_next = custom_vals.a_next_val;
+        let acc_y = wit_vals.b_val;
+        let acc_y_next = custom_vals.b_next_val;
 
-        let xy_alpha = wit_vals.c_eval;
+        let xy_alpha = wit_vals.c_val;
 
-        let accumulated_bit = wit_vals.d_eval;
-        let accumulated_bit_next = custom_vals.d_next_eval;
+        let accumulated_bit = wit_vals.d_val;
+        let accumulated_bit_next = custom_vals.d_next_val;
         let bit = extract_bit(accumulated_bit, accumulated_bit_next);
 
         // Check bit consistency
@@ -110,7 +107,7 @@ where
         let x_alpha = x_beta_eval * bit;
 
         // xy_alpha consistency check
-        let xy_consistency = ((bit * custom_vals.q_c_eval) - xy_alpha) * kappa;
+        let xy_consistency = ((bit * custom_vals.q_c_val) - xy_alpha) * kappa;
 
         // x accumulator consistency check
         let x_3 = acc_x_next;

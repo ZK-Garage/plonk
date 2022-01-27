@@ -6,13 +6,10 @@
 
 //! Elliptic Curve Point Addition Gate
 
-use crate::{
-    get_label,
-    proof_system::{
-        linearisation_poly::CustomEvaluations,
-        widget::{GateConstraint, WitnessValues},
-        CustomValues,
-    },
+use crate::proof_system::{
+    linearisation_poly::CustomEvaluations,
+    widget::{GateConstraint, WitnessValues},
+    CustomValues,
 };
 use ark_ec::{ModelParameters, TEModelParameters};
 use ark_ff::PrimeField;
@@ -22,9 +19,9 @@ pub struct CAVals<F>
 where
     F: PrimeField,
 {
-    pub a_next_eval: F,
-    pub b_next_eval: F,
-    pub d_next_eval: F,
+    pub a_next_val: F,
+    pub b_next_val: F,
+    pub d_next_val: F,
 }
 
 impl<F> CustomValues<F> for CAVals<F>
@@ -32,13 +29,13 @@ where
     F: PrimeField,
 {
     fn from_evaluations(custom_evals: CustomEvaluations<F>) -> Self {
-        let a_next_eval = custom_evals.get(get_label!(a_next_eval));
-        let b_next_eval = custom_evals.get(get_label!(b_next_eval));
-        let d_next_eval = custom_evals.get(get_label!(d_next_eval));
+        let a_next_val = custom_evals.get("a_next_eval");
+        let b_next_val = custom_evals.get("b_next_eval");
+        let d_next_val = custom_evals.get("d_next_eval");
         CAVals {
-            a_next_eval,
-            b_next_eval,
-            d_next_eval,
+            a_next_val,
+            b_next_val,
+            d_next_val,
         }
     }
 }
@@ -63,13 +60,13 @@ where
         wit_vals: WitnessValues<F>,
         custom_vals: Self::CustomVals,
     ) -> F {
-        let x_1 = wit_vals.a_eval;
-        let x_3 = custom_vals.a_next_eval;
-        let y_1 = wit_vals.r_eval;
-        let y_3 = custom_vals.b_next_eval;
-        let x_2 = wit_vals.c_eval;
-        let y_2 = wit_vals.d_eval;
-        let x1_y2 = custom_vals.d_next_eval;
+        let x_1 = wit_vals.a_val;
+        let x_3 = custom_vals.a_next_val;
+        let y_1 = wit_vals.b_val;
+        let y_3 = custom_vals.b_next_val;
+        let x_2 = wit_vals.c_val;
+        let y_2 = wit_vals.d_val;
+        let x1_y2 = custom_vals.d_next_val;
 
         let kappa = separation_challenge.square();
 

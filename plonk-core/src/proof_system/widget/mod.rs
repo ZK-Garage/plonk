@@ -41,16 +41,16 @@ where
     F: PrimeField,
 {
     /// Left Value
-    pub a_eval: F,
+    pub a_val: F,
 
     /// Right Value
-    pub b_eval: F,
+    pub b_val: F,
 
     /// Output Value
-    pub c_eval: F,
+    pub c_val: F,
 
     /// Fourth Value
-    pub d_eval: F,
+    pub d_val: F,
 }
 
 /// Gate Constraint
@@ -113,10 +113,10 @@ where
         let coefficient = Self::constraints(
             separation_challenge,
             WitnessValues {
-                a_eval: evaluations.wire_evals.a_eval,
-                b_eval: evaluations.wire_evals.b_eval,
-                c_eval: evaluations.wire_evals.c_eval,
-                d_eval: evaluations.wire_evals.d_eval,
+                a_val: evaluations.wire_evals.a_eval,
+                b_val: evaluations.wire_evals.b_eval,
+                c_val: evaluations.wire_evals.c_eval,
+                d_val: evaluations.wire_evals.d_eval,
             },
             // TODO
             custom_vals,

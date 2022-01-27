@@ -6,13 +6,9 @@
 
 //! Logic Gates
 
-use crate::proof_system::widget::{GateConstraint, WitnessValues};
-use crate::{
-    get_label,
-    proof_system::{
-        linearisation_poly::CustomEvaluations,
-        widget::{GateConstraint, WitnessValues},
-    },
+use crate::proof_system::{
+    linearisation_poly::CustomEvaluations,
+    widget::{GateConstraint, WitnessValues},
 };
 use ark_ff::PrimeField;
 use core::marker::PhantomData;
@@ -23,31 +19,31 @@ pub struct LogicVals<F>
 where
     F: PrimeField,
 {
-    pub a_next_eval: F,
-    pub b_next_eval: F,
-    pub d_next_eval: F,
-    pub q_c_eval: F,
+    pub a_next_val: F,
+    pub b_next_val: F,
+    pub d_next_val: F,
+    pub q_c_val: F,
 }
 
 impl<F> CustomValues<F> for LogicVals<F>
 where
-    F: Field,
+    F: PrimeField,
 {
     fn from_evaluations(custom_evals: CustomEvaluations<F>) -> Self {
-        let a_next_eval = custom_evals.get(get_label!(a_next_eval));
-        let b_next_eval = custom_evals.get(get_label!(b_next_eval));
-        let d_next_eval = custom_evals.get(get_label!(d_next_eval));
-        let q_c_eval = custom_evals.get(get_label!(q_c_eval));
+        // TODO: Subsitute labels
+        let a_next_val = custom_evals.get("a_next_eval");
+        let b_next_val = custom_evals.get("b_next_eval");
+        let d_next_val = custom_evals.get("d_next_eval");
+        let q_c_val = custom_evals.get("q_c_eval");
         LogicVals {
-            a_next_eval,
-            b_next_eval,
-            d_next_eval,
-            q_c_eval,
+            a_next_val,
+            b_next_val,
+            d_next_val,
+            q_c_val,
         }
     }
 }
 
-impl<F> CustomValues<F> for LogicVals<F> where F: PrimeField {}
 /// Logic Gate
 #[derive(derivative::Derivative)]
 #[derivative(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
@@ -73,19 +69,19 @@ where
         let kappa_cu = kappa_sq * kappa;
         let kappa_qu = kappa_cu * kappa;
 
-        let a = custom_vals.a_next_eval - four * wit_vals.a_eval;
+        let a = custom_vals.a_next_val - four * wit_vals.a_val;
         let c_0 = delta(a);
 
-        let b = custom_vals.b_next_eval - four * wit_vals.b_eval;
+        let b = custom_vals.b_next_val - four * wit_vals.b_val;
         let c_1 = delta(b) * kappa;
 
-        let d = custom_vals.d_next_eval - four * wit_vals.d_eval;
+        let d = custom_vals.d_next_val - four * wit_vals.d_val;
         let c_2 = delta(d) * kappa_sq;
 
-        let w = wit_vals.c_eval;
+        let w = wit_vals.c_val;
         let c_3 = (w - a * b) * kappa_cu;
 
-        let c_4 = delta_xor_and(a, b, w, d, custom_vals.q_c_eval) * kappa_qu;
+        let c_4 = delta_xor_and(a, b, w, d, custom_vals.q_c_val) * kappa_qu;
 
         (c_0 + c_1 + c_2 + c_3 + c_4) * separation_challenge
     }
