@@ -196,14 +196,14 @@ where
                 prover_key.range_selector.1[i],
                 range_challenge,
                 wit_vals,
-                RangeVals::from_evaluations(custom_vals),
+                RangeVals::from_evaluations(&custom_vals),
             );
 
             let logic = Logic::quotient_term(
                 prover_key.logic_selector.1[i],
                 logic_challenge,
                 wit_vals,
-                LogicVals::from_evaluations(custom_vals),
+                LogicVals::from_evaluations(&custom_vals),
             );
 
             let fixed_base_scalar_mul =
@@ -211,14 +211,14 @@ where
                     prover_key.fixed_group_add_selector.1[i],
                     fixed_base_challenge,
                     wit_vals,
-                    FBSMVals::from_evaluations(custom_vals),
+                    FBSMVals::from_evaluations(&custom_vals),
                 );
 
             let curve_addition = CurveAddition::<_, P>::quotient_term(
                 prover_key.variable_group_add_selector.1[i],
                 var_base_challenge,
                 wit_vals,
-                CAVals::from_evaluations(custom_vals),
+                CAVals::from_evaluations(&custom_vals),
             );
 
             (arithmetic + pi_eval_8n[i])

@@ -25,7 +25,7 @@ impl<F> CustomValues<F> for RangeVals<F>
 where
     F: PrimeField,
 {
-    fn from_evaluations(custom_vals: CustomEvaluations<F>) -> Self {
+    fn from_evaluations(custom_vals: &CustomEvaluations<F>) -> Self {
         let d_next_val = custom_vals.get("d_next_eval");
         RangeVals { d_next_val }
     }

@@ -28,7 +28,7 @@ impl<F> CustomValues<F> for CAVals<F>
 where
     F: PrimeField,
 {
-    fn from_evaluations(custom_evals: CustomEvaluations<F>) -> Self {
+    fn from_evaluations(custom_evals: &CustomEvaluations<F>) -> Self {
         let a_next_val = custom_evals.get("a_next_eval");
         let b_next_val = custom_evals.get("b_next_eval");
         let d_next_val = custom_evals.get("d_next_eval");

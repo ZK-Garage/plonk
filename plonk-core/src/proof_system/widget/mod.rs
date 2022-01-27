@@ -28,7 +28,7 @@ pub trait CustomValues<F>
 where
     F: PrimeField,
 {
-    fn from_evaluations(custom_evals: CustomEvaluations<F>) -> Self;
+    fn from_evaluations(custom_evals: &CustomEvaluations<F>) -> Self;
 }
 
 /// Witness Values
@@ -58,7 +58,7 @@ pub trait GateConstraint<F>
 where
     F: PrimeField,
 {
-    type CustomVals;
+    type CustomVals: CustomValues<F>;
 
     /// Returns the coefficient of the quotient polynomial for this gate given
     /// an instantiation of the gate at `values` and a
@@ -118,15 +118,7 @@ where
                 c_val: evaluations.wire_evals.c_eval,
                 d_val: evaluations.wire_evals.d_eval,
             },
-            // TODO
-            custom_vals,
-            /* left_next: evaluations.a_next_eval,
-             * right_next: evaluations.b_next_eval,
-             * fourth_next: evaluations.d_next_eval,
-             * left_selector: evaluations.q_l_eval,
-             * right_selector: evaluations.q_r_eval,
-             * constant_selector: evaluations.q_c_eval,
-             * }, */
+            Self::CustomVals::from_evaluations(&evaluations.custom_evals),
         );
         scalars.push(coefficient);
         points.push(selector_commitment.clone());
