@@ -16,7 +16,7 @@ use crate::{
     proof_system::{linearisation_poly::ProofEvaluations, permutation},
     transcript::TranscriptProtocol,
 };
-use ark_ff::{FftField, PrimeField};
+use ark_ff::PrimeField;
 use ark_poly::{univariate::DensePolynomial, Evaluations};
 use ark_serialize::*;
 
@@ -279,7 +279,7 @@ where
 )]
 pub struct ProverKey<F>
 where
-    F: FftField,
+    F: PrimeField,
 {
     /// Circuit size
     pub(crate) n: usize,
@@ -314,7 +314,7 @@ where
 
 impl<F> ProverKey<F>
 where
-    F: FftField,
+    F: PrimeField,
 {
     pub(crate) fn v_h_coset_8n(&self) -> &Evaluations<F> {
         &self.v_h_coset_8n
@@ -383,7 +383,7 @@ mod test {
 
     fn rand_poly_eval<F>(n: usize) -> (DensePolynomial<F>, Evaluations<F>)
     where
-        F: FftField,
+        F: PrimeField,
     {
         let polynomial = DensePolynomial::rand(n, &mut OsRng);
         (polynomial, rand_evaluations(n))
@@ -391,7 +391,7 @@ mod test {
 
     fn rand_evaluations<F>(n: usize) -> Evaluations<F>
     where
-        F: FftField,
+        F: PrimeField,
     {
         let domain = GeneralEvaluationDomain::new(4 * n).unwrap();
         let values: Vec<_> = (0..8 * n).map(|_| F::rand(&mut OsRng)).collect();
