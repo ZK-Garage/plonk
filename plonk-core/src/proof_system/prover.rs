@@ -408,22 +408,69 @@ where
         )?;
 
         // Add evaluations to transcript.
-        transcript.append(b"a_eval", &evaluations.proof.a_eval);
-        transcript.append(b"b_eval", &evaluations.proof.b_eval);
-        transcript.append(b"c_eval", &evaluations.proof.c_eval);
-        transcript.append(b"d_eval", &evaluations.proof.d_eval);
-        transcript.append(b"a_next_eval", &evaluations.proof.a_next_eval);
-        transcript.append(b"b_next_eval", &evaluations.proof.b_next_eval);
-        transcript.append(b"d_next_eval", &evaluations.proof.d_next_eval);
-        transcript.append(b"left_sig_eval", &evaluations.proof.left_sigma_eval);
-        transcript
-            .append(b"right_sig_eval", &evaluations.proof.right_sigma_eval);
-        transcript.append(b"out_sig_eval", &evaluations.proof.out_sigma_eval);
+        // First wire evals
+        transcript.append(b"a_eval", &evaluations.proof.wire_evals.a_eval);
+        transcript.append(b"b_eval", &evaluations.proof.wire_evals.b_eval);
+        transcript.append(b"c_eval", &evaluations.proof.wire_evals.c_eval);
+        transcript.append(b"d_eval", &evaluations.proof.wire_evals.d_eval);
+
+        // TODO Decide if arith_selector should be custom
         transcript.append(b"q_arith_eval", &evaluations.proof.q_arith_eval);
-        transcript.append(b"q_c_eval", &evaluations.proof.q_c_eval);
-        transcript.append(b"q_l_eval", &evaluations.proof.q_l_eval);
-        transcript.append(b"q_r_eval", &evaluations.proof.q_r_eval);
-        transcript.append(b"perm_eval", &evaluations.proof.permutation_eval);
+
+        // Second permutation evals
+        transcript.append(
+            b"left_sig_eval",
+            &evaluations.proof.perm_evals.left_sigma_eval,
+        );
+        transcript.append(
+            b"right_sig_eval",
+            &evaluations.proof.perm_evals.right_sigma_eval,
+        );
+        transcript.append(
+            b"out_sig_eval",
+            &evaluations.proof.perm_evals.out_sigma_eval,
+        );
+        transcript.append(
+            b"perm_eval",
+            &evaluations.proof.perm_evals.permutation_eval,
+        );
+
+        // Third, all evals needed for custom gates
+        evaluations
+            .proof
+            .custom_evals
+            .vals
+            .iter()
+            .map(|(label, eval)| {
+                transcript.append(label.as_bytes(), eval);
+            });
+        // transcript.append(
+        //     b"a_next_eval",
+        //     &evaluations.proof.custom_evals.get("a_next_eval"),
+        // );
+        // transcript.append(
+        //     b"b_next_eval",
+        //     &evaluations.proof.custom_evals.get("b_next_eval"),
+        // );
+        // transcript.append(
+        //     b"d_next_eval",
+        //     &evaluations.proof.custom_evals.get("d_next_eval"),
+        // );
+
+        // transcript.append(
+        //     b"q_c_eval",
+        //     &evaluations.proof.custom_evals.get("q_c_eval"),
+        // );
+        // transcript.append(
+        //     b"q_l_eval",
+        //     &evaluations.proof.custom_evals.get("q_l_eval"),
+        // );
+        // transcript.append(
+        //     b"q_r_eval",
+        //     &evaluations.proof.custom_evals.get("q_r_eval"),
+        // );
+
+        // Lastly, quotient and lienearisation poly evals
         transcript.append(b"t_eval", &evaluations.quot_eval);
         transcript.append(
             b"r_eval",
