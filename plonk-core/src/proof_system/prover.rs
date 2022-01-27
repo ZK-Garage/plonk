@@ -272,7 +272,7 @@ where
         let mut w_4_poly =
             DensePolynomial::from_coefficients_vec(domain.ifft(w_4_scalar));
 
-        // Add blinders
+        // Add blinders to witness polynomials 
         w_l_poly = Self::add_blinder(&w_l_poly, n, 1);
         w_r_poly = Self::add_blinder(&w_r_poly, n, 1);
         w_o_poly = Self::add_blinder(&w_o_poly, n, 1);
@@ -351,15 +351,18 @@ where
         );
 
         // Compute long query poly
-        let f_poly = DensePolynomial::from_coefficients_vec(
+        let mut f_poly = DensePolynomial::from_coefficients_vec(
             domain.ifft(&compressed_f_multiset.0),
         );
+        
+        // Add blinders to query polynomials
+        let f_poly = Self::add_blinder(&f_poly, n, 1);
 
         // Commit to query polynomial
-        let f_poly_commit = PC::commit(commit_key, &f_poly, None)?;
+        let (f_poly_commit, _) = PC::commit(commit_key, &[label_polynomial!(f_poly)], None).map_err(to_pc_error::<F, PC>)?;
 
         // Add f_poly commitment to transcript
-        transcript.append(b"f", &f_poly_commit.0);
+        transcript.append(b"f", f_poly_commit[0].commitment());
 
         // Compute s, as the sorted and concatenated version of f and t
         let s = compressed_t_multiset
@@ -370,16 +373,20 @@ where
         let (h_1, h_2) = s.halve_alternating();
 
         // Compute h polys
-        let h_1_poly = DensePolynomial::from_coefficients_vec(domain.ifft(&h_1.0));
-        let h_2_poly = DensePolynomial::from_coefficients_vec(domain.ifft(&h_2.0));
+        let mut h_1_poly = DensePolynomial::from_coefficients_vec(domain.ifft(&h_1.0));
+        let mut h_2_poly = DensePolynomial::from_coefficients_vec(domain.ifft(&h_2.0));
+
+        // Add blinders to h polynomials
+        let h_1_poly = Self::add_blinder(&h_1_poly, n, 1);
+        let h_2_poly = Self::add_blinder(&h_2_poly, n, 1);
 
         // Commit to h polys
-        let h_1_poly_commit = PC::commit(commit_key, &h_1_poly, None).map_err(to_pc_error::<F, PC>);
-        let h_2_poly_commit = PC::commit(commit_key, &h_2_poly, None).unwrap();
+        let (h_1_poly_commit, _) = PC::commit(commit_key, &[label_polynomial!(h_1_poly)], None).map_err(to_pc_error::<F, PC>)?;
+        let (h_2_poly_commit, _) = PC::commit(commit_key, &[label_polynomial!(h_2_poly)], None).map_err(to_pc_error::<F, PC>)?;
 
         // Add h polynomials to transcript
-        transcript.append_commitment(b"h1", &h_1_poly_commit.0);
-        transcript.append_commitment(b"h2", &h_2_poly_commit.0);
+        transcript.append(b"h1", h_1_poly_commit[0].commitment());
+        transcript.append(b"h2", h_2_poly_commit[0].commitment());
 
         // 3. Compute permutation polynomial 
         //
@@ -535,7 +542,7 @@ where
         //
         // Compute evaluation challenge; `z`.
         let z_challenge = transcript.challenge_scalar(b"z");
-        transcript.append_scalar(b"z", &z_challenge);
+        transcript.append(b"z", &z_challenge);
 
         let (lin_poly, evaluations) = linearisation_poly::compute::<F, P>(
             &domain,
