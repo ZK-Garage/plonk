@@ -134,19 +134,23 @@ where
     ) {
         let q_arith_eval = evaluations.q_arith_eval;
 
-        scalars.push(evaluations.a_eval * evaluations.b_eval * q_arith_eval);
+        scalars.push(
+            evaluations.wire_evals.a_eval
+                * evaluations.wire_evals.b_eval
+                * q_arith_eval,
+        );
         points.push(self.q_m.clone());
 
-        scalars.push(evaluations.a_eval * q_arith_eval);
+        scalars.push(evaluations.wire_evals.a_eval * q_arith_eval);
         points.push(self.q_l.clone());
 
-        scalars.push(evaluations.b_eval * q_arith_eval);
+        scalars.push(evaluations.wire_evals.b_eval * q_arith_eval);
         points.push(self.q_r.clone());
 
-        scalars.push(evaluations.c_eval * q_arith_eval);
+        scalars.push(evaluations.wire_evals.c_eval * q_arith_eval);
         points.push(self.q_o.clone());
 
-        scalars.push(evaluations.d_eval * q_arith_eval);
+        scalars.push(evaluations.wire_evals.d_eval * q_arith_eval);
         points.push(self.q_4.clone());
 
         scalars.push(q_arith_eval);

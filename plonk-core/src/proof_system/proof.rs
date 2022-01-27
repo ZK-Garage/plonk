@@ -180,7 +180,7 @@ where
             z_challenge,
             z_h_eval,
             l1_eval,
-            self.evaluations.permutation_eval,
+            self.evaluations.perm_evals.permutation_eval,
         );
 
         // Compute commitment to quotient polynomial
@@ -190,22 +190,39 @@ where
             self.compute_quotient_commitment(&z_challenge, domain.size());
 
         // Add evaluations to transcript
-        transcript.append(b"a_eval", &self.evaluations.a_eval);
-        transcript.append(b"b_eval", &self.evaluations.b_eval);
-        transcript.append(b"c_eval", &self.evaluations.c_eval);
-        transcript.append(b"d_eval", &self.evaluations.d_eval);
-        transcript.append(b"a_next_eval", &self.evaluations.a_next_eval);
-        transcript.append(b"b_next_eval", &self.evaluations.b_next_eval);
-        transcript.append(b"d_next_eval", &self.evaluations.d_next_eval);
-        transcript.append(b"left_sig_eval", &self.evaluations.left_sigma_eval);
-        transcript
-            .append(b"right_sig_eval", &self.evaluations.right_sigma_eval);
-        transcript.append(b"out_sig_eval", &self.evaluations.out_sigma_eval);
+
+        transcript.append(b"a_eval", &self.evaluations.wire_evals.a_eval);
+        transcript.append(b"b_eval", &self.evaluations.wire_evals.b_eval);
+        transcript.append(b"c_eval", &self.evaluations.wire_evals.c_eval);
+        transcript.append(b"d_eval", &self.evaluations.wire_evals.d_eval);
+
         transcript.append(b"q_arith_eval", &self.evaluations.q_arith_eval);
-        transcript.append(b"q_c_eval", &self.evaluations.q_c_eval);
-        transcript.append(b"q_l_eval", &self.evaluations.q_l_eval);
-        transcript.append(b"q_r_eval", &self.evaluations.q_r_eval);
-        transcript.append(b"perm_eval", &self.evaluations.permutation_eval);
+
+        transcript.append(
+            b"left_sig_eval",
+            &self.evaluations.perm_evals.left_sigma_eval,
+        );
+        transcript.append(
+            b"right_sig_eval",
+            &self.evaluations.perm_evals.right_sigma_eval,
+        );
+        transcript.append(
+            b"out_sig_eval",
+            &self.evaluations.perm_evals.out_sigma_eval,
+        );
+        transcript.append(
+            b"perm_eval",
+            &self.evaluations.perm_evals.permutation_eval,
+        );
+
+        self.evaluations
+            .custom_evals
+            .vals
+            .iter()
+            .map(|(label, eval)| {
+                transcript.append(label.to_owned().as_bytes(), eval);
+            });
+
         transcript.append(b"t_eval", &t_eval);
         transcript
             .append(b"r_eval", &self.evaluations.linearisation_polynomial_eval);
@@ -259,13 +276,13 @@ where
         let aw_evals = [
             t_eval,
             self.evaluations.linearisation_polynomial_eval,
-            self.evaluations.left_sigma_eval,
-            self.evaluations.right_sigma_eval,
-            self.evaluations.out_sigma_eval,
-            self.evaluations.a_eval,
-            self.evaluations.b_eval,
-            self.evaluations.c_eval,
-            self.evaluations.d_eval,
+            self.evaluations.perm_evals.left_sigma_eval,
+            self.evaluations.perm_evals.right_sigma_eval,
+            self.evaluations.perm_evals.out_sigma_eval,
+            self.evaluations.wire_evals.a_eval,
+            self.evaluations.wire_evals.b_eval,
+            self.evaluations.wire_evals.c_eval,
+            self.evaluations.wire_evals.d_eval,
         ];
 
         let saw_challenge: F =
@@ -277,12 +294,16 @@ where
             label_commitment!(self.b_comm),
             label_commitment!(self.d_comm),
         ];
+
+        // TODO These custom values (a_next, b_next, d_next) should not be
+        // harcoded
         let saw_evals = [
-            self.evaluations.permutation_eval,
-            self.evaluations.a_next_eval,
-            self.evaluations.b_next_eval,
-            self.evaluations.d_next_eval,
+            self.evaluations.perm_evals.permutation_eval,
+            self.evaluations.custom_evals.get("a_next_eval"),
+            self.evaluations.custom_evals.get("b_next_eval"),
+            self.evaluations.custom_evals.get("d_next_eval"),
         ];
+
         match PC::check(
             verifier_key,
             &aw_commits,
@@ -333,19 +354,20 @@ where
         let a = self.evaluations.linearisation_polynomial_eval + pi_eval;
 
         // a + beta * sigma_1 + gamma
-        let beta_sig1 = beta * self.evaluations.left_sigma_eval;
-        let b_0 = self.evaluations.a_eval + beta_sig1 + gamma;
+        let beta_sig1 = beta * self.evaluations.perm_evals.left_sigma_eval;
+        let b_0 = self.evaluations.wire_evals.a_eval + beta_sig1 + gamma;
 
         // b+ beta * sigma_2 + gamma
-        let beta_sig2 = beta * self.evaluations.right_sigma_eval;
-        let b_1 = self.evaluations.b_eval + beta_sig2 + gamma;
+        let beta_sig2 = beta * self.evaluations.perm_evals.right_sigma_eval;
+        let b_1 = self.evaluations.wire_evals.b_eval + beta_sig2 + gamma;
 
         // c+ beta * sigma_3 + gamma
-        let beta_sig3 = beta * self.evaluations.out_sigma_eval;
-        let b_2 = self.evaluations.c_eval + beta_sig3 + gamma;
+        let beta_sig3 = beta * self.evaluations.perm_evals.out_sigma_eval;
+        let b_2 = self.evaluations.wire_evals.c_eval + beta_sig3 + gamma;
 
         // ((d + gamma) * z_hat) * alpha
-        let b_3 = (self.evaluations.d_eval + gamma) * z_hat_eval * alpha;
+        let b_3 =
+            (self.evaluations.wire_evals.d_eval + gamma) * z_hat_eval * alpha;
 
         let b = b_0 * b_1 * b_2 * b_3;
 
