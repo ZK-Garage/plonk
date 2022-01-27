@@ -26,7 +26,6 @@ use plonk_core::circuit::{verify_proof, Circuit, PublicInputBuilder};
 use plonk_core::constraint_system::StandardComposer;
 use plonk_core::error::Error;
 
-
 fn main() -> Result<(), Error> {
     // Implements a circuit that checks:
     // 1) a + b = c where C is a PI
