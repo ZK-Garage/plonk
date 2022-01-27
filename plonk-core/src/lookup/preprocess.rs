@@ -109,7 +109,7 @@ mod test {
         sonic_pc::SonicKZG10,
         PolynomialCommitment,
     };
-    use rand_core::OsRng;
+    use rand::rngs::OsRng;
 
     /// This function creates a table and preprocesses it. Then it checks that
     /// all table columns are the same length.

@@ -4,13 +4,9 @@
 //
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
-use ark_ec::{AffineCurve, ModelParameters, PairingEngine, TEModelParameters};
+use ark_ec::{ModelParameters, TEModelParameters};
 use ark_ff::{BigInteger, FftField, Field, FpParameters, PrimeField};
-use ark_poly::{
-    univariate::DensePolynomial, EvaluationDomain, GeneralEvaluationDomain,
-    Polynomial, UVPolynomial,
-};
-use ark_poly_commit::kzg10::Commitment;
+use ark_poly::{EvaluationDomain, GeneralEvaluationDomain};
 
 /// Returns an iterator over increasing powers of the given `scalar` starting
 /// at `0`.
@@ -20,35 +16,6 @@ where
     F: Field,
 {
     core::iter::successors(Some(F::one()), move |p| Some(*p * scalar))
-}
-
-/// Performs polynomial division by `(x - z)` with `x` indeterminant using
-/// Ruffini's algorithm.
-pub fn ruffini<F>(poly: DensePolynomial<F>, z: F) -> DensePolynomial<F>
-where
-    F: PrimeField,
-{
-    let mut quotient = Vec::with_capacity(poly.degree());
-    let mut k = F::zero();
-
-    // Reverse the results and use Ruffini's method to compute the quotient
-    // The coefficients must be reversed as Ruffini's method
-    // starts with the leading coefficient, while Polynomials
-    // are stored in increasing order i.e. the leading coefficient is the
-    // last element
-    for coeff in poly.coeffs.into_iter().rev() {
-        let t = coeff + k;
-        quotient.push(t);
-        k = z * t;
-    }
-
-    // Pop off the last element, it is the remainder term
-    // For PLONK, we only care about perfect factors
-    quotient.pop();
-
-    // Reverse the results for storage in the Polynomial struct
-    quotient.reverse();
-    DensePolynomial::from_coefficients_vec(quotient)
 }
 
 /// Evaluation Domain Extension Trait
@@ -123,18 +90,17 @@ where
 /// curve. Panics if the embedded scalar is greater than the modulus of the
 /// pairing firendly curve scalar field
 #[allow(dead_code)]
-pub fn from_embedded_curve_scalar<E, P>(
+pub fn from_embedded_curve_scalar<F, P>(
     embedded_scalar: <P as ModelParameters>::ScalarField,
-) -> E::Fr
+) -> F
 where
-    E: PairingEngine,
-    P: TEModelParameters<BaseField = E::Fr>,
+    F: PrimeField,
+    P: TEModelParameters<BaseField = F>,
 {
     let scalar_repr = embedded_scalar.into_repr();
-
-    let modulus = <<E::Fr as PrimeField>::Params as FpParameters>::MODULUS;
+    let modulus = <<F as PrimeField>::Params as FpParameters>::MODULUS;
     if modulus.num_bits() >= scalar_repr.num_bits() {
-        let s = <<E::Fr as PrimeField>::BigInt as BigInteger>::from_bits_le(
+        let s = <<F as PrimeField>::BigInt as BigInteger>::from_bits_le(
             &scalar_repr.to_bits_le(),
         );
         assert!(s < modulus,
@@ -146,19 +112,17 @@ where
         assert!(scalar_repr < m,
             "The embedded scalar exceeds the capacity representation of the outter curve scalar");
     }
-    E::Fr::from_le_bytes_mod_order(&scalar_repr.to_bytes_le())
+    F::from_le_bytes_mod_order(&scalar_repr.to_bytes_le())
 }
 
 /// Get a embedded curve scalar `P::ScalarField` from a scalar of the pariring
 /// friendly curve. Panics if the pairing frindly curve scalar is greater than
 /// the modulus of the embedded curve scalar field
 #[allow(dead_code)]
-pub(crate) fn to_embedded_curve_scalar<E, P>(
-    pfc_scalar: E::Fr,
-) -> P::ScalarField
+pub(crate) fn to_embedded_curve_scalar<F, P>(pfc_scalar: F) -> P::ScalarField
 where
-    E: PairingEngine,
-    P: TEModelParameters<BaseField = E::Fr>,
+    F: PrimeField,
+    P: TEModelParameters<BaseField = F>,
 {
     let scalar_repr = pfc_scalar.into_repr();
     let modulus =
@@ -170,7 +134,7 @@ where
         assert!(s < modulus,
             "The embedded scalar exceeds the capacity representation of the outter curve scalar");
     } else {
-        let m = <<E::Fr as PrimeField>::BigInt as BigInteger>::from_bits_le(
+        let m = <<F as PrimeField>::BigInt as BigInteger>::from_bits_le(
             &modulus.to_bits_le(),
         );
         assert!(scalar_repr < m,
@@ -179,31 +143,27 @@ where
     P::ScalarField::from_le_bytes_mod_order(&scalar_repr.to_bytes_le())
 }
 
-/// Computes a linear combination of the polynomial evaluations and polynomial
-/// commitments provided a challenge.
-// TODO: complete doc
-pub fn linear_combination<E>(
-    evals: &[E::Fr],
-    commitments: &[Commitment<E>],
-    challenge: E::Fr,
-) -> (Commitment<E>, E::Fr)
-where
-    E: PairingEngine,
-{
-    assert_eq!(evals.len(), commitments.len());
-    let powers = powers_of(challenge).take(evals.len()).collect::<Vec<_>>();
-    let combined_eval = evals
-        .iter()
-        .zip(powers.iter())
-        .map(|(&eval, power)| eval * power)
-        .sum();
-    let combined_commitment = Commitment(
-        commitments
-            .iter()
-            .zip(powers.iter())
-            .map(|(commit, &power)| commit.0.mul(power))
-            .sum::<E::G1Projective>()
-            .into(),
-    );
-    (combined_commitment, combined_eval)
+/// Macro to quickly label polynomials
+#[macro_export]
+macro_rules! label_polynomial {
+    ($poly:expr) => {
+        ark_poly_commit::LabeledPolynomial::new(
+            stringify!($poly).to_owned(),
+            $poly.clone(),
+            None,
+            None,
+        )
+    };
+}
+
+/// Macro to quickly label polynomial commitments
+#[macro_export]
+macro_rules! label_commitment {
+    ($comm:expr) => {
+        ark_poly_commit::LabeledCommitment::new(
+            stringify!($comm).to_owned(),
+            $comm.clone(),
+            None,
+        )
+    };
 }

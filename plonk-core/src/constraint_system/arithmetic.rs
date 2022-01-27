@@ -6,37 +6,45 @@
 
 //! Simple Arithmetic Gates
 
-use crate::constraint_system::StandardComposer;
-use crate::constraint_system::Variable;
-use ark_ec::{PairingEngine, TEModelParameters};
-use num_traits::{One, Zero};
+use crate::constraint_system::{StandardComposer, Variable};
+use ark_ec::TEModelParameters;
+use ark_ff::PrimeField;
 
 #[derive(Debug, Clone, Copy)]
-pub struct ArithmeticGate<E: PairingEngine> {
+pub struct ArithmeticGate<F>
+where
+    F: PrimeField,
+{
     pub(crate) witness: Option<(Variable, Variable, Option<Variable>)>,
-    pub(crate) fan_in_3: Option<(E::Fr, Variable)>,
-    pub(crate) mul_selector: E::Fr,
-    pub(crate) add_selectors: (E::Fr, E::Fr),
-    pub(crate) out_selector: E::Fr,
-    pub(crate) const_selector: E::Fr,
-    pub(crate) pi: Option<E::Fr>,
+    pub(crate) fan_in_3: Option<(F, Variable)>,
+    pub(crate) mul_selector: F,
+    pub(crate) add_selectors: (F, F),
+    pub(crate) out_selector: F,
+    pub(crate) const_selector: F,
+    pub(crate) pi: Option<F>,
 }
 
-impl<E: PairingEngine> Default for ArithmeticGate<E> {
+impl<F> Default for ArithmeticGate<F>
+where
+    F: PrimeField,
+{
     fn default() -> Self {
         Self {
             witness: None,
             fan_in_3: None,
-            mul_selector: E::Fr::zero(),
-            add_selectors: (E::Fr::zero(), E::Fr::zero()),
-            out_selector: -E::Fr::one(),
-            const_selector: E::Fr::zero(),
+            mul_selector: F::zero(),
+            add_selectors: (F::zero(), F::zero()),
+            out_selector: -F::one(),
+            const_selector: F::zero(),
             pi: None,
         }
     }
 }
 
-impl<E: PairingEngine> ArithmeticGate<E> {
+impl<F> ArithmeticGate<F>
+where
+    F: PrimeField,
+{
     pub fn new() -> Self {
         Self::default()
     }
@@ -51,32 +59,32 @@ impl<E: PairingEngine> ArithmeticGate<E> {
         self
     }
 
-    pub fn fan_in_3(&mut self, q_4: E::Fr, w_4: Variable) -> &mut Self {
+    pub fn fan_in_3(&mut self, q_4: F, w_4: Variable) -> &mut Self {
         self.fan_in_3 = Some((q_4, w_4));
         self
     }
 
-    pub fn mul(&mut self, q_m: E::Fr) -> &mut Self {
+    pub fn mul(&mut self, q_m: F) -> &mut Self {
         self.mul_selector = q_m;
         self
     }
 
-    pub fn add(&mut self, q_l: E::Fr, q_r: E::Fr) -> &mut Self {
+    pub fn add(&mut self, q_l: F, q_r: F) -> &mut Self {
         self.add_selectors = (q_l, q_r);
         self
     }
 
-    pub fn out(&mut self, q_o: E::Fr) -> &mut Self {
+    pub fn out(&mut self, q_o: F) -> &mut Self {
         self.out_selector = q_o;
         self
     }
 
-    pub fn constant(&mut self, q_c: E::Fr) -> &mut Self {
+    pub fn constant(&mut self, q_c: F) -> &mut Self {
         self.const_selector = q_c;
         self
     }
 
-    pub fn pi(&mut self, pi: E::Fr) -> &mut Self {
+    pub fn pi(&mut self, pi: F) -> &mut Self {
         self.pi = Some(pi);
         self
     }
@@ -86,16 +94,18 @@ impl<E: PairingEngine> ArithmeticGate<E> {
     }
 }
 
-impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
-    StandardComposer<E, P>
+impl<F, P> StandardComposer<F, P>
+where
+    F: PrimeField,
+    P: TEModelParameters<BaseField = F>,
 {
     /// Function used to generate any arithmetic gate with fan-in-2 or fan-in-3.
-    pub fn arithmetic_gate<F>(&mut self, func: F) -> Variable
+    pub fn arithmetic_gate<Fn>(&mut self, func: Fn) -> Variable
     where
-        F: FnOnce(&mut ArithmeticGate<E>) -> &mut ArithmeticGate<E>,
+        Fn: FnOnce(&mut ArithmeticGate<F>) -> &mut ArithmeticGate<F>,
     {
         let gate = {
-            let mut gate = ArithmeticGate::<E>::new();
+            let mut gate = ArithmeticGate::<F>::new();
             func(&mut gate).build()
         };
 
@@ -103,16 +113,9 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
             panic!("Missing left and right wire witnesses")
         }
 
-        let (w4, q4) = if gate.fan_in_3.is_none() {
-            self.w_4.push(self.zero_var);
-            self.q_4.push(E::Fr::zero());
-            (self.zero_var, E::Fr::zero())
-        } else {
-            let (q4, w4) = gate.fan_in_3.unwrap();
-            self.w_4.push(w4);
-            self.q_4.push(q4);
-            (w4, q4)
-        };
+        let (q4, w4) = gate.fan_in_3.unwrap_or((F::zero(), self.zero_var));
+        self.w_4.push(w4);
+        self.q_4.push(q4);
 
         let gate_witness = gate.witness.unwrap();
         self.w_l.push(gate_witness.0);
@@ -170,44 +173,44 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::batch_test;
-    use crate::constraint_system::helper::*;
+    use crate::{
+        batch_test, commitment::HomomorphicCommitment,
+        constraint_system::helper::*,
+    };
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
-    use ark_ec::PairingEngine;
-    use ark_ec::TEModelParameters;
-    use num_traits::One;
 
-    fn test_public_inputs<E, P>()
+    fn test_public_inputs<F, P, PC>()
     where
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
+        F: PrimeField,
+        P: TEModelParameters<BaseField = F>,
+        PC: HomomorphicCommitment<F>,
     {
-        let res = gadget_tester(
-            |composer: &mut StandardComposer<E, P>| {
-                let var_one = composer.add_input(E::Fr::one());
+        let res = gadget_tester::<F, P, PC>(
+            |composer: &mut StandardComposer<F, P>| {
+                let var_one = composer.add_input(F::one());
 
                 let should_be_three = composer.arithmetic_gate(|gate| {
                     gate.witness(var_one, var_one, None)
-                        .add(E::Fr::one(), E::Fr::one())
-                        .pi(E::Fr::one())
+                        .add(F::one(), F::one())
+                        .pi(F::one())
                 });
 
                 composer.constrain_to_constant(
                     should_be_three,
-                    E::Fr::from(3u64),
+                    F::from(3u64),
                     None,
                 );
 
                 let should_be_four = composer.arithmetic_gate(|gate| {
                     gate.witness(var_one, var_one, None)
-                        .add(E::Fr::one(), E::Fr::one())
-                        .pi(E::Fr::from(2u64))
+                        .add(F::one(), F::one())
+                        .pi(F::from(2u64))
                 });
 
                 composer.constrain_to_constant(
                     should_be_four,
-                    E::Fr::from(4u64),
+                    F::from(4u64),
                     None,
                 );
             },
@@ -216,29 +219,30 @@ mod test {
         assert!(res.is_ok(), "{:?}", res.err().unwrap());
     }
 
-    fn test_correct_add_mul_gate<E, P>()
+    fn test_correct_add_mul_gate<F, P, PC>()
     where
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
+        F: PrimeField,
+        P: TEModelParameters<BaseField = F>,
+        PC: HomomorphicCommitment<F>,
     {
-        let res = gadget_tester(
-            |composer: &mut StandardComposer<E, P>| {
+        let res = gadget_tester::<F, P, PC>(
+            |composer: &mut StandardComposer<F, P>| {
                 // Verify that (4+5+5) * (6+7+7) = 280
-                let four = composer.add_input(E::Fr::from(4u64));
-                let five = composer.add_input(E::Fr::from(5u64));
-                let six = composer.add_input(E::Fr::from(6u64));
-                let seven = composer.add_input(E::Fr::from(7u64));
+                let four = composer.add_input(F::from(4u64));
+                let five = composer.add_input(F::from(5u64));
+                let six = composer.add_input(F::from(6u64));
+                let seven = composer.add_input(F::from(7u64));
 
                 let fourteen = composer.arithmetic_gate(|gate| {
                     gate.witness(four, five, None)
-                        .add(E::Fr::one(), E::Fr::one())
-                        .pi(E::Fr::from(5u64))
+                        .add(F::one(), F::one())
+                        .pi(F::from(5u64))
                 });
 
                 let twenty = composer.arithmetic_gate(|gate| {
                     gate.witness(six, seven, None)
-                        .add(E::Fr::one(), E::Fr::one())
-                        .fan_in_3(E::Fr::one(), seven)
+                        .add(F::one(), F::one())
+                        .fan_in_3(F::one(), seven)
                 });
 
                 // There are quite a few ways to check the equation is correct,
@@ -249,102 +253,97 @@ mod test {
                 // is public, we can also constrain the output wire of the mul
                 // gate to it. This is what this test does
                 let output = composer.arithmetic_gate(|gate| {
-                    gate.witness(fourteen, twenty, None).mul(E::Fr::one())
+                    gate.witness(fourteen, twenty, None).mul(F::one())
                 });
 
-                composer.constrain_to_constant(
-                    output,
-                    E::Fr::from(280u64),
-                    None,
-                );
+                composer.constrain_to_constant(output, F::from(280u64), None);
             },
             200,
         );
         assert!(res.is_ok(), "{:?}", res.err().unwrap());
     }
 
-    fn test_correct_add_gate<E, P>()
+    fn test_correct_add_gate<F, P, PC>()
     where
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
+        F: PrimeField,
+        P: TEModelParameters<BaseField = F>,
+        PC: HomomorphicCommitment<F>,
     {
-        let res = gadget_tester(
-            |composer: &mut StandardComposer<E, P>| {
+        let res = gadget_tester::<F, P, PC>(
+            |composer: &mut StandardComposer<F, P>| {
                 let zero = composer.zero_var();
-                let one = composer.add_input(E::Fr::one());
+                let one = composer.add_input(F::one());
 
                 let c = composer.arithmetic_gate(|gate| {
                     gate.witness(one, zero, None)
-                        .add(E::Fr::one(), E::Fr::one())
-                        .constant(E::Fr::from(2u64))
+                        .add(F::one(), F::one())
+                        .constant(F::from(2u64))
                 });
 
-                composer.constrain_to_constant(c, E::Fr::from(3u64), None);
+                composer.constrain_to_constant(c, F::from(3u64), None);
             },
             32,
         );
         assert!(res.is_ok(), "{:?}", res.err().unwrap());
     }
 
-    fn test_correct_big_add_mul_gate<E, P>()
+    fn test_correct_big_add_mul_gate<F, P, PC>()
     where
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
+        F: PrimeField,
+        P: TEModelParameters<BaseField = F>,
+        PC: HomomorphicCommitment<F>,
     {
-        let res = gadget_tester(
-            |composer: &mut StandardComposer<E, P>| {
+        let res = gadget_tester::<F, P, PC>(
+            |composer: &mut StandardComposer<F, P>| {
                 // Verify that (4+5+5) * (6+7+7) + (8*9) = 352
-                let four = composer.add_input(E::Fr::from(4u64));
-                let five = composer.add_input(E::Fr::from(5u64));
-                let six = composer.add_input(E::Fr::from(6u64));
-                let seven = composer.add_input(E::Fr::from(7u64));
-                let nine = composer.add_input(E::Fr::from(9u64));
+                let four = composer.add_input(F::from(4u64));
+                let five = composer.add_input(F::from(5u64));
+                let six = composer.add_input(F::from(6u64));
+                let seven = composer.add_input(F::from(7u64));
+                let nine = composer.add_input(F::from(9u64));
 
                 let fourteen = composer.arithmetic_gate(|gate| {
                     gate.witness(four, five, None)
-                        .add(E::Fr::one(), E::Fr::one())
-                        .fan_in_3(E::Fr::one(), five)
+                        .add(F::one(), F::one())
+                        .fan_in_3(F::one(), five)
                 });
 
                 let twenty = composer.arithmetic_gate(|gate| {
                     gate.witness(six, seven, None)
-                        .add(E::Fr::one(), E::Fr::one())
-                        .fan_in_3(E::Fr::one(), seven)
+                        .add(F::one(), F::one())
+                        .fan_in_3(F::one(), seven)
                 });
 
                 let output = composer.arithmetic_gate(|gate| {
                     gate.witness(fourteen, twenty, None)
-                        .mul(E::Fr::one())
-                        .fan_in_3(E::Fr::from(8u64), nine)
+                        .mul(F::one())
+                        .fan_in_3(F::from(8u64), nine)
                 });
 
-                composer.constrain_to_constant(
-                    output,
-                    E::Fr::from(352u64),
-                    None,
-                );
+                composer.constrain_to_constant(output, F::from(352u64), None);
             },
             200,
         );
         assert!(res.is_ok());
     }
 
-    fn test_correct_big_arith_gate<E, P>()
+    fn test_correct_big_arith_gate<F, P, PC>()
     where
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
+        F: PrimeField,
+        P: TEModelParameters<BaseField = F>,
+        PC: HomomorphicCommitment<F>,
     {
-        let res = gadget_tester(
-            |composer: &mut StandardComposer<E, P>| {
+        let res = gadget_tester::<F, P, PC>(
+            |composer: &mut StandardComposer<F, P>| {
                 // Verify that (4*5)*6 + 4*7 + 5*8 + 9*10 + 11 = 289
-                let a = composer.add_input(E::Fr::from(4u64));
-                let b = composer.add_input(E::Fr::from(5u64));
-                let q_m = E::Fr::from(6u64);
-                let q_l = E::Fr::from(7u64);
-                let q_r = E::Fr::from(8u64);
-                let d = composer.add_input(E::Fr::from(9u64));
-                let q_4 = E::Fr::from(10u64);
-                let q_c = E::Fr::from(11u64);
+                let a = composer.add_input(F::from(4u64));
+                let b = composer.add_input(F::from(5u64));
+                let q_m = F::from(6u64);
+                let q_l = F::from(7u64);
+                let q_r = F::from(8u64);
+                let d = composer.add_input(F::from(9u64));
+                let q_4 = F::from(10u64);
+                let q_c = F::from(11u64);
 
                 let output = composer.arithmetic_gate(|gate| {
                     gate.witness(a, b, None)
@@ -354,33 +353,30 @@ mod test {
                         .constant(q_c)
                 });
 
-                composer.constrain_to_constant(
-                    output,
-                    E::Fr::from(289u64),
-                    None,
-                );
+                composer.constrain_to_constant(output, F::from(289u64), None);
             },
             200,
         );
         assert!(res.is_ok());
     }
 
-    fn test_incorrect_big_arith_gate<E, P>()
+    fn test_incorrect_big_arith_gate<F, P, PC>()
     where
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
+        F: PrimeField,
+        P: TEModelParameters<BaseField = F>,
+        PC: HomomorphicCommitment<F>,
     {
-        let res = gadget_tester(
-            |composer: &mut StandardComposer<E, P>| {
+        let res = gadget_tester::<F, P, PC>(
+            |composer: &mut StandardComposer<F, P>| {
                 // Verify that (4*5)*6 + 4*7 + 5*8 + 9*12 + 11 != 289
-                let a = composer.add_input(E::Fr::from(4u64));
-                let b = composer.add_input(E::Fr::from(5u64));
-                let q_m = E::Fr::from(6u64);
-                let q_l = E::Fr::from(7u64);
-                let q_r = E::Fr::from(8u64);
-                let d = composer.add_input(E::Fr::from(9u64));
-                let q_4 = E::Fr::from(12u64);
-                let q_c = E::Fr::from(11u64);
+                let a = composer.add_input(F::from(4u64));
+                let b = composer.add_input(F::from(5u64));
+                let q_m = F::from(6u64);
+                let q_l = F::from(7u64);
+                let q_r = F::from(8u64);
+                let d = composer.add_input(F::from(9u64));
+                let q_4 = F::from(12u64);
+                let q_c = F::from(11u64);
 
                 let output = composer.arithmetic_gate(|gate| {
                     gate.witness(a, b, None)
@@ -390,49 +386,40 @@ mod test {
                         .constant(q_c)
                 });
 
-                composer.constrain_to_constant(
-                    output,
-                    E::Fr::from(289u64),
-                    None,
-                );
+                composer.constrain_to_constant(output, F::from(289u64), None);
             },
             200,
         );
         assert!(res.is_err());
     }
 
-    fn test_incorrect_add_mul_gate<E, P>()
+    fn test_incorrect_add_mul_gate<F, P, PC>()
     where
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
+        F: PrimeField,
+        P: TEModelParameters<BaseField = F>,
+        PC: HomomorphicCommitment<F>,
     {
-        let res = gadget_tester(
-            |composer: &mut StandardComposer<E, P>| {
+        let res = gadget_tester::<F, P, PC>(
+            |composer: &mut StandardComposer<F, P>| {
                 // Verify that (5+5) * (6+7) != 117
-                let five = composer.add_input(E::Fr::from(5u64));
-                let six = composer.add_input(E::Fr::from(6u64));
-                let seven = composer.add_input(E::Fr::from(7u64));
+                let five = composer.add_input(F::from(5u64));
+                let six = composer.add_input(F::from(6u64));
+                let seven = composer.add_input(F::from(7u64));
 
                 let five_plus_five = composer.arithmetic_gate(|gate| {
-                    gate.witness(five, five, None)
-                        .add(E::Fr::one(), E::Fr::one())
+                    gate.witness(five, five, None).add(F::one(), F::one())
                 });
 
                 let six_plus_seven = composer.arithmetic_gate(|gate| {
-                    gate.witness(six, seven, None)
-                        .add(E::Fr::one(), E::Fr::one())
+                    gate.witness(six, seven, None).add(F::one(), F::one())
                 });
 
                 let output = composer.arithmetic_gate(|gate| {
                     gate.witness(five_plus_five, six_plus_seven, None)
-                        .add(E::Fr::one(), E::Fr::one())
+                        .add(F::one(), F::one())
                 });
 
-                composer.constrain_to_constant(
-                    output,
-                    E::Fr::from(117u64),
-                    None,
-                );
+                composer.constrain_to_constant(output, F::from(117u64), None);
             },
             200,
         );
@@ -451,8 +438,7 @@ mod test {
             test_incorrect_big_arith_gate
         ],
         [] => (
-            Bls12_381,
-            ark_ed_on_bls12_381::EdwardsParameters
+            Bls12_381, ark_ed_on_bls12_381::EdwardsParameters
         )
     );
 
@@ -468,8 +454,7 @@ mod test {
             test_incorrect_big_arith_gate
         ],
         [] => (
-            Bls12_377,
-            ark_ed_on_bls12_377::EdwardsParameters
+            Bls12_377, ark_ed_on_bls12_377::EdwardsParameters
         )
     );
 }

@@ -10,10 +10,7 @@
 //! data structures of the plonk library.
 
 pub use crate::{
-    circuit::{
-        self, verify_proof, Circuit, FeIntoPubInput, GeIntoPubInput,
-        PublicInputValue, VerifierData,
-    },
+    circuit::{self, verify_proof, Circuit, VerifierData},
     constraint_system::{ecc::Point, StandardComposer, Variable},
     error::Error,
     proof_system::{Proof, ProverKey, VerifierKey},

@@ -6,16 +6,21 @@
 
 //! Methods to preprocess the constraint system for use in a proof.
 
-use crate::constraint_system::StandardComposer;
-use crate::error::Error;
-use crate::proof_system::{widget, ProverKey};
-use crate::transcript::TranscriptWrapper;
-use ark_ec::{PairingEngine, TEModelParameters};
-use ark_ff::PrimeField;
-use ark_poly::polynomial::univariate::DensePolynomial;
-use ark_poly::{EvaluationDomain, Evaluations, GeneralEvaluationDomain};
-use ark_poly_commit::kzg10::{Powers, KZG10};
-use num_traits::{One, Zero};
+use crate::{
+    commitment::HomomorphicCommitment,
+    constraint_system::StandardComposer,
+    error::{to_pc_error, Error},
+    label_polynomial,
+    proof_system::{widget, ProverKey},
+};
+use ark_ec::TEModelParameters;
+use ark_ff::{FftField, PrimeField};
+use ark_poly::{
+    polynomial::univariate::DensePolynomial, EvaluationDomain, Evaluations,
+    GeneralEvaluationDomain, UVPolynomial,
+};
+use core::marker::PhantomData;
+use merlin::Transcript;
 
 /// Struct that contains all of the selector and permutation [`Polynomial`]s in
 /// PLONK.
@@ -23,7 +28,7 @@ use num_traits::{One, Zero};
 /// [`Polynomial`]: DensePolynomial
 pub struct SelectorPolynomials<F>
 where
-    F: PrimeField,
+    F: FftField,
 {
     q_m: DensePolynomial<F>,
     q_l: DensePolynomial<F>,
@@ -34,19 +39,19 @@ where
     q_arith: DensePolynomial<F>,
     q_range: DensePolynomial<F>,
     q_logic: DensePolynomial<F>,
+    q_lookup: DensePolynomial<F>,
     q_fixed_group_add: DensePolynomial<F>,
     q_variable_group_add: DensePolynomial<F>,
-    q_lookup: DensePolynomial<F>,
     left_sigma: DensePolynomial<F>,
     right_sigma: DensePolynomial<F>,
     out_sigma: DensePolynomial<F>,
     fourth_sigma: DensePolynomial<F>,
 }
 
-impl<E, P> StandardComposer<E, P>
+impl<F, P> StandardComposer<F, P>
 where
-    E: PairingEngine,
-    P: TEModelParameters<BaseField = E::Fr>,
+    F: PrimeField,
+    P: TEModelParameters<BaseField = F>,
 {
     /// Pads the circuit to the next power of two.
     ///
@@ -54,7 +59,7 @@ where
     /// `diff` is the difference between circuit size and next power of two.
     fn pad(&mut self, diff: usize) {
         // Add a zero variable to circuit
-        let zero_scalar = E::Fr::zero();
+        let zero_scalar = F::zero();
         let zero_var = self.zero_var();
 
         let zeroes_scalar = vec![zero_scalar; diff];
@@ -69,9 +74,10 @@ where
         self.q_arith.extend(zeroes_scalar.iter());
         self.q_range.extend(zeroes_scalar.iter());
         self.q_logic.extend(zeroes_scalar.iter());
+        self.q_lookup.extend(zeroes_scalar.iter());
         self.q_fixed_group_add.extend(zeroes_scalar.iter());
         self.q_variable_group_add.extend(zeroes_scalar.iter());
-        self.q_lookup.extend(zeroes_scalar.iter());
+        
 
         self.w_l.extend(zeroes_var.iter());
         self.w_r.extend(zeroes_var.iter());
@@ -94,9 +100,9 @@ where
             && self.q_arith.len() == k
             && self.q_range.len() == k
             && self.q_logic.len() == k
+            && self.q_lookup.len() == k
             && self.q_fixed_group_add.len() == k
             && self.q_variable_group_add.len() == k
-            && self.q_lookup.len() == k
             && self.w_l.len() == k
             && self.w_r.len() == k
             && self.w_o.len() == k
@@ -107,21 +113,34 @@ where
             Err(Error::MismatchedPolyLen)
         }
     }
-
+}
+impl<F, P> StandardComposer<F, P>
+where
+    F: PrimeField,
+    P: TEModelParameters<BaseField = F>,
+{
     /// These are the parts of preprocessing that the prover must compute
     /// Although the prover does not need the verification key, he must compute
     /// the commitments in order to seed the transcript, allowing both the
     /// prover and verifier to have the same view
-    pub fn preprocess_prover(
+    pub fn preprocess_prover<PC>(
         &mut self,
-        commit_key: &Powers<E>,
-        transcript: &mut TranscriptWrapper<E>,
-    ) -> Result<ProverKey<E, E::Fr, P>, Error> {
+        commit_key: &PC::CommitterKey,
+        transcript: &mut Transcript,
+        _pc: PhantomData<PC>,
+    ) -> Result<ProverKey<F>, Error>
+    where
+        PC: HomomorphicCommitment<F>,
+    {
         let (_, selectors, domain) =
-            self.preprocess_shared(commit_key, transcript)?;
+            self.preprocess_shared(commit_key, transcript, _pc)?;
 
         let domain_8n =
-            GeneralEvaluationDomain::new(8 * domain.size()).unwrap();
+            GeneralEvaluationDomain::new(8 * domain.size()).ok_or(Error::InvalidEvalDomainSize {
+                log_size_of_group: (8 * domain.size()).trailing_zeros(),
+                adicity:
+                    <<F as FftField>::FftParams as ark_ff::FftParameters>::TWO_ADICITY,
+            })?;
         let q_m_eval_8n = Evaluations::from_vec_and_domain(
             domain_8n.coset_fft(&selectors.q_m),
             domain_8n,
@@ -158,6 +177,10 @@ where
             domain_8n.coset_fft(&selectors.q_logic),
             domain_8n,
         );
+        let q_lookup_eval_8n = Evaluations::from_vec_and_domain(
+            domain_8n.coset_fft(&selectors.q_lookup),
+            domain_8n,
+        );
         let q_fixed_group_add_eval_8n = Evaluations::from_vec_and_domain(
             domain_8n.coset_fft(&selectors.q_fixed_group_add),
             domain_8n,
@@ -166,11 +189,6 @@ where
             domain_8n.coset_fft(&selectors.q_variable_group_add),
             domain_8n,
         );
-        let q_lookup_eval_8n = Evaluations::from_vec_and_domain(
-            domain_8n.coset_fft(&selectors.q_lookup),
-            domain_8n,
-        );
-
         let left_sigma_eval_8n = Evaluations::from_vec_and_domain(
             domain_8n.coset_fft(&selectors.left_sigma),
             domain_8n,
@@ -189,7 +207,7 @@ where
         );
         // XXX: Remove this and compute it on the fly
         let linear_eval_8n = Evaluations::from_vec_and_domain(
-            domain_8n.coset_fft(&[E::Fr::zero(), E::Fr::one()]),
+            domain_8n.coset_fft(&[F::zero(), F::one()]),
             domain_8n,
         );
 
@@ -222,14 +240,18 @@ where
 
     /// The verifier only requires the commitments in order to verify a
     /// [`Proof`](super::Proof) We can therefore speed up preprocessing for the
-    /// verifier by skipping the FFTs needed to compute the 8n evaluations.
-    pub fn preprocess_verifier(
+    /// verifier by skipping the FFTs needed to compute the 4n evaluations.
+    pub fn preprocess_verifier<PC>(
         &mut self,
-        commit_key: &Powers<E>,
-        transcript: &mut TranscriptWrapper<E>,
-    ) -> Result<widget::VerifierKey<E, P>, Error> {
+        commit_key: &PC::CommitterKey,
+        transcript: &mut Transcript,
+        _pc: PhantomData<PC>,
+    ) -> Result<widget::VerifierKey<F, PC>, Error>
+    where
+        PC: HomomorphicCommitment<F>,
+    {
         let (verifier_key, _, _) =
-            self.preprocess_shared(commit_key, transcript)?;
+            self.preprocess_shared(commit_key, transcript, _pc)?;
         Ok(verifier_key)
     }
 
@@ -238,63 +260,77 @@ where
     /// polynomials in order to commit to them and have the same transcript
     /// view.
     #[allow(clippy::type_complexity)] // FIXME: Add struct for prover side (last two tuple items).
-    fn preprocess_shared(
+    fn preprocess_shared<PC>(
         &mut self,
-        commit_key: &Powers<E>,
-        transcript: &mut TranscriptWrapper<E>,
+        commit_key: &PC::CommitterKey,
+        transcript: &mut Transcript,
+        _pc: PhantomData<PC>,
     ) -> Result<
         (
-            widget::VerifierKey<E, P>,
-            SelectorPolynomials<E::Fr>,
-            GeneralEvaluationDomain<E::Fr>,
+            widget::VerifierKey<F, PC>,
+            SelectorPolynomials<F>,
+            GeneralEvaluationDomain<F>,
         ),
         Error,
-    > {
-        let domain = GeneralEvaluationDomain::new(self.circuit_size()).unwrap();
-
+    >
+    where
+        PC: HomomorphicCommitment<F>,
+    {
+        let domain = GeneralEvaluationDomain::new(self.circuit_size()).ok_or(Error::InvalidEvalDomainSize {
+            log_size_of_group: (self.circuit_size()).trailing_zeros(),
+            adicity:
+                <<F as FftField>::FftParams as ark_ff::FftParameters>::TWO_ADICITY,
+        })?;
         // Check that the length of the wires is consistent.
         self.check_poly_same_len()?;
 
         // 1. Pad circuit to a power of two
         self.pad(domain.size() as usize - self.n);
 
-        let q_m_poly: DensePolynomial<E::Fr> = DensePolynomial {
-            coeffs: domain.ifft(&self.q_m),
-        };
-        let q_r_poly: DensePolynomial<E::Fr> = DensePolynomial {
-            coeffs: domain.ifft(&self.q_r),
-        };
-        let q_l_poly: DensePolynomial<E::Fr> = DensePolynomial {
-            coeffs: domain.ifft(&self.q_l),
-        };
-        let q_o_poly: DensePolynomial<E::Fr> = DensePolynomial {
-            coeffs: domain.ifft(&self.q_o),
-        };
-        let q_c_poly: DensePolynomial<E::Fr> = DensePolynomial {
-            coeffs: domain.ifft(&self.q_c),
-        };
-        let q_4_poly: DensePolynomial<E::Fr> = DensePolynomial {
-            coeffs: domain.ifft(&self.q_4),
-        };
-        let q_arith_poly: DensePolynomial<E::Fr> = DensePolynomial {
-            coeffs: domain.ifft(&self.q_arith),
-        };
-        let q_range_poly: DensePolynomial<E::Fr> = DensePolynomial {
-            coeffs: domain.ifft(&self.q_range),
-        };
-        let q_logic_poly: DensePolynomial<E::Fr> = DensePolynomial {
-            coeffs: domain.ifft(&self.q_logic),
-        };
-        let q_fixed_group_add_poly: DensePolynomial<E::Fr> = DensePolynomial {
-            coeffs: domain.ifft(&self.q_fixed_group_add),
-        };
-        let q_variable_group_add_poly: DensePolynomial<E::Fr> =
-            DensePolynomial {
-                coeffs: domain.ifft(&self.q_variable_group_add),
-            };
-        let q_lookup_poly: DensePolynomial<E::Fr> = DensePolynomial {
-            coeffs: domain.ifft(&self.q_lookup),
-        };
+        let q_m_poly: DensePolynomial<F> =
+            DensePolynomial::from_coefficients_vec(domain.ifft(&self.q_m));
+
+        let q_r_poly: DensePolynomial<F> =
+            DensePolynomial::from_coefficients_vec(domain.ifft(&self.q_r));
+
+        let q_l_poly: DensePolynomial<F> =
+            DensePolynomial::from_coefficients_vec(domain.ifft(&self.q_l));
+
+        let q_o_poly: DensePolynomial<F> =
+            DensePolynomial::from_coefficients_vec(domain.ifft(&self.q_o));
+
+        let q_c_poly: DensePolynomial<F> =
+            DensePolynomial::from_coefficients_vec(domain.ifft(&self.q_c));
+
+        let q_4_poly: DensePolynomial<F> =
+            DensePolynomial::from_coefficients_vec(domain.ifft(&self.q_4));
+
+        let q_arith_poly: DensePolynomial<F> =
+            DensePolynomial::from_coefficients_vec(domain.ifft(&self.q_arith));
+
+        let q_range_poly: DensePolynomial<F> =
+            DensePolynomial::from_coefficients_vec(domain.ifft(&self.q_range));
+
+        let q_logic_poly: DensePolynomial<F> =
+            DensePolynomial::from_coefficients_vec(domain.ifft(&self.q_logic));
+        
+        let q_lookup_poly: DensePolynomial<F> =
+            DensePolynomial::from_coefficients_vec(
+                domain.ifft(&self.q_lookup),
+            );
+
+        let q_fixed_group_add_poly: DensePolynomial<F> =
+            DensePolynomial::from_coefficients_vec(
+                domain.ifft(&self.q_fixed_group_add),
+            );
+
+        let q_variable_group_add_poly: DensePolynomial<F> =
+            DensePolynomial::from_coefficients_vec(
+                domain.ifft(&self.q_variable_group_add),
+            );
+        
+    
+        
 
         // 2. Compute the sigma polynomials
         let (
@@ -304,124 +340,49 @@ where
             fourth_sigma_poly,
         ) = self.perm.compute_sigma_polynomials(self.n, &domain);
 
-        let q_m_poly_commit = KZG10::<E, DensePolynomial<E::Fr>>::commit(
-            commit_key, &q_m_poly, None, None,
-        )?;
-
-        let q_l_poly_commit = KZG10::<E, DensePolynomial<E::Fr>>::commit(
-            commit_key, &q_l_poly, None, None,
-        )?;
-
-        let q_r_poly_commit = KZG10::<E, DensePolynomial<E::Fr>>::commit(
-            commit_key, &q_r_poly, None, None,
-        )?;
-
-        let q_o_poly_commit = KZG10::<E, DensePolynomial<E::Fr>>::commit(
-            commit_key, &q_o_poly, None, None,
-        )?;
-
-        let q_c_poly_commit = KZG10::<E, DensePolynomial<E::Fr>>::commit(
-            commit_key, &q_c_poly, None, None,
-        )?;
-
-        let q_4_poly_commit = KZG10::<E, DensePolynomial<E::Fr>>::commit(
-            commit_key, &q_4_poly, None, None,
-        )?;
-
-        let q_arith_poly_commit = KZG10::<E, DensePolynomial<E::Fr>>::commit(
+        let (commitments, _) = PC::commit(
             commit_key,
-            &q_arith_poly,
+            [
+                label_polynomial!(q_m_poly),
+                label_polynomial!(q_l_poly),
+                label_polynomial!(q_r_poly),
+                label_polynomial!(q_o_poly),
+                label_polynomial!(q_4_poly),
+                label_polynomial!(q_c_poly),
+                label_polynomial!(q_arith_poly),
+                label_polynomial!(q_range_poly),
+                label_polynomial!(q_logic_poly),
+                label_polynomial!(q_lookup_poly),
+                label_polynomial!(q_fixed_group_add_poly),
+                label_polynomial!(q_variable_group_add_poly),
+                label_polynomial!(left_sigma_poly),
+                label_polynomial!(right_sigma_poly),
+                label_polynomial!(out_sigma_poly),
+                label_polynomial!(fourth_sigma_poly),
+            ]
+            .iter(),
             None,
-            None,
-        )?;
-
-        let q_range_poly_commit = KZG10::<E, DensePolynomial<E::Fr>>::commit(
-            commit_key,
-            &q_range_poly,
-            None,
-            None,
-        )?;
-
-        let q_logic_poly_commit = KZG10::<E, DensePolynomial<E::Fr>>::commit(
-            commit_key,
-            &q_logic_poly,
-            None,
-            None,
-        )?;
-
-        let q_fixed_group_add_poly_commit =
-            KZG10::<E, DensePolynomial<E::Fr>>::commit(
-                commit_key,
-                &q_fixed_group_add_poly,
-                None,
-                None,
-            )?;
-
-        let q_variable_group_add_poly_commit =
-            KZG10::<E, DensePolynomial<E::Fr>>::commit(
-                commit_key,
-                &q_variable_group_add_poly,
-                None,
-                None,
-            )?;
-
-        let q_lookup_poly_commit =
-            KZG10::<E, DensePolynomial<E::Fr>>::commit(
-                commit_key,
-                &q_lookup_poly,
-                None,
-                None,
-            )?;
-
-        let left_sigma_poly_commit =
-            KZG10::<E, DensePolynomial<E::Fr>>::commit(
-                commit_key,
-                &left_sigma_poly,
-                None,
-                None,
-            )?;
-
-        let right_sigma_poly_commit =
-            KZG10::<E, DensePolynomial<E::Fr>>::commit(
-                commit_key,
-                &right_sigma_poly,
-                None,
-                None,
-            )?;
-
-        let out_sigma_poly_commit = KZG10::<E, DensePolynomial<E::Fr>>::commit(
-            commit_key,
-            &out_sigma_poly,
-            None,
-            None,
-        )?;
-
-        let fourth_sigma_poly_commit =
-            KZG10::<E, DensePolynomial<E::Fr>>::commit(
-                commit_key,
-                &fourth_sigma_poly,
-                None,
-                None,
-            )?;
+        )
+        .map_err(to_pc_error::<F, PC>)?;
 
         let verifier_key = widget::VerifierKey::from_polynomial_commitments(
             self.circuit_size(),
-            q_m_poly_commit.0,
-            q_l_poly_commit.0,
-            q_r_poly_commit.0,
-            q_o_poly_commit.0,
-            q_4_poly_commit.0,
-            q_c_poly_commit.0,
-            q_arith_poly_commit.0,
-            q_range_poly_commit.0,
-            q_logic_poly_commit.0,
-            q_fixed_group_add_poly_commit.0,
-            q_variable_group_add_poly_commit.0,
-            q_lookup_poly_commit.0,
-            left_sigma_poly_commit.0,
-            right_sigma_poly_commit.0,
-            out_sigma_poly_commit.0,
-            fourth_sigma_poly_commit.0,
+            commitments[0].commitment().clone(), // q_m_poly_commit.0,
+            commitments[1].commitment().clone(), // q_l_poly_commit.0,
+            commitments[2].commitment().clone(), // q_r_poly_commit.0,
+            commitments[3].commitment().clone(), // q_o_poly_commit.0,
+            commitments[4].commitment().clone(), // q_4_poly_commit.0,
+            commitments[5].commitment().clone(), // q_c_poly_commit.0,
+            commitments[6].commitment().clone(), // q_arith_poly_commit.0,
+            commitments[7].commitment().clone(), // q_range_poly_commit.0,
+            commitments[8].commitment().clone(), // q_logic_poly_commit.0,
+            commitments[9].commitment().clone(), /* q_lookup_poly_commit.0, */
+            commitments[10].commitment().clone(), /* q_fixed_group_add_poly_commit.0, */
+            commitments[11].commitment().clone(), /* q_variable_group_add_poly_commit.0, */
+            commitments[12].commitment().clone(), // left_sigma_poly_commit.0,
+            commitments[13].commitment().clone(), // right_sigma_poly_commit.0,
+            commitments[14].commitment().clone(), // out_sigma_poly_commit.0,
+            commitments[15].commitment().clone(), /* fourth_sigma_poly_commit.0, */
         );
 
         let selectors = SelectorPolynomials {
@@ -434,9 +395,9 @@ where
             q_arith: q_arith_poly,
             q_range: q_range_poly,
             q_logic: q_logic_poly,
+            q_lookup: q_lookup_poly,
             q_fixed_group_add: q_fixed_group_add_poly,
             q_variable_group_add: q_variable_group_add_poly,
-            q_lookup: q_lookup_poly,
             left_sigma: left_sigma_poly,
             right_sigma: right_sigma_poly,
             out_sigma: out_sigma_poly,
@@ -458,7 +419,7 @@ pub fn compute_vanishing_poly_over_coset<F, D>(
     poly_degree: u64, // degree of the vanishing polynomial
 ) -> Evaluations<F, D>
 where
-    F: PrimeField,
+    F: FftField,
     D: EvaluationDomain<F>,
 {
     assert!(
@@ -481,18 +442,18 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::{batch_test, constraint_system::helper::*};
+    use crate::{batch_test_field_params, constraint_system::helper::*};
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
 
     /// Tests that the circuit gets padded to the correct length.
     // FIXME: We can do this test without dummy_gadget method.
-    fn test_pad<E, P>()
+    fn test_pad<F, P>()
     where
-        E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
+        F: PrimeField,
+        P: TEModelParameters<BaseField = F>,
     {
-        let mut composer: StandardComposer<E, P> = StandardComposer::new();
+        let mut composer: StandardComposer<F, P> = StandardComposer::new();
         dummy_gadget(100, &mut composer);
 
         // Pad the circuit to next power of two
@@ -501,23 +462,24 @@ mod test {
 
         let size = composer.n;
         assert!(size.is_power_of_two());
-        assert!(composer.q_m.len() == size);
-        assert!(composer.q_l.len() == size);
-        assert!(composer.q_o.len() == size);
-        assert!(composer.q_r.len() == size);
-        assert!(composer.q_c.len() == size);
-        assert!(composer.q_arith.len() == size);
-        assert!(composer.q_range.len() == size);
-        assert!(composer.q_logic.len() == size);
-        assert!(composer.q_fixed_group_add.len() == size);
-        assert!(composer.q_variable_group_add.len() == size);
-        assert!(composer.w_l.len() == size);
-        assert!(composer.w_r.len() == size);
-        assert!(composer.w_o.len() == size);
+        assert_eq!(composer.q_m.len(), size);
+        assert_eq!(composer.q_l.len(), size);
+        assert_eq!(composer.q_o.len(), size);
+        assert_eq!(composer.q_r.len(), size);
+        assert_eq!(composer.q_c.len(), size);
+        assert_eq!(composer.q_arith.len(), size);
+        assert_eq!(composer.q_range.len(), size);
+        assert_eq!(composer.q_logic.len(), size);
+        assert_eq!(composer.q_lookup.len(), size);
+        assert_eq!(composer.q_fixed_group_add.len(), size);
+        assert_eq!(composer.q_variable_group_add.len(), size);
+        assert_eq!(composer.w_l.len(), size);
+        assert_eq!(composer.w_r.len(), size);
+        assert_eq!(composer.w_o.len(), size);
     }
 
     // Bls12-381 tests
-    batch_test!(
+    batch_test_field_params!(
         [test_pad],
         [] => (
             Bls12_381,
@@ -526,7 +488,7 @@ mod test {
     );
 
     // Bls12-377 tests
-    batch_test!(
+    batch_test_field_params!(
         [test_pad],
         [] => (
             Bls12_377,

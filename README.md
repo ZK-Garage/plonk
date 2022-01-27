@@ -3,13 +3,43 @@
 [![Repository](https://img.shields.io/badge/github-plonk-blueviolet?logo=github)](https://github.com/ZK-Garage/plonk)
 [![Documentation](https://img.shields.io/badge/docs-plonk-blue?logo=rust)](https://docs.rs/plonk/)
 
-_This is a pure Rust implementation of the PLONK zk proving system_
+_This is a pure rust implementation of various zkp components by the [ZK-Garage](https://github.com/ZK-Garage) team_
 
 ## About
+This a library currently contains several modules  
 
-Initial implementation created by [Kev](https://github.com/kevaundray), [Carlos](https://github.com/CPerezz) and [Luke](https://github.com/LukePearson1) at Dusk Network. Redesigned by the [ZK-Garage](https://github.com/ZK-Garage) team to have a backend which is compatible with the [arkworks](https://github.com/arkworks-rs) suite. This allows us to leverage the multitude of curves and optimised algebra present in various arkworks repositories.
+The `plonk-core` module is an implemention of the PLONK proving system, that leverages custom gates and lookups to significantly enhance performance and lower constraint count to optimise the generation of zero knowledge proofs. The backend of the `plonk-core` module is designed to be compatible with the [arkworks](https://github.com/arkworks-rs) suite. By leveraging the operations in arkworks we have optimised algebra and generic trait abstractions for curve types, allowing users to define their SNARK over different curves and, if applicabale, utilise embedded or pairing curves. The polynomial commitment scheme is also generic, which allows users to implement differing PCSs dependent upon particular needs. 
 
-Please, if you're interested on collaborating or contributing, you can join our Discord here: <https://discord.gg/XWJdhVf37F>
+The `plonk-hashing` module is set to contain several hashing algorithms, commencing with an optimised implementation of the Poseidon hashing algorithm generic for both plonk-style arithmetic representation and R1CS. Which will be extended but not limited to Reinforced Concrete and Blake2s.  
+
+The `plonk-book` is a module which contains a detailed overview of the working parts within a EC based ZKP system, with explanation of some of the characteristics particular to PLONK, e.g. Lagrange bases. There is a also a chapter on the construction of the PLONK algorithms, as well as an explanation of the implementations features and details specific to this repository. 
+### Compile the Plonk book
+First, you need to install mdbook command line tool used to create books with Markdown.
+
+```cargo install mdbook```
+
+
+
+You should also install Katex preprocessor which renders Latex equations into HTML at build time
+
+```cargo install --git "https://github.com/lzanini/mdbook-katex"```
+
+
+Then, you build the book as follows:
+
+```mdbook build```
+ 
+Last but not least, you can read the book by doing this command 
+
+```mdbook serve --open```
+
+This will display the book in your default web browser after building it.
+
+
+
+### Join the effort
+
+Please, if you're interested in collaborating, contributing or just discussing, you can join our Discord here: <https://discord.gg/XWJdhVf37F>
 
 ## Features
 
@@ -75,6 +105,7 @@ Verify 2^18 = 262144 gates time:  [6.7577 ms 6.8124 ms 6.8925 ms]
 
 - Reference [implementation](https://github.com/AztecProtocol/barretenberg) by Aztec Protocol
 - Initial [implementation](https://github.com/kobigurk/plonk/tree/kobigurk/port_to_zexe) of PLONK with arkworks backend was done years before this lib existed by Kobi Gurkan
+- Initial rust [implementation](https://github.com/dusk-network/plonk) of PLONK by Dusk Network, originally forked from dusk-network/plonk 
 
 ## Licensing
 

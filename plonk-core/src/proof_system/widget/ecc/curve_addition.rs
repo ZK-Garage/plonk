@@ -7,8 +7,8 @@
 //! Elliptic Curve Point Addition Gate
 
 use crate::proof_system::widget::{GateConstraint, GateValues};
-use ark_ec::TEModelParameters;
-use ark_ff::Field;
+use ark_ec::{ModelParameters, TEModelParameters};
+use ark_ff::PrimeField;
 use core::marker::PhantomData;
 
 /// Curve Addition Gate
@@ -16,12 +16,12 @@ use core::marker::PhantomData;
 #[derivative(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
 pub struct CurveAddition<F, P>(PhantomData<(F, P)>)
 where
-    F: Field,
-    P: TEModelParameters<BaseField = F>;
+    F: PrimeField,
+    P: ModelParameters<BaseField = F>;
 
 impl<F, P> GateConstraint<F> for CurveAddition<F, P>
 where
-    F: Field,
+    F: PrimeField,
     P: TEModelParameters<BaseField = F>,
 {
     #[inline]

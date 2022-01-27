@@ -1,6 +1,6 @@
 [package]
 name = "plonk-core"
-version = "0.8.2"
+version = "0.0.0"
 authors = ["ZK-GARAGE Authors"]
 readme = "README.md"
 repository = "https://github.com/zk-garage/plonk"
@@ -22,7 +22,7 @@ default = [
     "asm",
     "itertools/default",
     "parallel",
-    "rand_core/std",
+    "rand/std",
 ]
 
 # Raw Assembly
@@ -49,6 +49,9 @@ trace = []
 trace-print = ["trace"]
 
 [dependencies]
+ark-bls12-381 = "0.3"
+ark-std = { version = "0.3", features = ["std"] }
+blake2 = "0.9"
 ark-ec = { version = "0.3", default-features = false }
 ark-ff = { version = "0.3", default-features = false }
 ark-poly = { version = "0.3" }
@@ -59,7 +62,8 @@ hashbrown = { version = "0.11.2", default-features = false, features = ["ahash"]
 itertools = { version = "0.10.1", default-features = false }
 merlin = { version = "3.0", default-features = false }
 num-traits = { version = "0.2.14" }
-rand_core = { version = "0.6", default-features = false, features = ["getrandom"] }
+rand = { version = "0.8", default-features = false, features = ["getrandom"] }
+rand_core = "0.6.3"
 
 [dev-dependencies]
 ark-bls12-377 = "0.3"

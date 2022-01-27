@@ -19,8 +19,8 @@
 //! base2 bit.
 
 use crate::proof_system::widget::{GateConstraint, GateValues};
-use ark_ec::TEModelParameters;
-use ark_ff::Field;
+use ark_ec::{ModelParameters, TEModelParameters};
+use ark_ff::PrimeField;
 use core::marker::PhantomData;
 
 /// Fixed-Base Scalar Multiplication Gate
@@ -28,12 +28,12 @@ use core::marker::PhantomData;
 #[derivative(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
 pub struct FixedBaseScalarMul<F, P>(PhantomData<(F, P)>)
 where
-    F: Field,
-    P: TEModelParameters<BaseField = F>;
+    F: PrimeField,
+    P: ModelParameters<BaseField = F>;
 
 impl<F, P> GateConstraint<F> for FixedBaseScalarMul<F, P>
 where
-    F: Field,
+    F: PrimeField,
     P: TEModelParameters<BaseField = F>,
 {
     #[inline]
@@ -90,7 +90,7 @@ where
 /// Extracts the bit value from the accumulated bit.
 pub(crate) fn extract_bit<F>(curr_acc: F, next_acc: F) -> F
 where
-    F: Field,
+    F: PrimeField,
 {
     next_acc - curr_acc - curr_acc
 }
@@ -98,7 +98,7 @@ where
 /// Ensures that the bit is either `+1`, `-1`, or `0`.
 pub(crate) fn check_bit_consistency<F>(bit: F) -> F
 where
-    F: Field,
+    F: PrimeField,
 {
     let one = F::one();
     bit * (bit - one) * (bit + one)
