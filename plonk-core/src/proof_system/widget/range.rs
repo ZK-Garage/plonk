@@ -7,7 +7,7 @@
 //! Range Gate
 
 use crate::proof_system::{GateConstraint, GateValues};
-use ark_ff::Field;
+use ark_ff::PrimeField;
 use core::marker::PhantomData;
 
 /// Range Gate
@@ -15,11 +15,11 @@ use core::marker::PhantomData;
 #[derivative(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
 pub struct Range<F>(PhantomData<F>)
 where
-    F: Field;
+    F: PrimeField;
 
 impl<F> GateConstraint<F> for Range<F>
 where
-    F: Field,
+    F: PrimeField,
 {
     #[inline]
     fn constraints(separation_challenge: F, values: GateValues<F>) -> F {
@@ -38,7 +38,7 @@ where
 /// Computes `f(f-1)(f-2)(f-3)`.
 fn delta<F>(f: F) -> F
 where
-    F: Field,
+    F: PrimeField,
 {
     let f_1 = f - F::one();
     let f_2 = f - F::from(2_u64);

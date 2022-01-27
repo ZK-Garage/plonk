@@ -16,9 +16,8 @@ use crate::{
     proof_system::{linearisation_poly::ProofEvaluations, permutation},
     transcript::TranscriptProtocol,
 };
-use ark_ff::{FftField, Field, PrimeField};
+use ark_ff::{FftField, PrimeField};
 use ark_poly::{univariate::DensePolynomial, Evaluations};
-use ark_poly_commit::PolynomialCommitment;
 use ark_serialize::*;
 
 /// Gate Values
@@ -28,7 +27,7 @@ use ark_serialize::*;
 #[derivative(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
 pub struct GateValues<F>
 where
-    F: Field,
+    F: PrimeField,
 {
     /// Left Value
     pub left: F,
@@ -70,7 +69,7 @@ where
 /// Gate Constraint
 pub trait GateConstraint<F>
 where
-    F: Field,
+    F: PrimeField,
 {
     /// Returns the coefficient of the quotient polynomial for this gate given
     /// an instantiation of the gate at `values` and a
@@ -112,7 +111,7 @@ where
         scalars: &mut Vec<F>,
         points: &mut Vec<PC::Commitment>,
     ) where
-        PC: PolynomialCommitment<F, DensePolynomial<F>>,
+        PC: HomomorphicCommitment<F>,
     {
         let coefficient = Self::constraints(
             separation_challenge,

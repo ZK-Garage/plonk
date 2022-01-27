@@ -12,97 +12,52 @@ use crate::{
     prelude::StandardComposer,
     proof_system::{Proof, Prover, ProverKey, Verifier, VerifierKey},
 };
-use ark_ec::{
-    models::{SWModelParameters, TEModelParameters},
-    short_weierstrass_jacobian::{
-        GroupAffine as SWGroupAffine, GroupProjective as SWGroupProjective,
-    },
-    twisted_edwards_extended::{
-        GroupAffine as TEGroupAffine, GroupProjective as TEGroupProjective,
-    },
-    ProjectiveCurve,
-};
-use ark_ff::{Field, PrimeField};
+use ark_ec::models::TEModelParameters;
+use ark_ff::{Field, PrimeField, ToConstraintField};
 use ark_serialize::*;
 
-/// Group Element Into Public Input
-///
-/// The reason for introducing these two traits is to have a workaround for not
-/// being able to implement `From<_> for Values` for both `PrimeField` and
-/// `GroupAffine`. The reason why this is not possible is because both the trait
-/// `PrimeField` and the struct `GroupAffine` are external to the crate, and
-/// therefore the compiler cannot be sure that `PrimeField` will never be
-/// implemented for `GroupAffine`. In which case, the two implementations of
-/// `From` would be inconsistent. To this end, we create to helper traits,
-/// `FeIntoPubInput` and `GeIntoPubInput`, that stand for "Field Element Into
-/// Public Input" and "Group Element Into Public Input" respectively.
-pub trait GeIntoPubInput<T> {
-    /// Ad hoc `Into` implementation. Serves the same purpose as `Into`, but as
-    /// a different trait. Read documentation of Trait for more details.
-    fn into_pi(self) -> T;
+/// Public Input Builder
+#[derive(derivative::Derivative)]
+#[derivative(Default(bound = ""))]
+pub struct PublicInputBuilder<F>
+where
+    F: PrimeField,
+{
+    input: Vec<F>,
 }
 
-/// Structure that represents a PLONK Circuit Public Input converted into its
-/// scalar representation.
-#[derive(CanonicalDeserialize, CanonicalSerialize, derivative::Derivative)]
-#[derivative(Clone, Debug, Default)]
-pub struct PublicInputValue<F>
+impl<F> PublicInputBuilder<F>
 where
-    F: Field,
+    F: PrimeField,
 {
-    /// Field Values
-    pub(crate) values: Vec<F>,
-}
-
-impl<F> From<F> for PublicInputValue<F>
-where
-    F: Field,
-{
-    fn from(p: F) -> PublicInputValue<F> {
-        PublicInputValue { values: vec![p] }
+    /// Creates a new PublicInputBuilder
+    pub fn new() -> Self {
+        Self { input: vec![] }
     }
-}
-
-impl<P> GeIntoPubInput<PublicInputValue<P::BaseField>> for TEGroupAffine<P>
-where
-    P: TEModelParameters,
-{
-    #[inline]
-    fn into_pi(self) -> PublicInputValue<P::BaseField> {
-        PublicInputValue {
-            values: vec![self.x, self.y],
+    /// Pushes a new input `item` into `self`, returning `None` if `item` could
+    /// not be converted into constraint field elements.
+    pub fn add_input<T>(self, item: &T) -> Option<Self>
+    where
+        T: ToConstraintField<F>,
+    {
+        self.extend([item])
+    }
+    /// Extends the input buffer by appending all the elements of `iter`
+    /// converted into constraint field elements, returning `None` if any of
+    /// the conversions failed.
+    pub fn extend<'t, T, I>(mut self, iter: I) -> Option<Self>
+    where
+        T: 't + ToConstraintField<F>,
+        I: IntoIterator<Item = &'t T>,
+    {
+        for item in iter {
+            self.input.append(&mut item.to_field_elements()?);
         }
+        Some(self)
     }
-}
-
-impl<P> GeIntoPubInput<PublicInputValue<P::BaseField>> for TEGroupProjective<P>
-where
-    P: TEModelParameters,
-{
-    #[inline]
-    fn into_pi(self) -> PublicInputValue<P::BaseField> {
-        GeIntoPubInput::into_pi(self.into_affine())
-    }
-}
-impl<P> GeIntoPubInput<PublicInputValue<P::BaseField>> for SWGroupAffine<P>
-where
-    P: SWModelParameters,
-{
-    #[inline]
-    fn into_pi(self) -> PublicInputValue<P::BaseField> {
-        PublicInputValue {
-            values: vec![self.x, self.y],
-        }
-    }
-}
-
-impl<P> GeIntoPubInput<PublicInputValue<P::BaseField>> for SWGroupProjective<P>
-where
-    P: SWModelParameters,
-{
-    #[inline]
-    fn into_pi(self) -> PublicInputValue<P::BaseField> {
-        GeIntoPubInput::into_pi(self.into_affine())
+    /// Returns the vector of input elements.
+    pub fn finish(self) -> Vec<F> {
+        self.input
     }
 }
 
@@ -166,8 +121,8 @@ where
 ///     EdwardsAffine as JubJubAffine, EdwardsParameters as JubJubParameters,
 ///     EdwardsProjective as JubJubProjective, Fr as JubJubScalar,
 /// };
-/// use ark_ff::{FftField, PrimeField, BigInteger};
-/// use plonk_core::circuit::{Circuit, PublicInputValue, verify_proof, GeIntoPubInput};
+/// use ark_ff::{FftField, PrimeField, BigInteger, ToConstraintField};
+/// use plonk_core::circuit::{Circuit, verify_proof, PublicInputBuilder};
 /// use plonk_core::constraint_system::StandardComposer;
 /// use plonk_core::error::{to_pc_error,Error};
 /// use ark_poly::polynomial::univariate::DensePolynomial;
@@ -278,16 +233,20 @@ where
 /// let mut verifier_data_bytes = Vec::new();
 /// verifier_data.serialize(&mut verifier_data_bytes).unwrap();
 ///
-/// let verif_data: VerifierData<BlsScalar, PC> =
+/// let deserialized_verifier_data: VerifierData<BlsScalar, PC> =
 ///     VerifierData::deserialize(verifier_data_bytes.as_slice()).unwrap();
 ///
-/// // assert!(verif_data == verifier_data);
+/// assert!(deserialized_verifier_data == verifier_data);
+///
 /// // Verifier POV
-/// let public_inputs: Vec<PublicInputValue<BlsScalar>> = vec![
-///     BlsScalar::from(25u64).into(),
-///     BlsScalar::from(100u64).into(),
-///     GeIntoPubInput::into_pi(point_f_pi),
-/// ];
+/// let public_inputs = PublicInputBuilder::new()
+///     .add_input(&BlsScalar::from(25u64))
+///     .unwrap()
+///     .add_input(&BlsScalar::from(100u64))
+///     .unwrap()
+///     .add_input(&point_f_pi)
+///     .unwrap()
+///     .finish();
 ///
 /// let VerifierData { key, pi_pos } = verifier_data;
 /// // TODO: non-ideal hack for a first functional version.
@@ -401,7 +360,7 @@ pub fn verify_proof<F, P, PC>(
     u_params: &PC::UniversalParams,
     plonk_verifier_key: VerifierKey<F, PC>,
     proof: &Proof<F, PC>,
-    pub_inputs_values: &[PublicInputValue<F>],
+    pub_inputs_values: &[F],
     pub_inputs_positions: &[usize],
     transcript_init: &'static [u8],
 ) -> Result<(), Error>
@@ -431,8 +390,8 @@ where
 }
 
 /// Build PI vector for Proof verifications.
-fn build_pi<F>(
-    pub_input_values: &[PublicInputValue<F>],
+fn build_pi<'a, F>(
+    pub_input_values: impl IntoIterator<Item = &'a F>,
     pub_input_pos: &[usize],
     trim_size: usize,
 ) -> Vec<F>
@@ -441,11 +400,10 @@ where
 {
     let mut pi = vec![F::zero(); trim_size];
     pub_input_values
-        .iter()
-        .flat_map(|pub_input| pub_input.values.clone())
+        .into_iter()
         .zip(pub_input_pos.iter().copied())
         .for_each(|(value, pos)| {
-            pi[pos] = -value;
+            pi[pos] = -*value;
         });
     pi
 }
@@ -458,6 +416,7 @@ mod test {
     use ark_bls12_381::Bls12_381;
     use ark_ec::{
         twisted_edwards_extended::GroupAffine, AffineCurve, PairingEngine,
+        ProjectiveCurve,
     };
     use ark_ff::{FftField, PrimeField};
     use rand::rngs::OsRng;
@@ -573,11 +532,14 @@ mod test {
         assert!(deserialized_verifier_data == verifier_data);
 
         // Verifier POV
-        let public_inputs: Vec<PublicInputValue<F>> = vec![
-            F::from(25u64).into(),
-            F::from(100u64).into(),
-            GeIntoPubInput::into_pi(point_f_pi),
-        ];
+        let public_inputs = PublicInputBuilder::new()
+            .add_input(&F::from(25u64))
+            .unwrap()
+            .add_input(&F::from(100u64))
+            .unwrap()
+            .add_input(&point_f_pi)
+            .unwrap()
+            .finish();
 
         let VerifierData { key, pi_pos } = verifier_data;
 
