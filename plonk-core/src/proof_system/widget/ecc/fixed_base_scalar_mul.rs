@@ -27,7 +27,7 @@ use ark_ec::{ModelParameters, TEModelParameters};
 use ark_ff::PrimeField;
 use core::marker::PhantomData;
 
-pub struct FSMVals<F>
+pub struct FBSMVals<F>
 where
     F: PrimeField,
 {
@@ -39,7 +39,7 @@ where
     pub q_c_val: F,
 }
 
-impl<F> CustomValues<F> for FSMVals<F>
+impl<F> CustomValues<F> for FBSMVals<F>
 where
     F: PrimeField,
 {
@@ -50,7 +50,7 @@ where
         let q_l_val = custom_evals.get("q_l_eval");
         let q_r_val = custom_evals.get("q_r_eval");
         let q_c_val = custom_evals.get("q_c_eval");
-        FSMVals {
+        FBSMVals {
             a_next_val,
             b_next_val,
             d_next_val,
@@ -74,7 +74,7 @@ where
     F: PrimeField,
     P: TEModelParameters<BaseField = F>,
 {
-    type CustomVals = FSMVals<F>;
+    type CustomVals = FBSMVals<F>;
 
     #[inline]
     fn constraints(
