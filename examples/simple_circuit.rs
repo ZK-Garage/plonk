@@ -131,15 +131,6 @@ fn main() -> Result<(), Error> {
         circuit.gen_proof::<PC>(&pp, pk_p, b"Test")
     }?;
 
-    // Test serialisation for verifier_data
-    let mut verifier_data_bytes = Vec::new();
-    verifier_data.serialize(&mut verifier_data_bytes).unwrap();
-
-    let _verif_data: VerifierData<BlsScalar, PC> =
-        VerifierData::deserialize(verifier_data_bytes.as_slice()).unwrap();
-
-    // assert!(verif_data == verifier_data);
-
     // Verifier POV
     let public_inputs = PublicInputBuilder::new()
         .add_input(&BlsScalar::from(25u64))
