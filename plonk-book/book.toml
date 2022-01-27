@@ -3,4 +3,11 @@ authors = ["mathcrypto"]
 language = "en"
 multilingual = false
 src = "src"
-title = "ARK-PLONK Book"
+title = "PLONK Book"
+
+[output.html]
+[output.katex]
+
+[preprocessor.katex]
+macros = "macros.txt"
+

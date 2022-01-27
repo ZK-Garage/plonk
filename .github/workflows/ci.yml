@@ -87,7 +87,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: doc
-          args: --workspace --document-private-items --all-features
+          args: --workspace --all-features
 
   fmt:
     if: github.event.pull_request.draft == false

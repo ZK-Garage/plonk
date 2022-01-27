@@ -7,11 +7,8 @@
 //! This is an extension over the [Merlin Transcript](Transcript) which adds a
 //! few extra functionalities.
 
-use ark_ff::{Field, PrimeField};
-use ark_poly::univariate::DensePolynomial;
-use ark_poly_commit::{LabeledCommitment, PolynomialCommitment};
+use ark_ff::PrimeField;
 use ark_serialize::CanonicalSerialize;
-use core::marker::PhantomData;
 use merlin::Transcript;
 
 /// Transcript adds an abstraction over the Merlin transcript
@@ -19,15 +16,6 @@ use merlin::Transcript;
 pub(crate) trait TranscriptProtocol {
     /// Append an `item` with the given `label`.
     fn append(&mut self, label: &'static [u8], item: &impl CanonicalSerialize);
-
-    /// Append some number of LabeledCommitments
-    fn append_commitments<'a, F, PC>(
-        &mut self,
-        commitments: impl IntoIterator<Item = &'a LabeledCommitment<PC::Commitment>>,
-        _phantom: PhantomData<PC>,
-    ) where
-        F: Field,
-        PC: 'a + PolynomialCommitment<F, DensePolynomial<F>>;
 
     /// Compute a `label`ed challenge variable.
     fn challenge_scalar<F: PrimeField>(&mut self, label: &'static [u8]) -> F;
@@ -41,26 +29,6 @@ impl TranscriptProtocol for Transcript {
         let mut bytes = Vec::new();
         item.serialize(&mut bytes).unwrap();
         self.append_message(label, &bytes)
-    }
-    fn append_commitments<'a, F, PC>(
-        &mut self,
-        commitments: impl IntoIterator<Item = &'a LabeledCommitment<PC::Commitment>>,
-        _phantom: PhantomData<PC>,
-    ) where
-        F: Field,
-        PC: 'a + PolynomialCommitment<F, DensePolynomial<F>>,
-    {
-        for commitment in commitments {
-            self.append(
-                // TODO: don't leak memory here by allowing
-                // Transcript::append_message to take non-static lifetimes
-                Box::leak::<'static>(
-                    commitment.label().clone().into_boxed_str(),
-                )
-                .as_bytes(),
-                commitment.commitment(),
-            )
-        }
     }
 
     fn challenge_scalar<F>(&mut self, label: &'static [u8]) -> F
