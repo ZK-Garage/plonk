@@ -441,7 +441,7 @@ where
             .custom_evals
             .vals
             .iter()
-            .map(|(label, eval)| {
+            .for_each(|(label, eval)| {
                 let static_label = Box::leak(label.to_owned().into_boxed_str());
                 transcript.append(static_label.as_bytes(), eval);
             });
