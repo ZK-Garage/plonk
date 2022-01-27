@@ -9,34 +9,24 @@
 //! PLONK Example
 
 use ark_bls12_381::{Bls12_381, Fr as BlsScalar};
-//use ark_ec::{PairingEngine, TEModelParameters};
 use ark_ec::TEModelParameters;
-//use ark_ed_on_bls12_381::EdwardsParameters;
-//use ark_ff::{FftField, PrimeField};
 use ark_ff::PrimeField;
 use ark_poly::univariate::DensePolynomial;
 use ark_poly_commit::PolynomialCommitment;
 use ark_poly_commit::sonic_pc::SonicKZG10;
-//use core::marker::PhantomData;
-//use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use plonk::commitment::KZG10;
 use plonk::prelude::*;
 use rand::rngs::OsRng;
-
 
 use ark_ec::models::twisted_edwards_extended::GroupAffine;
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ed_on_bls12_381::{
     EdwardsParameters as JubJubParameters, Fr as JubJubScalar,
 };
-//use ark_ff::{FftField, PrimeField, BigInteger};
-use plonk_core::circuit::{Circuit, PublicInputValue, verify_proof, GeIntoPubInput};
+use plonk_core::circuit::{Circuit, PublicInputBuilder, verify_proof};
 use plonk_core::constraint_system::StandardComposer;
 use plonk_core::error::{Error};
-//use ark_poly::polynomial::univariate::DensePolynomial;
-//use ark_poly_commit::{PolynomialCommitment, sonic_pc::SonicKZG10};
 
-//use plonk_core::prelude::*;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 
 
@@ -151,12 +141,17 @@ let _verif_data: VerifierData<BlsScalar, PC> =
     VerifierData::deserialize(verifier_data_bytes.as_slice()).unwrap();
 
 // assert!(verif_data == verifier_data);
+
 // Verifier POV
-let public_inputs: Vec<PublicInputValue<BlsScalar>> = vec![
-    BlsScalar::from(25u64).into(),
-    BlsScalar::from(100u64).into(),
-    GeIntoPubInput::into_pi(point_f_pi),
-];
+let public_inputs = PublicInputBuilder::new()
+    .add_input(&BlsScalar::from(25u64))
+    .unwrap()
+    .add_input(&BlsScalar::from(100u64))
+    .unwrap()
+    .add_input(&point_f_pi)
+    .unwrap()
+    .finish();
+
 
 let VerifierData { key, pi_pos } = verifier_data;
 // TODO: non-ideal hack for a first functional version.
@@ -168,8 +163,4 @@ verify_proof::<BlsScalar, JubJubParameters, PC>(
     &pi_pos,
     b"Test",
 )
-<<<<<<< HEAD
 }
-=======
-}
->>>>>>> ea53a1c9e588c71291942f434eb23d04b1d9cff9
