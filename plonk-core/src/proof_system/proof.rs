@@ -136,6 +136,7 @@ where
         let beta = transcript.challenge_scalar(b"beta");
         transcript.append(b"beta", &beta);
         let gamma = transcript.challenge_scalar(b"gamma");
+        transcript.append(b"gamma", &gamma);
 
         assert!(beta != gamma, "challenges must be different");
 
