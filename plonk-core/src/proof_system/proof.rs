@@ -220,7 +220,8 @@ where
             .vals
             .iter()
             .map(|(label, eval)| {
-                transcript.append(label.to_owned().as_bytes(), eval);
+                let static_label = Box::leak(label.to_owned().into_boxed_str());
+                transcript.append(static_label.as_bytes(), eval);
             });
 
         transcript.append(b"t_eval", &t_eval);
