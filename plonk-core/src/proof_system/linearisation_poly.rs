@@ -37,6 +37,8 @@ use super::{
 ///
 /// This `struct` keeps track of polynomial evaluations at points `z` and/or `z
 /// * w` where `w` is a root of unit.
+#[derive(CanonicalDeserialize, CanonicalSerialize, derivative::Derivative)]
+#[derivative(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Evaluations<F>
 where
     F: Field,
@@ -51,7 +53,7 @@ where
 /// Subset of the [`ProofEvaluations`]. Evaluations at `z` of the
 /// wire polynomials
 #[derive(CanonicalDeserialize, CanonicalSerialize, derivative::Derivative)]
-#[derivative(Clone, Debug, Default, Eq, PartialEq)]
+#[derivative(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub struct WireEvaluations<F>
 where
     F: Field,
@@ -72,7 +74,7 @@ where
 /// Subset of the [`ProofEvaluations`]. Evaluations of the sigma and permutation
 /// polynomials at `z`  or `z *w` where `w` is the nth root of unity.
 #[derive(CanonicalDeserialize, CanonicalSerialize, derivative::Derivative)]
-#[derivative(Clone, Debug, Default, Eq, PartialEq)]
+#[derivative(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub struct PermutationEvaluations<F>
 where
     F: Field,
@@ -239,9 +241,9 @@ where
         logic_separation_challenge,
         fixed_base_separation_challenge,
         var_base_separation_challenge,
-        wire_evals,
+        &wire_evals,
         q_arith_eval,
-        custom_evals,
+        &custom_evals,
         prover_key,
     );
 
@@ -281,9 +283,9 @@ fn compute_gate_constraint_satisfiability<F, P>(
     logic_separation_challenge: &F,
     fixed_base_separation_challenge: &F,
     var_base_separation_challenge: &F,
-    wire_evals: WireEvaluations<F>,
+    wire_evals: &WireEvaluations<F>,
     q_arith_eval: F,
-    custom_evals: CustomEvaluations<F>,
+    custom_evals: &CustomEvaluations<F>,
     prover_key: &ProverKey<F>,
 ) -> DensePolynomial<F>
 where
