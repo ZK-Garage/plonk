@@ -15,13 +15,18 @@ use core::marker::PhantomData;
 
 use super::CustomValues;
 
+/// Values needed for the computation of the logic gate constraint.
 pub struct LogicVals<F>
 where
     F: PrimeField,
 {
+    /// Left wire value in the next position
     pub a_next_val: F,
+    /// Right wire value in the next position
     pub b_next_val: F,
+    /// Fourth wire value in the next position
     pub d_next_val: F,
+    /// Constant selector value
     pub q_c_val: F,
 }
 

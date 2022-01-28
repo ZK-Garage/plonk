@@ -27,15 +27,23 @@ use ark_ec::{ModelParameters, TEModelParameters};
 use ark_ff::PrimeField;
 use core::marker::PhantomData;
 
+/// Values needed for the computation of the Fixed Base Multiplication gate
+/// constraint.
 pub struct FBSMVals<F>
 where
     F: PrimeField,
 {
+    /// Left wire value in the next position
     pub a_next_val: F,
+    /// Right wire value in the next position
     pub b_next_val: F,
+    /// Fourth wire value in the next position
     pub d_next_val: F,
+    /// Left selector value
     pub q_l_val: F,
+    /// Right selector value
     pub q_r_val: F,
+    /// Constant selector value
     pub q_c_val: F,
 }
 

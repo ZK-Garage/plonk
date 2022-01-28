@@ -15,12 +15,16 @@ use ark_ec::{ModelParameters, TEModelParameters};
 use ark_ff::PrimeField;
 use core::marker::PhantomData;
 
+/// Values needed for the computation of the Curve Addition gate constraint.
 pub struct CAVals<F>
 where
     F: PrimeField,
 {
+    /// Left wire value in the next position
     pub a_next_val: F,
+    /// Right wire value in the next position
     pub b_next_val: F,
+    /// Fourth wire value in the next position
     pub d_next_val: F,
 }
 

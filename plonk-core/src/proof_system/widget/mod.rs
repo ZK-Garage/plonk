@@ -22,12 +22,13 @@ use ark_serialize::*;
 
 use super::linearisation_poly::CustomEvaluations;
 
-/// Constructs gate-specific values struct from the set of evaluations
-/// `CustomEvaluations`
+/// Set of values needed for a custom gate
 pub trait CustomValues<F>
 where
     F: PrimeField,
 {
+    /// Constructs gate-specific values struct from the set of evaluations
+    /// `CustomEvaluations`
     fn from_evaluations(custom_evals: &CustomEvaluations<F>) -> Self;
 }
 
@@ -58,6 +59,7 @@ pub trait GateConstraint<F>
 where
     F: PrimeField,
 {
+    /// Custom values needed for the gate
     type CustomVals: CustomValues<F>;
 
     /// Returns the coefficient of the quotient polynomial for this gate given

@@ -14,10 +14,12 @@ use core::marker::PhantomData;
 
 use super::CustomValues;
 
+/// Values needed for the computation of the range gate constraint.
 pub struct RangeVals<F>
 where
     F: PrimeField,
 {
+    /// Fourth wire value in the next position
     pub d_next_val: F,
 }
 
