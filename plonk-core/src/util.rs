@@ -172,7 +172,7 @@ macro_rules! label_commitment {
 #[macro_export]
 macro_rules! label_eval {
     ($eval:expr) => {
-        (stringify!($comm).to_owned(), $eval)
+        (stringify!($eval).to_owned(), $eval)
     };
 }
 
