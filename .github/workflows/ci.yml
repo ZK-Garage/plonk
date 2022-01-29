@@ -83,11 +83,11 @@ jobs:
 
       # Ensure intra-documentation links all resolve correctly
       # Requires #![deny(intra_doc_link_resolution_failure)] in crates.
-      - name: Check intra-doc links
-        uses: actions-rs/cargo@v1
-        with:
-          command: doc
-          args: --workspace --all-features
+      #- name: Check intra-doc links
+      #  uses: actions-rs/cargo@v1
+      #  with:
+      #    command: doc
+      #    args: --workspace --all-features
 
   fmt:
     if: github.event.pull_request.draft == false
