@@ -9,6 +9,7 @@ on:
 
 env:
   RUSTFLAGS: "-D warnings"
+  RUST_BACKTRACE: "1"
 
 ## `actions-rs/toolchain@v1` overwrite set to false so that
 ## `rust-toolchain` is always used and the only source of truth.
@@ -83,11 +84,11 @@ jobs:
 
       # Ensure intra-documentation links all resolve correctly
       # Requires #![deny(intra_doc_link_resolution_failure)] in crates.
-      #- name: Check intra-doc links
-      #  uses: actions-rs/cargo@v1
-      #  with:
-      #    command: doc
-      #    args: --workspace --all-features
+      - name: Check intra-doc links
+        uses: actions-rs/cargo@v1
+        with:
+          command: doc
+          args: --workspace --all-features
 
   fmt:
     if: github.event.pull_request.draft == false
