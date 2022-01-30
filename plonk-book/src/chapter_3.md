@@ -35,20 +35,19 @@ Our implementation also supports custom gates similarly to [TurboPlonk](https://
 
 ### Custom gates
 
-The original Plonk protocol supported circuits whose gates perform basic arithmetic operations: additions and multiplications. Plonk  extends the arithmetic "gate" and allows for the creation of new customized gates which can perform manz different operations such as EC additions, logical XOR, efficient Poseidon or Pedersen hashes.
+The original Plonk protocol supported circuits whose gates perform basic arithmetic operations: additions and multiplications. Plonk  extends the arithmetic "gate" and allows for the creation of new customized gates which can perform many different operations such as EC additions, logical XOR, efficient Poseidon or Pedersen hashes.
 
-The different types of gates curretnly supported by this implementation are:
+The different types of gates currently supported by this implementation are:
 
-
-* [Arithmetic gate](https://github.com/ZK-Garage/plonk/blob/master/src/constraint_system/arithmetic.rs) (similar to Plonk)
-* [Logic gate](https://github.com/ZK-Garage/plonk/blob/master/src/constraint_system/logic.rs): Provide bitwise AND and XOR operations.
-* [Range gate](https://github.com/ZK-Garage/plonk/blob/master/src/constraint_system/range.rs).
+* [Arithmetic gate](https://github.com/ZK-Garage/plonk/blob/master/plonk-core/src/constraint_system/arithmetic.rs) (similar to Plonk)
+* [Logic gate](https://github.com/ZK-Garage/plonk/blob/master/plonk-core/src/constraint_system/logic.rs): Provide bitwise AND and XOR operations.
+* [Range gate](https://github.com/ZK-Garage/plonk/blob/master/plonk-core/src/constraint_system/range.rs).
 * EC operations:
-   - Curve addition ([Fixed base](https://github.com/ZK-Garage/plonk/blob/master/src/constraint_system/ecc/curve_addition/fixed_base_gate.rs) and [variable base](https://github.com/ZK-Garage/plonk/blob/master/src/constraint_system/ecc/curve_addition/variable_base_gate.rs))
-   - Scalar multiplication ([Fixed base](https://github.com/ZK-Garage/plonk/blob/master/src/constraint_system/ecc/scalar_mul/fixed_base.rs) and [variable base](https://github.com/ZK-Garage/plonk/blob/master/src/constraint_system/ecc/scalar_mul/variable_base.rs))
+   - Curve addition ([Fixed base](https://github.com/ZK-Garage/plonk/blob/master/plonk-core/src/constraint_system/ecc/curve_addition/fixed_base_gate.rs) and [variable base](https://github.com/ZK-Garage/plonk/plonk-core/blob/master/src/constraint_system/ecc/curve_addition/variable_base_gate.rs))
+   - Scalar multiplication ([Fixed base](https://github.com/ZK-Garage/plonk/blob/master/plonk-core/src/constraint_system/ecc/scalar_mul/fixed_base.rs) and [variable base](https://github.com/ZK-Garage/plonk/blob/master/plonk-core/src/constraint_system/ecc/scalar_mul/variable_base.rs))
 
 
-Selector polynomials (SP) activate or deactivate a specific gate depending on their value. We use the following notation:
+Selector polynomials (SP) activate or deactivate a specific gate depending on the value of gate output selector polynomial. We use the following notation:
 
 * $q_{arith}$ : arithmetic gate selector polynomial
 * $q_{logic}$ : logic gate SP
@@ -73,15 +72,15 @@ In order to use one of these gates, we set the value of its associated SP to $1$
 #### Design custom gates
 Before we explain how each of the previous mentioned custom gates are designed, we need to talk about fan-in 3 gates and why we use them at ark-plonk instead of fan-in 2 gates?
 The original Plonk design uses fan-in 2 gates which means each gates has two inputs and one output wires.
-These new PLONK gates, on the other hand, are fan-in-3 gates, so they have one more wire which makes it 4 wires in total.
-We can see in the following figure how a fan-in 3 gate looks like:
+These new PLONK gates, on the other hand, are fan-in-3 gates, so they have one more wire making it 4 wires in total.
+The following figure depicts a fan-in 3 gate:
 
 <p align="center">
   <img  alt="circuit" width="250"src="images/images/gate.png" />
   
 </p>
  
-The original arithmetic constraint equation looks as follow
+The arithmetic constraint equation of the original PLONK paper is
 
 $$
 q_m \cdot a \cdot b + 
@@ -93,7 +92,7 @@ PI
 = 0
 $$
 
-where $a$ is the left wire, $b$ is the right wire, $c$ is the output wire and $q_l, q_r, q_o, q_m, q_c$ are the associated selector polynomials. After the addition of a fourth wire $d$ the equation turns into:
+where $a$ is the left wire, $b$ is the right wire, $c$ is the output wire and $q_l, q_r, q_o, q_m, q_c$ are the associated selector polynomials. After the addition of a fourth wire $d$ the equation becomes:
 $$
 q_m \cdot a \cdot b + 
 q_l \cdot a +
@@ -117,12 +116,11 @@ and to an increase in the FFT degrees. The proof size increases by one additiona
 
 **Range gate**
 
-A range-constraint gate checks if a variable $v$ is inside a range $[0,n]$ or not where $n=$ number of bits (let's say we want to know if $v$ is in the range $[0,2^{10}-1]$ and $n=10$).
+A range-constraint gate checks if a variable $v$ is inside a range $[0,2^{n}-1]$ where $n$ is the bit size of the range. For instance, if we want to guarantee that $v$ is in the range $[0,1023]$, then $n=10$).
 
-The number of bits needs to be divisible by 2( $n$ % $2 == 0$)
+For technical reasons, the number of bits needs to be divisible by 2 ( $n$ % $2 == 0$)
        
 Each gate contains 4 accumulated quads (base-4 digits)
-
 which means $n_{quads}=n_{gates}*4$ where $n_{gates}$ is number of gates and $n_{quads}$ is number of quads.
 
 We have two cases:
