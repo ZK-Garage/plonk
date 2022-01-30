@@ -4,33 +4,34 @@
 PLONK is a generic Rust PLONK implementation using arkworks as a backend. This PLONK library is one of many projects implementing PLONK like: 
 TurboPlonk, UltraPlonk, Plonky, ShPlonk, PLOOKUP, PLONKUP, halo2 etc.
 
-PLONK is however the only generic implementation which allows any curve implementation or commitment scheme to be used and isn’t 
-restricted to only one implementation like other existing libraries.
+PLONK is however the only generic implementation which allows any curve implementation or commitment scheme to be used and unlike other libraries is not restricted to only one implementation.
 
 
 ## State of the art
 
-In 2020, AZTEC team has developed PLONK which uses KZG's pairing-based polynomial commitment scheme in order to bring a universal zkSNARK setup. 
-Since then, PLONK has become very popular and lots of projects like Matter Labs, Zcash's Halo 2, Mina, Mir...etc started using it and developing their own variations of it. 
+The AZTEC team developed PLONK in 2020. It uses the KZG's pairing-based polynomial commitment scheme and this allows it to be universal, i.e., the same KZG commitment setup parameters an be used for zkSNARK proofs of circuits up to a certain size. 
+Since then, PLONK has become very popular and lots of projects like Matter Labs, Zcash's Halo 2, Mina, Mir and others started using it and developed their own variations. 
 
-Both Mir and Zcash use PLONK combined with [Halo’s polynomial commitment scheme](https://eprint.iacr.org/2019/1021.pdf) for their libraries [Plonky](https://github.com/mir-protocol/plonky) and Halo2. Halo based schemes do recursive proofs without pairings using elliptic curves that are not pairing friendly and can run without the need for trusted setups. In a recursive proof, the verifier is written inside the circuit which allows us to verify a proof inside of another proof while in a standard proof system there is a prover and a verifier. 
-In a KZG system, the proof size is very small (less than a kilobyte) and it's constant and also the verification time is constant, it’s also easy to verify on Ethereum but recursion is hard to do with pairings. 
-Halo based schemes have decent proof size and prover time, but take linear time to verify and it’s not possible to verify on Ethereum.
+Both Mir and Zcash use PLONK combined with [Halo’s polynomial commitment scheme](https://eprint.iacr.org/2019/1021.pdf) for their libraries [Plonky](https://github.com/mir-protocol/plonky) and [Halo2](https://github.com/zcash/halo2). Halo based schemes do recursive proofs without pairings using elliptic curves that are not pairing friendly and can run without the need for trusted setups. In a recursive proof, the verifier is coded inside the circuit which allows us to verify a proof provided as part of the witness inside of another proof. In this way the verifier effectively checks many proofs, even though it only verifies the outermost proof.
 
-Mir has recently developed a more optimized proving system Plonky2 based on PLONK and FRI. 
-FRI-based ZK-STARKs algorithm provides both quantum-resistance and does not require any trusted setups while the KZG scheme uses elliptic curve pairing which is not quantum resistant and requires a third-party trusted setup. FRI has a blowup factor which measures how much redundancy a polynomial needs to add before the commitment is generated and thus makes the prover faster. 
+In a KZG system, the proof size is very small (less than a kilobyte), constant in the size of the circuit and the witness, and also the verification time is constant. This makes it easier to verify on Ethereum but recursion is harder to do with pairings. 
+Halo based schemes have decent proof size and prover time, but take linear time to verify and they can currently not be verified on Ethereum.
+
+Mir recently developed an optimized proving system [Plonky2](https://github.com/mir-protocol/plonky2) based on PLONK and FRI polynomial commitments. 
+A FRI-based ZK-STARKs algorithm provides both quantum-resistance and does not require any trusted setups while the KZG scheme uses elliptic curve pairing which is not quantum resistant and requires a third-party trusted setup. FRI has a blowup factor which measures how much redundancy a polynomial needs to add before the commitment is generated and thus makes the prover faster. 
 Plonky2 claims a 100x speed up for ethereum for $170ms$ comparing to Plonky which takes $15s$ for proving times. 
 This PLONK repo is an optimization of the original PLONK protocol and guarantees $3.44s$ for proving time and $4.50ms$ for verifier speed comparing to $60$ proof times in the original PLONK design.
 
-A differentiating factor this PLONK library is the fact that it uses Arkworks generic backend, a rust library that abstracts over the curves and over the fields so you can use any algorithm in a generic way. This implementations is therefore valid for any curve implementation for pairing curves, for edwards twisted curves….etc.  
-Our PLONK also uses a generic polynomial commitment based on [ark-poly-commit](https://docs.rs/ark-poly-commit/0.3.0/ark_poly_commit/) which provides various constructions of polynomial commitment schemes. As a result, this lib can leverage other commitment schemes like quantum resistent FRI and not be restricted only to KZG10.
+A differentiating factor of this PLONK library is that it uses Arkworks generic backend, a rust library that abstracts over mathematical curves and fields and allows to program algorithm in a generic field agnostic way. This implementations is therefore valid for any curve implementation, e.g., for various pairing curves and edwards twisted curves.  
+Our PLONK implementation also uses a generic polynomial commitment scheme based on [ark-poly-commit](https://docs.rs/ark-poly-commit/0.3.0/ark_poly_commit/) which provides various constructions of polynomial commitment schemes. As a result, the library can potentially leverage other commitment schemes like quantum resistent FRI and is not restricted only to KZG10.
 
-There is no other library right which allows you to have the freedom of using generic parameters. Zcash's Halo2 and Plonky use HALO commitment scheme while plonky2 uses only FRI scheme. In terms of elliptic curves and Aztecs implementation of PLONK is based on BN256.
+There is currently no other library that allows for the freedom of generic parameters. Zcash's Halo2 and Plonky use the HALO commitment scheme while plonky2 uses only FRI scheme. In terms of elliptic curves, the Aztecs implementation of PLONK is based on BN256.
+
 ## Circuit implementation
 
 The implementation is an optimization of the original PLONK protocol as it enables lookup table to the PLONK circuit. This optimization allows for precomputation of some of the operations that are not snark friendly like bit operations (see [PLOOKUP](https://eprint.iacr.org/2020/315.pdf) for further explanation on PLONK + LOOKUP tables).
 
-Our implementation also uses custom gates similarly to [TurboPolnk](https://docs.zkproof.org/pages/standards/accepted-workshop3/proposal-turbo_plonk.pdf) which allow us to define our own custom bit arithmetic operations like efficient Poseidon or MIMC hashes which are extremely efficient to evaluate inside of a snark. 
+Our implementation also uses custom gates similarly to [TurboPlonk](https://docs.zkproof.org/pages/standards/accepted-workshop3/proposal-turbo_plonk.pdf) which allow us to define our own custom bit arithmetic operations, e.g., to support efficient Poseidon or MIMC hashes that can be efficiently evaluate inside the SNARK circuit. 
 
 ### Custom gates
 
