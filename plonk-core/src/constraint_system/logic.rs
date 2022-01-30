@@ -140,7 +140,7 @@ where
             // Now that we've computed this round results, we need to apply the
             // logic transition constraint that will check the following:
             // a      - 4 . a  ϵ [0, 1, 2, 3]
-            //   i + 1        i
+            //  i + 1        i
             //
             //
             //
@@ -151,10 +151,10 @@ where
             //
             //
             //
-            //                    /                 \          /
-            // \  c      - 4 . c  = | a      - 4 . a  | (& OR ^) | b
-            // - 4 . b  |   i + 1        i   \  i + 1        i /
-            // \  i + 1        i /
+            //                   /                \          /                \ 
+            //  c     - 4 . c  = | a     - 4 . a  | (& OR ^) | b     - 4 . b  |
+            //   i + 1       i   \  i + 1       i /          \  i + 1       i /
+            // 
             //
             let prev_left_accum = left_accumulator;
             let prev_right_accum = right_accumulator;
@@ -165,9 +165,10 @@ where
             // the new computed quad.
             // With this technique we're basically accumulating the quads and
             // adding them to get back to the starting value, at the
-            // i-th iteration.          i
+            // i-th iteration.
+            //          i
             //         ===
-            //         \                     j
+            //         \                    j
             //  x   =  /    q            . 4
             //   i     ===   (bits/2 - j)
             //        j = 0
