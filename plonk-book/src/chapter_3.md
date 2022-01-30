@@ -29,15 +29,15 @@ There is currently no other library that allows for the freedom of generic param
 
 ## Circuit implementation
 
-The implementation is an optimization of the original PLONK protocol as it enables lookup table to the PLONK circuit. This optimization allows for precomputation of some of the operations that are not snark friendly like bit operations (see [PLOOKUP](https://eprint.iacr.org/2020/315.pdf) for further explanation on PLONK + LOOKUP tables).
+This implementation is an optimization of the original PLONK protocol and adds the support of lookup table to PLONK circuit. This optimization allows for precomputation of some of the operations that are not snark friendly such as bit operations (see [PLOOKUP](https://eprint.iacr.org/2020/315.pdf) for further explanation on PLONK + LOOKUP tables).
 
-Our implementation also uses custom gates similarly to [TurboPlonk](https://docs.zkproof.org/pages/standards/accepted-workshop3/proposal-turbo_plonk.pdf) which allow us to define our own custom bit arithmetic operations, e.g., to support efficient Poseidon or MIMC hashes that can be efficiently evaluate inside the SNARK circuit. 
+Our implementation also supports custom gates similarly to [TurboPlonk](https://docs.zkproof.org/pages/standards/accepted-workshop3/proposal-turbo_plonk.pdf). This allow us to define our own custom bit arithmetic operations, e.g., to support efficient Poseidon or MIMC hashes that can be efficiently evaluate inside the SNARK circuit. 
 
 ### Custom gates
 
-The original Plonk proposes simple circuits whose gates only perform arithmetic operations: additions and multiplications. Plonk is able to extend an arithmetic "gate" and allows the creation of new customized gates which can perform so many different operations (EC additions, logical XOR, efficient Poseidon or Pedersen hashes....etc).
+The original Plonk protocol supported circuits whose gates perform basic arithmetic operations: additions and multiplications. Plonk  extends the arithmetic "gate" and allows for the creation of new customized gates which can perform manz different operations such as EC additions, logical XOR, efficient Poseidon or Pedersen hashes.
 
-The different types of gates in this implementation are:
+The different types of gates curretnly supported by this implementation are:
 
 
 * [Arithmetic gate](https://github.com/ZK-Garage/plonk/blob/master/src/constraint_system/arithmetic.rs) (similar to Plonk)
@@ -48,7 +48,7 @@ The different types of gates in this implementation are:
    - Scalar multiplication ([Fixed base](https://github.com/ZK-Garage/plonk/blob/master/src/constraint_system/ecc/scalar_mul/fixed_base.rs) and [variable base](https://github.com/ZK-Garage/plonk/blob/master/src/constraint_system/ecc/scalar_mul/variable_base.rs))
 
 
-In order to use these gates only when needed we introduce selector polynomials (SP). These polynomials will either activate or deactivate a specific gate depending on their value. We use the following notation:
+Selector polynomials (SP) activate or deactivate a specific gate depending on their value. We use the following notation:
 
 * $q_{arith}$ : arithmetic gate selector polynomial
 * $q_{logic}$ : logic gate SP
@@ -60,11 +60,9 @@ In order to use these gates only when needed we introduce selector polynomials (
 The gate constraint equation is represented as follow:
 
 $$
-q_{arith} \cdot arith\_eq +
-q_{logic} \cdot  logic\_eq +
-q_{range} \cdot  range\_eq +
-q_{ECfix} \cdot   ECfix\_eq +
-q_{ECvar} \cdot  ECvar\_eq
+q_{arith} \cdot \textit{arith\_eq} + q_{logic} \cdot  \textit{logic\_eq} + q_{range} \cdot  \textit{range\_eq} +
+q_{ECfix} \cdot  \textit{ECfix\_eq} +
+q_{ECvar} \cdot  \textit{ECvar\_eq}
 =0
 $$
 
@@ -74,8 +72,8 @@ In order to use one of these gates, we set the value of its associated SP to $1$
 
 #### Design custom gates
 Before we explain how each of the previous mentioned custom gates are designed, we need to talk about fan-in 3 gates and why we use them at ark-plonk instead of fan-in 2 gates?
-The original Plonk design uses fan-in 2 gates which means each gates has two inputs and an output wires.
-These PLONK gates, on the other hand, are fan-in-3 gates, so they have one more wire which makes it 4 wires in total.
+The original Plonk design uses fan-in 2 gates which means each gates has two inputs and one output wires.
+These new PLONK gates, on the other hand, are fan-in-3 gates, so they have one more wire which makes it 4 wires in total.
 We can see in the following figure how a fan-in 3 gate looks like:
 
 <p align="center">
@@ -95,7 +93,7 @@ PI
 = 0
 $$
 
-where $a$ is the left wire, $b$ is the right wire, $c$ is the output wire and $q_l, q_r, q_o, q_m, q_c$ are the associated elector polynomials .After the addition of a fourth wire $d$ the equation turns into:
+where $a$ is the left wire, $b$ is the right wire, $c$ is the output wire and $q_l, q_r, q_o, q_m, q_c$ are the associated selector polynomials. After the addition of a fourth wire $d$ the equation turns into:
 $$
 q_m \cdot a \cdot b + 
 q_l \cdot a +
@@ -108,10 +106,10 @@ PI
 $$
 
 This repository still allows the use of fan-in 2 gates only by setting the 4th wire selector, $q_d$, to $0$. 
-The reason why we use this design instead of the original one is to have one more witness available as a way to reduce gate counts.
-This method however has some negative implications on both the proof size and the verifier's time. It will increase the permutation polynomial degree (instead of 3 identity permutations it will become 4) and thus an n−degree increase in the quotient polynomial (from $3n$ to $4n$)
- and an increase in the FFT degrees. We can expect the proof size( additional commitment to the wire polynomial and an additional group element). The verification time will also increase(21 exponentiations in  $G_1$ instead of $18$ for classic Plonk):
- * 7 from the linearization polynomial opening, 
+The advantage of this design is that it make an additonal witness element available and thus allows to reduce the gate counts.
+Its disadvantage is a negative impact on both the proof size and the verifier's execution time. It increases the permutation polynomial degree (to support 4 instead of 3 identity permutations) which leads to an n−degree increase in the quotient polynomial (from $3n$ to $4n$)
+and to an increase in the FFT degrees. The proof size increases by one additional commitment to the wire polynomial and one additional group element. The verification time will also increase (21 exponentiations in $G_1$ instead of $18$ for classic Plonk):
+* 7 from the linearization polynomial opening, 
 * 11 from the quotient polynomial opening
 * 1 from the evaluation commitment 
 * 1 from the polynomial commitment argument for evaluation at $z$  
