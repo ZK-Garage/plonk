@@ -6,16 +6,17 @@
 //
 // Copyright (c) ZK-GARAGE. All rights reserved.
 
-//! PLONK Benchmarks
+//! PLONK Benchmarks using KZG10
 
 use ark_bls12_381::{Bls12_381, Fr as BlsScalar};
 use ark_ec::{PairingEngine, TEModelParameters};
 use ark_ed_on_bls12_381::EdwardsParameters;
 use ark_ff::{FftField, PrimeField};
 use ark_poly_commit::PolynomialCommitment;
+use blake2;
 use core::marker::PhantomData;
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
-use plonk::commitment::KZG10;
+use plonk::commitment::{KZG10, HomomorphicCommitment, IPA};
 use plonk::prelude::*;
 use rand::rngs::OsRng;
 
@@ -65,14 +66,23 @@ where
     }
 }
 
+fn kzg10_benchmarks(c: &mut Criterion) {
+    constraint_system_benchmark::<KZG10::<Bls12_381>>(c);
+}
+
+fn ipa_benchmarks(c: &mut Criterion) {
+    constraint_system_benchmark::<IPA<<Bls12_381 as PairingEngine>::G1Affine,
+    blake2::Blake2b>>(c);
+}
+
 /// Generates full benchmark suite for compiling, proving, and verifying.
-fn constraint_system_benchmark(c: &mut Criterion) {
+fn constraint_system_benchmark<HC: HomomorphicCommitment<ark_ff::Fp256<ark_bls12_381::FrParameters>>>(c: &mut Criterion) {
     let label = b"ark".as_slice();
 
-    const MINIMUM_DEGREE: usize = 5;
-    const MAXIMUM_DEGREE: usize = 19;
+    const MINIMUM_DEGREE: usize = 2;
+    const MAXIMUM_DEGREE: usize = 5;
 
-    let pp = KZG10::<Bls12_381>::setup(
+    let pp = HC::setup(
         // +1 per wire, +2 for the permutation poly
         1 << MAXIMUM_DEGREE + 6,
         None,
@@ -92,7 +102,7 @@ fn constraint_system_benchmark(c: &mut Criterion) {
             |b, _| {
                 b.iter(|| {
                     circuit
-                        .compile::<KZG10<Bls12_381>>(&pp)
+                        .compile::<HC>(&pp)
                         .expect("Unable to compile circuit.")
                 })
             },
@@ -107,7 +117,7 @@ fn constraint_system_benchmark(c: &mut Criterion) {
             ark_ed_on_bls12_381::EdwardsParameters,
         >::new(degree);
         let (pk_p, _) = circuit
-            .compile::<KZG10<Bls12_381>>(&pp)
+            .compile::<HC>(&pp)
             .expect("Unable to compile circuit.");
         proving_benchmarks.bench_with_input(
             BenchmarkId::from_parameter(degree),
@@ -115,7 +125,7 @@ fn constraint_system_benchmark(c: &mut Criterion) {
             |b, _| {
                 b.iter(|| {
                     circuit
-                        .gen_proof::<KZG10<Bls12_381>>(
+                        .gen_proof::<HC>(
                             &pp,
                             pk_p.clone(),
                             &label,
@@ -136,7 +146,7 @@ fn constraint_system_benchmark(c: &mut Criterion) {
         let (pk_p, verifier_data) =
             circuit.compile(&pp).expect("Unable to compile circuit.");
         let proof = circuit
-            .gen_proof::<KZG10<Bls12_381>>(&pp, pk_p.clone(), &label)
+            .gen_proof::<HC>(&pp, pk_p.clone(), &label)
             .unwrap();
         let VerifierData { key, pi_pos } = verifier_data;
         verifying_benchmarks.bench_with_input(
@@ -147,7 +157,7 @@ fn constraint_system_benchmark(c: &mut Criterion) {
                     plonk::circuit::verify_proof::<
                         <Bls12_381 as PairingEngine>::Fr,
                         EdwardsParameters,
-                        KZG10<Bls12_381>,
+                        HC,
                     >(
                         &pp, key.clone(), &proof, &[], &pi_pos, &label
                     )
@@ -162,6 +172,6 @@ fn constraint_system_benchmark(c: &mut Criterion) {
 criterion_group! {
     name = plonk;
     config = Criterion::default().sample_size(10);
-    targets = constraint_system_benchmark
+    targets = kzg10_benchmarks, ipa_benchmarks
 }
 criterion_main!(plonk);
