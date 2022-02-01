@@ -122,9 +122,13 @@ where
 
     /// Add evaluation of poly at point if the label is not already
     /// in the set of evaluations
-    pub fn add(label: String, poly: DensePolynomial<F>, point: F) {
-        // TODO
-        unimplemented!()
+    pub fn add(&mut self, label: &str, poly: DensePolynomial<F>, point: F) {
+        if let Some(_l) = &self.vals.iter().find(|entry| entry.0 == label) {
+            return;
+        } else {
+            let eval = poly.evaluate(&point);
+            let _ = &self.vals.push((label.to_string(), eval));
+        }
     }
 }
 
