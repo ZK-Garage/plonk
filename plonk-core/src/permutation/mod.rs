@@ -752,17 +752,15 @@ impl Permutation {
         DensePolynomial::<F>::from_coefficients_vec(domain.ifft(&z))
     }
 
-    pub(crate) fn compute_mega_permutation_poly<F: FftField>(
+    pub(crate) fn compute_lookup_permutation_poly<F: FftField>(
         &self,
         domain: &GeneralEvaluationDomain<F>,
         f: &[F],
         t: &[F],
-        t_prime: &[F], 
         h_1: &[F],
         h_2: &[F],
         delta: F,
         epsilon: F,
-        theta: F,
     ) -> DensePolynomial<F> {
         let n = domain.size();
 
@@ -775,7 +773,7 @@ impl Permutation {
         let h_1_next: Vec<F> = [&h_1[1..], &[h_1[0]]].concat();
 
         #[cfg(feature = "std")]
-        let product_arguments: Vec<F> =
+        let product_arguments: Vec<BlsScalar> =
             (f, t, t_next, h_1, h_1_next, h_2)
                 .into_par_iter()
                 // Derive the numerator and denominator for each gate plonkup
@@ -786,7 +784,7 @@ impl Permutation {
                             delta, epsilon, f, t, t_next,
                         ),
                         plonkup_denominator_irreducible(
-                            delta, epsilon, h_1, h_1_next, h_2,
+                            delta, epsilon, h_1, &h_1_next, h_2,
                         ),
                     )
                 })
@@ -806,7 +804,7 @@ impl Permutation {
             .map(|(((((f, t), t_next), h_1), h_1_next), h_2)| {
                 (
                     Self::lookup_numerator_irreducible(
-                        &delta, &epsilon, &theta, &*f, &t, &t_next,
+                        &delta, &epsilon, &f, &t, &t_next,
                     ),
                     Self::lookup_denominator_irreducible(
                         delta, epsilon, *h_1, h_1_next, *h_2,
@@ -836,14 +834,13 @@ impl Permutation {
     fn lookup_numerator_irreducible<F: FftField>(
         delta: &F,
         epsilon: &F,
-        theta: &F,
         f: &F,
-        t_prime: &F,
-        t_prime_next: &F,
+        t: &F,
+        t_next: &F,
     ) -> F {
         let prod_1 = F::one() + delta;
         let prod_2 = *epsilon + f;
-        let prod_3 = (*epsilon * prod_1) + t_prime + (*delta * t_prime_next);
+        let prod_3 = (*epsilon * prod_1) + t + (*delta * t_next);
     
         prod_1 * prod_2 * prod_3
     }

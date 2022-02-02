@@ -68,15 +68,6 @@ F: PrimeField,
         c_eval: F,
         d_eval: F,
         f_eval: F,
-        t_eval: F,
-        t_next_eval: F,
-        h_1_eval: F,
-        h_2_eval: F,
-        p_next_eval: F,
-        l1_eval: F,
-        p_poly: DensePolynomial<F>,
-        h_2_poly: DensePolynomial<F>,
-        (delta, epsilon): (F, F),
         zeta: F,
         lookup_separation_challenge: F,
     ) -> DensePolynomial<F> {
@@ -84,37 +75,17 @@ F: PrimeField,
         let l_sep_3 = l_sep_2 * lookup_separation_challenge;
         let zeta_sq = zeta * zeta;
         let zeta_cu = zeta * zeta_sq;
-        let one_plus_delta = delta + F::one();
-        let epsilon_one_plus_delta = epsilon * one_plus_delta;
 
-        //
-        // - q_k(X) * f_eval * lookup_separation_challenge
+        // q_lookup(X) * f_eval * lookup_separation_challenge
         let a = {
             let a_0 =
                 a_eval + zeta * b_eval + zeta_sq * c_eval + zeta_cu * d_eval;
 
-            &self.q_lookup.0 * ((a_0 - f_eval) * lookup_separation_challenge)
+            &self.q_lookup.0 * ((a_0 - f_eval) * l_sep_3)
         };
 
-        // p(X) * L0(z) * α_1^2
-        let b = { &p_poly * (l1_eval * l_sep_2) };
+        a
 
-        // p(X) * (1 + δ) * (ε + f_bar) * (ε(1+δ) + t_bar + δ*tω_bar) * α_1^3
-        let c = {
-            let c_0 = epsilon + f_eval;
-            let c_1 = epsilon_one_plus_delta + t_eval + delta * t_next_eval;
-
-            &p_poly * (one_plus_delta * c_0 * c_1 * l_sep_3)
-        };
-
-        // − pω_bar * (ε(1+δ) + h1_bar + δh2_bar) * h2(X) * α_1^3
-        let d = {
-            let d_0 = epsilon_one_plus_delta + h_1_eval + delta * h_2_eval;
-
-            &h_2_poly * (-p_next_eval * d_0 * l_sep_3)
-        };
-
-        a + b + c + d
     }
 
     fn compress(

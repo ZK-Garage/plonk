@@ -312,6 +312,11 @@ where
             zeta,
         );
 
+        // Compute table poly
+        let mut table_poly = DensePolynomial::from_coefficients_vec(
+            domain.ifft(&compressed_t_multiset.0),
+        );
+
         // Compute query table f
         // When q_lookup[i] is zero the wire value is replaced with a dummy
         // value Currently set as the first row of the public table
@@ -365,12 +370,10 @@ where
         transcript.append(b"f", f_poly_commit[0].commitment());
 
         // Compute s, as the sorted and concatenated version of f and t
-        let s = compressed_t_multiset
-            .sorted_concat(&compressed_f_multiset)
+        let (h_1, h_2) = compressed_t_multiset
+            .sorted_halve(&compressed_f_multiset)
             .unwrap();
 
-        // Compute first and second halves of s, as h_1 and h_2
-        let (h_1, h_2) = s.halve_alternating();
 
         // Compute h polys
         let mut h_1_poly = DensePolynomial::from_coefficients_vec(domain.ifft(&h_1.0));
@@ -406,21 +409,15 @@ where
         let epsilon = transcript.challenge_scalar(b"epsilon");
         transcript.append(b"epsilon", &epsilon);
 
-        // Compute permutation challenge `theta`.
-        let theta = transcript.challenge_scalar(b"theta");
-        transcript.append(b"theta", &theta);
-        
         // Challenges must be different
         assert!(beta != gamma, "challenges must be different");
         assert!(beta != delta, "challenges must be different");
         assert!(beta != epsilon, "challenges must be different");
-        assert!(beta != theta, "challenges must be different");
         assert!(gamma != delta, "challenges must be different");
         assert!(gamma != epsilon, "challenges must be different");
-        assert!(gamma != theta, "challenges must be different");
         assert!(delta != epsilon, "challenges must be different");
-        assert!(delta != theta, "challenges must be different");
-        assert!(epsilon != theta, "challenges must be different");
+
+        
 
         let mut z_poly = DensePolynomial::from_coefficients_slice(
             &self.cs.perm.compute_permutation_poly(
@@ -450,15 +447,15 @@ where
 
         // Compute mega permutation polynomial.
         // Compute lookup permutation poly
-        let p_poly = DensePolynomial::from_coefficients_slice(
-            &self.cs.perm.compute_mega_permutation_poly(
+        let z_2_poly = DensePolynomial::from_coefficients_slice(
+            &self.cs.perm.compute_lookup_permutation_poly(
                 &domain,
                 &compressed_f_multiset.0,
                 &compressed_t_multiset.0,
                 &h_1.0,
                 &h_2.0,
-                &delta,
-                &epsilon,
+                delta,
+                epsilon,
             ),
         );
 
@@ -498,15 +495,21 @@ where
             &domain,
             prover_key,
             &z_poly,
+            &z_2_poly,
             &w_l_poly,
             &w_r_poly,
             &w_o_poly,
             &w_4_poly,
             &pi_poly,
             &f_poly,
+     &table_poly,
+            &h_1_poly,
+            &h_2_poly,
             &alpha,
             &beta,
             &gamma,
+            &delta,
+            &epsilon,
             &zeta,
             &range_sep_challenge,
             &logic_sep_challenge,
@@ -550,10 +553,12 @@ where
             &alpha,
             &beta,
             &gamma,
+            &zeta,
             &range_sep_challenge,
             &logic_sep_challenge,
             &fixed_base_sep_challenge,
             &var_base_sep_challenge,
+            &lookup_sep_challenge,
             &z_challenge,
             &w_l_poly,
             &w_r_poly,
@@ -561,6 +566,11 @@ where
             &w_4_poly,
             &t_poly,
             &z_poly,
+            &z_2_poly,
+            &f_poly,
+            &h_1_poly,
+            &h_2_poly,
+            &table_poly
         )?;
 
         
@@ -570,6 +580,7 @@ where
         transcript.append(b"b_eval", &evaluations.proof.b_eval);
         transcript.append(b"c_eval", &evaluations.proof.c_eval);
         transcript.append(b"d_eval", &evaluations.proof.d_eval);
+        transcript.append(b"f_eval", &evaluations.proof.f_eval);
         transcript.append(b"a_next_eval", &evaluations.proof.a_next_eval);
         transcript.append(b"b_next_eval", &evaluations.proof.b_next_eval);
         transcript.append(b"d_next_eval", &evaluations.proof.d_next_eval);
@@ -581,8 +592,19 @@ where
         transcript.append(b"q_c_eval", &evaluations.proof.q_c_eval);
         transcript.append(b"q_l_eval", &evaluations.proof.q_l_eval);
         transcript.append(b"q_r_eval", &evaluations.proof.q_r_eval);
+        transcript
+            .append(b"q_lookup_eval", &evaluations.proof.q_lookup_eval);
         transcript.append(b"perm_eval", &evaluations.proof.permutation_eval);
-        transcript.append(b"t_eval", &evaluations.quot_eval);
+        transcript.append(
+            b"lookup_perm_eval",
+            &evaluations.proof.lookup_perm_eval,
+        );
+        transcript.append(b"h_1_eval", &evaluations.proof.h_1_eval);
+        transcript
+            .append(b"h_1_next_eval", &evaluations.proof.h_1_next_eval);
+        transcript.append(b"h_2_eval", &evaluations.proof.h_2_eval);
+        transcript.append(b"lookup_perm_eval", &evaluations.proof.lookup_perm_eval);
+        transcript.append(b"quot_eval", &evaluations.quot_eval);
         transcript.append(
             b"r_eval",
             &evaluations.proof.linearisation_polynomial_eval,
