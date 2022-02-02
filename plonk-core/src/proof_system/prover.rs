@@ -123,27 +123,6 @@ where
         )
     }
 
-    // TODO: no longer needed, eliminate
-    /// Computes the quotient Opening [`DensePolynomial`].
-    // fn compute_quotient_opening_poly(
-    //     n: usize,
-    //     t_1_poly: &DensePolynomial<F>,
-    //     t_2_poly: &DensePolynomial<F>,
-    //     t_3_poly: &DensePolynomial<F>,
-    //     t_4_poly: &DensePolynomial<F>,
-    //     z_challenge: &F,
-    // ) -> DensePolynomial<F> {
-    //     // Compute z^n , z^2n , z^3n
-    //     let z_n = z_challenge.pow(&[n as u64, 0, 0, 0]);
-    //     let z_two_n = z_challenge.pow(&[2 * n as u64, 0, 0, 0]);
-    //     let z_three_n = z_challenge.pow(&[3 * n as u64, 0, 0, 0]);
-    //     let a = t_1_poly;
-    //     let b = t_2_poly * z_n;
-    //     let c = t_3_poly * z_two_n;
-    //     let d = t_4_poly * z_three_n;
-    //     a + &b + c + d
-    // }
-
     /// Convert variables to their actual witness values.
     fn to_scalars(&self, vars: &[Variable]) -> Vec<F> {
         vars.iter().map(|var| self.cs.variables[var]).collect()
@@ -454,16 +433,6 @@ where
         //
         // We merge the quotient polynomial using the `z_challenge` so the SRS
         // is linear in the circuit size `n`
-
-        //TODO eliminate this
-        // let quot = Self::compute_quotient_opening_poly(
-        //     n,
-        //     &t_1_poly,
-        //     &t_2_poly,
-        //     &t_3_poly,
-        //     &t_4_poly,
-        //     &z_challenge,
-        // );
 
         // Compute aggregate witness to polynomials evaluated at the evaluation
         // challenge `z`

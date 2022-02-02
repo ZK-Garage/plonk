@@ -234,12 +234,6 @@ where
                 transcript.append(static_label.as_bytes(), eval);
             });
 
-        // TODO elimnate this
-        // transcript.append(b"t_eval", &t_eval);
-        // transcript
-        //     .append(b"r_eval",
-        // &self.evaluations.linearisation_polynomial_eval);
-
         // Compute linearisation commitment
         let lin_comm = self.compute_linearisation_commitment::<P>(
             &domain,
@@ -386,74 +380,6 @@ where
         // Return r_0
         pi_eval - b - c
     }
-
-    // TODO: Remove this
-    // fn compute_quotient_evaluation(
-    //     &self,
-    //     domain: &GeneralEvaluationDomain<F>,
-    //     pub_inputs: &[F],
-    //     alpha: F,
-    //     beta: F,
-    //     gamma: F,
-    //     z_challenge: F,
-    //     z_h_eval: F,
-    //     l1_eval: F,
-    //     z_hat_eval: F,
-    // ) -> F {
-    //     // Compute the public input polynomial evaluated at `z_challenge`
-    //     let pi_eval = compute_barycentric_eval(pub_inputs, z_challenge,
-    // domain);
-
-    //     let alpha_sq = alpha.square();
-    //     // r + PI(z)
-    //     let a = self.evaluations.linearisation_polynomial_eval + pi_eval;
-
-    //     // a + beta * sigma_1 + gamma
-    //     let beta_sig1 = beta * self.evaluations.perm_evals.left_sigma_eval;
-    //     let b_0 = self.evaluations.wire_evals.a_eval + beta_sig1 + gamma;
-
-    //     // b+ beta * sigma_2 + gamma
-    //     let beta_sig2 = beta * self.evaluations.perm_evals.right_sigma_eval;
-    //     let b_1 = self.evaluations.wire_evals.b_eval + beta_sig2 + gamma;
-
-    //     // c+ beta * sigma_3 + gamma
-    //     let beta_sig3 = beta * self.evaluations.perm_evals.out_sigma_eval;
-    //     let b_2 = self.evaluations.wire_evals.c_eval + beta_sig3 + gamma;
-
-    //     // ((d + gamma) * z_hat) * alpha
-    //     let b_3 =
-    //         (self.evaluations.wire_evals.d_eval + gamma) * z_hat_eval *
-    // alpha;
-
-    //     let b = b_0 * b_1 * b_2 * b_3;
-
-    //     // l_1(z) * alpha^2
-    //     let c = l1_eval * alpha_sq;
-
-    //     // Return t_eval
-    //     (a - b - c) * z_h_eval.inverse().unwrap()
-    // }
-    // /// Computes the quotient polynomial commitment at `z_challenge`.
-    // fn compute_quotient_commitment(
-    //     &self,
-    //     z_challenge: &F,
-    //     n: usize,
-    // ) -> PC::Commitment {
-    //     let n = n as u64;
-    //     let z_n = z_challenge.pow(&[n, 0, 0, 0]);
-    //     let z_two_n = z_challenge.pow(&[2 * n, 0, 0, 0]);
-    //     let z_three_n = z_challenge.pow(&[3 * n, 0, 0, 0]);
-
-    //     PC::multi_scalar_mul(
-    //         &[
-    //             self.t_1_comm.clone(),
-    //             self.t_2_comm.clone(),
-    //             self.t_3_comm.clone(),
-    //             self.t_4_comm.clone(),
-    //         ],
-    //         &[F::one(), z_n, z_two_n, z_three_n],
-    //     )
-    // }
 
     /// Computes the commitment to `[r]_1`.
     fn compute_linearisation_commitment<P>(

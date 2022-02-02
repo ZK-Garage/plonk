@@ -101,8 +101,6 @@ pub struct CustomEvaluations<F>
 where
     F: Field,
 {
-    // TODO: Decide best data structure
-    // pub vals: HashMap<Into<String>, F>,
     pub vals: Vec<(String, F)>,
 }
 
@@ -155,10 +153,6 @@ where
     // are no other gates (a purely arithmetic circuit)
     /// Evaluation of the arithmetic selector polynomial at `z`.
     pub q_arith_eval: F,
-    // TODO This evaluation can be removed, making the adjustment for the
-    // linearisation polynomial proposed in the last version of the print
-    // Evaluation of the linearisation sigma polynomial at `z`.
-    // pub linearisation_polynomial_eval: F,
 }
 
 /// Compute the linearisation polynomial.
