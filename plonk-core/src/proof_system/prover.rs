@@ -123,25 +123,26 @@ where
         )
     }
 
+    // TODO: no longer needed, eliminate
     /// Computes the quotient Opening [`DensePolynomial`].
-    fn compute_quotient_opening_poly(
-        n: usize,
-        t_1_poly: &DensePolynomial<F>,
-        t_2_poly: &DensePolynomial<F>,
-        t_3_poly: &DensePolynomial<F>,
-        t_4_poly: &DensePolynomial<F>,
-        z_challenge: &F,
-    ) -> DensePolynomial<F> {
-        // Compute z^n , z^2n , z^3n
-        let z_n = z_challenge.pow(&[n as u64, 0, 0, 0]);
-        let z_two_n = z_challenge.pow(&[2 * n as u64, 0, 0, 0]);
-        let z_three_n = z_challenge.pow(&[3 * n as u64, 0, 0, 0]);
-        let a = t_1_poly;
-        let b = t_2_poly * z_n;
-        let c = t_3_poly * z_two_n;
-        let d = t_4_poly * z_three_n;
-        a + &b + c + d
-    }
+    // fn compute_quotient_opening_poly(
+    //     n: usize,
+    //     t_1_poly: &DensePolynomial<F>,
+    //     t_2_poly: &DensePolynomial<F>,
+    //     t_3_poly: &DensePolynomial<F>,
+    //     t_4_poly: &DensePolynomial<F>,
+    //     z_challenge: &F,
+    // ) -> DensePolynomial<F> {
+    //     // Compute z^n , z^2n , z^3n
+    //     let z_n = z_challenge.pow(&[n as u64, 0, 0, 0]);
+    //     let z_two_n = z_challenge.pow(&[2 * n as u64, 0, 0, 0]);
+    //     let z_three_n = z_challenge.pow(&[3 * n as u64, 0, 0, 0]);
+    //     let a = t_1_poly;
+    //     let b = t_2_poly * z_n;
+    //     let c = t_3_poly * z_two_n;
+    //     let d = t_4_poly * z_three_n;
+    //     a + &b + c + d
+    // }
 
     /// Convert variables to their actual witness values.
     fn to_scalars(&self, vars: &[Variable]) -> Vec<F> {
@@ -403,7 +404,10 @@ where
             &w_r_poly,
             &w_o_poly,
             &w_4_poly,
-            &t_poly,
+            &t_1_poly,
+            &t_2_poly,
+            &t_3_poly,
+            &t_4_poly,
             &z_poly,
         )?;
 
@@ -445,59 +449,28 @@ where
                 let static_label = Box::leak(label.to_owned().into_boxed_str());
                 transcript.append(static_label.as_bytes(), eval);
             });
-        // transcript.append(
-        //     b"a_next_eval",
-        //     &evaluations.proof.custom_evals.get("a_next_eval"),
-        // );
-        // transcript.append(
-        //     b"b_next_eval",
-        //     &evaluations.proof.custom_evals.get("b_next_eval"),
-        // );
-        // transcript.append(
-        //     b"d_next_eval",
-        //     &evaluations.proof.custom_evals.get("d_next_eval"),
-        // );
-
-        // transcript.append(
-        //     b"q_c_eval",
-        //     &evaluations.proof.custom_evals.get("q_c_eval"),
-        // );
-        // transcript.append(
-        //     b"q_l_eval",
-        //     &evaluations.proof.custom_evals.get("q_l_eval"),
-        // );
-        // transcript.append(
-        //     b"q_r_eval",
-        //     &evaluations.proof.custom_evals.get("q_r_eval"),
-        // );
-
-        // Lastly, quotient and lienearisation poly evals
-        transcript.append(b"t_eval", &evaluations.quot_eval);
-        transcript.append(
-            b"r_eval",
-            &evaluations.proof.linearisation_polynomial_eval,
-        );
 
         // 5. Compute Openings using KZG10
         //
         // We merge the quotient polynomial using the `z_challenge` so the SRS
         // is linear in the circuit size `n`
 
-        let quot = Self::compute_quotient_opening_poly(
-            n,
-            &t_1_poly,
-            &t_2_poly,
-            &t_3_poly,
-            &t_4_poly,
-            &z_challenge,
-        );
+        //TODO eliminate this
+        // let quot = Self::compute_quotient_opening_poly(
+        //     n,
+        //     &t_1_poly,
+        //     &t_2_poly,
+        //     &t_3_poly,
+        //     &t_4_poly,
+        //     &z_challenge,
+        // );
 
         // Compute aggregate witness to polynomials evaluated at the evaluation
         // challenge `z`
         let aw_challenge: F = transcript.challenge_scalar(b"aggregate_witness");
 
         let aw_polys = [
-            label_polynomial!(quot),
+            // label_polynomial!(quot),
             label_polynomial!(lin_poly),
             label_polynomial!(prover_key.permutation.left_sigma.0.clone()),
             label_polynomial!(prover_key.permutation.right_sigma.0.clone()),

@@ -45,9 +45,9 @@ where
 {
     /// Proof-relevant Evaluations
     pub proof: ProofEvaluations<F>,
-
-    /// Evaluation of the linearisation sigma polynomial at `z`.
-    pub quot_eval: F,
+    // TODO Remove the whole sttructure
+    // Evaluation of the linearisation sigma polynomial at `z`.
+    // pub quot_eval: F,
 }
 
 /// Subset of the [`ProofEvaluations`]. Evaluations at `z` of the
@@ -155,11 +155,10 @@ where
     // are no other gates (a purely arithmetic circuit)
     /// Evaluation of the arithmetic selector polynomial at `z`.
     pub q_arith_eval: F,
-
     // TODO This evaluation can be removed, making the adjustment for the
     // linearisation polynomial proposed in the last version of the print
-    /// Evaluation of the linearisation sigma polynomial at `z`.
-    pub linearisation_polynomial_eval: F,
+    // Evaluation of the linearisation sigma polynomial at `z`.
+    // pub linearisation_polynomial_eval: F,
 }
 
 /// Compute the linearisation polynomial.
@@ -178,17 +177,19 @@ pub fn compute<F, P>(
     w_r_poly: &DensePolynomial<F>,
     w_o_poly: &DensePolynomial<F>,
     w_4_poly: &DensePolynomial<F>,
-    t_x_poly: &DensePolynomial<F>,
+    t_1_poly: &DensePolynomial<F>,
+    t_2_poly: &DensePolynomial<F>,
+    t_3_poly: &DensePolynomial<F>,
+    t_4_poly: &DensePolynomial<F>,
     z_poly: &DensePolynomial<F>,
 ) -> Result<(DensePolynomial<F>, Evaluations<F>), Error>
 where
     F: PrimeField,
     P: TEModelParameters<BaseField = F>,
 {
+    let n = domain.size();
     let omega = domain.group_gen();
     let shifted_z_challenge = *z_challenge * omega;
-
-    let quot_eval = t_x_poly.evaluate(z_challenge);
 
     // Wire evaluations
     let a_eval = w_l_poly.evaluate(z_challenge);
@@ -252,7 +253,7 @@ where
     );
 
     let permutation = prover_key.permutation.compute_linearisation(
-        domain.size(),
+        n,
         *z_challenge,
         (*alpha, *beta, *gamma),
         (a_eval, b_eval, c_eval, d_eval),
@@ -261,10 +262,26 @@ where
         z_poly,
     )?;
 
-    let linearisation_polynomial = gate_constraints + permutation;
-    let linearisation_polynomial_eval =
-        linearisation_polynomial.evaluate(z_challenge);
+    // Compute the last term in the linearisation polynomial:
+    // - Z_h(z_challenge) * [t_1(X) + z_challenge^n * t_2(X) + z_challenge^2n *
+    //   t_3(X) + z_challenge^3n * t_4(X)]
 
+    let vanishing_poly_eval =
+        domain.evaluate_vanishing_polynomial(*z_challenge);
+    let z_challenge_to_n = vanishing_poly_eval + F::one();
+    let z_challenge_to_2n = z_challenge_to_n * z_challenge_to_n;
+    let z_challenge_to_3n = z_challenge_to_2n * z_challenge_to_n;
+
+    // TODO optimize multiplications by add then mul
+    let quotient_term = &(t_1_poly
+        + &(t_2_poly * z_challenge_to_n)
+        + t_3_poly * z_challenge_to_2n
+        + t_4_poly * z_challenge_to_3n)
+        * vanishing_poly_eval;
+    let negative_quotient_term = &quotient_term * (-F::one());
+
+    let linearisation_polynomial =
+        gate_constraints + permutation + negative_quotient_term;
     Ok((
         linearisation_polynomial,
         Evaluations {
@@ -273,9 +290,7 @@ where
                 q_arith_eval,
                 perm_evals,
                 custom_evals,
-                linearisation_polynomial_eval,
             },
-            quot_eval,
         },
     ))
 }
