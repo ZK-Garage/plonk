@@ -91,8 +91,8 @@ where
 {
     let label = b"ark".as_slice();
 
-    const MINIMUM_DEGREE: usize = 2;
-    const MAXIMUM_DEGREE: usize = 5;
+    const MINIMUM_DEGREE: usize = 5;
+    const MAXIMUM_DEGREE: usize = 19;
 
     let pp = HC::setup(
         // +1 per wire, +2 for the permutation poly
