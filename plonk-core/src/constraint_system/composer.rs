@@ -23,7 +23,7 @@ use core::marker::PhantomData;
 use hashbrown::HashMap;
 
 /// The StandardComposer is the circuit-builder tool that the `plonk` repository
-/// provides to create, stored and transformed circuit descriptions 
+/// provides to create, stored and transformed circuit descriptions
 /// into a [`Proof`](crate::proof_system::Proof) at some point.
 ///
 /// A StandardComposer stores the fullcircuit information, being this one
@@ -33,8 +33,8 @@ use hashbrown::HashMap;
 /// basically the Permutation argument etc..).
 ///
 /// The StandardComposer also grants us a way to introduce our secret
-/// witnesses in the form of a [`Variable`] into the circuit description as well as
-/// the public inputs. We can do this with methods like
+/// witnesses in the form of a [`Variable`] into the circuit description as well
+/// as the public inputs. We can do this with methods like
 /// [`StandardComposer::add_input`].
 ///
 /// The StandardComposer also contains as associated functions all the
@@ -231,7 +231,7 @@ where
         // Get a new Variable from the permutation
         let var = self.perm.new_variable();
         // The composer now links the Variable returned from
-        // the Permutation to the value F. 
+        // the Permutation to the value F.
         self.variables.insert(var, s);
 
         var
