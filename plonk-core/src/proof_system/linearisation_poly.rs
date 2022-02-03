@@ -263,14 +263,13 @@ where
     let vanishing_poly_eval =
         domain.evaluate_vanishing_polynomial(*z_challenge);
     let z_challenge_to_n = vanishing_poly_eval + F::one();
-    let z_challenge_to_2n = z_challenge_to_n * z_challenge_to_n;
-    let z_challenge_to_3n = z_challenge_to_2n * z_challenge_to_n;
 
-    // TODO optimize multiplications by add then mul
-    let quotient_term = &(t_1_poly
-        + &(t_2_poly * z_challenge_to_n)
-        + t_3_poly * z_challenge_to_2n
-        + t_4_poly * z_challenge_to_3n)
+    let quotient_term = &(&(&(&(&(&(t_4_poly * z_challenge_to_n)
+        + t_3_poly)
+        * z_challenge_to_n)
+        + t_2_poly)
+        * z_challenge_to_n)
+        + t_1_poly)
         * vanishing_poly_eval;
     let negative_quotient_term = &quotient_term * (-F::one());
 
