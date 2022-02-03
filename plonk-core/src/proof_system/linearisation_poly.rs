@@ -33,23 +33,6 @@ use super::{
     CustomValues,
 };
 
-/// Polynomial Evaluations
-///
-/// This `struct` keeps track of polynomial evaluations at points `z` and/or `z
-/// * w` where `w` is a root of unit.
-#[derive(CanonicalDeserialize, CanonicalSerialize, derivative::Derivative)]
-#[derivative(Clone, Debug, Default, Eq, PartialEq)]
-pub struct Evaluations<F>
-where
-    F: Field,
-{
-    /// Proof-relevant Evaluations
-    pub proof: ProofEvaluations<F>,
-    // TODO Remove the whole sttructure
-    // Evaluation of the linearisation sigma polynomial at `z`.
-    // pub quot_eval: F,
-}
-
 /// Subset of the [`ProofEvaluations`]. Evaluations at `z` of the
 /// wire polynomials
 #[derive(CanonicalDeserialize, CanonicalSerialize, derivative::Derivative)]
@@ -130,8 +113,7 @@ where
     }
 }
 
-/// Subset of all of the evaluations. These evaluations
-/// are added to the [`Proof`](super::Proof).
+/// Set of evaluations that form the [`Proof`](super::Proof).
 #[derive(CanonicalDeserialize, CanonicalSerialize, derivative::Derivative)]
 #[derivative(Clone, Debug, Default, Eq, PartialEq)]
 pub struct ProofEvaluations<F>
@@ -176,7 +158,7 @@ pub fn compute<F, P>(
     t_3_poly: &DensePolynomial<F>,
     t_4_poly: &DensePolynomial<F>,
     z_poly: &DensePolynomial<F>,
-) -> Result<(DensePolynomial<F>, Evaluations<F>), Error>
+) -> Result<(DensePolynomial<F>, ProofEvaluations<F>), Error>
 where
     F: PrimeField,
     P: TEModelParameters<BaseField = F>,
@@ -277,13 +259,11 @@ where
         gate_constraints + permutation + negative_quotient_term;
     Ok((
         linearisation_polynomial,
-        Evaluations {
-            proof: ProofEvaluations {
-                wire_evals,
-                q_arith_eval,
-                perm_evals,
-                custom_evals,
-            },
+        ProofEvaluations {
+            wire_evals,
+            q_arith_eval,
+            perm_evals,
+            custom_evals,
         },
     ))
 }

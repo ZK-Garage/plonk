@@ -392,35 +392,28 @@ where
 
         // Add evaluations to transcript.
         // First wire evals
-        transcript.append(b"a_eval", &evaluations.proof.wire_evals.a_eval);
-        transcript.append(b"b_eval", &evaluations.proof.wire_evals.b_eval);
-        transcript.append(b"c_eval", &evaluations.proof.wire_evals.c_eval);
-        transcript.append(b"d_eval", &evaluations.proof.wire_evals.d_eval);
+        transcript.append(b"a_eval", &evaluations.wire_evals.a_eval);
+        transcript.append(b"b_eval", &evaluations.wire_evals.b_eval);
+        transcript.append(b"c_eval", &evaluations.wire_evals.c_eval);
+        transcript.append(b"d_eval", &evaluations.wire_evals.d_eval);
 
         // TODO Decide if arith_selector should be custom
-        transcript.append(b"q_arith_eval", &evaluations.proof.q_arith_eval);
+        transcript.append(b"q_arith_eval", &evaluations.q_arith_eval);
 
         // Second permutation evals
-        transcript.append(
-            b"left_sig_eval",
-            &evaluations.proof.perm_evals.left_sigma_eval,
-        );
+        transcript
+            .append(b"left_sig_eval", &evaluations.perm_evals.left_sigma_eval);
         transcript.append(
             b"right_sig_eval",
-            &evaluations.proof.perm_evals.right_sigma_eval,
+            &evaluations.perm_evals.right_sigma_eval,
         );
-        transcript.append(
-            b"out_sig_eval",
-            &evaluations.proof.perm_evals.out_sigma_eval,
-        );
-        transcript.append(
-            b"perm_eval",
-            &evaluations.proof.perm_evals.permutation_eval,
-        );
+        transcript
+            .append(b"out_sig_eval", &evaluations.perm_evals.out_sigma_eval);
+        transcript
+            .append(b"perm_eval", &evaluations.perm_evals.permutation_eval);
 
         // Third, all evals needed for custom gates
         evaluations
-            .proof
             .custom_evals
             .vals
             .iter()
@@ -496,7 +489,7 @@ where
             t_4_comm: t_commits[3].commitment().clone(),
             aw_opening,
             saw_opening,
-            evaluations: evaluations.proof,
+            evaluations,
         })
     }
 
