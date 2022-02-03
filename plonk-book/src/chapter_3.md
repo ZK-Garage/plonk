@@ -4,50 +4,50 @@
 PLONK is a generic Rust PLONK implementation using arkworks as a backend. This PLONK library is one of many projects implementing PLONK like: 
 TurboPlonk, UltraPlonk, Plonky, ShPlonk, PLOOKUP, PLONKUP, halo2 etc.
 
-PLONK is however the only generic implementation which allows any curve implementation or commitment scheme to be used and isn’t 
-restricted to only one implementation like other existing libraries.
+PLONK is however the only generic implementation which allows any curve implementation or commitment scheme to be used and unlike other libraries is not restricted to only one implementation.
 
 
 ## State of the art
 
-In 2020, AZTEC team has developed PLONK which uses KZG's pairing-based polynomial commitment scheme in order to bring a universal zkSNARK setup. 
-Since then, PLONK has become very popular and lots of projects like Matter Labs, Zcash's Halo 2, Mina, Mir...etc started using it and developing their own variations of it. 
+The AZTEC team developed PLONK in 2020. It uses the KZG's pairing-based polynomial commitment scheme and this allows it to be universal, i.e., the same KZG commitment setup parameters an be used for zkSNARK proofs of circuits up to a certain size. 
+Since then, PLONK has become very popular and lots of projects like Matter Labs, Zcash's Halo 2, Mina, Mir and others started using it and developed their own variations. 
 
-Both Mir and Zcash use PLONK combined with [Halo’s polynomial commitment scheme](https://eprint.iacr.org/2019/1021.pdf) for their libraries [Plonky](https://github.com/mir-protocol/plonky) and Halo2. Halo based schemes do recursive proofs without pairings using elliptic curves that are not pairing friendly and can run without the need for trusted setups. In a recursive proof, the verifier is written inside the circuit which allows us to verify a proof inside of another proof while in a standard proof system there is a prover and a verifier. 
-In a KZG system, the proof size is very small (less than a kilobyte) and it's constant and also the verification time is constant, it’s also easy to verify on Ethereum but recursion is hard to do with pairings. 
-Halo based schemes have decent proof size and prover time, but take linear time to verify and it’s not possible to verify on Ethereum.
+Both Mir and Zcash use PLONK combined with [Halo’s polynomial commitment scheme](https://eprint.iacr.org/2019/1021.pdf) for their libraries [Plonky](https://github.com/mir-protocol/plonky) and [Halo2](https://github.com/zcash/halo2). Halo based schemes do recursive proofs without pairings using elliptic curves that are not pairing friendly and can run without the need for trusted setups. In a recursive proof, the verifier is coded inside the circuit which allows us to verify a proof provided as part of the witness inside of another proof. In this way the verifier effectively checks many proofs, even though it only verifies the outermost proof.
 
-Mir has recently developed a more optimized proving system Plonky2 based on PLONK and FRI. 
-FRI-based ZK-STARKs algorithm provides both quantum-resistance and does not require any trusted setups while the KZG scheme uses elliptic curve pairing which is not quantum resistant and requires a third-party trusted setup. FRI has a blowup factor which measures how much redundancy a polynomial needs to add before the commitment is generated and thus makes the prover faster. 
+In a KZG system, the proof size is very small (less than a kilobyte), constant in the size of the circuit and the witness, and also the verification time is constant. This makes it easier to verify on Ethereum but recursion is harder to do with pairings. 
+Halo based schemes have decent proof size and prover time, but take linear time to verify and they can currently not be verified on Ethereum.
+
+Mir recently developed an optimized proving system [Plonky2](https://github.com/mir-protocol/plonky2) based on PLONK and FRI polynomial commitments. 
+A FRI-based ZK-STARKs algorithm provides both quantum-resistance and does not require any trusted setups while the KZG scheme uses elliptic curve pairing which is not quantum resistant and requires a third-party trusted setup. FRI has a blowup factor which measures how much redundancy a polynomial needs to add before the commitment is generated and thus makes the prover faster. 
 Plonky2 claims a 100x speed up for ethereum for $170ms$ comparing to Plonky which takes $15s$ for proving times. 
 This PLONK repo is an optimization of the original PLONK protocol and guarantees $3.44s$ for proving time and $4.50ms$ for verifier speed comparing to $60$ proof times in the original PLONK design.
 
-A differentiating factor this PLONK library is the fact that it uses Arkworks generic backend, a rust library that abstracts over the curves and over the fields so you can use any algorithm in a generic way. This implementations is therefore valid for any curve implementation for pairing curves, for edwards twisted curves….etc.  
-Our PLONK also uses a generic polynomial commitment based on [ark-poly-commit](https://docs.rs/ark-poly-commit/0.3.0/ark_poly_commit/) which provides various constructions of polynomial commitment schemes. As a result, this lib can leverage other commitment schemes like quantum resistent FRI and not be restricted only to KZG10.
+A differentiating factor of this PLONK library is that it uses Arkworks generic backend, a rust library that abstracts over mathematical curves and fields and allows to program algorithm in a generic field agnostic way. This implementations is therefore valid for any curve implementation, e.g., for various pairing curves and edwards twisted curves.  
+Our PLONK implementation also uses a generic polynomial commitment scheme based on [ark-poly-commit](https://docs.rs/ark-poly-commit/0.3.0/ark_poly_commit/) which provides various constructions of polynomial commitment schemes. As a result, the library can potentially leverage other commitment schemes like quantum resistent FRI and is not restricted only to KZG10.
 
-There is no other library right which allows you to have the freedom of using generic parameters. Zcash's Halo2 and Plonky use HALO commitment scheme while plonky2 uses only FRI scheme. In terms of elliptic curves and Aztecs implementation of PLONK is based on BN256.
+There is currently no other library that allows for the freedom of generic parameters. Zcash's Halo2 and Plonky use the HALO commitment scheme while plonky2 uses only FRI scheme. In terms of elliptic curves, the Aztecs implementation of PLONK is based on BN256.
+
 ## Circuit implementation
 
-The implementation is an optimization of the original PLONK protocol as it enables lookup table to the PLONK circuit. This optimization allows for precomputation of some of the operations that are not snark friendly like bit operations (see [PLOOKUP](https://eprint.iacr.org/2020/315.pdf) for further explanation on PLONK + LOOKUP tables).
+This implementation is an optimization of the original PLONK protocol and adds the support of lookup table to PLONK circuit. This optimization allows for precomputation of some of the operations that are not snark friendly such as bit operations (see [PLOOKUP](https://eprint.iacr.org/2020/315.pdf) for further explanation on PLONK + LOOKUP tables).
 
-Our implementation also uses custom gates similarly to [TurboPolnk](https://docs.zkproof.org/pages/standards/accepted-workshop3/proposal-turbo_plonk.pdf) which allow us to define our own custom bit arithmetic operations like efficient Poseidon or MIMC hashes which are extremely efficient to evaluate inside of a snark. 
+Our implementation also supports custom gates similarly to [TurboPlonk](https://docs.zkproof.org/pages/standards/accepted-workshop3/proposal-turbo_plonk.pdf). This allow us to define our own custom bit arithmetic operations, e.g., to support efficient Poseidon or MIMC hashes that can be efficiently evaluate inside the SNARK circuit. 
 
 ### Custom gates
 
-The original Plonk proposes simple circuits whose gates only perform arithmetic operations: additions and multiplications. Plonk is able to extend an arithmetic "gate" and allows the creation of new customized gates which can perform so many different operations (EC additions, logical XOR, efficient Poseidon or Pedersen hashes....etc).
+The original Plonk protocol supported circuits whose gates perform basic arithmetic operations: additions and multiplications. Plonk  extends the arithmetic "gate" and allows for the creation of new customized gates which can perform many different operations such as EC additions, logical XOR, efficient Poseidon or Pedersen hashes.
 
-The different types of gates in this implementation are:
+The different types of gates currently supported by this implementation are:
 
-
-* [Arithmetic gate](https://github.com/ZK-Garage/plonk/blob/master/src/constraint_system/arithmetic.rs) (similar to Plonk)
-* [Logic gate](https://github.com/ZK-Garage/plonk/blob/master/src/constraint_system/logic.rs): Provide bitwise AND and XOR operations.
-* [Range gate](https://github.com/ZK-Garage/plonk/blob/master/src/constraint_system/range.rs).
+* [Arithmetic gate](https://github.com/ZK-Garage/plonk/blob/master/plonk-core/src/constraint_system/arithmetic.rs) (similar to Plonk)
+* [Logic gate](https://github.com/ZK-Garage/plonk/blob/master/plonk-core/src/constraint_system/logic.rs): Provide bitwise AND and XOR operations.
+* [Range gate](https://github.com/ZK-Garage/plonk/blob/master/plonk-core/src/constraint_system/range.rs).
 * EC operations:
-   - Curve addition ([Fixed base](https://github.com/ZK-Garage/plonk/blob/master/src/constraint_system/ecc/curve_addition/fixed_base_gate.rs) and [variable base](https://github.com/ZK-Garage/plonk/blob/master/src/constraint_system/ecc/curve_addition/variable_base_gate.rs))
-   - Scalar multiplication ([Fixed base](https://github.com/ZK-Garage/plonk/blob/master/src/constraint_system/ecc/scalar_mul/fixed_base.rs) and [variable base](https://github.com/ZK-Garage/plonk/blob/master/src/constraint_system/ecc/scalar_mul/variable_base.rs))
+   - Curve addition ([Fixed base](https://github.com/ZK-Garage/plonk/blob/master/plonk-core/src/constraint_system/ecc/curve_addition/fixed_base_gate.rs) and [variable base](https://github.com/ZK-Garage/plonk/plonk-core/blob/master/src/constraint_system/ecc/curve_addition/variable_base_gate.rs))
+   - Scalar multiplication ([Fixed base](https://github.com/ZK-Garage/plonk/blob/master/plonk-core/src/constraint_system/ecc/scalar_mul/fixed_base.rs) and [variable base](https://github.com/ZK-Garage/plonk/blob/master/plonk-core/src/constraint_system/ecc/scalar_mul/variable_base.rs))
 
 
-In order to use these gates only when needed we introduce selector polynomials (SP). These polynomials will either activate or deactivate a specific gate depending on their value. We use the following notation:
+Selector polynomials (SP) activate or deactivate a specific gate depending on the value of gate output selector polynomial. We use the following notation:
 
 * $q_{arith}$ : arithmetic gate selector polynomial
 * $q_{logic}$ : logic gate SP
@@ -59,11 +59,9 @@ In order to use these gates only when needed we introduce selector polynomials (
 The gate constraint equation is represented as follow:
 
 $$
-q_{arith} \cdot arith\_eq +
-q_{logic} \cdot  logic\_eq +
-q_{range} \cdot  range\_eq +
-q_{ECfix} \cdot   ECfix\_eq +
-q_{ECvar} \cdot  ECvar\_eq
+q_{arith} \cdot \textit{arith\_eq} + q_{logic} \cdot  \textit{logic\_eq} + q_{range} \cdot  \textit{range\_eq} +
+q_{ECfix} \cdot  \textit{ECfix\_eq} +
+q_{ECvar} \cdot  \textit{ECvar\_eq}
 =0
 $$
 
@@ -73,16 +71,16 @@ In order to use one of these gates, we set the value of its associated SP to $1$
 
 #### Design custom gates
 Before we explain how each of the previous mentioned custom gates are designed, we need to talk about fan-in 3 gates and why we use them at ark-plonk instead of fan-in 2 gates?
-The original Plonk design uses fan-in 2 gates which means each gates has two inputs and an output wires.
-These PLONK gates, on the other hand, are fan-in-3 gates, so they have one more wire which makes it 4 wires in total.
-We can see in the following figure how a fan-in 3 gate looks like:
+The original Plonk design uses fan-in 2 gates which means each gates has two inputs and one output wires.
+These new PLONK gates, on the other hand, are fan-in-3 gates, so they have one more wire making it 4 wires in total.
+The following figure depicts a fan-in 3 gate:
 
 <p align="center">
   <img  alt="circuit" width="250"src="images/images/gate.png" />
   
 </p>
  
-The original arithmetic constraint equation looks as follow
+The arithmetic constraint equation of the original PLONK paper is
 
 $$
 q_m \cdot a \cdot b + 
@@ -94,7 +92,7 @@ PI
 = 0
 $$
 
-where $a$ is the left wire, $b$ is the right wire, $c$ is the output wire and $q_l, q_r, q_o, q_m, q_c$ are the associated elector polynomials .After the addition of a fourth wire $d$ the equation turns into:
+where $a$ is the left wire, $b$ is the right wire, $c$ is the output wire and $q_l, q_r, q_o, q_m, q_c$ are the associated selector polynomials. After the addition of a fourth wire $d$ the equation becomes:
 $$
 q_m \cdot a \cdot b + 
 q_l \cdot a +
@@ -107,10 +105,10 @@ PI
 $$
 
 This repository still allows the use of fan-in 2 gates only by setting the 4th wire selector, $q_d$, to $0$. 
-The reason why we use this design instead of the original one is to have one more witness available as a way to reduce gate counts.
-This method however has some negative implications on both the proof size and the verifier's time. It will increase the permutation polynomial degree (instead of 3 identity permutations it will become 4) and thus an n−degree increase in the quotient polynomial (from $3n$ to $4n$)
- and an increase in the FFT degrees. We can expect the proof size( additional commitment to the wire polynomial and an additional group element). The verification time will also increase(21 exponentiations in  $G_1$ instead of $18$ for classic Plonk):
- * 7 from the linearization polynomial opening, 
+The advantage of this design is that it make an additonal witness element available and thus allows to reduce the gate counts.
+Its disadvantage is a negative impact on both the proof size and the verifier's execution time. It increases the permutation polynomial degree (to support 4 instead of 3 identity permutations) which leads to an n−degree increase in the quotient polynomial (from $3n$ to $4n$)
+and to an increase in the FFT degrees. The proof size increases by one additional commitment to the wire polynomial and one additional group element. The verification time will also increase (21 exponentiations in $G_1$ instead of $18$ for classic Plonk):
+* 7 from the linearization polynomial opening, 
 * 11 from the quotient polynomial opening
 * 1 from the evaluation commitment 
 * 1 from the polynomial commitment argument for evaluation at $z$  
@@ -118,12 +116,11 @@ This method however has some negative implications on both the proof size and th
 
 **Range gate**
 
-A range-constraint gate checks if a variable $v$ is inside a range $[0,n]$ or not where $n=$ number of bits (let's say we want to know if $v$ is in the range $[0,2^{10}-1]$ and $n=10$).
+A range-constraint gate checks if a variable $v$ is inside a range $[0,2^{n}-1]$ where $n$ is the bit size of the range. For instance, if we want to guarantee that $v$ is in the range $[0,1023]$, then $n=10$).
 
-The number of bits needs to be divisible by 2( $n$ % $2 == 0$)
+For technical reasons, the number of bits needs to be divisible by 2 ( $n$ % $2 == 0$)
        
 Each gate contains 4 accumulated quads (base-4 digits)
-
 which means $n_{quads}=n_{gates}*4$ where $n_{gates}$ is number of gates and $n_{quads}$ is number of quads.
 
 We have two cases:
