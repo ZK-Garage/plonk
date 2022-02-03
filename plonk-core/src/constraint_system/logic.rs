@@ -151,10 +151,10 @@ where
             //
             //
             //
-            //                   /                \          /                \ 
+            //                   /                \          /                \
             //  c     - 4 . c  = | a     - 4 . a  | (& OR ^) | b     - 4 . b  |
             //   i + 1       i   \  i + 1       i /          \  i + 1       i /
-            // 
+            //
             //
             let prev_left_accum = left_accumulator;
             let prev_right_accum = right_accumulator;
