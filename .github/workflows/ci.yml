@@ -1,16 +1,12 @@
 name: CI checks
 
-on:
+on: 
   pull_request:
     types: [synchronize, opened, reopened, ready_for_review]
-  push:
-    branches:
-      - master
-
-env:
+env: 
   RUSTFLAGS: "-D warnings"
 
-## `actions-rs/toolchain@v1` overwrite set to false so that
+## `actions-rs/toolchain@v1` overwrite set to false so that 
 ## `rust-toolchain` is always used and the only source of truth.
 
 jobs:
@@ -35,11 +31,6 @@ jobs:
         with:
           command: test
           args: --verbose --release --workspace --all-features
-      - name: Check Benchmarks
-        uses: actions-rs/cargo@v1
-        with:
-          command: bench
-          args: --verbose --workspace --all-features --no-run
 
   build:
     if: github.event.pull_request.draft == false
@@ -87,11 +78,11 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: doc
-          args: --workspace --all-features
+          args: --workspace --document-private-items --all-features
 
   fmt:
     if: github.event.pull_request.draft == false
-
+    
     name: Rustfmt
     timeout-minutes: 30
     runs-on: ubuntu-latest

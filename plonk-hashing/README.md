@@ -1,1 +1,0 @@
-# PLONK Hashing Library
