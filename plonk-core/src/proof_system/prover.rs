@@ -429,7 +429,6 @@ where
         let aw_challenge: F = transcript.challenge_scalar(b"aggregate_witness");
 
         let aw_polys = [
-            // label_polynomial!(quot),
             label_polynomial!(lin_poly),
             label_polynomial!(prover_key.permutation.left_sigma.0.clone()),
             label_polynomial!(prover_key.permutation.right_sigma.0.clone()),

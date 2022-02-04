@@ -180,27 +180,8 @@ where
             l1_eval,
             self.evaluations.perm_evals.permutation_eval,
         );
-        // Compute quotient polynomial evaluated at `z_challenge`
-        // let t_eval = self.compute_quotient_evaluation(
-        //     &domain,
-        //     pub_inputs,
-        //     alpha,
-        //     beta,
-        //     gamma,
-        //     z_challenge,
-        //     z_h_eval,
-        //     l1_eval,
-        //     self.evaluations.perm_evals.permutation_eval,
-        // );
-
-        // Compute commitment to quotient polynomial
-        // This method is necessary as we pass the `un-splitted` variation
-        // to our commitment scheme
-        // let t_comm =
-        //     self.compute_quotient_commitment(&z_challenge, domain.size());
 
         // Add evaluations to transcript
-
         transcript.append(b"a_eval", &self.evaluations.wire_evals.a_eval);
         transcript.append(b"b_eval", &self.evaluations.wire_evals.b_eval);
         transcript.append(b"c_eval", &self.evaluations.wire_evals.c_eval);
@@ -299,8 +280,6 @@ where
             label_commitment!(self.d_comm),
         ];
 
-        // TODO These custom values (a_next, b_next, d_next) should not be
-        // harcoded
         let saw_evals = [
             self.evaluations.perm_evals.permutation_eval,
             self.evaluations.custom_evals.get("a_next_eval"),
