@@ -105,7 +105,6 @@ where
     /// in the set of evaluations
     pub fn add(&mut self, label: &str, poly: DensePolynomial<F>, point: F) {
         if let Some(_l) = &self.vals.iter().find(|entry| entry.0 == label) {
-            return;
         } else {
             let eval = poly.evaluate(&point);
             let _ = &self.vals.push((label.to_string(), eval));
@@ -297,28 +296,28 @@ where
         &prover_key.range_selector.0,
         *range_separation_challenge,
         wit_vals,
-        RangeVals::from_evaluations(&custom_evals),
+        RangeVals::from_evaluations(custom_evals),
     );
 
     let logic = Logic::linearisation_term(
         &prover_key.logic_selector.0,
         *logic_separation_challenge,
         wit_vals,
-        LogicVals::from_evaluations(&custom_evals),
+        LogicVals::from_evaluations(custom_evals),
     );
 
     let fixed_base_scalar_mul = FixedBaseScalarMul::<F, P>::linearisation_term(
         &prover_key.fixed_group_add_selector.0,
         *fixed_base_separation_challenge,
         wit_vals,
-        FBSMVals::from_evaluations(&custom_evals),
+        FBSMVals::from_evaluations(custom_evals),
     );
 
     let curve_addition = CurveAddition::<F, P>::linearisation_term(
         &prover_key.variable_group_add_selector.0,
         *var_base_separation_challenge,
         wit_vals,
-        CAVals::from_evaluations(&custom_evals),
+        CAVals::from_evaluations(custom_evals),
     );
 
     arithmetic + range + logic + fixed_base_scalar_mul + curve_addition
