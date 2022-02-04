@@ -8,7 +8,7 @@
 //! of the PLONK Standard Composer, as well as the circuit
 //! tools and abstractions, used by the Composer to generate,
 //! build, preprocess circuits.
-pub(crate) mod composer;
+pub mod composer;
 pub(crate) mod variable;
 
 /// Simple Arithmetic gates
