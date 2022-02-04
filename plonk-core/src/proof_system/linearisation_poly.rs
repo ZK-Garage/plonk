@@ -129,12 +129,6 @@ where
     /// Evaluations needed for custom gates. This includes selector polynomials
     /// and evaluations of wire polynomials at an offset
     pub custom_evals: CustomEvaluations<F>,
-
-    // The arithmetic gates is not considered custom
-    // TODO It can be considered optional -> It should be removed when there
-    // are no other gates (a purely arithmetic circuit)
-    /// Evaluation of the arithmetic selector polynomial at `z`.
-    pub q_arith_eval: F,
 }
 
 /// Compute the linearisation polynomial.
@@ -208,6 +202,7 @@ where
 
     let custom_evals = CustomEvaluations {
         vals: vec![
+            label_eval!(q_arith_eval),
             label_eval!(q_c_eval),
             label_eval!(q_l_eval),
             label_eval!(q_r_eval),
@@ -261,7 +256,6 @@ where
         linearisation_polynomial,
         ProofEvaluations {
             wire_evals,
-            q_arith_eval,
             perm_evals,
             custom_evals,
         },

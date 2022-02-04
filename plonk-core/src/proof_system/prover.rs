@@ -397,9 +397,6 @@ where
         transcript.append(b"c_eval", &evaluations.wire_evals.c_eval);
         transcript.append(b"d_eval", &evaluations.wire_evals.d_eval);
 
-        // TODO Decide if arith_selector should be custom
-        transcript.append(b"q_arith_eval", &evaluations.q_arith_eval);
-
         // Second permutation evals
         transcript
             .append(b"left_sig_eval", &evaluations.perm_evals.left_sigma_eval);

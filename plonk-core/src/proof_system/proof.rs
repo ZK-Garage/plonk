@@ -206,8 +206,6 @@ where
         transcript.append(b"c_eval", &self.evaluations.wire_evals.c_eval);
         transcript.append(b"d_eval", &self.evaluations.wire_evals.d_eval);
 
-        transcript.append(b"q_arith_eval", &self.evaluations.q_arith_eval);
-
         transcript.append(
             b"left_sig_eval",
             &self.evaluations.perm_evals.left_sigma_eval,

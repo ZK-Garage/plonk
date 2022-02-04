@@ -132,7 +132,7 @@ where
         points: &mut Vec<PC::Commitment>,
         evaluations: &ProofEvaluations<F>,
     ) {
-        let q_arith_eval = evaluations.q_arith_eval;
+        let q_arith_eval = evaluations.custom_evals.get("q_arith_eval");
 
         scalars.push(
             evaluations.wire_evals.a_eval
