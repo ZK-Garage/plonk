@@ -1,11 +1,7 @@
 //! acknowledgement: adapted from FileCoin Project: https://github.com/filecoin-project/neptune/blob/master/src/matrix.rs
-use ark_std::{
-    iter::FromIterator,
-    ops::{Index, IndexMut},
-};
 
 use ark_ff::PrimeField;
-use ark_std::vec::*;
+use core::ops::{Index, IndexMut};
 
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub struct Matrix<T: Clone>(pub Vec<Vec<T>>);
@@ -290,6 +286,10 @@ impl<F: PrimeField> Matrix<F> {
         Some(result.into())
     }
 
+    /// Performs row operations to put a matrix in upper triangular form.
+    /// Each row operation is performed on `shadow` as well to keep track
+    /// of their cumulative effect.  In other words, row operations are
+    /// performed on the augmented matrix [self | shadow ].
     pub fn upper_triangular(&self, shadow: &mut Self) -> Option<Self> {
         assert!(self.is_square());
         let mut result = Vec::with_capacity(self.num_rows());
@@ -317,7 +317,10 @@ impl<F: PrimeField> Matrix<F> {
         Some(Matrix(result))
     }
 
-    /// `matrix` must be upper triangular.
+    /// Perform row operations to reduce `self` to the
+    /// identity matrix.  `self` must be upper triangular.
+    /// All operations are performed also on `shadow` to track
+    /// their cumulative effect.
     pub fn reduce_to_identity(&self, shadow: &mut Self) -> Option<Self> {
         let size = self.num_rows();
         let mut result: Vec<Vec<F>> = Vec::new();

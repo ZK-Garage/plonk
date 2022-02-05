@@ -6,8 +6,6 @@ use crate::poseidon::{
     round_numbers::calc_round_numbers,
 };
 use ark_ff::PrimeField;
-use ark_std::convert::TryInto;
-use ark_std::vec::*;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct PoseidonConstants<F: PrimeField> {
@@ -23,7 +21,8 @@ pub struct PoseidonConstants<F: PrimeField> {
 }
 
 impl<F: PrimeField> PoseidonConstants<F> {
-    // WIDTH = arity + 1. WIDTH is the *t* in Neptune's spec
+    /// Generate all constants needed for poseidon hash of specified
+    /// width.  Note that WIDTH = ARITY + 1
     pub fn generate<const WIDTH: usize>() -> Self {
         let arity = WIDTH - 1;
         let mds_matrices = MdsMatrices::new(WIDTH);

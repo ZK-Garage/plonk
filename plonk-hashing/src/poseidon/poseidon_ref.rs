@@ -5,10 +5,7 @@ use crate::poseidon::PoseidonError;
 use crate::poseidon::constants::PoseidonConstants;
 use ark_ec::TEModelParameters;
 use ark_ff::PrimeField;
-use ark_std::{
-    fmt::{Debug, Display},
-    marker::PhantomData,
-};
+use core::{fmt::Debug, marker::PhantomData};
 use derivative::Derivative;
 use plonk_core::{constraint_system::StandardComposer, prelude as plonk};
 

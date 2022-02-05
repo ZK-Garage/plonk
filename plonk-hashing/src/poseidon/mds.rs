@@ -20,6 +20,7 @@ impl<F: PrimeField> MdsMatrices<F> {
         Self::derive_mds_matrices(m)
     }
 
+    /// Given an MDS matrix `m`, compute all its associated matrices.
     pub(crate) fn derive_mds_matrices(m: Matrix<F>) -> Self {
         let m_inv = m.invert().expect("Derived MDS matrix is not invertible");
         let m_hat = m.minor(0, 0);
@@ -60,6 +61,8 @@ impl<F: PrimeField> MdsMatrices<F> {
         matrix
     }
 
+    /// Returns a matrix associated to `m` in the optimization of
+    /// MDS matrices.
     fn make_prime(m: &Matrix<F>) -> Matrix<F> {
         m.iter_rows()
             .enumerate()
@@ -78,6 +81,8 @@ impl<F: PrimeField> MdsMatrices<F> {
             .collect()
     }
 
+    /// Returns a matrix associated to `m` in the optimization of
+    /// MDS matrices.
     fn make_double_prime(m: &Matrix<F>, m_hat_inv: &Matrix<F>) -> Matrix<F> {
         let (v, w) = Self::make_v_w(m);
         let w_hat = m_hat_inv.right_apply(&w);
@@ -101,6 +106,8 @@ impl<F: PrimeField> MdsMatrices<F> {
             .collect()
     }
 
+    /// Returns two vectors associated to `m` in the optimization of
+    /// MDS matrices.
     fn make_v_w(m: &Matrix<F>) -> (Vec<F>, Vec<F>) {
         let v = m[0][1..].to_vec();
         let w = m.iter_rows().skip(1).map(|column| column[0]).collect();

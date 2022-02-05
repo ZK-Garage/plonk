@@ -11,7 +11,6 @@
 #![forbid(rustdoc::broken_intra_doc_links)]
 // #![forbid(missing_docs)]
 
-#[macro_use]
-pub extern crate ark_std;
+pub extern crate alloc;
 
 pub mod poseidon;

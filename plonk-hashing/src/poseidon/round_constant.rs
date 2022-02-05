@@ -1,7 +1,5 @@
+use alloc::collections::vec_deque::VecDeque;
 use ark_ff::{BigInteger, PrimeField};
-use ark_std::collections::VecDeque;
-use ark_std::vec::Vec;
-
 /// From the paper
 /// THe parameter describes the initial state of constant generation (80-bits)
 /// * `field`: description of field. b0, b1
