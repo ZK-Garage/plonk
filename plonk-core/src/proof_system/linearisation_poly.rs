@@ -8,11 +8,11 @@ use crate::{
     error::Error,
     label_eval,
     proof_system::{
-        ecc::{CurveAddition, FixedBaseScalarMul},
-        logic::Logic,
-        range::Range,
+        ecc::{CAVals, CurveAddition, FBSMVals, FixedBaseScalarMul},
+        logic::{Logic, LogicVals},
+        range::{Range, RangeVals},
         widget::GateConstraint,
-        ProverKey, WitnessValues,
+        CustomValues, ProverKey, WitnessValues,
     },
     util::EvaluationDomainExt,
 };
@@ -24,13 +24,6 @@ use ark_poly::{
 };
 use ark_serialize::{
     CanonicalDeserialize, CanonicalSerialize, Read, SerializationError, Write,
-};
-
-use super::{
-    ecc::{CAVals, FBSMVals},
-    logic::LogicVals,
-    range::RangeVals,
-    CustomValues,
 };
 
 /// Subset of the [`ProofEvaluations`]. Evaluations at `z` of the

@@ -9,11 +9,10 @@
 use crate::proof_system::{
     linearisation_poly::CustomEvaluations,
     widget::{GateConstraint, WitnessValues},
+    CustomValues,
 };
 use ark_ff::PrimeField;
 use core::marker::PhantomData;
-
-use super::CustomValues;
 
 /// Values needed for the computation of the logic gate constraint.
 pub struct LogicVals<F>

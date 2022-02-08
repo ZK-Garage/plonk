@@ -7,12 +7,11 @@
 //! Arithmetic Gates
 
 use crate::proof_system::linearisation_poly::ProofEvaluations;
+use crate::proof_system::WitnessValues;
 use ark_ff::{FftField, PrimeField};
 use ark_poly::{polynomial::univariate::DensePolynomial, Evaluations};
 use ark_poly_commit::PolynomialCommitment;
 use ark_serialize::*;
-
-use super::WitnessValues;
 
 /// Arithmetic Gates Prover Key
 #[derive(CanonicalDeserialize, CanonicalSerialize, derivative::Derivative)]

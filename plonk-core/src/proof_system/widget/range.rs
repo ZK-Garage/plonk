@@ -7,12 +7,11 @@
 //! Range Gate
 
 use crate::proof_system::{
-    linearisation_poly::CustomEvaluations, GateConstraint, WitnessValues,
+    linearisation_poly::CustomEvaluations, CustomValues, GateConstraint,
+    WitnessValues,
 };
 use ark_ff::PrimeField;
 use core::marker::PhantomData;
-
-use super::CustomValues;
 
 /// Values needed for the computation of the range gate constraint.
 pub struct RangeVals<F>

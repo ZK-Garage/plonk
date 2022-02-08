@@ -13,14 +13,15 @@ pub mod range;
 
 use crate::{
     commitment::HomomorphicCommitment,
-    proof_system::{linearisation_poly::ProofEvaluations, permutation},
+    proof_system::{
+        linearisation_poly::CustomEvaluations,
+        linearisation_poly::ProofEvaluations, permutation,
+    },
     transcript::TranscriptProtocol,
 };
 use ark_ff::PrimeField;
 use ark_poly::{univariate::DensePolynomial, Evaluations};
 use ark_serialize::*;
-
-use super::linearisation_poly::CustomEvaluations;
 
 /// Set of values needed for a custom gate
 pub trait CustomValues<F>
