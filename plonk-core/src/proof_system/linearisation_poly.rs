@@ -6,12 +6,13 @@
 
 use crate::{
     error::Error,
+    label_eval,
     proof_system::{
-        ecc::{CurveAddition, FixedBaseScalarMul},
-        logic::Logic,
-        range::Range,
+        ecc::{CAVals, CurveAddition, FBSMVals, FixedBaseScalarMul},
+        logic::{Logic, LogicVals},
+        range::{Range, RangeVals},
         widget::GateConstraint,
-        GateValues, ProverKey,
+        CustomValues, ProverKey, WitnessValues,
     },
     util::EvaluationDomainExt,
 };
@@ -25,26 +26,11 @@ use ark_serialize::{
     CanonicalDeserialize, CanonicalSerialize, Read, SerializationError, Write,
 };
 
-/// Polynomial Evaluations
-///
-/// This `struct` keeps track of polynomial evaluations at points `z` and/or `z
-/// * w` where `w` is a root of unit.
-pub struct Evaluations<F>
-where
-    F: Field,
-{
-    /// Proof-relevant Evaluations
-    pub proof: ProofEvaluations<F>,
-
-    /// Evaluation of the linearisation sigma polynomial at `z`.
-    pub quot_eval: F,
-}
-
-/// Subset of all of the evaluations. These evaluations
-/// are added to the [`Proof`](super::Proof).
+/// Subset of the [`ProofEvaluations`]. Evaluations at `z` of the
+/// wire polynomials
 #[derive(CanonicalDeserialize, CanonicalSerialize, derivative::Derivative)]
-#[derivative(Clone, Debug, Default, Eq, PartialEq)]
-pub struct ProofEvaluations<F>
+#[derivative(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub struct WireEvaluations<F>
 where
     F: Field,
 {
@@ -59,31 +45,16 @@ where
 
     /// Evaluation of the witness polynomial for the fourth wire at `z`.
     pub d_eval: F,
+}
 
-    /// Evaluation of the witness polynomial for the left wire at `z * omega`
-    /// where `omega` is a root of unity.
-    pub a_next_eval: F,
-
-    /// Evaluation of the witness polynomial for the right wire at `z * omega`
-    /// where `omega` is a root of unity.
-    pub b_next_eval: F,
-
-    /// Evaluation of the witness polynomial for the fourth wire at `z * omega`
-    /// where `omega` is a root of unity.
-    pub d_next_eval: F,
-
-    /// Evaluation of the arithmetic selector polynomial at `z`.
-    pub q_arith_eval: F,
-
-    /// Evaluation of the constant selector polynomial at `z`.
-    pub q_c_eval: F,
-
-    /// Evaluation of the left selector polynomial at `z`.
-    pub q_l_eval: F,
-
-    /// Evaluation of the right selector polynomial at `z`.
-    pub q_r_eval: F,
-
+/// Subset of the [`ProofEvaluations`]. Evaluations of the sigma and permutation
+/// polynomials at `z`  or `z *w` where `w` is the nth root of unity.
+#[derive(CanonicalDeserialize, CanonicalSerialize, derivative::Derivative)]
+#[derivative(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub struct PermutationEvaluations<F>
+where
+    F: Field,
+{
     /// Evaluation of the left sigma polynomial at `z`.
     pub left_sigma_eval: F,
 
@@ -93,12 +64,63 @@ where
     /// Evaluation of the out sigma polynomial at `z`.
     pub out_sigma_eval: F,
 
-    /// Evaluation of the linearisation sigma polynomial at `z`.
-    pub linearisation_polynomial_eval: F,
-
     /// Evaluation of the permutation polynomial at `z * omega` where `omega`
     /// is a root of unity.
     pub permutation_eval: F,
+}
+
+/// Subset of the [`ProofEvaluations`]. Evaluations at `z`  or `z *w` where `w`
+/// is the nth root of unity of selectors polynomials needed for custom gates
+#[derive(CanonicalDeserialize, CanonicalSerialize, derivative::Derivative)]
+#[derivative(Clone, Debug, Default, Eq, PartialEq)]
+pub struct CustomEvaluations<F>
+where
+    F: Field,
+{
+    pub vals: Vec<(String, F)>,
+}
+
+impl<F> CustomEvaluations<F>
+where
+    F: Field,
+{
+    /// Get the evaluation of the specified label.
+    /// This funtions panics if the requested label is not found
+    pub fn get(&self, label: &str) -> F {
+        if let Some(result) = &self.vals.iter().find(|entry| entry.0 == label) {
+            result.1
+        } else {
+            panic!("{} label not found in evaluations set", label)
+        }
+    }
+
+    /// Add evaluation of poly at point if the label is not already
+    /// in the set of evaluations
+    pub fn add(&mut self, label: &str, poly: DensePolynomial<F>, point: F) {
+        if let Some(_l) = &self.vals.iter().find(|entry| entry.0 == label) {
+        } else {
+            let eval = poly.evaluate(&point);
+            let _ = &self.vals.push((label.to_string(), eval));
+        }
+    }
+}
+
+/// Set of evaluations that form the [`Proof`](super::Proof).
+#[derive(CanonicalDeserialize, CanonicalSerialize, derivative::Derivative)]
+#[derivative(Clone, Debug, Default, Eq, PartialEq)]
+pub struct ProofEvaluations<F>
+where
+    F: Field,
+{
+    /// Wire evaluations
+    pub wire_evals: WireEvaluations<F>,
+
+    /// Permutation and sigma polynomials evaluations
+    pub perm_evals: PermutationEvaluations<F>,
+
+    /// Evaluations needed for custom gates. This includes selector polynomials
+    /// and evaluations of wire polynomials at an offset
+    pub custom_evals: CustomEvaluations<F>,
 }
 
 /// Compute the linearisation polynomial.
@@ -117,58 +139,84 @@ pub fn compute<F, P>(
     w_r_poly: &DensePolynomial<F>,
     w_o_poly: &DensePolynomial<F>,
     w_4_poly: &DensePolynomial<F>,
-    t_x_poly: &DensePolynomial<F>,
+    t_1_poly: &DensePolynomial<F>,
+    t_2_poly: &DensePolynomial<F>,
+    t_3_poly: &DensePolynomial<F>,
+    t_4_poly: &DensePolynomial<F>,
     z_poly: &DensePolynomial<F>,
-) -> Result<(DensePolynomial<F>, Evaluations<F>), Error>
+) -> Result<(DensePolynomial<F>, ProofEvaluations<F>), Error>
 where
     F: PrimeField,
     P: TEModelParameters<BaseField = F>,
 {
-    let quot_eval = t_x_poly.evaluate(z_challenge);
+    let n = domain.size();
+    let omega = domain.group_gen();
+    let shifted_z_challenge = *z_challenge * omega;
+
+    // Wire evaluations
     let a_eval = w_l_poly.evaluate(z_challenge);
     let b_eval = w_r_poly.evaluate(z_challenge);
     let c_eval = w_o_poly.evaluate(z_challenge);
     let d_eval = w_4_poly.evaluate(z_challenge);
+    let wire_evals = WireEvaluations {
+        a_eval,
+        b_eval,
+        c_eval,
+        d_eval,
+    };
+
+    // Permutation evaluations
     let left_sigma_eval =
         prover_key.permutation.left_sigma.0.evaluate(z_challenge);
     let right_sigma_eval =
         prover_key.permutation.right_sigma.0.evaluate(z_challenge);
     let out_sigma_eval =
         prover_key.permutation.out_sigma.0.evaluate(z_challenge);
+    let permutation_eval = z_poly.evaluate(&shifted_z_challenge);
+    let perm_evals = PermutationEvaluations {
+        left_sigma_eval,
+        right_sigma_eval,
+        out_sigma_eval,
+        permutation_eval,
+    };
+
+    // Arith selector evaluation
     let q_arith_eval = prover_key.arithmetic.q_arith.0.evaluate(z_challenge);
+
+    // Custom gate evaluations
     let q_c_eval = prover_key.arithmetic.q_c.0.evaluate(z_challenge);
     let q_l_eval = prover_key.arithmetic.q_l.0.evaluate(z_challenge);
     let q_r_eval = prover_key.arithmetic.q_r.0.evaluate(z_challenge);
 
-    let omega = domain.group_gen();
-    let shifted_z_challenge = *z_challenge * omega;
-
     let a_next_eval = w_l_poly.evaluate(&shifted_z_challenge);
     let b_next_eval = w_r_poly.evaluate(&shifted_z_challenge);
     let d_next_eval = w_4_poly.evaluate(&shifted_z_challenge);
-    let permutation_eval = z_poly.evaluate(&shifted_z_challenge);
+
+    let custom_evals = CustomEvaluations {
+        vals: vec![
+            label_eval!(q_arith_eval),
+            label_eval!(q_c_eval),
+            label_eval!(q_l_eval),
+            label_eval!(q_r_eval),
+            label_eval!(a_next_eval),
+            label_eval!(b_next_eval),
+            label_eval!(d_next_eval),
+        ],
+    };
 
     let gate_constraints = compute_gate_constraint_satisfiability::<F, P>(
         range_separation_challenge,
         logic_separation_challenge,
         fixed_base_separation_challenge,
         var_base_separation_challenge,
-        a_eval,
-        b_eval,
-        c_eval,
-        d_eval,
-        a_next_eval,
-        b_next_eval,
-        d_next_eval,
+        &wire_evals,
         q_arith_eval,
-        q_c_eval,
-        q_l_eval,
-        q_r_eval,
+        &custom_evals,
         prover_key,
     );
 
     let permutation = prover_key.permutation.compute_linearisation(
-        domain.size(),
+        n,
         *z_challenge,
         (*alpha, *beta, *gamma),
         (a_eval, b_eval, c_eval, d_eval),
@@ -177,32 +225,31 @@ where
         z_poly,
     )?;
 
-    let linearisation_polynomial = gate_constraints + permutation;
-    let linearisation_polynomial_eval =
-        linearisation_polynomial.evaluate(z_challenge);
+    // Compute the last term in the linearisation polynomial:
+    // - Z_h(z_challenge) * [t_1(X) + z_challenge^n * t_2(X) + z_challenge^2n *
+    //   t_3(X) + z_challenge^3n * t_4(X)]
 
+    let vanishing_poly_eval =
+        domain.evaluate_vanishing_polynomial(*z_challenge);
+    let z_challenge_to_n = vanishing_poly_eval + F::one();
+
+    let quotient_term = &(&(&(&(&(&(t_4_poly * z_challenge_to_n)
+        + t_3_poly)
+        * z_challenge_to_n)
+        + t_2_poly)
+        * z_challenge_to_n)
+        + t_1_poly)
+        * vanishing_poly_eval;
+    let negative_quotient_term = &quotient_term * (-F::one());
+
+    let linearisation_polynomial =
+        gate_constraints + permutation + negative_quotient_term;
     Ok((
         linearisation_polynomial,
-        Evaluations {
-            proof: ProofEvaluations {
-                a_eval,
-                b_eval,
-                c_eval,
-                d_eval,
-                a_next_eval,
-                b_next_eval,
-                d_next_eval,
-                q_arith_eval,
-                q_c_eval,
-                q_l_eval,
-                q_r_eval,
-                left_sigma_eval,
-                right_sigma_eval,
-                out_sigma_eval,
-                linearisation_polynomial_eval,
-                permutation_eval,
-            },
-            quot_eval,
+        ProofEvaluations {
+            wire_evals,
+            perm_evals,
+            custom_evals,
         },
     ))
 }
@@ -214,65 +261,56 @@ fn compute_gate_constraint_satisfiability<F, P>(
     logic_separation_challenge: &F,
     fixed_base_separation_challenge: &F,
     var_base_separation_challenge: &F,
-    a_eval: F,
-    b_eval: F,
-    c_eval: F,
-    d_eval: F,
-    a_next_eval: F,
-    b_next_eval: F,
-    d_next_eval: F,
+    wire_evals: &WireEvaluations<F>,
     q_arith_eval: F,
-    q_c_eval: F,
-    q_l_eval: F,
-    q_r_eval: F,
+    custom_evals: &CustomEvaluations<F>,
     prover_key: &ProverKey<F>,
 ) -> DensePolynomial<F>
 where
     F: PrimeField,
     P: TEModelParameters<BaseField = F>,
 {
-    let values = GateValues {
-        left: a_eval,
-        right: b_eval,
-        output: c_eval,
-        fourth: d_eval,
-        left_next: a_next_eval,
-        right_next: b_next_eval,
-        fourth_next: d_next_eval,
-        left_selector: q_l_eval,
-        right_selector: q_r_eval,
-        constant_selector: q_c_eval,
+    let wit_vals = WitnessValues {
+        a_val: wire_evals.a_eval,
+        b_val: wire_evals.b_eval,
+        c_val: wire_evals.c_eval,
+        d_val: wire_evals.d_eval,
     };
 
     let arithmetic = prover_key.arithmetic.compute_linearisation(
-        a_eval,
-        b_eval,
-        c_eval,
-        d_eval,
+        wire_evals.a_eval,
+        wire_evals.b_eval,
+        wire_evals.c_eval,
+        wire_evals.d_eval,
         q_arith_eval,
     );
+
     let range = Range::linearisation_term(
         &prover_key.range_selector.0,
         *range_separation_challenge,
-        values,
+        wit_vals,
+        RangeVals::from_evaluations(custom_evals),
     );
 
     let logic = Logic::linearisation_term(
         &prover_key.logic_selector.0,
         *logic_separation_challenge,
-        values,
+        wit_vals,
+        LogicVals::from_evaluations(custom_evals),
     );
 
     let fixed_base_scalar_mul = FixedBaseScalarMul::<F, P>::linearisation_term(
         &prover_key.fixed_group_add_selector.0,
         *fixed_base_separation_challenge,
-        values,
+        wit_vals,
+        FBSMVals::from_evaluations(custom_evals),
     );
 
     let curve_addition = CurveAddition::<F, P>::linearisation_term(
         &prover_key.variable_group_add_selector.0,
         *var_base_separation_challenge,
-        values,
+        wit_vals,
+        CAVals::from_evaluations(custom_evals),
     );
 
     arithmetic + range + logic + fixed_base_scalar_mul + curve_addition

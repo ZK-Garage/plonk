@@ -6,9 +6,47 @@
 
 //! Logic Gates
 
-use crate::proof_system::widget::{GateConstraint, GateValues};
+use crate::proof_system::{
+    linearisation_poly::CustomEvaluations,
+    widget::{GateConstraint, WitnessValues},
+    CustomValues,
+};
 use ark_ff::PrimeField;
 use core::marker::PhantomData;
+
+/// Values needed for the computation of the logic gate constraint.
+pub struct LogicVals<F>
+where
+    F: PrimeField,
+{
+    /// Left wire value in the next position
+    pub a_next_val: F,
+    /// Right wire value in the next position
+    pub b_next_val: F,
+    /// Fourth wire value in the next position
+    pub d_next_val: F,
+    /// Constant selector value
+    pub q_c_val: F,
+}
+
+impl<F> CustomValues<F> for LogicVals<F>
+where
+    F: PrimeField,
+{
+    fn from_evaluations(custom_evals: &CustomEvaluations<F>) -> Self {
+        // TODO: Subsitute labels
+        let a_next_val = custom_evals.get("a_next_eval");
+        let b_next_val = custom_evals.get("b_next_eval");
+        let d_next_val = custom_evals.get("d_next_eval");
+        let q_c_val = custom_evals.get("q_c_eval");
+        LogicVals {
+            a_next_val,
+            b_next_val,
+            d_next_val,
+            q_c_val,
+        }
+    }
+}
 
 /// Logic Gate
 #[derive(derivative::Derivative)]
@@ -21,28 +59,33 @@ impl<F> GateConstraint<F> for Logic<F>
 where
     F: PrimeField,
 {
+    type CustomVals = LogicVals<F>;
+
     #[inline]
-    fn constraints(separation_challenge: F, values: GateValues<F>) -> F {
+    fn constraints(
+        separation_challenge: F,
+        wit_vals: WitnessValues<F>,
+        custom_vals: Self::CustomVals,
+    ) -> F {
         let four = F::from(4_u64);
         let kappa = separation_challenge.square();
         let kappa_sq = kappa.square();
         let kappa_cu = kappa_sq * kappa;
         let kappa_qu = kappa_cu * kappa;
 
-        let a = values.left_next - four * values.left;
+        let a = custom_vals.a_next_val - four * wit_vals.a_val;
         let c_0 = delta(a);
 
-        let b = values.right_next - four * values.right;
+        let b = custom_vals.b_next_val - four * wit_vals.b_val;
         let c_1 = delta(b) * kappa;
 
-        let d = values.fourth_next - four * values.fourth;
+        let d = custom_vals.d_next_val - four * wit_vals.d_val;
         let c_2 = delta(d) * kappa_sq;
 
-        let w = values.output;
+        let w = wit_vals.c_val;
         let c_3 = (w - a * b) * kappa_cu;
 
-        let c_4 =
-            delta_xor_and(a, b, w, d, values.constant_selector) * kappa_qu;
+        let c_4 = delta_xor_and(a, b, w, d, custom_vals.q_c_val) * kappa_qu;
 
         (c_0 + c_1 + c_2 + c_3 + c_4) * separation_challenge
     }

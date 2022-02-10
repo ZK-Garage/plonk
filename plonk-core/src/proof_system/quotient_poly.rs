@@ -11,7 +11,7 @@ use crate::{
         logic::Logic,
         range::Range,
         widget::GateConstraint,
-        GateValues, ProverKey,
+        ProverKey,
     },
 };
 use ark_ec::TEModelParameters;
@@ -19,6 +19,14 @@ use ark_ff::{FftField, PrimeField};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, GeneralEvaluationDomain,
     UVPolynomial,
+};
+
+use super::{
+    ecc::{CAVals, FBSMVals},
+    linearisation_poly::CustomEvaluations,
+    logic::LogicVals,
+    range::RangeVals,
+    CustomValues, WitnessValues,
 };
 
 /// Computes the Quotient [`DensePolynomial`] given the [`EvaluationDomain`], a
@@ -133,7 +141,8 @@ where
     ))
 }
 
-/// Ensures that the gate constraints are satisfied.
+/// Computes contribution to the quotient polynomial that ensures
+/// the gate constraints are satisfied.
 fn compute_gate_constraint_satisfiability<F, P>(
     domain: &GeneralEvaluationDomain<F>,
     range_challenge: F,
@@ -159,52 +168,57 @@ where
     })?;
     let pi_eval_8n = domain_8n.coset_fft(pi_poly);
 
+    // TODO Eliminate contribution of unused gates
     Ok((0..domain_8n.size())
         .map(|i| {
-            let values = GateValues {
-                left: wl_eval_8n[i],
-                right: wr_eval_8n[i],
-                output: wo_eval_8n[i],
-                fourth: w4_eval_8n[i],
-                left_next: wl_eval_8n[i + 8],
-                right_next: wr_eval_8n[i + 8],
-                fourth_next: w4_eval_8n[i + 8],
-                left_selector: prover_key.arithmetic.q_l.1[i],
-                right_selector: prover_key.arithmetic.q_r.1[i],
-                constant_selector: prover_key.arithmetic.q_c.1[i],
+            let wit_vals = WitnessValues {
+                a_val: wl_eval_8n[i],
+                b_val: wr_eval_8n[i],
+                c_val: wo_eval_8n[i],
+                d_val: w4_eval_8n[i],
             };
 
-            let arithmetic = prover_key.arithmetic.compute_quotient_i(
-                i,
-                values.left,
-                values.right,
-                values.output,
-                values.fourth,
-            );
+            let custom_vals = CustomEvaluations {
+                vals: vec![
+                    ("a_next_eval".to_string(), wl_eval_8n[i + 8]),
+                    ("b_next_eval".to_string(), wr_eval_8n[i + 8]),
+                    ("d_next_eval".to_string(), w4_eval_8n[i + 8]),
+                    ("q_l_eval".to_string(), prover_key.arithmetic.q_l.1[i]),
+                    ("q_r_eval".to_string(), prover_key.arithmetic.q_r.1[i]),
+                    ("q_c_eval".to_string(), prover_key.arithmetic.q_c.1[i]),
+                ],
+            };
+
+            let arithmetic =
+                prover_key.arithmetic.compute_quotient_i(i, wit_vals);
 
             let range = Range::quotient_term(
                 prover_key.range_selector.1[i],
                 range_challenge,
-                values,
+                wit_vals,
+                RangeVals::from_evaluations(&custom_vals),
             );
 
             let logic = Logic::quotient_term(
                 prover_key.logic_selector.1[i],
                 logic_challenge,
-                values,
+                wit_vals,
+                LogicVals::from_evaluations(&custom_vals),
             );
 
             let fixed_base_scalar_mul =
                 FixedBaseScalarMul::<_, P>::quotient_term(
                     prover_key.fixed_group_add_selector.1[i],
                     fixed_base_challenge,
-                    values,
+                    wit_vals,
+                    FBSMVals::from_evaluations(&custom_vals),
                 );
 
             let curve_addition = CurveAddition::<_, P>::quotient_term(
                 prover_key.variable_group_add_selector.1[i],
                 var_base_challenge,
-                values,
+                wit_vals,
+                CAVals::from_evaluations(&custom_vals),
             );
 
             (arithmetic + pi_eval_8n[i])
@@ -231,7 +245,7 @@ fn compute_permutation_checks<F>(
     gamma: F,
 ) -> Result<Vec<F>, Error>
 where
-    F: FftField,
+    F: PrimeField,
 {
     let domain_8n = GeneralEvaluationDomain::<F>::new(8 * domain.size())
         .ok_or(Error::InvalidEvalDomainSize {

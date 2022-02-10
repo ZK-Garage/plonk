@@ -7,6 +7,7 @@
 //! Arithmetic Gates
 
 use crate::proof_system::linearisation_poly::ProofEvaluations;
+use crate::proof_system::WitnessValues;
 use ark_ff::{FftField, PrimeField};
 use ark_poly::{polynomial::univariate::DensePolynomial, Evaluations};
 use ark_poly_commit::PolynomialCommitment;
@@ -43,23 +44,20 @@ where
 
 impl<F> ProverKey<F>
 where
-    F: FftField,
+    F: PrimeField,
 {
     /// Computes the arithmetic gate contribution to the quotient polynomial at
     /// the element of the domain at the given `index`.
     pub fn compute_quotient_i(
         &self,
         index: usize,
-        w_l_i: F,
-        w_r_i: F,
-        w_o_i: F,
-        w_4_i: F,
+        wit_vals: WitnessValues<F>,
     ) -> F {
-        ((w_l_i * w_r_i * self.q_m.1[index])
-            + (w_l_i * self.q_l.1[index])
-            + (w_r_i * self.q_r.1[index])
-            + (w_o_i * self.q_o.1[index])
-            + (w_4_i * self.q_4.1[index])
+        ((wit_vals.a_val * wit_vals.b_val * self.q_m.1[index])
+            + (wit_vals.a_val * self.q_l.1[index])
+            + (wit_vals.b_val * self.q_r.1[index])
+            + (wit_vals.c_val * self.q_o.1[index])
+            + (wit_vals.d_val * self.q_4.1[index])
             + self.q_c.1[index])
             * self.q_arith.1[index]
     }
@@ -133,21 +131,25 @@ where
         points: &mut Vec<PC::Commitment>,
         evaluations: &ProofEvaluations<F>,
     ) {
-        let q_arith_eval = evaluations.q_arith_eval;
+        let q_arith_eval = evaluations.custom_evals.get("q_arith_eval");
 
-        scalars.push(evaluations.a_eval * evaluations.b_eval * q_arith_eval);
+        scalars.push(
+            evaluations.wire_evals.a_eval
+                * evaluations.wire_evals.b_eval
+                * q_arith_eval,
+        );
         points.push(self.q_m.clone());
 
-        scalars.push(evaluations.a_eval * q_arith_eval);
+        scalars.push(evaluations.wire_evals.a_eval * q_arith_eval);
         points.push(self.q_l.clone());
 
-        scalars.push(evaluations.b_eval * q_arith_eval);
+        scalars.push(evaluations.wire_evals.b_eval * q_arith_eval);
         points.push(self.q_r.clone());
 
-        scalars.push(evaluations.c_eval * q_arith_eval);
+        scalars.push(evaluations.wire_evals.c_eval * q_arith_eval);
         points.push(self.q_o.clone());
 
-        scalars.push(evaluations.d_eval * q_arith_eval);
+        scalars.push(evaluations.wire_evals.d_eval * q_arith_eval);
         points.push(self.q_4.clone());
 
         scalars.push(q_arith_eval);

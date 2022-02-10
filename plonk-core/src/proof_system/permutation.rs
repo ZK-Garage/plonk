@@ -340,16 +340,17 @@ where
         // * k3 * z + gamma) * alpha
         let x = {
             let beta_z = beta * z_challenge;
-            let q_0 = evaluations.a_eval + beta_z + gamma;
+            let q_0 = evaluations.wire_evals.a_eval + beta_z + gamma;
 
             let beta_k1_z = beta * K1::<F>() * z_challenge;
-            let q_1 = evaluations.b_eval + beta_k1_z + gamma;
+            let q_1 = evaluations.wire_evals.b_eval + beta_k1_z + gamma;
 
             let beta_k2_z = beta * K2::<F>() * z_challenge;
-            let q_2 = evaluations.c_eval + beta_k2_z + gamma;
+            let q_2 = evaluations.wire_evals.c_eval + beta_k2_z + gamma;
 
             let beta_k3_z = beta * K3::<F>() * z_challenge;
-            let q_3 = (evaluations.d_eval + beta_k3_z + gamma) * alpha;
+            let q_3 =
+                (evaluations.wire_evals.d_eval + beta_k3_z + gamma) * alpha;
 
             q_0 * q_1 * q_2 * q_3
         };
@@ -364,16 +365,16 @@ where
         // sigma_2_eval + gamma)(c_eval + beta * sigma_3_eval +
         // gamma) * alpha^2
         let y = {
-            let beta_sigma_1 = beta * evaluations.left_sigma_eval;
-            let q_0 = evaluations.a_eval + beta_sigma_1 + gamma;
+            let beta_sigma_1 = beta * evaluations.perm_evals.left_sigma_eval;
+            let q_0 = evaluations.wire_evals.a_eval + beta_sigma_1 + gamma;
 
-            let beta_sigma_2 = beta * evaluations.right_sigma_eval;
-            let q_1 = evaluations.b_eval + beta_sigma_2 + gamma;
+            let beta_sigma_2 = beta * evaluations.perm_evals.right_sigma_eval;
+            let q_1 = evaluations.wire_evals.b_eval + beta_sigma_2 + gamma;
 
-            let beta_sigma_3 = beta * evaluations.out_sigma_eval;
-            let q_2 = evaluations.c_eval + beta_sigma_3 + gamma;
+            let beta_sigma_3 = beta * evaluations.perm_evals.out_sigma_eval;
+            let q_2 = evaluations.wire_evals.c_eval + beta_sigma_3 + gamma;
 
-            let q_3 = beta * evaluations.permutation_eval * alpha;
+            let q_3 = beta * evaluations.perm_evals.permutation_eval * alpha;
 
             -(q_0 * q_1 * q_2 * q_3)
         };

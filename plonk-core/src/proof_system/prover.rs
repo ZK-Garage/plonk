@@ -123,26 +123,6 @@ where
         )
     }
 
-    /// Computes the quotient Opening [`DensePolynomial`].
-    fn compute_quotient_opening_poly(
-        n: usize,
-        t_1_poly: &DensePolynomial<F>,
-        t_2_poly: &DensePolynomial<F>,
-        t_3_poly: &DensePolynomial<F>,
-        t_4_poly: &DensePolynomial<F>,
-        z_challenge: &F,
-    ) -> DensePolynomial<F> {
-        // Compute z^n , z^2n , z^3n
-        let z_n = z_challenge.pow(&[n as u64, 0, 0, 0]);
-        let z_two_n = z_challenge.pow(&[2 * n as u64, 0, 0, 0]);
-        let z_three_n = z_challenge.pow(&[3 * n as u64, 0, 0, 0]);
-        let a = t_1_poly;
-        let b = t_2_poly * z_n;
-        let c = t_3_poly * z_two_n;
-        let d = t_4_poly * z_three_n;
-        a + &b + c + d
-    }
-
     /// Convert variables to their actual witness values.
     fn to_scalars(&self, vars: &[Variable]) -> Vec<F> {
         vars.iter().map(|var| self.cs.variables[var]).collect()
@@ -403,53 +383,52 @@ where
             &w_r_poly,
             &w_o_poly,
             &w_4_poly,
-            &t_poly,
+            &t_1_poly,
+            &t_2_poly,
+            &t_3_poly,
+            &t_4_poly,
             &z_poly,
         )?;
 
         // Add evaluations to transcript.
-        transcript.append(b"a_eval", &evaluations.proof.a_eval);
-        transcript.append(b"b_eval", &evaluations.proof.b_eval);
-        transcript.append(b"c_eval", &evaluations.proof.c_eval);
-        transcript.append(b"d_eval", &evaluations.proof.d_eval);
-        transcript.append(b"a_next_eval", &evaluations.proof.a_next_eval);
-        transcript.append(b"b_next_eval", &evaluations.proof.b_next_eval);
-        transcript.append(b"d_next_eval", &evaluations.proof.d_next_eval);
-        transcript.append(b"left_sig_eval", &evaluations.proof.left_sigma_eval);
+        // First wire evals
+        transcript.append(b"a_eval", &evaluations.wire_evals.a_eval);
+        transcript.append(b"b_eval", &evaluations.wire_evals.b_eval);
+        transcript.append(b"c_eval", &evaluations.wire_evals.c_eval);
+        transcript.append(b"d_eval", &evaluations.wire_evals.d_eval);
+
+        // Second permutation evals
         transcript
-            .append(b"right_sig_eval", &evaluations.proof.right_sigma_eval);
-        transcript.append(b"out_sig_eval", &evaluations.proof.out_sigma_eval);
-        transcript.append(b"q_arith_eval", &evaluations.proof.q_arith_eval);
-        transcript.append(b"q_c_eval", &evaluations.proof.q_c_eval);
-        transcript.append(b"q_l_eval", &evaluations.proof.q_l_eval);
-        transcript.append(b"q_r_eval", &evaluations.proof.q_r_eval);
-        transcript.append(b"perm_eval", &evaluations.proof.permutation_eval);
-        transcript.append(b"t_eval", &evaluations.quot_eval);
+            .append(b"left_sig_eval", &evaluations.perm_evals.left_sigma_eval);
         transcript.append(
-            b"r_eval",
-            &evaluations.proof.linearisation_polynomial_eval,
+            b"right_sig_eval",
+            &evaluations.perm_evals.right_sigma_eval,
         );
+        transcript
+            .append(b"out_sig_eval", &evaluations.perm_evals.out_sigma_eval);
+        transcript
+            .append(b"perm_eval", &evaluations.perm_evals.permutation_eval);
+
+        // Third, all evals needed for custom gates
+        evaluations
+            .custom_evals
+            .vals
+            .iter()
+            .for_each(|(label, eval)| {
+                let static_label = Box::leak(label.to_owned().into_boxed_str());
+                transcript.append(static_label.as_bytes(), eval);
+            });
 
         // 5. Compute Openings using KZG10
         //
         // We merge the quotient polynomial using the `z_challenge` so the SRS
         // is linear in the circuit size `n`
 
-        let quot = Self::compute_quotient_opening_poly(
-            n,
-            &t_1_poly,
-            &t_2_poly,
-            &t_3_poly,
-            &t_4_poly,
-            &z_challenge,
-        );
-
         // Compute aggregate witness to polynomials evaluated at the evaluation
         // challenge `z`
         let aw_challenge: F = transcript.challenge_scalar(b"aggregate_witness");
 
         let aw_polys = [
-            label_polynomial!(quot),
             label_polynomial!(lin_poly),
             label_polynomial!(prover_key.permutation.left_sigma.0.clone()),
             label_polynomial!(prover_key.permutation.right_sigma.0.clone()),
@@ -506,7 +485,7 @@ where
             t_4_comm: t_commits[3].commitment().clone(),
             aw_opening,
             saw_opening,
-            evaluations: evaluations.proof,
+            evaluations,
         })
     }
 

@@ -18,10 +18,56 @@
 //! Bits are accumulated in base2. So we use d(Xw) - 2d(X) to extract the
 //! base2 bit.
 
-use crate::proof_system::widget::{GateConstraint, GateValues};
+use crate::proof_system::{
+    linearisation_poly::CustomEvaluations,
+    widget::{GateConstraint, WitnessValues},
+    CustomValues,
+};
 use ark_ec::{ModelParameters, TEModelParameters};
 use ark_ff::PrimeField;
 use core::marker::PhantomData;
+
+/// Values needed for the computation of the Fixed Base Multiplication gate
+/// constraint.
+pub struct FBSMVals<F>
+where
+    F: PrimeField,
+{
+    /// Left wire value in the next position
+    pub a_next_val: F,
+    /// Right wire value in the next position
+    pub b_next_val: F,
+    /// Fourth wire value in the next position
+    pub d_next_val: F,
+    /// Left selector value
+    pub q_l_val: F,
+    /// Right selector value
+    pub q_r_val: F,
+    /// Constant selector value
+    pub q_c_val: F,
+}
+
+impl<F> CustomValues<F> for FBSMVals<F>
+where
+    F: PrimeField,
+{
+    fn from_evaluations(custom_evals: &CustomEvaluations<F>) -> Self {
+        let a_next_val = custom_evals.get("a_next_eval");
+        let b_next_val = custom_evals.get("b_next_eval");
+        let d_next_val = custom_evals.get("d_next_eval");
+        let q_l_val = custom_evals.get("q_l_eval");
+        let q_r_val = custom_evals.get("q_r_eval");
+        let q_c_val = custom_evals.get("q_c_eval");
+        FBSMVals {
+            a_next_val,
+            b_next_val,
+            d_next_val,
+            q_l_val,
+            q_r_val,
+            q_c_val,
+        }
+    }
+}
 
 /// Fixed-Base Scalar Multiplication Gate
 #[derive(derivative::Derivative)]
@@ -36,24 +82,30 @@ where
     F: PrimeField,
     P: TEModelParameters<BaseField = F>,
 {
+    type CustomVals = FBSMVals<F>;
+
     #[inline]
-    fn constraints(separation_challenge: F, values: GateValues<F>) -> F {
+    fn constraints(
+        separation_challenge: F,
+        wit_vals: WitnessValues<F>,
+        custom_vals: Self::CustomVals,
+    ) -> F {
         let kappa = separation_challenge.square();
         let kappa_sq = kappa.square();
         let kappa_cu = kappa_sq * kappa;
 
-        let x_beta_eval = values.left_selector;
-        let y_beta_eval = values.right_selector;
+        let x_beta_eval = custom_vals.q_l_val;
+        let y_beta_eval = custom_vals.q_r_val;
 
-        let acc_x = values.left;
-        let acc_x_next = values.left_next;
-        let acc_y = values.right;
-        let acc_y_next = values.right_next;
+        let acc_x = wit_vals.a_val;
+        let acc_x_next = custom_vals.a_next_val;
+        let acc_y = wit_vals.b_val;
+        let acc_y_next = custom_vals.b_next_val;
 
-        let xy_alpha = values.output;
+        let xy_alpha = wit_vals.c_val;
 
-        let accumulated_bit = values.fourth;
-        let accumulated_bit_next = values.fourth_next;
+        let accumulated_bit = wit_vals.d_val;
+        let accumulated_bit_next = custom_vals.d_next_val;
         let bit = extract_bit(accumulated_bit, accumulated_bit_next);
 
         // Check bit consistency
@@ -63,8 +115,7 @@ where
         let x_alpha = x_beta_eval * bit;
 
         // xy_alpha consistency check
-        let xy_consistency =
-            ((bit * values.constant_selector) - xy_alpha) * kappa;
+        let xy_consistency = ((bit * custom_vals.q_c_val) - xy_alpha) * kappa;
 
         // x accumulator consistency check
         let x_3 = acc_x_next;

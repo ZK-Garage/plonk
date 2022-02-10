@@ -170,48 +170,52 @@ where
         let l1_eval =
             compute_first_lagrange_evaluation(&domain, &z_h_eval, &z_challenge);
 
-        // Compute quotient polynomial evaluated at `z_challenge`
-        let t_eval = self.compute_quotient_evaluation(
+        let r0 = self.compute_r0(
             &domain,
             pub_inputs,
             alpha,
             beta,
             gamma,
             z_challenge,
-            z_h_eval,
             l1_eval,
-            self.evaluations.permutation_eval,
+            self.evaluations.perm_evals.permutation_eval,
         );
 
-        // Compute commitment to quotient polynomial
-        // This method is necessary as we pass the `un-splitted` variation
-        // to our commitment scheme
-        let t_comm =
-            self.compute_quotient_commitment(&z_challenge, domain.size());
-
         // Add evaluations to transcript
-        transcript.append(b"a_eval", &self.evaluations.a_eval);
-        transcript.append(b"b_eval", &self.evaluations.b_eval);
-        transcript.append(b"c_eval", &self.evaluations.c_eval);
-        transcript.append(b"d_eval", &self.evaluations.d_eval);
-        transcript.append(b"a_next_eval", &self.evaluations.a_next_eval);
-        transcript.append(b"b_next_eval", &self.evaluations.b_next_eval);
-        transcript.append(b"d_next_eval", &self.evaluations.d_next_eval);
-        transcript.append(b"left_sig_eval", &self.evaluations.left_sigma_eval);
-        transcript
-            .append(b"right_sig_eval", &self.evaluations.right_sigma_eval);
-        transcript.append(b"out_sig_eval", &self.evaluations.out_sigma_eval);
-        transcript.append(b"q_arith_eval", &self.evaluations.q_arith_eval);
-        transcript.append(b"q_c_eval", &self.evaluations.q_c_eval);
-        transcript.append(b"q_l_eval", &self.evaluations.q_l_eval);
-        transcript.append(b"q_r_eval", &self.evaluations.q_r_eval);
-        transcript.append(b"perm_eval", &self.evaluations.permutation_eval);
-        transcript.append(b"t_eval", &t_eval);
-        transcript
-            .append(b"r_eval", &self.evaluations.linearisation_polynomial_eval);
+        transcript.append(b"a_eval", &self.evaluations.wire_evals.a_eval);
+        transcript.append(b"b_eval", &self.evaluations.wire_evals.b_eval);
+        transcript.append(b"c_eval", &self.evaluations.wire_evals.c_eval);
+        transcript.append(b"d_eval", &self.evaluations.wire_evals.d_eval);
+
+        transcript.append(
+            b"left_sig_eval",
+            &self.evaluations.perm_evals.left_sigma_eval,
+        );
+        transcript.append(
+            b"right_sig_eval",
+            &self.evaluations.perm_evals.right_sigma_eval,
+        );
+        transcript.append(
+            b"out_sig_eval",
+            &self.evaluations.perm_evals.out_sigma_eval,
+        );
+        transcript.append(
+            b"perm_eval",
+            &self.evaluations.perm_evals.permutation_eval,
+        );
+
+        self.evaluations
+            .custom_evals
+            .vals
+            .iter()
+            .for_each(|(label, eval)| {
+                let static_label = Box::leak(label.to_owned().into_boxed_str());
+                transcript.append(static_label.as_bytes(), eval);
+            });
 
         // Compute linearisation commitment
         let lin_comm = self.compute_linearisation_commitment::<P>(
+            &domain,
             alpha,
             beta,
             gamma,
@@ -245,7 +249,6 @@ where
         let aw_challenge: F = transcript.challenge_scalar(b"aggregate_witness");
 
         let aw_commits = [
-            label_commitment!(t_comm),
             label_commitment!(lin_comm),
             label_commitment!(plonk_verifier_key.permutation.left_sigma),
             label_commitment!(plonk_verifier_key.permutation.right_sigma),
@@ -257,15 +260,14 @@ where
         ];
 
         let aw_evals = [
-            t_eval,
-            self.evaluations.linearisation_polynomial_eval,
-            self.evaluations.left_sigma_eval,
-            self.evaluations.right_sigma_eval,
-            self.evaluations.out_sigma_eval,
-            self.evaluations.a_eval,
-            self.evaluations.b_eval,
-            self.evaluations.c_eval,
-            self.evaluations.d_eval,
+            -r0,
+            self.evaluations.perm_evals.left_sigma_eval,
+            self.evaluations.perm_evals.right_sigma_eval,
+            self.evaluations.perm_evals.out_sigma_eval,
+            self.evaluations.wire_evals.a_eval,
+            self.evaluations.wire_evals.b_eval,
+            self.evaluations.wire_evals.c_eval,
+            self.evaluations.wire_evals.d_eval,
         ];
 
         let saw_challenge: F =
@@ -277,12 +279,14 @@ where
             label_commitment!(self.b_comm),
             label_commitment!(self.d_comm),
         ];
+
         let saw_evals = [
-            self.evaluations.permutation_eval,
-            self.evaluations.a_next_eval,
-            self.evaluations.b_next_eval,
-            self.evaluations.d_next_eval,
+            self.evaluations.perm_evals.permutation_eval,
+            self.evaluations.custom_evals.get("a_next_eval"),
+            self.evaluations.custom_evals.get("b_next_eval"),
+            self.evaluations.custom_evals.get("d_next_eval"),
         ];
+
         match PC::check(
             verifier_key,
             &aw_commits,
@@ -312,8 +316,8 @@ where
             }
         })
     }
-    // TODO: Doc this
-    fn compute_quotient_evaluation(
+
+    fn compute_r0(
         &self,
         domain: &GeneralEvaluationDomain<F>,
         pub_inputs: &[F],
@@ -321,7 +325,6 @@ where
         beta: F,
         gamma: F,
         z_challenge: F,
-        z_h_eval: F,
         l1_eval: F,
         z_hat_eval: F,
     ) -> F {
@@ -329,57 +332,36 @@ where
         let pi_eval = compute_barycentric_eval(pub_inputs, z_challenge, domain);
 
         let alpha_sq = alpha.square();
-        // r + PI(z)
-        let a = self.evaluations.linearisation_polynomial_eval + pi_eval;
 
         // a + beta * sigma_1 + gamma
-        let beta_sig1 = beta * self.evaluations.left_sigma_eval;
-        let b_0 = self.evaluations.a_eval + beta_sig1 + gamma;
+        let beta_sig1 = beta * self.evaluations.perm_evals.left_sigma_eval;
+        let b_0 = self.evaluations.wire_evals.a_eval + beta_sig1 + gamma;
 
         // b+ beta * sigma_2 + gamma
-        let beta_sig2 = beta * self.evaluations.right_sigma_eval;
-        let b_1 = self.evaluations.b_eval + beta_sig2 + gamma;
+        let beta_sig2 = beta * self.evaluations.perm_evals.right_sigma_eval;
+        let b_1 = self.evaluations.wire_evals.b_eval + beta_sig2 + gamma;
 
         // c+ beta * sigma_3 + gamma
-        let beta_sig3 = beta * self.evaluations.out_sigma_eval;
-        let b_2 = self.evaluations.c_eval + beta_sig3 + gamma;
+        let beta_sig3 = beta * self.evaluations.perm_evals.out_sigma_eval;
+        let b_2 = self.evaluations.wire_evals.c_eval + beta_sig3 + gamma;
 
         // ((d + gamma) * z_hat) * alpha
-        let b_3 = (self.evaluations.d_eval + gamma) * z_hat_eval * alpha;
+        let b_3 =
+            (self.evaluations.wire_evals.d_eval + gamma) * z_hat_eval * alpha;
 
         let b = b_0 * b_1 * b_2 * b_3;
 
         // l_1(z) * alpha^2
         let c = l1_eval * alpha_sq;
 
-        // Return t_eval
-        (a - b - c) * z_h_eval.inverse().unwrap()
-    }
-    /// Computes the quotient polynomial commitment at `z_challenge`.
-    fn compute_quotient_commitment(
-        &self,
-        z_challenge: &F,
-        n: usize,
-    ) -> PC::Commitment {
-        let n = n as u64;
-        let z_n = z_challenge.pow(&[n, 0, 0, 0]);
-        let z_two_n = z_challenge.pow(&[2 * n, 0, 0, 0]);
-        let z_three_n = z_challenge.pow(&[3 * n, 0, 0, 0]);
-
-        PC::multi_scalar_mul(
-            &[
-                self.t_1_comm.clone(),
-                self.t_2_comm.clone(),
-                self.t_3_comm.clone(),
-                self.t_4_comm.clone(),
-            ],
-            &[F::one(), z_n, z_two_n, z_three_n],
-        )
+        // Return r_0
+        pi_eval - b - c
     }
 
     /// Computes the commitment to `[r]_1`.
     fn compute_linearisation_commitment<P>(
         &self,
+        domain: &GeneralEvaluationDomain<F>,
         alpha: F,
         beta: F,
         gamma: F,
@@ -394,8 +376,10 @@ where
     where
         P: TEModelParameters<BaseField = F>,
     {
-        let mut scalars = Vec::with_capacity(6);
-        let mut points = Vec::with_capacity(6);
+        // 5 for each type of gate + 1 for permutations + 4 for each piece of
+        // the quotient poly
+        let mut scalars = Vec::with_capacity(10);
+        let mut points = Vec::with_capacity(10);
 
         plonk_verifier_key
             .arithmetic
@@ -445,6 +429,27 @@ where
                 l1_eval,
                 self.z_comm.clone(),
             );
+
+        // Second part
+        let vanishing_poly_eval =
+            domain.evaluate_vanishing_polynomial(z_challenge);
+        // z_challenge ^ n
+        let z_challenge_to_n = vanishing_poly_eval + F::one();
+
+        let t_1_scalar = -vanishing_poly_eval;
+        let t_2_scalar = t_1_scalar * z_challenge_to_n;
+        let t_3_scalar = t_2_scalar * z_challenge_to_n;
+        let t_4_scalar = t_3_scalar * z_challenge_to_n;
+        scalars.extend_from_slice(&[
+            t_1_scalar, t_2_scalar, t_3_scalar, t_4_scalar,
+        ]);
+        points.extend_from_slice(&[
+            self.t_1_comm.clone(),
+            self.t_2_comm.clone(),
+            self.t_3_comm.clone(),
+            self.t_4_comm.clone(),
+        ]);
+
         PC::multi_scalar_mul(&points, &scalars)
     }
 }

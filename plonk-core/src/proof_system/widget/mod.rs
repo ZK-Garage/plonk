@@ -13,57 +13,46 @@ pub mod range;
 
 use crate::{
     commitment::HomomorphicCommitment,
-    proof_system::{linearisation_poly::ProofEvaluations, permutation},
+    proof_system::{
+        linearisation_poly::CustomEvaluations,
+        linearisation_poly::ProofEvaluations, permutation,
+    },
     transcript::TranscriptProtocol,
 };
-use ark_ff::{FftField, PrimeField};
+use ark_ff::PrimeField;
 use ark_poly::{univariate::DensePolynomial, Evaluations};
 use ark_serialize::*;
 
-/// Gate Values
+/// Set of values needed for a custom gate
+pub trait CustomValues<F>
+where
+    F: PrimeField,
+{
+    /// Constructs gate-specific values struct from the set of evaluations
+    /// `CustomEvaluations`
+    fn from_evaluations(custom_evals: &CustomEvaluations<F>) -> Self;
+}
+
+/// Witness Values
 ///
 /// This data structures holds the wire values for a given gate.
 #[derive(derivative::Derivative)]
 #[derivative(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
-pub struct GateValues<F>
+pub struct WitnessValues<F>
 where
     F: PrimeField,
 {
     /// Left Value
-    pub left: F,
+    pub a_val: F,
 
     /// Right Value
-    pub right: F,
+    pub b_val: F,
 
     /// Output Value
-    pub output: F,
+    pub c_val: F,
 
     /// Fourth Value
-    pub fourth: F,
-
-    /// Next Left Value
-    ///
-    /// Only used in gates which use internal copy constraints.
-    pub left_next: F,
-
-    /// Next Right Value
-    ///
-    /// Only used in gates which use internal copy constraints.
-    pub right_next: F,
-
-    /// Next Fourth Value
-    ///
-    /// Only used in gates which use internal copy constraints.
-    pub fourth_next: F,
-
-    /// Left Wire Selector Weight
-    pub left_selector: F,
-
-    /// Right Wire Selector Weight
-    pub right_selector: F,
-
-    /// Constant Wire Selector Weight
-    pub constant_selector: F,
+    pub d_val: F,
 }
 
 /// Gate Constraint
@@ -71,13 +60,20 @@ pub trait GateConstraint<F>
 where
     F: PrimeField,
 {
+    /// Custom values needed for the gate
+    type CustomVals: CustomValues<F>;
+
     /// Returns the coefficient of the quotient polynomial for this gate given
     /// an instantiation of the gate at `values` and a
     /// `separation_challenge` if this gate requires it for soundness.
     ///
     /// This method is an encoding of the polynomial constraint(s) that this
     /// gate represents whenever it is added to a circuit.
-    fn constraints(separation_challenge: F, values: GateValues<F>) -> F;
+    fn constraints(
+        separation_challenge: F,
+        wit_vals: WitnessValues<F>,
+        custom_vals: Self::CustomVals,
+    ) -> F;
 
     /// Computes the quotient polynomial term for the given gate type for the
     /// given value of `selector` instantiated with `separation_challenge` and
@@ -85,9 +81,11 @@ where
     fn quotient_term(
         selector: F,
         separation_challenge: F,
-        values: GateValues<F>,
+        wit_vals: WitnessValues<F>,
+        custom_vals: Self::CustomVals,
     ) -> F {
-        selector * Self::constraints(separation_challenge, values)
+        selector
+            * Self::constraints(separation_challenge, wit_vals, custom_vals)
     }
 
     /// Computes the linearisation polynomial term for the given gate type
@@ -96,9 +94,11 @@ where
     fn linearisation_term(
         selector_polynomial: &DensePolynomial<F>,
         separation_challenge: F,
-        values: GateValues<F>,
+        wit_vals: WitnessValues<F>,
+        custom_vals: Self::CustomVals,
     ) -> DensePolynomial<F> {
-        selector_polynomial * Self::constraints(separation_challenge, values)
+        selector_polynomial
+            * Self::constraints(separation_challenge, wit_vals, custom_vals)
     }
 
     /// Extends `scalars` and `points` to build the linearisation commitment
@@ -115,18 +115,13 @@ where
     {
         let coefficient = Self::constraints(
             separation_challenge,
-            GateValues {
-                left: evaluations.a_eval,
-                right: evaluations.b_eval,
-                output: evaluations.c_eval,
-                fourth: evaluations.d_eval,
-                left_next: evaluations.a_next_eval,
-                right_next: evaluations.b_next_eval,
-                fourth_next: evaluations.d_next_eval,
-                left_selector: evaluations.q_l_eval,
-                right_selector: evaluations.q_r_eval,
-                constant_selector: evaluations.q_c_eval,
+            WitnessValues {
+                a_val: evaluations.wire_evals.a_eval,
+                b_val: evaluations.wire_evals.b_eval,
+                c_val: evaluations.wire_evals.c_eval,
+                d_val: evaluations.wire_evals.d_eval,
             },
+            Self::CustomVals::from_evaluations(&evaluations.custom_evals),
         );
         scalars.push(coefficient);
         points.push(selector_commitment.clone());
@@ -279,7 +274,7 @@ where
 )]
 pub struct ProverKey<F>
 where
-    F: FftField,
+    F: PrimeField,
 {
     /// Circuit size
     pub(crate) n: usize,
@@ -314,7 +309,7 @@ where
 
 impl<F> ProverKey<F>
 where
-    F: FftField,
+    F: PrimeField,
 {
     pub(crate) fn v_h_coset_8n(&self) -> &Evaluations<F> {
         &self.v_h_coset_8n
@@ -383,7 +378,7 @@ mod test {
 
     fn rand_poly_eval<F>(n: usize) -> (DensePolynomial<F>, Evaluations<F>)
     where
-        F: FftField,
+        F: PrimeField,
     {
         let polynomial = DensePolynomial::rand(n, &mut OsRng);
         (polynomial, rand_evaluations(n))
@@ -391,7 +386,7 @@ mod test {
 
     fn rand_evaluations<F>(n: usize) -> Evaluations<F>
     where
-        F: FftField,
+        F: PrimeField,
     {
         let domain = GeneralEvaluationDomain::new(4 * n).unwrap();
         let values: Vec<_> = (0..8 * n).map(|_| F::rand(&mut OsRng)).collect();
