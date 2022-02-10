@@ -290,7 +290,7 @@ where
         let (ck, _) = PC::trim(
             u_params,
             // +1 per wire, +2 for the permutation poly
-            circuit_size + 6,
+            circuit_size,
             0,
             None,
         )
@@ -336,7 +336,7 @@ where
         let (ck, _) = PC::trim(
             u_params,
             // +1 per wire, +2 for the permutation poly
-            circuit_size + 6,
+            circuit_size,
             0,
             None,
         )
@@ -375,7 +375,7 @@ where
     let (_, vk) = PC::trim(
         u_params,
         // +1 per wire, +2 for the permutation poly
-        padded_circuit_size + 6,
+        padded_circuit_size,
         0,
         None,
     )

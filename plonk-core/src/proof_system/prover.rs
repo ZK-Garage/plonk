@@ -19,12 +19,11 @@ use crate::{
 use ark_ec::{ModelParameters, TEModelParameters};
 use ark_ff::PrimeField;
 use ark_poly::{
-    univariate::{DensePolynomial, SparsePolynomial},
-    EvaluationDomain, GeneralEvaluationDomain, UVPolynomial,
+    univariate::DensePolynomial, EvaluationDomain, GeneralEvaluationDomain,
+    UVPolynomial,
 };
 use core::marker::PhantomData;
 use merlin::Transcript;
-use rand::rngs::OsRng;
 
 /// Abstraction structure designed to construct a circuit and generate
 /// [`Proof`]s for it.
@@ -102,8 +101,7 @@ where
         Ok(())
     }
 
-    /// Split `t(X)` poly into 4 polynomials.
-    /// The first 3 polynomials have degree n, the 4th has degree n+6
+    /// Split `t(X)` poly into 4 n-sized polynomials.
     #[allow(clippy::type_complexity)] // NOTE: This is an ok type for internal use.
     fn split_tx_poly(
         &self,
@@ -159,46 +157,46 @@ where
     /// (b0 + b1 X + ...+ bk X^k) Z_h
     /// where k is the hiding_degree and Z_h = X^n - 1, the vanishing
     /// polynomial.
-    fn add_blinder(
-        polynomial: &DensePolynomial<F>,
-        n: usize,
-        hiding_degree: usize,
-    ) -> DensePolynomial<F> {
-        if hiding_degree < n / 2 {
-            let z_h: DensePolynomial<F> =
-                SparsePolynomial::from_coefficients_slice(&[
-                    (0, -F::one()),
-                    (n, F::one()),
-                ])
-                .into();
-            let rand_poly =
-                DensePolynomial::from_coefficients_vec(vec![
-                    F::rand(&mut OsRng);
-                    hiding_degree + 1
-                ]);
-            let blinder_poly = &rand_poly * &z_h;
-            polynomial + &blinder_poly
-        } else {
-            let mut sparse_blinder_vec =
-                vec![(0, F::zero()); 2 * (hiding_degree + 1)];
+    // fn add_blinder(
+    //     polynomial: &DensePolynomial<F>,
+    //     n: usize,
+    //     hiding_degree: usize,
+    // ) -> DensePolynomial<F> {
+    //     if hiding_degree < n / 2 {
+    //         let z_h: DensePolynomial<F> =
+    //             SparsePolynomial::from_coefficients_slice(&[
+    //                 (0, -F::one()),
+    //                 (n, F::one()),
+    //             ])
+    //             .into();
+    //         let rand_poly =
+    //             DensePolynomial::from_coefficients_vec(vec![
+    //                 F::rand(&mut OsRng);
+    //                 hiding_degree + 1
+    //             ]);
+    //         let blinder_poly = &rand_poly * &z_h;
+    //         polynomial + &blinder_poly
+    //     } else {
+    //         let mut sparse_blinder_vec =
+    //             vec![(0, F::zero()); 2 * (hiding_degree + 1)];
 
-            // Computes the multiplication of (b0 + b1X + ..+ bk X^k) (X^n -1)
-            // = (- b0 -b1 X ... -bk X^k  ..., b0 X^n + b1 X^(n+1) + ... bk
-            // X^(n+k) as long as k< n/2
-            for i in 0..=hiding_degree {
-                let random_blinder = F::rand(&mut OsRng);
-                sparse_blinder_vec[i] = (i, -random_blinder);
-                sparse_blinder_vec[hiding_degree + 1 + i] =
-                    (n + i, random_blinder);
-            }
+    //         // Computes the multiplication of (b0 + b1X + ..+ bk X^k) (X^n
+    // -1)         // = (- b0 -b1 X ... -bk X^k  ..., b0 X^n + b1 X^(n+1) +
+    // ... bk         // X^(n+k) as long as k< n/2
+    //         for i in 0..=hiding_degree {
+    //             let random_blinder = F::rand(&mut OsRng);
+    //             sparse_blinder_vec[i] = (i, -random_blinder);
+    //             sparse_blinder_vec[hiding_degree + 1 + i] =
+    //                 (n + i, random_blinder);
+    //         }
 
-            let blinder_poly =
-                SparsePolynomial::from_coefficients_vec(sparse_blinder_vec);
-            // panic!("The blinder poly is {:?}", blinder_poly);
+    //         let blinder_poly =
+    //             SparsePolynomial::from_coefficients_vec(sparse_blinder_vec);
+    //         // panic!("The blinder poly is {:?}", blinder_poly);
 
-            polynomial + &blinder_poly
-        }
-    }
+    //         polynomial + &blinder_poly
+    //     }
+    // }
 
     /// Creates a [`Proof]` that demonstrates that a circuit is satisfied.
     /// # Note
@@ -236,20 +234,20 @@ where
 
         // Witnesses are now in evaluation form, convert them to coefficients
         // so that we may commit to them.
-        let mut w_l_poly =
+        let w_l_poly =
             DensePolynomial::from_coefficients_vec(domain.ifft(w_l_scalar));
-        let mut w_r_poly =
+        let w_r_poly =
             DensePolynomial::from_coefficients_vec(domain.ifft(w_r_scalar));
-        let mut w_o_poly =
+        let w_o_poly =
             DensePolynomial::from_coefficients_vec(domain.ifft(w_o_scalar));
-        let mut w_4_poly =
+        let w_4_poly =
             DensePolynomial::from_coefficients_vec(domain.ifft(w_4_scalar));
 
         // Add blinders
-        w_l_poly = Self::add_blinder(&w_l_poly, n, 1);
-        w_r_poly = Self::add_blinder(&w_r_poly, n, 1);
-        w_o_poly = Self::add_blinder(&w_o_poly, n, 1);
-        w_4_poly = Self::add_blinder(&w_4_poly, n, 1);
+        // w_l_poly = Self::add_blinder(&w_l_poly, n, 1);
+        // w_r_poly = Self::add_blinder(&w_r_poly, n, 1);
+        // w_o_poly = Self::add_blinder(&w_o_poly, n, 1);
+        // w_4_poly = Self::add_blinder(&w_4_poly, n, 1);
         let w_polys = [
             label_polynomial!(w_l_poly),
             label_polynomial!(w_r_poly),
@@ -277,7 +275,7 @@ where
         transcript.append(b"gamma", &gamma);
         assert!(beta != gamma, "challenges must be different");
 
-        let mut z_poly = DensePolynomial::from_coefficients_slice(
+        let z_poly = DensePolynomial::from_coefficients_slice(
             &self.cs.perm.compute_permutation_poly(
                 &domain,
                 (w_l_scalar, w_r_scalar, w_o_scalar, w_4_scalar),
@@ -293,7 +291,7 @@ where
         );
 
         // Add blinder for permutation poly
-        z_poly = Self::add_blinder(&z_poly, n, 2);
+        // z_poly = Self::add_blinder(&z_poly, n, 2);
 
         // Commit to permutation polynomial.
         let (z_poly_commit, _) =

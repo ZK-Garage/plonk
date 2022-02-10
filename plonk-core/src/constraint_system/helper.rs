@@ -47,7 +47,7 @@ where
 {
     // Common View
     let universal_params = PC::setup(
-        2 * n + 6, // +1 per wire, +2 for the permutation poly
+        2 * n, // +1 per wire, +2 for the permutation poly
         None,
         &mut OsRng,
     )
@@ -68,7 +68,7 @@ where
         let (ck, _) = PC::trim(
             &universal_params,
             // +1 per wire, +2 for the permutation poly
-            prover.circuit_size().next_power_of_two() + 6,
+            prover.circuit_size().next_power_of_two(),
             0,
             None,
         )
@@ -98,7 +98,7 @@ where
     // Compute Commit and Verifier Key
     let (ck, vk) = PC::trim(
         &universal_params,
-        verifier.circuit_size().next_power_of_two() + 6,
+        verifier.circuit_size().next_power_of_two(),
         0,
         None,
     )

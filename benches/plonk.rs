@@ -96,7 +96,7 @@ where
 
     let pp = HC::setup(
         // +1 per wire, +2 for the permutation poly
-        1 << MAXIMUM_DEGREE + 6,
+        1 << MAXIMUM_DEGREE,
         None,
         &mut OsRng,
     )
