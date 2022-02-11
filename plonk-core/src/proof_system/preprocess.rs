@@ -131,102 +131,102 @@ where
         let (_, selectors, domain) =
             self.preprocess_shared(commit_key, transcript, _pc)?;
 
-        let domain_8n =
-            GeneralEvaluationDomain::new(8 * domain.size()).ok_or(Error::InvalidEvalDomainSize {
-                log_size_of_group: (8 * domain.size()).trailing_zeros(),
+        let domain_4n =
+            GeneralEvaluationDomain::new(4 * domain.size()).ok_or(Error::InvalidEvalDomainSize {
+                log_size_of_group: (4 * domain.size()).trailing_zeros(),
                 adicity:
                     <<F as FftField>::FftParams as ark_ff::FftParameters>::TWO_ADICITY,
             })?;
-        let q_m_eval_8n = Evaluations::from_vec_and_domain(
-            domain_8n.coset_fft(&selectors.q_m),
-            domain_8n,
+        let q_m_eval_4n = Evaluations::from_vec_and_domain(
+            domain_4n.coset_fft(&selectors.q_m),
+            domain_4n,
         );
-        let q_l_eval_8n = Evaluations::from_vec_and_domain(
-            domain_8n.coset_fft(&selectors.q_l),
-            domain_8n,
+        let q_l_eval_4n = Evaluations::from_vec_and_domain(
+            domain_4n.coset_fft(&selectors.q_l),
+            domain_4n,
         );
-        let q_r_eval_8n = Evaluations::from_vec_and_domain(
-            domain_8n.coset_fft(&selectors.q_r),
-            domain_8n,
+        let q_r_eval_4n = Evaluations::from_vec_and_domain(
+            domain_4n.coset_fft(&selectors.q_r),
+            domain_4n,
         );
-        let q_o_eval_8n = Evaluations::from_vec_and_domain(
-            domain_8n.coset_fft(&selectors.q_o),
-            domain_8n,
+        let q_o_eval_4n = Evaluations::from_vec_and_domain(
+            domain_4n.coset_fft(&selectors.q_o),
+            domain_4n,
         );
-        let q_c_eval_8n = Evaluations::from_vec_and_domain(
-            domain_8n.coset_fft(&selectors.q_c),
-            domain_8n,
+        let q_c_eval_4n = Evaluations::from_vec_and_domain(
+            domain_4n.coset_fft(&selectors.q_c),
+            domain_4n,
         );
-        let q_4_eval_8n = Evaluations::from_vec_and_domain(
-            domain_8n.coset_fft(&selectors.q_4),
-            domain_8n,
+        let q_4_eval_4n = Evaluations::from_vec_and_domain(
+            domain_4n.coset_fft(&selectors.q_4),
+            domain_4n,
         );
-        let q_arith_eval_8n = Evaluations::from_vec_and_domain(
-            domain_8n.coset_fft(&selectors.q_arith),
-            domain_8n,
+        let q_arith_eval_4n = Evaluations::from_vec_and_domain(
+            domain_4n.coset_fft(&selectors.q_arith),
+            domain_4n,
         );
-        let q_range_eval_8n = Evaluations::from_vec_and_domain(
-            domain_8n.coset_fft(&selectors.q_range),
-            domain_8n,
+        let q_range_eval_4n = Evaluations::from_vec_and_domain(
+            domain_4n.coset_fft(&selectors.q_range),
+            domain_4n,
         );
-        let q_logic_eval_8n = Evaluations::from_vec_and_domain(
-            domain_8n.coset_fft(&selectors.q_logic),
-            domain_8n,
+        let q_logic_eval_4n = Evaluations::from_vec_and_domain(
+            domain_4n.coset_fft(&selectors.q_logic),
+            domain_4n,
         );
-        let q_fixed_group_add_eval_8n = Evaluations::from_vec_and_domain(
-            domain_8n.coset_fft(&selectors.q_fixed_group_add),
-            domain_8n,
+        let q_fixed_group_add_eval_4n = Evaluations::from_vec_and_domain(
+            domain_4n.coset_fft(&selectors.q_fixed_group_add),
+            domain_4n,
         );
-        let q_variable_group_add_eval_8n = Evaluations::from_vec_and_domain(
-            domain_8n.coset_fft(&selectors.q_variable_group_add),
-            domain_8n,
+        let q_variable_group_add_eval_4n = Evaluations::from_vec_and_domain(
+            domain_4n.coset_fft(&selectors.q_variable_group_add),
+            domain_4n,
         );
 
-        let left_sigma_eval_8n = Evaluations::from_vec_and_domain(
-            domain_8n.coset_fft(&selectors.left_sigma),
-            domain_8n,
+        let left_sigma_eval_4n = Evaluations::from_vec_and_domain(
+            domain_4n.coset_fft(&selectors.left_sigma),
+            domain_4n,
         );
-        let right_sigma_eval_8n = Evaluations::from_vec_and_domain(
-            domain_8n.coset_fft(&selectors.right_sigma),
-            domain_8n,
+        let right_sigma_eval_4n = Evaluations::from_vec_and_domain(
+            domain_4n.coset_fft(&selectors.right_sigma),
+            domain_4n,
         );
-        let out_sigma_eval_8n = Evaluations::from_vec_and_domain(
-            domain_8n.coset_fft(&selectors.out_sigma),
-            domain_8n,
+        let out_sigma_eval_4n = Evaluations::from_vec_and_domain(
+            domain_4n.coset_fft(&selectors.out_sigma),
+            domain_4n,
         );
-        let fourth_sigma_eval_8n = Evaluations::from_vec_and_domain(
-            domain_8n.coset_fft(&selectors.fourth_sigma),
-            domain_8n,
+        let fourth_sigma_eval_4n = Evaluations::from_vec_and_domain(
+            domain_4n.coset_fft(&selectors.fourth_sigma),
+            domain_4n,
         );
         // XXX: Remove this and compute it on the fly
-        let linear_eval_8n = Evaluations::from_vec_and_domain(
-            domain_8n.coset_fft(&[F::zero(), F::one()]),
-            domain_8n,
+        let linear_eval_4n = Evaluations::from_vec_and_domain(
+            domain_4n.coset_fft(&[F::zero(), F::one()]),
+            domain_4n,
         );
 
-        // Compute 8n evaluations for X^n -1
-        let v_h_coset_8n =
-            compute_vanishing_poly_over_coset(domain_8n, domain.size() as u64);
+        // Compute 4n evaluations for X^n -1
+        let v_h_coset_4n =
+            compute_vanishing_poly_over_coset(domain_4n, domain.size() as u64);
 
         Ok(ProverKey::from_polynomials_and_evals(
             domain.size(),
-            (selectors.q_m, q_m_eval_8n),
-            (selectors.q_l, q_l_eval_8n),
-            (selectors.q_r, q_r_eval_8n),
-            (selectors.q_o, q_o_eval_8n),
-            (selectors.q_4, q_4_eval_8n),
-            (selectors.q_c, q_c_eval_8n),
-            (selectors.q_arith, q_arith_eval_8n),
-            (selectors.q_range, q_range_eval_8n),
-            (selectors.q_logic, q_logic_eval_8n),
-            (selectors.q_fixed_group_add, q_fixed_group_add_eval_8n),
-            (selectors.q_variable_group_add, q_variable_group_add_eval_8n),
-            (selectors.left_sigma, left_sigma_eval_8n),
-            (selectors.right_sigma, right_sigma_eval_8n),
-            (selectors.out_sigma, out_sigma_eval_8n),
-            (selectors.fourth_sigma, fourth_sigma_eval_8n),
-            linear_eval_8n,
-            v_h_coset_8n,
+            (selectors.q_m, q_m_eval_4n),
+            (selectors.q_l, q_l_eval_4n),
+            (selectors.q_r, q_r_eval_4n),
+            (selectors.q_o, q_o_eval_4n),
+            (selectors.q_4, q_4_eval_4n),
+            (selectors.q_c, q_c_eval_4n),
+            (selectors.q_arith, q_arith_eval_4n),
+            (selectors.q_range, q_range_eval_4n),
+            (selectors.q_logic, q_logic_eval_4n),
+            (selectors.q_fixed_group_add, q_fixed_group_add_eval_4n),
+            (selectors.q_variable_group_add, q_variable_group_add_eval_4n),
+            (selectors.left_sigma, left_sigma_eval_4n),
+            (selectors.right_sigma, right_sigma_eval_4n),
+            (selectors.out_sigma, out_sigma_eval_4n),
+            (selectors.fourth_sigma, fourth_sigma_eval_4n),
+            linear_eval_4n,
+            v_h_coset_4n,
         ))
     }
 
