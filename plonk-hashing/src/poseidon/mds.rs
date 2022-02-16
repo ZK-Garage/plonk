@@ -38,7 +38,7 @@ impl<F: PrimeField> MdsMatrices<F> {
         }
     }
 
-    fn generate_mds(t: usize) -> Matrix<F> {
+    pub fn generate_mds(t: usize) -> Matrix<F> {
         let xs: Vec<F> = (0..t as u64).map(F::from).collect();
         let ys: Vec<F> = (t as u64..2 * t as u64).map(F::from).collect();
 

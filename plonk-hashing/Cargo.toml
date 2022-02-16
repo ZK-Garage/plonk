@@ -36,3 +36,10 @@ hashbrown = { version = "0.11.2", default-features = false, features = ["ahash"]
 ark-relations = "0.3.0"
 ark-r1cs-std = "0.3.1"
 thiserror = "1.0.30"
+
+
+# curves
+ark-bls12-381 = "0.3"
+ark-ed-on-bls12-381 = "0.3"
+ark-bn254 = { version = "^0.3.0", default-features = false, features = [ "curve" ] }
+ark-ed-on-bn254 = { version = "^0.3.0", default-features = false, features = [ "r1cs" ] }
