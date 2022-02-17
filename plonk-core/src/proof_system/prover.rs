@@ -153,51 +153,6 @@ where
         self.preprocessed_transcript.append_message(label, message);
     }
 
-    /// Adds to a given polynomial a blinder term of the form:
-    /// (b0 + b1 X + ...+ bk X^k) Z_h
-    /// where k is the hiding_degree and Z_h = X^n - 1, the vanishing
-    /// polynomial.
-    // fn add_blinder(
-    //     polynomial: &DensePolynomial<F>,
-    //     n: usize,
-    //     hiding_degree: usize,
-    // ) -> DensePolynomial<F> {
-    //     if hiding_degree < n / 2 {
-    //         let z_h: DensePolynomial<F> =
-    //             SparsePolynomial::from_coefficients_slice(&[
-    //                 (0, -F::one()),
-    //                 (n, F::one()),
-    //             ])
-    //             .into();
-    //         let rand_poly =
-    //             DensePolynomial::from_coefficients_vec(vec![
-    //                 F::rand(&mut OsRng);
-    //                 hiding_degree + 1
-    //             ]);
-    //         let blinder_poly = &rand_poly * &z_h;
-    //         polynomial + &blinder_poly
-    //     } else {
-    //         let mut sparse_blinder_vec =
-    //             vec![(0, F::zero()); 2 * (hiding_degree + 1)];
-
-    //         // Computes the multiplication of (b0 + b1X + ..+ bk X^k) (X^n
-    // -1)         // = (- b0 -b1 X ... -bk X^k  ..., b0 X^n + b1 X^(n+1) +
-    // ... bk         // X^(n+k) as long as k< n/2
-    //         for i in 0..=hiding_degree {
-    //             let random_blinder = F::rand(&mut OsRng);
-    //             sparse_blinder_vec[i] = (i, -random_blinder);
-    //             sparse_blinder_vec[hiding_degree + 1 + i] =
-    //                 (n + i, random_blinder);
-    //         }
-
-    //         let blinder_poly =
-    //             SparsePolynomial::from_coefficients_vec(sparse_blinder_vec);
-    //         // panic!("The blinder poly is {:?}", blinder_poly);
-
-    //         polynomial + &blinder_poly
-    //     }
-    // }
-
     /// Creates a [`Proof]` that demonstrates that a circuit is satisfied.
     /// # Note
     /// If you intend to construct multiple [`Proof`]s with different witnesses,
@@ -275,18 +230,16 @@ where
         transcript.append(b"gamma", &gamma);
         assert!(beta != gamma, "challenges must be different");
 
-        let z_poly = DensePolynomial::from_coefficients_slice(
-            &self.cs.perm.compute_permutation_poly(
-                &domain,
-                (w_l_scalar, w_r_scalar, w_o_scalar, w_4_scalar),
-                beta,
-                gamma,
-                (
-                    &prover_key.permutation.left_sigma.0,
-                    &prover_key.permutation.right_sigma.0,
-                    &prover_key.permutation.out_sigma.0,
-                    &prover_key.permutation.fourth_sigma.0,
-                ),
+        let z_poly = self.cs.perm.compute_permutation_poly(
+            &domain,
+            (w_l_scalar, w_r_scalar, w_o_scalar, w_4_scalar),
+            beta,
+            gamma,
+            (
+                &prover_key.permutation.left_sigma.0,
+                &prover_key.permutation.right_sigma.0,
+                &prover_key.permutation.out_sigma.0,
+                &prover_key.permutation.fourth_sigma.0,
             ),
         );
 
@@ -338,7 +291,6 @@ where
             &var_base_sep_challenge,
         )?;
 
-        // Split quotient polynomial into 4 degree `n` polynomials
         let (t_1_poly, t_2_poly, t_3_poly, t_4_poly) =
             self.split_tx_poly(n, &t_poly);
 

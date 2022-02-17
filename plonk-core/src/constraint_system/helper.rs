@@ -46,12 +46,8 @@ where
     PC: HomomorphicCommitment<F>,
 {
     // Common View
-    let universal_params = PC::setup(
-        2 * n, // +1 per wire, +2 for the permutation poly
-        None,
-        &mut OsRng,
-    )
-    .map_err(to_pc_error::<F, PC>)?;
+    let universal_params =
+        PC::setup(2 * n, None, &mut OsRng).map_err(to_pc_error::<F, PC>)?;
 
     // Provers View
     let (proof, public_inputs) = {

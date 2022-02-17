@@ -823,7 +823,7 @@ mod test {
 
         let sigmas: Vec<Vec<F>> = cs
             .perm
-            .compute_sigma_permutations(7)
+            .compute_sigma_permutations(cs.circuit_size())
             .iter()
             .map(|wd| cs.perm.compute_permutation_lagrange(wd, &domain))
             .collect();

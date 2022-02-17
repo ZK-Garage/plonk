@@ -212,7 +212,7 @@ where
             composer.add_witness_to_circuit_description(F::zero());
 
         // Add dummy constraints
-        composer.add_dummy_constraints();
+        composer.add_blinding_factors();
 
         composer
     }
@@ -467,9 +467,9 @@ where
         f_x
     }
 
-    /// This function is used to add a blinding factor to the witness
-    /// polynomials. It essentially adds two dummy gates to the circuit
+    /// This function adds two dummy gates to the circuit
     /// description which are guaranteed to always satisfy the gate equation.
+    /// This function is only used in benchmarking
     pub fn add_dummy_constraints(&mut self) {
         // Add a dummy constraint so that we do not have zero polynomials
         self.q_m.push(F::from(1u64));
@@ -526,6 +526,74 @@ where
         self.n += 1;
     }
 
+    /// This function is used to add a blinding factors to the witness
+    /// and permutation polynomials.
+    /// All gate selectors are turned off to guarantee the constraints
+    /// are still satisfied.
+    pub fn add_blinding_factors(&mut self) {
+        let mut rand_var_1 = Variable::default();
+        let mut rand_var_2 = Variable::default();
+        // Blinding wires
+        for _ in 0..2 {
+            rand_var_1 = self.add_input(F::rand(&mut rand::rngs::OsRng));
+            rand_var_2 = self.add_input(F::rand(&mut rand::rngs::OsRng));
+            let rand_var_3 = self.add_input(F::rand(&mut rand::rngs::OsRng));
+            let rand_var_4 = self.add_input(F::rand(&mut rand::rngs::OsRng));
+
+            self.w_l.push(rand_var_1);
+            self.w_r.push(rand_var_2);
+            self.w_o.push(rand_var_3);
+            self.w_4.push(rand_var_4);
+
+            // All selectors fixed to 0 so that the constraints are satisfied
+            self.q_m.push(F::zero());
+            self.q_l.push(F::zero());
+            self.q_r.push(F::zero());
+            self.q_o.push(F::zero());
+            self.q_c.push(F::zero());
+            self.q_4.push(F::zero());
+            self.q_arith.push(F::zero());
+            self.q_range.push(F::zero());
+            self.q_logic.push(F::zero());
+            self.q_fixed_group_add.push(F::zero());
+            self.q_variable_group_add.push(F::zero());
+
+            self.perm.add_variables_to_map(
+                rand_var_1, rand_var_2, rand_var_3, rand_var_4, self.n,
+            );
+            self.n += 1;
+        }
+
+        // Blinding Z
+        // We add 2 pairs of equal random points
+
+        self.w_l.push(rand_var_1);
+        self.w_r.push(rand_var_2);
+        self.w_o.push(self.zero_var());
+        self.w_4.push(self.zero_var());
+
+        // All selectors fixed to 0 so that the constraints are satisfied
+        self.q_m.push(F::zero());
+        self.q_l.push(F::zero());
+        self.q_r.push(F::zero());
+        self.q_o.push(F::zero());
+        self.q_c.push(F::zero());
+        self.q_4.push(F::zero());
+        self.q_arith.push(F::zero());
+        self.q_range.push(F::zero());
+        self.q_logic.push(F::zero());
+        self.q_fixed_group_add.push(F::zero());
+        self.q_variable_group_add.push(F::zero());
+
+        self.perm.add_variables_to_map(
+            rand_var_1,
+            rand_var_2,
+            self.zero_var(),
+            self.zero_var(),
+            self.n,
+        );
+        self.n += 1;
+    }
     /// Utility function that checks on the "front-end"
     /// side of the PLONK implementation if the identity polynomial
     /// is satisfied for each of the [`StandardComposer`]'s gates.
@@ -718,11 +786,10 @@ mod test {
         // NOTE: Circuit size is n+3 because
         // - We have an extra gate which forces the first witness to be zero.
         //   This is used when the advice wire is not being used.
-        // - We have two gates which ensure that the permutation polynomial is
-        //   not the identity and
-        // - Another gate which ensures that the selector polynomials are not
-        //   all zeroes
-        assert_eq!(3, StandardComposer::<F, P>::new().circuit_size())
+        // - We have two gates which add random values to blind the wires.
+        // - Another gate which adds 2 pairs of equal points to blind the
+        //   permutation polynomial
+        assert_eq!(4, StandardComposer::<F, P>::new().circuit_size())
     }
 
     /// Tests that an empty circuit proof passes.
