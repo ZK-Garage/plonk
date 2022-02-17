@@ -447,7 +447,7 @@ where
 
         // Compute mega permutation polynomial.
         // Compute lookup permutation poly
-        let z_2_poly = DensePolynomial::from_coefficients_slice(
+        let mut z_2_poly = DensePolynomial::from_coefficients_slice(
             &self.cs.perm.compute_lookup_permutation_poly(
                 &domain,
                 &compressed_f_multiset.0,
@@ -458,6 +458,14 @@ where
                 epsilon,
             ),
         );
+
+        // Add blinder for lookup permutation poly
+        z_2_poly = Self::add_blinder(&z_2_poly, n, 2);
+
+        // Commit to lookup permutation polynomial.
+        let (z_2_poly_commit, _) =
+            PC::commit(commit_key, &[label_polynomial!(z_2_poly)], None)
+                .map_err(to_pc_error::<F, PC>)?;
 
         // 3. Compute public inputs polynomial.
         let pi_poly = DensePolynomial::from_coefficients_vec(
@@ -628,12 +636,19 @@ where
         // challenge `z`
         let aw_challenge: F = transcript.challenge_scalar(b"aggregate_witness");
 
+        /// XXX: The quotient polynmials is used here and then in the 
+        /// opening poly. It is being left in for now but it may not 
+        /// be necessary. Warrants further investigation.
+        /// Ditto with the out_sigma poly.
         let aw_polys = [
             label_polynomial!(quot),
             label_polynomial!(lin_poly),
             label_polynomial!(prover_key.permutation.left_sigma.0.clone()),
             label_polynomial!(prover_key.permutation.right_sigma.0.clone()),
             label_polynomial!(prover_key.permutation.out_sigma.0.clone()),
+            label_polynomial!(f_poly),
+            label_polynomial!(h_2_poly),
+            label_polynomial!(table_poly),
         ];
 
         let (aw_commits, aw_rands) = PC::commit(commit_key, &aw_polys, None)
@@ -658,6 +673,10 @@ where
             label_polynomial!(w_l_poly),
             label_polynomial!(w_r_poly),
             label_polynomial!(w_4_poly),
+            label_polynomial!(h_1_poly),
+            label_polynomial!(z_2_poly),
+            label_polynomial!(table_poly),
+
         ];
 
         let (saw_commits, saw_rands) = PC::commit(commit_key, &saw_polys, None)
@@ -680,6 +699,10 @@ where
             c_comm: w_commits[2].commitment().clone(),
             d_comm: w_commits[3].commitment().clone(),
             z_comm: saw_commits[0].commitment().clone(),
+            f_comm: f_poly_commit[0].commitment().clone(),
+            h_1_comm: h_1_poly_commit[0].commitment().clone(),
+            h_2_comm: h_2_poly_commit[0].commitment().clone(),
+            z_2_comm: z_2_poly_commit[0].commitment().clone(),
             t_1_comm: t_commits[0].commitment().clone(),
             t_2_comm: t_commits[1].commitment().clone(),
             t_3_comm: t_commits[2].commitment().clone(),

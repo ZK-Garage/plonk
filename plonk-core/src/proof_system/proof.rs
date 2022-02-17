@@ -73,6 +73,18 @@ where
     /// Commitment to the permutation polynomial.
     pub(crate) z_comm: PC::Commitment,
 
+    /// Commitment to the lookup query polynomial.
+    pub(crate) f_comm: PC::Commitment,
+
+    /// Commitment to first half of sorted polynomial
+    pub(crate) h_1_comm: PC::Commitment,
+
+    /// Commitment to second half of sorted polynomial
+    pub(crate) h_2_comm: PC::Commitment,
+
+    /// Commitment to the lookup permutation polynomial.
+    pub(crate) z_2_comm: PC::Commitment,
+
     /// Commitment to the quotient polynomial.
     pub(crate) t_1_comm: PC::Commitment,
 
