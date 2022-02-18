@@ -94,13 +94,8 @@ where
     const MINIMUM_DEGREE: usize = 5;
     const MAXIMUM_DEGREE: usize = 19;
 
-    let pp = HC::setup(
-        // +1 per wire, +2 for the permutation poly
-        1 << MAXIMUM_DEGREE,
-        None,
-        &mut OsRng,
-    )
-    .expect("Unable to sample public parameters.");
+    let pp = HC::setup(1 << MAXIMUM_DEGREE, None, &mut OsRng)
+        .expect("Unable to sample public parameters.");
 
     let mut compiling_benchmarks =
         c.benchmark_group(format!("{0}/compile", name));

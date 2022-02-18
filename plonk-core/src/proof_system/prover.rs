@@ -199,10 +199,6 @@ where
             DensePolynomial::from_coefficients_vec(domain.ifft(w_4_scalar));
 
         // Add blinders
-        // w_l_poly = Self::add_blinder(&w_l_poly, n, 1);
-        // w_r_poly = Self::add_blinder(&w_r_poly, n, 1);
-        // w_o_poly = Self::add_blinder(&w_o_poly, n, 1);
-        // w_4_poly = Self::add_blinder(&w_4_poly, n, 1);
         let w_polys = [
             label_polynomial!(w_l_poly),
             label_polynomial!(w_r_poly),
@@ -242,9 +238,6 @@ where
                 &prover_key.permutation.fourth_sigma.0,
             ),
         );
-
-        // Add blinder for permutation poly
-        // z_poly = Self::add_blinder(&z_poly, n, 2);
 
         // Commit to permutation polynomial.
         let (z_poly_commit, _) =

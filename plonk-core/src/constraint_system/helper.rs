@@ -63,7 +63,6 @@ where
         // Commit Key
         let (ck, _) = PC::trim(
             &universal_params,
-            // +1 per wire, +2 for the permutation poly
             prover.circuit_size().next_power_of_two(),
             0,
             None,
