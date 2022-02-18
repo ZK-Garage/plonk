@@ -202,7 +202,7 @@ where
 /// // Generate CRS
 /// type PC = SonicKZG10::<Bls12_381,DensePolynomial<BlsScalar>>;
 /// let pp = PC::setup(
-///     1 << 12, None, &mut OsRng
+///     1 << 10, None, &mut OsRng
 ///  )?;
 ///
 /// let mut circuit = TestCircuit::<BlsScalar, JubJubParameters>::default();
@@ -492,7 +492,7 @@ mod test {
         VerifierData<F, PC>: PartialEq,
     {
         // Generate CRS
-        let pp = PC::setup(1 << 19, None, &mut OsRng)
+        let pp = PC::setup(1 << 10, None, &mut OsRng)
             .map_err(to_pc_error::<F, PC>)?;
 
         let mut circuit = TestCircuit::<F, P>::default();
