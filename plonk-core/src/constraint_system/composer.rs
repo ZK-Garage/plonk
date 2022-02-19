@@ -21,6 +21,7 @@ use ark_ec::{models::TEModelParameters, ModelParameters};
 use ark_ff::PrimeField;
 use core::marker::PhantomData;
 use hashbrown::HashMap;
+use rand::{CryptoRng, RngCore};
 
 /// The StandardComposer is the circuit-builder tool that the `plonk` repository
 /// provides to create, stored and transformed circuit descriptions
@@ -212,7 +213,7 @@ where
             composer.add_witness_to_circuit_description(F::zero());
 
         // Add dummy constraints
-        composer.add_blinding_factors();
+        composer.add_blinding_factors(&mut rand::rngs::OsRng);
 
         composer
     }
@@ -530,15 +531,18 @@ where
     /// and permutation polynomials.
     /// All gate selectors are turned off to guarantee the constraints
     /// are still satisfied.
-    pub fn add_blinding_factors(&mut self) {
+    pub fn add_blinding_factors<R>(&mut self, rng: &mut R)
+    where
+        R: CryptoRng + RngCore + ?Sized,
+    {
         let mut rand_var_1 = Variable::default();
         let mut rand_var_2 = Variable::default();
         // Blinding wires
         for _ in 0..2 {
-            rand_var_1 = self.add_input(F::rand(&mut rand::rngs::OsRng));
-            rand_var_2 = self.add_input(F::rand(&mut rand::rngs::OsRng));
-            let rand_var_3 = self.add_input(F::rand(&mut rand::rngs::OsRng));
-            let rand_var_4 = self.add_input(F::rand(&mut rand::rngs::OsRng));
+            rand_var_1 = self.add_input(F::rand(rng));
+            rand_var_2 = self.add_input(F::rand(rng));
+            let rand_var_3 = self.add_input(F::rand(rng));
+            let rand_var_4 = self.add_input(F::rand(rng));
 
             self.w_l.push(rand_var_1);
             self.w_r.push(rand_var_2);
