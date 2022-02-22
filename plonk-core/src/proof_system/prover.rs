@@ -257,10 +257,6 @@ where
         let w_o_scalar = &[&self.to_scalars(&self.cs.w_o)[..], &pad].concat();
         let w_4_scalar = &[&self.to_scalars(&self.cs.w_4)[..], &pad].concat();
 
-        // Ensure the lookup q_lookup selector is the correct size
-        // for building the witness polynomial, f 
-        let padded_q_lookup = [&self.cs.q_lookup[..], &pad].concat();
-
         // Witnesses are now in evaluation form, convert them to coefficients
         // so that we may commit to them.
         let mut w_l_poly =
@@ -319,28 +315,31 @@ where
 
         // Compute query table f
         // When q_lookup[i] is zero the wire value is replaced with a dummy
-        // value Currently set as the first row of the public table
-        // If q_lookup is one the wire values are preserved
+        //   value currently set as the first row of the public table
+        // If q_lookup[i] is one the wire values are preserved
+        // This ensures the ith element of the compressed query table 
+        //   is an element of the compressed lookup table even when 
+        //   q_lookup[i] is 0 so the lookup check will pass
         let f_1_scalar = w_l_scalar
             .iter()
-            .zip(&padded_q_lookup)
+            .zip(&self.cs.q_lookup)
             .map(|(w, s)| {
                 *w * s + (F::one() - s) * compressed_t_multiset.0[0]
             })
             .collect::<Vec<F>>();
         let f_2_scalar = w_r_scalar
             .iter()
-            .zip(&padded_q_lookup)
+            .zip(&self.cs.q_lookup)
             .map(|(w, s)| *w * s)
             .collect::<Vec<F>>();
         let f_3_scalar = w_o_scalar
             .iter()
-            .zip(&padded_q_lookup)
+            .zip(&self.cs.q_lookup)
             .map(|(w, s)| *w * s)
             .collect::<Vec<F>>();
         let f_4_scalar = w_4_scalar
             .iter()
-            .zip(&padded_q_lookup)
+            .zip(&self.cs.q_lookup)
             .map(|(w, s)| *w * s)
             .collect::<Vec<F>>();
 
@@ -355,7 +354,7 @@ where
             zeta,
         );
 
-        // Compute long query poly
+        // Compute query poly
         let mut f_poly = DensePolynomial::from_coefficients_vec(
             domain.ifft(&compressed_f_multiset.0),
         );
@@ -373,7 +372,6 @@ where
         let (h_1, h_2) = compressed_t_multiset
             .sorted_halve(&compressed_f_multiset)
             .unwrap();
-
 
         // Compute h polys
         let mut h_1_poly = DensePolynomial::from_coefficients_vec(domain.ifft(&h_1.0));
@@ -510,7 +508,7 @@ where
             &w_4_poly,
             &pi_poly,
             &f_poly,
-     &table_poly,
+            &table_poly,
             &h_1_poly,
             &h_2_poly,
             &alpha,
@@ -580,8 +578,6 @@ where
             &h_2_poly,
             &table_poly
         )?;
-
-        
 
         // Add evaluations to transcript.
         transcript.append(b"a_eval", &evaluations.proof.a_eval);
