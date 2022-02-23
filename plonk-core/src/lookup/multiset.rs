@@ -116,8 +116,8 @@ where
             
         }
 
-        for element in f {
-            match counters.get_mut(element) {
+        for element in f.0 {
+            match counters.get_mut(&element) {
                 Some(entry) => *entry += 1,
                 _ => todo!(), 
 
