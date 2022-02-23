@@ -5,6 +5,7 @@
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
 use crate::{
+    commitment::HomomorphicCommitment,
     error::Error,
     proof_system::{
         ecc::{CurveAddition, FixedBaseScalarMul},
@@ -31,9 +32,9 @@ use super::{
 
 /// Computes the Quotient [`DensePolynomial`] given the [`EvaluationDomain`], a
 /// [`ProverKey`], and some other info.
-pub fn compute<F, P>(
+pub fn compute<F, P, PC>(
     domain: &GeneralEvaluationDomain<F>,
-    prover_key: &ProverKey<F>,
+    prover_key: &ProverKey<F, PC>,
     z_poly: &DensePolynomial<F>,
     z_2_poly: &DensePolynomial<F>,
     w_l_poly: &DensePolynomial<F>,
@@ -60,6 +61,7 @@ pub fn compute<F, P>(
 where
     F: PrimeField,
     P: TEModelParameters<BaseField = F>,
+    PC: HomomorphicCommitment<F>,
 {
     let domain_4n = GeneralEvaluationDomain::<F>::new(4 * domain.size())
         .ok_or(Error::InvalidEvalDomainSize {
@@ -120,7 +122,7 @@ where
     h2_eval_4n.push(h2_eval_4n[2]);
     h2_eval_4n.push(h2_eval_4n[3]);
 
-    let gate_constraints = compute_gate_constraint_satisfiability::<F, P>(
+    let gate_constraints = compute_gate_constraint_satisfiability::<F, P, PC>(
         domain,
         *range_challenge,
         *logic_challenge,
@@ -137,7 +139,7 @@ where
         zeta,
     )?;
 
-    let permutation = compute_permutation_checks::<F>(
+    let permutation = compute_permutation_checks::<F, PC>(
         domain,
         prover_key,
         &wl_eval_4n,
@@ -171,7 +173,7 @@ where
 
 /// Computes contribution to the quotient polynomial that ensures
 /// the gate constraints are satisfied.
-fn compute_gate_constraint_satisfiability<F, P>(
+fn compute_gate_constraint_satisfiability<F, P, PC>(
     domain: &GeneralEvaluationDomain<F>,
     range_challenge: F,
     logic_challenge: F,
@@ -190,6 +192,7 @@ fn compute_gate_constraint_satisfiability<F, P>(
 where
     F: PrimeField,
     P: TEModelParameters<BaseField = F>,
+    PC: HomomorphicCommitment<F>,
 {
     let domain_4n = GeneralEvaluationDomain::<F>::new(4 * domain.size())
         .ok_or(Error::InvalidEvalDomainSize {
@@ -279,9 +282,9 @@ where
 
 /// Computes the permutation contribution to the quotient polynomial over
 /// `domain`.
-fn compute_permutation_checks<F>(
+fn compute_permutation_checks<F, PC>(
     domain: &GeneralEvaluationDomain<F>,
-    prover_key: &ProverKey<F>,
+    prover_key: &ProverKey<F, PC>,
     wl_eval_4n: &[F],
     wr_eval_4n: &[F],
     wo_eval_4n: &[F],
@@ -299,6 +302,7 @@ fn compute_permutation_checks<F>(
 ) -> Result<Vec<F>, Error>
 where
     F: PrimeField,
+    PC: HomomorphicCommitment<F>,
 {
     let domain_4n = GeneralEvaluationDomain::<F>::new(4 * domain.size())
         .ok_or(Error::InvalidEvalDomainSize {
