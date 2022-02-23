@@ -149,23 +149,23 @@ where
 
         // Compute permutation challenge `beta`.
         let beta = transcript.challenge_scalar(b"beta");
-        transcript.append_scalar(b"beta", &beta);
+        transcript.append(b"beta", &beta);
 
         // Compute permutation challenge `gamma`.
         let gamma = transcript.challenge_scalar(b"gamma");
-        transcript.append_scalar(b"gamma", &gamma);
+        transcript.append(b"gamma", &gamma);
 
         // Compute permutation challenge `delta`.
         let delta = transcript.challenge_scalar(b"delta");
-        transcript.append_scalar(b"delta", &delta);
+        transcript.append(b"delta", &delta);
 
         // Compute permutation challenge `epsilon`.
         let epsilon = transcript.challenge_scalar(b"epsilon");
-        transcript.append_scalar(b"epsilon", &epsilon);
+        transcript.append(b"epsilon", &epsilon);
 
         // Compute permutation challenge `theta`.
         let theta = transcript.challenge_scalar(b"theta");
-        transcript.append_scalar(b"theta", &theta);
+        transcript.append(b"theta", &theta);
 
         // Challenges must be different 
         assert!(beta != gamma, "challenges must be different");
@@ -186,26 +186,26 @@ where
 
         // Compute quotient challenge
         let alpha = transcript.challenge_scalar(b"alpha");
-        transcript.append_scalar(b"alpha", &alpha);
+        transcript.append(b"alpha", &alpha);
         let range_sep_challenge =
             transcript.challenge_scalar(b"range separation challenge");
-        transcript.append_scalar(b"range seperation challenge", &range_sep_challenge);
+        transcript.append(b"range seperation challenge", &range_sep_challenge);
 
         let logic_sep_challenge =
             transcript.challenge_scalar(b"logic separation challenge");
-        transcript.append_scalar(b"logic seperation challenge", &logic_sep_challenge);
+        transcript.append(b"logic seperation challenge", &logic_sep_challenge);
 
         let fixed_base_sep_challenge =
             transcript.challenge_scalar(b"fixed base separation challenge");
-        transcript.append_scalar(b"fixed base separation challenge", &fixed_base_sep_challenge);
+        transcript.append(b"fixed base separation challenge", &fixed_base_sep_challenge);
 
         let var_base_sep_challenge =
             transcript.challenge_scalar(b"variable base separation challenge");
-        transcript.append_scalar(b"variable base separation challenge", &var_base_sep_challenge);
+        transcript.append(b"variable base separation challenge", &var_base_sep_challenge);
 
         let lookup_challenge =
             transcript.challenge_scalar(b"lookup separation challenge");
-        transcript.append_scalar(b"lookup separation challenge", &lookup_challenge);
+        transcript.append(b"lookup separation challenge", &lookup_challenge);
 
 
         // Add commitment to quotient polynomial to transcript
@@ -216,7 +216,7 @@ where
 
         // Compute evaluation point challenge
         let z_challenge = transcript.challenge_scalar(b"z");
-        transcript.append_scalar(b"z", &z_challenge);
+        transcript.append(b"z", &z_challenge);
 
         // Compute zero polynomial evaluated at `z_challenge`
         let z_h_eval = domain.evaluate_vanishing_polynomial(z_challenge);
