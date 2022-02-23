@@ -286,7 +286,7 @@ where
                 CAVals::from_evaluations(&custom_vals),
             );
 
-            let f = f_eval_8n[i];
+/*             let f = f_eval_8n[i];
 
             let lookup = prover_key.lookup.compute_quotient_i(
                 i,
@@ -297,7 +297,7 @@ where
                 f,
                 *zeta,
                 lookup_challenge,
-            );
+            ); */
 
 
             (arithmetic + pi_eval_8n[i])
@@ -305,7 +305,7 @@ where
                 + logic
                 + fixed_base_scalar_mul
                 + curve_addition
-                + lookup
+               // + lookup
         })
         .collect())
 }

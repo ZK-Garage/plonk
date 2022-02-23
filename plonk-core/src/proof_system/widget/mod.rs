@@ -361,13 +361,13 @@ where
             logic_selector: q_logic,
             fixed_group_add_selector: q_fixed_group_add,
             variable_group_add_selector: q_variable_group_add,
-            lookup: lookup::ProverKey {
+/*             lookup: lookup::ProverKey {
                 q_lookup,
                 table_1,
                 table_2,
                 table_3,
                 table_4,
-            },
+            }, */
             permutation: permutation::ProverKey {
                 left_sigma,
                 right_sigma,

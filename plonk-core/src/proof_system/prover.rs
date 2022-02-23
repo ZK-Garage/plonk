@@ -584,7 +584,7 @@ where
         transcript
             .append(b"perm_eval", &evaluations.perm_evals.permutation_eval);
         
-        // Third lookup evals
+/*         // Third lookup evals
         transcript.append(b"f_eval", &evaluations.proof.f_eval);
         transcript
             .append(b"q_lookup_eval", &evaluations.proof.q_lookup_eval);
@@ -595,7 +595,7 @@ where
         transcript.append(b"h_1_eval", &evaluations.proof.h_1_eval);
         transcript
             .append(b"h_1_next_eval", &evaluations.proof.h_1_next_eval);
-        transcript.append(b"h_2_eval", &evaluations.proof.h_2_eval);
+        transcript.append(b"h_2_eval", &evaluations.proof.h_2_eval); */
 
         // Fourth, all evals needed for custom gates
         evaluations

@@ -90,11 +90,11 @@ where
         );
         let c = self.compute_quotient_term_check_one_i(z_i, l1_alpha_sq);
 
-        let d = self.compute_lookup_permutation_check(index, lookup_separation_challenge, f_i, z_2_i, z_2_i_next, t_i, t_i_next, h_1_i, h_1_i_next, h_2_i, (delta, epsilon));
+        //let d = self.compute_lookup_permutation_check(index, lookup_separation_challenge, f_i, z_2_i, z_2_i_next, t_i, t_i_next, h_1_i, h_1_i_next, h_2_i, (delta, epsilon));
 
-        let e = self.compute_lookup_term_check(z_2_i, l1_alpha_five);
+        //let e = self.compute_lookup_term_check(z_2_i, l1_alpha_five);
 
-        a + b + c + d + e
+        a + b + c// + d + e
 
     }
 
@@ -157,7 +157,7 @@ where
         -product
     }
 
-    fn compute_lookup_permutation_check(
+/*     fn compute_lookup_permutation_check(
         &self,
         index: usize,
         lookup_separation_challenge: F,
@@ -197,7 +197,7 @@ where
         };
 
         a + b 
-    }
+    } */
 
     /// Computes the following:
     ///
@@ -251,10 +251,12 @@ where
             alpha.square(),
             z_poly,
         );
-        let d = self.compute_lineariser_lookup_perm_check(f_eval, t_eval, t_next_eval, h_1_eval, h_2_eval, z_next_eval, l1_eval, p_poly, h_1_poly, (delta, epsilon), lookup_separation_challenge);
+        //let d = self.compute_lineariser_lookup_perm_check(f_eval, t_eval, t_next_eval, h_1_eval, h_2_eval, z_next_eval, l1_eval, p_poly, h_1_poly, (delta, epsilon), lookup_separation_challenge);
         
-        let e = self.compute_lineariser_check_is_one(&domain, z_challenge, alpha_five, z_2_coeffs);
-        Ok((&(&a + &b) + &c) + d + e)
+        //let e = self.compute_lineariser_check_is_one(&domain, z_challenge, alpha_five, z_2_coeffs);
+        Ok((&(&a + &b) + &c)
+         //+ d + e
+        )
     }
 
     /// Computes the following:
@@ -358,7 +360,7 @@ where
         z_coeffs * (l_1_z * alpha_sq)
     }
 
-
+/* 
     /// Compute lookup perm lineariser contribution
     fn compute_lineariser_lookup_perm_check(
     &self,
@@ -396,7 +398,7 @@ where
         };
 
         a + b
-    }
+    } */
     
 }
 
@@ -491,7 +493,7 @@ where
     }
 }
 
-
+/* 
         // p(X) * (1+δ) * (ε+f(X)) * (ε*(1+δ) + t(X) + δt(Xω)) * α_1^3
         let c = {
             let c_1 = epsilon + f_i;
@@ -508,3 +510,4 @@ where
 
             -p_i_next * d_1 * d_2 * l_sep_3
         };
+ */

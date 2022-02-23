@@ -68,7 +68,7 @@ where
     /// is a root of unity.
     pub permutation_eval: F,
 
-    // (Shifted) Evaluation of the lookup permutation polynomial at `z * root
+/*     // (Shifted) Evaluation of the lookup permutation polynomial at `z * root
     // of unity`
     pub lookup_perm_eval: F,
 
@@ -90,7 +90,7 @@ where
     pub table_eval: F,
 
     /// Evaluations of the table polynomial at `z * root of unity`
-    pub table_next_eval: F,
+    pub table_next_eval: F, */
 }
 
 /// Subset of the [`ProofEvaluations`]. Evaluations at `z`  or `z *w` where `w`
@@ -165,18 +165,16 @@ pub fn compute<F, P>(
     w_r_poly: &DensePolynomial<F>,
     w_o_poly: &DensePolynomial<F>,
     w_4_poly: &DensePolynomial<F>,
-    quot_poly: &DensePolynomial<F>,
+    t_1_poly: &DensePolynomial<F>,
+    t_2_poly: &DensePolynomial<F>,
+    t_3_poly: &DensePolynomial<F>,
+    t_4_poly: &DensePolynomial<F>,
     z_poly: &DensePolynomial<F>,
     z_2_poly: &DensePolynomial<F>,
     f_poly: &DensePolynomial<F>,
     h_1_poly: &DensePolynomial<F>,
     h_2_poly: &DensePolynomial<F>,
     table_poly: &DensePolynomial<F>,
-    t_1_poly: &DensePolynomial<F>,
-    t_2_poly: &DensePolynomial<F>,
-    t_3_poly: &DensePolynomial<F>,
-    t_4_poly: &DensePolynomial<F>,
-    z_poly: &DensePolynomial<F>,
 ) -> Result<(DensePolynomial<F>, ProofEvaluations<F>), Error>
 where
     F: PrimeField,
@@ -187,13 +185,16 @@ where
     let shifted_z_challenge = *z_challenge * omega;
 
     // Wire evaluations
+    let a_eval = w_l_poly.evaluate(z_challenge);
+    let b_eval = w_r_poly.evaluate(z_challenge);
+    let c_eval = w_o_poly.evaluate(z_challenge);
+    let d_eval = w_4_poly.evaluate(z_challenge);
     let wire_evals = WireEvaluations {
         a_eval,
         b_eval,
         c_eval,
         d_eval,
     };
-
     // Permutation evaluations
     let left_sigma_eval =
         prover_key.permutation.left_sigma.0.evaluate(z_challenge);
@@ -353,7 +354,7 @@ where
         CAVals::from_evaluations(custom_evals),
     );
 
-    let lookup = prover_key.lookup.compute_linearization(a_eval, b_eval, c_eval, d_eval, f_eval, *zeta, *lookup_separation_challenge);
+    //let lookup = prover_key.lookup.compute_linearization(a_eval, b_eval, c_eval, d_eval, f_eval, *zeta, *lookup_separation_challenge);
 
-    arithmetic + range + logic + fixed_base_scalar_mul + curve_addition + lookup
+    arithmetic + range + logic + fixed_base_scalar_mul + curve_addition //+ lookup
 }

@@ -5,7 +5,7 @@
 // Copyright (c) ZK-Garage. All rights reserved.
 
 use crate::lookup::multiset::MultiSet;
-use crate::proof_system::widget::{GateConstraint, GateValues};
+use crate::proof_system::widget::GateConstraint;
 use ark_ff::{Field, PrimeField, FftField};
 use core::marker::PhantomData;
 use crate::proof_system::linearisation_poly::ProofEvaluations;
