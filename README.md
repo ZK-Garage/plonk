@@ -63,7 +63,9 @@ There are two main types of documentation in this repository:
 
 - **Notes**. This is a specific subset of documentation which explains the key mathematical concepts
   of PLONK and how they work with mathematical demonstrations. To check it, run `make doc` and open the resulting docs,
-  which will be located under `/target` with your browser.
+  which will be located under `/target/doc/plonk/index.html` with your browser.
+
+  **Examples**. Examples can be found in the `examples` folder. Run them, e.g., via `cargo run --example simple_circuit`.
 
 ## Performance
 

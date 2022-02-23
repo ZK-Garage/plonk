@@ -25,28 +25,28 @@ use num_traits::{One, Zero};
 use crate::lookup::LookupTable;
 
 /// The StandardComposer is the circuit-builder tool that the `plonk` repository
-/// provides so that circuit descriptions can be written, stored and transformed
+/// provides to create, stored and transformed circuit descriptions
 /// into a [`Proof`](crate::proof_system::Proof) at some point.
 ///
-/// A StandardComposer stores all of the circuit information, being this one
+/// A StandardComposer stores the fullcircuit information, being this one
 /// all of the witness and circuit descriptors info (values, positions in the
 /// circuits, gates and Wires that occupy..), the public inputs, the connection
 /// relationships between the witnesses and how they're repesented as Wires (so
 /// basically the Permutation argument etc..).
 ///
 /// The StandardComposer also grants us a way to introduce our secret
-/// witnesses in a for of a [`Variable`] into the circuit description as well as
-/// the public inputs. We can do this with methods like
+/// witnesses in the form of a [`Variable`] into the circuit description as well
+/// as the public inputs. We can do this with methods like
 /// [`StandardComposer::add_input`].
 ///
 /// The StandardComposer also contains as associated functions all the
-/// neccessary tools to be able to istrument the circuits that the user needs
+/// neccessary tools to be able to instrument the circuits that the user needs
 /// through the addition of gates. There are functions that may add a single
 /// arithmetic gate to the circuit [`StandardComposer::arithmetic_gate`] and
 /// others that can add several gates to the circuit description such as
 /// [`StandardComposer::conditional_select`].
 ///
-/// Each gate or group of gates adds an specific functionallity or operation to
+/// Each gate or group of gates adds a specific functionallity or operation to
 /// the circuit description, and so, that's why we can understand
 /// the StandardComposer as a builder.
 #[derive(derivative::Derivative)]
@@ -240,8 +240,8 @@ where
     pub fn add_input(&mut self, s: F) -> Variable {
         // Get a new Variable from the permutation
         let var = self.perm.new_variable();
-        // The composer now links the F to the Variable returned from
-        // the Permutation
+        // The composer now links the Variable returned from
+        // the Permutation to the value F.
         self.variables.insert(var, s);
 
         var
@@ -250,7 +250,7 @@ where
     /// Adds a width-3 poly gate.
     /// This gate gives total freedom to the end user to implement the
     /// corresponding circuits in the most optimized way possible because
-    /// the under has access to the whole set of variables, as well as
+    /// the user has access to the full set of variables, as well as
     /// selector coefficients that take part in the computation of the gate
     /// equation.
     ///
@@ -429,7 +429,7 @@ where
     /// bit == 0 => 0,
     ///
     /// # Note
-    /// The `bit` used as input which is a [`Variable`] should had previously
+    /// The `bit` used as input which is a [`Variable`] should have previously
     /// been constrained to be either 1 or 0 using a bool constrain. See:
     /// [`StandardComposer::boolean_gate`].
     pub fn conditional_select_zero(
@@ -572,12 +572,12 @@ where
         self.n += 1;
     }
 
-    /// Utility function that allows to check on the "front-end"
+    /// Utility function that checks on the "front-end"
     /// side of the PLONK implementation if the identity polynomial
-    /// is satisfied for each one of the [`StandardComposer`]'s gates.
+    /// is satisfied for each of the [`StandardComposer`]'s gates.
     ///
     /// The recommended usage is to derive the std output and the std error to a
-    /// text file and analyze there the gates.
+    /// text file and analyze the gates there.
     ///
     /// # Panic
     /// The function by itself will print each circuit gate info until one of

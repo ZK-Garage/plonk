@@ -87,7 +87,7 @@ macro_rules! batch_test {
             $(
                 #[test]
                 #[allow(non_snake_case)]
-                fn [< $test_set _on_ $engine>]() {
+                fn [< $test_set _on_ $engine _kzg>]() {
                     $test_set::<<$engine as ark_ec::PairingEngine>::Fr, $params, crate::commitment::KZG10<$engine>>()
                 }
                 #[test]
@@ -100,7 +100,7 @@ macro_rules! batch_test {
                 #[test]
                 #[should_panic]
                 #[allow(non_snake_case)]
-                fn [< $test_panic_set _on_ $engine>]() {
+                fn [< $test_panic_set _on_ $engine _kzg>]() {
                     $test_panic_set::<<$engine as ark_ec::PairingEngine>::Fr, $params, crate::commitment::KZG10<$engine>>()
                 }
                 #[test]
