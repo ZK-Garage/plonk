@@ -12,6 +12,7 @@ mod arithmetic;
 mod boolean;
 mod logic;
 mod range;
+mod lookup;
 
 pub(crate) mod composer;
 pub(crate) mod helper;

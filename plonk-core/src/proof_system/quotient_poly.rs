@@ -27,18 +27,27 @@ pub fn compute<F, P>(
     domain: &GeneralEvaluationDomain<F>,
     prover_key: &ProverKey<F>,
     z_poly: &DensePolynomial<F>,
+    z_2_poly: &DensePolynomial<F>,
     w_l_poly: &DensePolynomial<F>,
     w_r_poly: &DensePolynomial<F>,
     w_o_poly: &DensePolynomial<F>,
     w_4_poly: &DensePolynomial<F>,
     public_inputs_poly: &DensePolynomial<F>,
+    f_poly: &DensePolynomial<F>,
+    t_poly: &DensePolynomial<F>,
+    h_1_poly: &DensePolynomial<F>,
+    h_2_poly: &DensePolynomial<F>,
     alpha: &F,
     beta: &F,
     gamma: &F,
+    delta: &F, 
+    epsilon: &F,
+    zeta: &F,
     range_challenge: &F,
     logic_challenge: &F,
     fixed_base_challenge: &F,
     var_base_challenge: &F,
+    lookup_challenge: &F,
 ) -> Result<DensePolynomial<F>, Error>
 where
     F: PrimeField,
@@ -60,6 +69,16 @@ where
     z_eval_8n.push(z_eval_8n[5]);
     z_eval_8n.push(z_eval_8n[6]);
     z_eval_8n.push(z_eval_8n[7]);
+
+    let mut z2_eval_8n = domain_8n.coset_fft(z_2_poly);
+    z2_eval_8n.push(z2_eval_8n[0]);
+    z2_eval_8n.push(z2_eval_8n[1]);
+    z2_eval_8n.push(z2_eval_8n[2]);
+    z2_eval_8n.push(z2_eval_8n[3]);
+    z2_eval_8n.push(z2_eval_8n[4]);
+    z2_eval_8n.push(z2_eval_8n[5]);
+    z2_eval_8n.push(z2_eval_8n[6]);
+    z2_eval_8n.push(z2_eval_8n[7]);
 
     let mut wl_eval_8n = domain_8n.coset_fft(w_l_poly);
     wl_eval_8n.push(wl_eval_8n[0]);
@@ -93,18 +112,54 @@ where
     w4_eval_8n.push(w4_eval_8n[6]);
     w4_eval_8n.push(w4_eval_8n[7]);
 
+    let f_eval_8n = domain_8n.coset_fft(f_poly);
+
+    let mut t_eval_8n = domain_8n.coset_fft(t_poly);
+    t_eval_8n.push(t_eval_8n[0]);
+    t_eval_8n.push(t_eval_8n[1]);
+    t_eval_8n.push(t_eval_8n[2]);
+    t_eval_8n.push(t_eval_8n[3]);
+    t_eval_8n.push(t_eval_8n[4]);
+    t_eval_8n.push(t_eval_8n[5]);
+    t_eval_8n.push(t_eval_8n[6]);
+    t_eval_8n.push(t_eval_8n[7]);
+
+    let mut h1_eval_8n = domain_8n.coset_fft(h_1_poly);
+    h1_eval_8n.push(h1_eval_8n[0]);
+    h1_eval_8n.push(h1_eval_8n[1]);
+    h1_eval_8n.push(h1_eval_8n[2]);
+    h1_eval_8n.push(h1_eval_8n[3]);
+    h1_eval_8n.push(h1_eval_8n[4]);
+    h1_eval_8n.push(h1_eval_8n[5]);
+    h1_eval_8n.push(h1_eval_8n[6]);
+    h1_eval_8n.push(h1_eval_8n[7]);
+
+    let mut h2_eval_8n = domain_8n.coset_fft(h_2_poly);
+    h2_eval_8n.push(h2_eval_8n[0]);
+    h2_eval_8n.push(h2_eval_8n[1]);
+    h2_eval_8n.push(h2_eval_8n[2]);
+    h2_eval_8n.push(h2_eval_8n[3]);
+    h2_eval_8n.push(h2_eval_8n[4]);
+    h2_eval_8n.push(h2_eval_8n[5]);
+    h2_eval_8n.push(h2_eval_8n[6]);
+    h2_eval_8n.push(h2_eval_8n[7]);
+
+
     let gate_constraints = compute_gate_constraint_satisfiability::<F, P>(
         domain,
         *range_challenge,
         *logic_challenge,
         *fixed_base_challenge,
         *var_base_challenge,
+        *lookup_challenge,
         prover_key,
         &wl_eval_8n,
         &wr_eval_8n,
         &wo_eval_8n,
         &w4_eval_8n,
         public_inputs_poly,
+        &f_eval_8n,
+        zeta,
     )?;
 
     let permutation = compute_permutation_checks::<F>(
@@ -115,9 +170,15 @@ where
         &wo_eval_8n,
         &w4_eval_8n,
         &z_eval_8n,
+        &z2_eval_8n,
+        &t_eval_8n,
+        &h1_eval_8n,
+        &h2_eval_8n,
         *alpha,
         *beta,
         *gamma,
+        *delta, 
+        *epsilon,
     )?;
 
     let quotient = (0..domain_8n.size())
@@ -140,12 +201,16 @@ fn compute_gate_constraint_satisfiability<F, P>(
     logic_challenge: F,
     fixed_base_challenge: F,
     var_base_challenge: F,
+    lookup_challenge: F,
     prover_key: &ProverKey<F>,
     wl_eval_8n: &[F],
     wr_eval_8n: &[F],
     wo_eval_8n: &[F],
     w4_eval_8n: &[F],
     pi_poly: &DensePolynomial<F>,
+    f_eval_8n: &[F],
+    zeta: &F,
+
 ) -> Result<Vec<F>, Error>
 where
     F: PrimeField,
@@ -199,7 +264,7 @@ where
                     prover_key.fixed_group_add_selector.1[i],
                     fixed_base_challenge,
                     values,
-                );
+            );
 
             let curve_addition = CurveAddition::<_, P>::quotient_term(
                 prover_key.variable_group_add_selector.1[i],
@@ -207,11 +272,26 @@ where
                 values,
             );
 
+            let f = f_eval_8n[i];
+
+            let lookup = prover_key.lookup.compute_quotient_i(
+                i,
+                values.left,
+                values.right,
+                values.output,
+                values.fourth,
+                f,
+                *zeta,
+                lookup_challenge,
+            );
+
+
             (arithmetic + pi_eval_8n[i])
                 + range
                 + logic
                 + fixed_base_scalar_mul
                 + curve_addition
+                + lookup
         })
         .collect())
 }
@@ -226,9 +306,15 @@ fn compute_permutation_checks<F>(
     wo_eval_8n: &[F],
     w4_eval_8n: &[F],
     z_eval_8n: &[F],
+    z_2_eval_8n: &[F], 
+    t_eval_8n: &[F],
+    h_1_eval_8n: &[F],
+    h_2_eval_8n: &[F],
     alpha: F,
     beta: F,
     gamma: F,
+    delta: F, 
+    epsilon: F,
 ) -> Result<Vec<F>, Error>
 where
     F: FftField,
@@ -242,6 +328,8 @@ where
     let l1_poly_alpha =
         compute_first_lagrange_poly_scaled(domain, alpha.square());
     let l1_alpha_sq_evals = domain_8n.coset_fft(&l1_poly_alpha.coeffs);
+    let alpha_five = (alpha.square() + alpha.square()) + alpha;
+    let l1_alpha_five_evals = domain_8n.coset_fft(&l1_poly_alpha.coeffs);
 
     Ok((0..domain_8n.size())
         .map(|i| {
@@ -253,10 +341,20 @@ where
                 w4_eval_8n[i],
                 z_eval_8n[i],
                 z_eval_8n[i + 8],
+                z_2_eval_8n[i],
+                z_2_eval_8n[i + 8],
+                t_eval_8n[i],
+                t_eval_8n[i + 8],
+                h_1_eval_8n[i],
+                h_1_eval_8n[i + 8],
+                h_2_eval_8n[i],
                 alpha,
                 l1_alpha_sq_evals[i],
+                l1_alpha_five_evals[i],
                 beta,
                 gamma,
+                delta, 
+                epsilon,
             )
         })
         .collect())

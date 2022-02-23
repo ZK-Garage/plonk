@@ -751,10 +751,121 @@ impl Permutation {
 
         DensePolynomial::<F>::from_coefficients_vec(domain.ifft(&z))
     }
+
+    pub(crate) fn compute_lookup_permutation_poly<F: FftField>(
+        &self,
+        domain: &GeneralEvaluationDomain<F>,
+        f: &[F],
+        t: &[F],
+        h_1: &[F],
+        h_2: &[F],
+        delta: F,
+        epsilon: F,
+    ) -> DensePolynomial<F> {
+        let n = domain.size();
+
+        assert_eq!(f.len(), domain.size());
+        assert_eq!(t.len(), domain.size());
+        assert_eq!(h_1.len(), domain.size());
+        assert_eq!(h_2.len(), domain.size());
+
+        let t_next: Vec<F> = [&t[1..], &[t[0]]].concat();
+        let h_1_next: Vec<F> = [&h_1[1..], &[h_1[0]]].concat();
+
+        #[cfg(feature = "std")]
+        let product_arguments: Vec<BlsScalar> =
+            (f, t, t_next, h_1, h_1_next, h_2)
+                .into_par_iter()
+                // Derive the numerator and denominator for each gate plonkup
+                // gate and pair the results
+                .map(|(f, t, t_next, h_1, h_1_next, h_2)| {
+                    (
+                        plonkup_numerator_irreducible(
+                            delta, epsilon, f, t, t_next,
+                        ),
+                        plonkup_denominator_irreducible(
+                            delta, epsilon, h_1, &h_1_next, h_2,
+                        ),
+                    )
+                })
+                .map(|(num, den)| num * den.invert().unwrap())
+                .collect();
+
+        #[cfg(not(feature = "std"))]
+        let product_arguments: Vec<F> = f
+            .iter()
+            .zip(t)
+            .zip(t_next)
+            .zip(h_1)
+            .zip(h_1_next)
+            .zip(h_2)
+            // Derive the numerator and denominator for each gate plonkup
+            // gate and pair the results
+            .map(|(((((f, t), t_next), h_1), h_1_next), h_2)| {
+                (
+                    Self::lookup_numerator_irreducible(
+                        &delta, &epsilon, &f, &t, &t_next,
+                    ),
+                    Self::lookup_denominator_irreducible(
+                        delta, epsilon, *h_1, h_1_next, *h_2,
+                    ),
+                )
+            })
+            .map(|(num, den)| num * den.inverse().unwrap())
+            .collect();
+
+        let mut state = F::one();
+        let mut p = Vec::with_capacity(n);
+        p.push(state);
+
+        for s in product_arguments {
+            state *= s;
+            p.push(state);
+        }
+
+        // remove the last element
+        p.remove(n);
+
+        assert_eq!(n, p.len());
+
+        DensePolynomial::from_coefficients_vec(domain.ifft(&p))
+    }
+    
+    fn lookup_numerator_irreducible<F: FftField>(
+        delta: &F,
+        epsilon: &F,
+        f: &F,
+        t: &F,
+        t_next: &F,
+    ) -> F {
+        let prod_1 = F::one() + delta;
+        let prod_2 = *epsilon + f;
+        let prod_3 = (*epsilon * prod_1) + t + (*delta * t_next);
+    
+        prod_1 * prod_2 * prod_3
+    }
+    
+    fn lookup_denominator_irreducible<F: FftField>(
+        delta: F,
+        epsilon: F,
+        h_1: F,
+        h_1_next: F,
+        h_2: F,
+    ) -> F {
+        let epsilon_plus_one_delta = epsilon * (F::one() + delta);
+        let prod_1 = epsilon_plus_one_delta + h_1 + (h_2 * delta);
+        let prod_2 = epsilon_plus_one_delta + h_2 + (h_1_next * delta);
+    
+        prod_1 * prod_2 
+    }
 }
 
+
+
+
+
 /// The `bls_12-381` library does not provide a `random` method for `F`.
-/// We wil use this helper function to compensate.
+/// We will use this helper function to compensate.
 #[allow(dead_code)]
 pub(crate) fn random_scalar<F: FftField, R: RngCore>(rng: &mut R) -> F {
     F::rand(rng)

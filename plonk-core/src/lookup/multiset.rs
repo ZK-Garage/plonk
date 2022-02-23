@@ -11,6 +11,7 @@ use ark_poly::{
     Polynomial, UVPolynomial,
 };
 use core::ops::{Add, Mul};
+use hashbrown::HashMap;
 
 /// MultiSet is struct containing vectors of scalars, which
 /// individually represents either a wire value or an index
@@ -93,21 +94,70 @@ where
         self.0.iter().position(move |x| x == element)
     }
 
+
+    /// XXX: DOC this & test. 
     /// Concatenates and sorts two Multisets together.
     /// From the Plookup paper, if we have t: {1,2,4,3}
     /// and f: {2,3,4,1}.
     /// We first check if all elements of f exist in t
     /// Then we combine the multisets together and sort
     /// their elements together. The final MultiSet will
-    /// look as follows, s: {1,1,2,2,3,3,4,4}
-    pub fn sorted_concat(&self, f: &Self) -> Result<Self, Error> {
-        let mut s = self.clone();
-        s.0.reserve(f.0.len());
-        for element in f.0.iter() {
-            let index = s.position(element).ok_or(Error::ElementNotIndexed)?;
-            s.0.insert(index, *element);
+    /// look as follows, s: {1,1,2,2,3,3,4,4}. 
+    /// Splits a multiset into alternating halves of the same length
+    /// as specified in the Plonkup paper. A multiset must have even
+    /// cardinality to be split in this manner.
+    pub fn sorted_halve(&self, f: &Self) -> Result<(Self, Self), Error> {
+        
+        let mut counters = HashMap::with_capacity(self.len());
+
+        for element in self.0  {
+            counters.insert(element, 0);
+            
         }
-        Ok(s)
+
+        for element in f {
+            match counters.get_mut(element) {
+                Some(entry) => *entry += 1,
+                _ => todo!(), 
+
+            } 
+        }
+
+        let mut evens = vec![];
+        let mut odds = vec![];
+        let mut parity = 0;
+        for element in self.0 {
+            let count = counters[&element];
+            for i in 0..count + 1 {
+                if i % 2 == parity {
+                    evens.push(element.clone());
+                } else {
+                    odds.push(element.clone());
+                }
+            } 
+            parity = (count + 1) % 2;
+        }
+        
+        Ok((Self(evens), Self(odds)))
+
+        
+        
+    }
+
+    /// Splits a multiset into alternating halves of the same length
+    /// as specified in the Plonkup paper. A multiset must have even
+    /// cardinality to be split in this manner.
+    pub fn halve_alternating(&self) -> (Self, Self) {
+        let mut evens = vec![];
+        let mut odds = vec![];
+        for i in 0..self.len() {
+            if i % 2 == 0 {
+                evens.push(self.0[i]);
+            } else {
+                odds.push(self.0[i]);
+            }
+        }
+        (Self(evens), Self(odds))
     }
 
     /// Checks whether one mutltiset is a subset of another.
@@ -136,21 +186,6 @@ where
         (first_half, second_half)
     }
 
-    /// Splits a multiset into alternating halves of the same length
-    /// as specified in the Plonkup paper. A multiset must have even
-    /// cardinality to be split in this manner.
-    pub fn halve_alternating(&self) -> (Self, Self) {
-        let mut evens = vec![];
-        let mut odds = vec![];
-        for i in 0..self.len() {
-            if i % 2 == 0 {
-                evens.push(self.0[i]);
-            } else {
-                odds.push(self.0[i]);
-            }
-        }
-        (Self(evens), Self(odds))
-    }
 
     /// Treats each element in the multiset as evaluation points
     /// Computes IFFT of the set of evaluation points

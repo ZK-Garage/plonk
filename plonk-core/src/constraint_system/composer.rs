@@ -21,6 +21,8 @@ use ark_ec::{models::TEModelParameters, ModelParameters};
 use ark_ff::PrimeField;
 use core::marker::PhantomData;
 use hashbrown::HashMap;
+use num_traits::{One, Zero};
+use crate::lookup::LookupTable;
 
 /// The StandardComposer is the circuit-builder tool that the `plonk` repository
 /// provides so that circuit descriptions can be written, stored and transformed
@@ -80,6 +82,8 @@ where
     pub(crate) q_fixed_group_add: Vec<F>,
     /// Variable base group addition selector
     pub(crate) q_variable_group_add: Vec<F>,
+    /// Lookup gate selector
+    pub(crate) q_lookup: Vec<F>,
 
     /// Sparse representation of the Public Inputs linking the positions of the
     /// non-zero ones to it's actual values.
@@ -95,6 +99,9 @@ where
     pub(crate) w_o: Vec<Variable>,
     /// Fourth wire witness vector.
     pub(crate) w_4: Vec<Variable>,
+
+    /// Public lookup table
+    pub(crate) lookup_table: LookupTable<F>,
 
     /// A zero Variable that is a part of the circuit description.
     /// We reserve a variable to be zero in the system
@@ -197,11 +204,13 @@ where
             q_logic: Vec::with_capacity(expected_size),
             q_fixed_group_add: Vec::with_capacity(expected_size),
             q_variable_group_add: Vec::with_capacity(expected_size),
+            q_lookup: Vec::with_capacity(expected_size),
             public_inputs_sparse_store: BTreeMap::new(),
             w_l: Vec::with_capacity(expected_size),
             w_r: Vec::with_capacity(expected_size),
             w_o: Vec::with_capacity(expected_size),
             w_4: Vec::with_capacity(expected_size),
+            lookup_table: LookupTable::new(),
             zero_var: Variable(0),
             variables: HashMap::with_capacity(expected_size),
             perm: Permutation::new(),
@@ -277,6 +286,7 @@ where
         self.q_logic.push(F::zero());
         self.q_fixed_group_add.push(F::zero());
         self.q_variable_group_add.push(F::zero());
+        self.q_lookup.push(F::zero());
 
         if let Some(pi) = pi {
             assert!(self
@@ -484,6 +494,7 @@ where
         self.q_logic.push(F::zero());
         self.q_fixed_group_add.push(F::zero());
         self.q_variable_group_add.push(F::zero());
+        self.q_lookup.push(F::one());
         let var_six = self.add_input(F::from(6u64));
         let var_one = self.add_input(F::from(1u64));
         let var_seven = self.add_input(F::from(7u64));
@@ -513,6 +524,7 @@ where
         self.q_logic.push(F::zero());
         self.q_fixed_group_add.push(F::zero());
         self.q_variable_group_add.push(F::zero());
+        self.q_lookup.push(F::one());
         self.w_l.push(var_min_twenty);
         self.w_r.push(var_six);
         self.w_o.push(var_seven);
@@ -524,6 +536,39 @@ where
             self.zero_var,
             self.n,
         );
+
+                // Add dummy rows to lookup table
+        // Notice two rows here match dummy wire values above
+        self.lookup_table.0.insert(
+            0,
+            [
+                F::from(6u64),
+                F::from(7u64),
+                -F::from(20u64),
+                F::from(1u64),
+            ],
+        );
+
+        self.lookup_table.0.insert(
+            0,
+            [
+                -F::from(20u64),
+                F::from(6u64),
+                F::from(7u64),
+                F::from(0u64),
+            ],
+        );
+
+        self.lookup_table.0.insert(
+            0,
+            [
+                F::from(3u64),
+                F::from(1u64),
+                F::from(4u64),
+                F::from(9u64),
+            ],
+        );
+
         self.n += 1;
     }
 

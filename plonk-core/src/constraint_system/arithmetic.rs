@@ -133,6 +133,7 @@ where
         self.q_logic.push(F::zero());
         self.q_fixed_group_add.push(F::zero());
         self.q_variable_group_add.push(F::zero());
+        self.q_lookup.push(F::zero());
 
         if let Some(pi) = gate.pi {
             let insert_res = self.public_inputs_sparse_store.insert(self.n, pi);
