@@ -15,6 +15,7 @@ use crate::{
         CustomValues, ProverKey, WitnessValues,
     },
     util::EvaluationDomainExt,
+    commitment::HomomorphicCommitment,
 };
 use ark_ec::TEModelParameters;
 use ark_ff::{Field, PrimeField};
@@ -148,9 +149,9 @@ where
 }
 
 /// Compute the linearisation polynomial.
-pub fn compute<F, P>(
+pub fn compute<F, P, PC>(
     domain: &GeneralEvaluationDomain<F>,
-    prover_key: &ProverKey<F>,
+    prover_key: &ProverKey<F, PC>,
     alpha: &F,
     beta: &F,
     gamma: &F,
@@ -179,6 +180,7 @@ pub fn compute<F, P>(
 where
     F: PrimeField,
     P: TEModelParameters<BaseField = F>,
+    PC: HomomorphicCommitment<F>,
 {
     let n = domain.size();
     let omega = domain.group_gen();
@@ -245,7 +247,7 @@ where
         ],
     };
 
-    let gate_constraints = compute_gate_constraint_satisfiability::<F, P>(
+    let gate_constraints = compute_gate_constraint_satisfiability::<F, P, PC>(
         range_separation_challenge,
         logic_separation_challenge,
         fixed_base_separation_challenge,
@@ -297,7 +299,7 @@ where
 
 /// Computes the gate constraint satisfiability portion of the linearisation
 /// polynomial.
-fn compute_gate_constraint_satisfiability<F, P>(
+fn compute_gate_constraint_satisfiability<F, P, PC>(
     range_separation_challenge: &F,
     logic_separation_challenge: &F,
     fixed_base_separation_challenge: &F,
@@ -305,11 +307,12 @@ fn compute_gate_constraint_satisfiability<F, P>(
     wire_evals: &WireEvaluations<F>,
     q_arith_eval: F,
     custom_evals: &CustomEvaluations<F>,
-    prover_key: &ProverKey<F>,
+    prover_key: &ProverKey<F, PC>,
 ) -> DensePolynomial<F>
 where
     F: PrimeField,
     P: TEModelParameters<BaseField = F>,
+    PC: HomomorphicCommitment<F>,
 {
     let wit_vals = WitnessValues {
         a_val: wire_evals.a_eval,

@@ -10,13 +10,14 @@ use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, GeneralEvaluationDomain,
     Polynomial, UVPolynomial,
 };
+use ark_serialize::{Read, Write, CanonicalSerialize, CanonicalDeserialize, SerializationError};
 use core::ops::{Add, Mul};
 use hashbrown::HashMap;
 
 /// MultiSet is struct containing vectors of scalars, which
 /// individually represents either a wire value or an index
 /// of a PlookUp table
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(CanonicalDeserialize, CanonicalSerialize, Clone, Debug, Default, Eq, PartialEq)]
 pub struct MultiSet<F>(pub Vec<F>)
 where
     F: Field;

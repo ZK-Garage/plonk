@@ -280,7 +280,7 @@ where
     fn compile<PC>(
         &mut self,
         u_params: &PC::UniversalParams,
-    ) -> Result<(ProverKey<F>, VerifierData<F, PC>), Error>
+    ) -> Result<(ProverKey<F, PC>, VerifierData<F, PC>), Error>
     where
         F: PrimeField,
         PC: HomomorphicCommitment<F>,
@@ -324,7 +324,7 @@ where
     fn gen_proof<PC>(
         &mut self,
         u_params: &PC::UniversalParams,
-        prover_key: ProverKey<F>,
+        prover_key: ProverKey<F, PC>,
         transcript_init: &'static [u8],
     ) -> Result<Proof<F, PC>, Error>
     where

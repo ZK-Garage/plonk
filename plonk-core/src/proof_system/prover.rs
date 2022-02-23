@@ -39,7 +39,7 @@ where
 {
     /// Proving Key which is used to create proofs about a specific PLONK
     /// circuit.
-    pub prover_key: Option<ProverKey<F>>,
+    pub prover_key: Option<ProverKey<F, PC>>,
 
     /// Circuit Description
     pub(crate) cs: StandardComposer<F, P>,
@@ -212,7 +212,7 @@ where
     pub fn prove_with_preprocessed(
         &self,
         commit_key: &PC::CommitterKey,
-        prover_key: &ProverKey<F>,
+        prover_key: &ProverKey<F, PC>,
         _data: PhantomData<PC>,
     ) -> Result<Proof<F, PC>, Error> {
         let domain =
@@ -477,7 +477,7 @@ where
             transcript.challenge_scalar(b"lookup separation challenge");
         transcript.append(b"lookup separation challenge", &lookup_sep_challenge);
 
-        let t_poly = quotient_poly::compute::<F, P>(
+        let t_poly = quotient_poly::compute::<F, P, PC>(
             &domain,
             prover_key,
             &z_poly,
@@ -533,7 +533,7 @@ where
         let z_challenge = transcript.challenge_scalar(b"z");
         transcript.append(b"z", &z_challenge);
 
-        let (lin_poly, evaluations) = linearisation_poly::compute::<F, P>(
+        let (lin_poly, evaluations) = linearisation_poly::compute::<F, P, PC>(
             &domain,
             prover_key,
             &alpha,

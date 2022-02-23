@@ -13,6 +13,7 @@ use crate::{
         widget::GateConstraint,
         ProverKey,
     },
+    commitment::HomomorphicCommitment,
 };
 use ark_ec::TEModelParameters;
 use ark_ff::{FftField, PrimeField};
@@ -31,9 +32,9 @@ use super::{
 
 /// Computes the Quotient [`DensePolynomial`] given the [`EvaluationDomain`], a
 /// [`ProverKey`], and some other info.
-pub fn compute<F, P>(
+pub fn compute<F, P, PC>(
     domain: &GeneralEvaluationDomain<F>,
-    prover_key: &ProverKey<F>,
+    prover_key: &ProverKey<F, PC>,
     z_poly: &DensePolynomial<F>,
     z_2_poly: &DensePolynomial<F>,
     w_l_poly: &DensePolynomial<F>,
@@ -60,6 +61,7 @@ pub fn compute<F, P>(
 where
     F: PrimeField,
     P: TEModelParameters<BaseField = F>,
+    PC: HomomorphicCommitment<F>,
 {
     let domain_8n = GeneralEvaluationDomain::<F>::new(8 * domain.size())
         .ok_or(Error::InvalidEvalDomainSize {
@@ -153,7 +155,7 @@ where
     h2_eval_8n.push(h2_eval_8n[7]);
 
 
-    let gate_constraints = compute_gate_constraint_satisfiability::<F, P>(
+    let gate_constraints = compute_gate_constraint_satisfiability::<F, P, PC>(
         domain,
         *range_challenge,
         *logic_challenge,
@@ -170,7 +172,7 @@ where
         zeta,
     )?;
 
-    let permutation = compute_permutation_checks::<F>(
+    let permutation = compute_permutation_checks::<F, PC>(
         domain,
         prover_key,
         &wl_eval_8n,
@@ -204,14 +206,14 @@ where
 
 /// Computes contribution to the quotient polynomial that ensures
 /// the gate constraints are satisfied.
-fn compute_gate_constraint_satisfiability<F, P>(
+fn compute_gate_constraint_satisfiability<F, P, PC>(
     domain: &GeneralEvaluationDomain<F>,
     range_challenge: F,
     logic_challenge: F,
     fixed_base_challenge: F,
     var_base_challenge: F,
     lookup_challenge: F,
-    prover_key: &ProverKey<F>,
+    prover_key: &ProverKey<F, PC>,
     wl_eval_8n: &[F],
     wr_eval_8n: &[F],
     wo_eval_8n: &[F],
@@ -224,6 +226,7 @@ fn compute_gate_constraint_satisfiability<F, P>(
 where
     F: PrimeField,
     P: TEModelParameters<BaseField = F>,
+    PC: HomomorphicCommitment<F>,
 {
     let domain_8n = GeneralEvaluationDomain::<F>::new(8 * domain.size())
         .ok_or(Error::InvalidEvalDomainSize {
@@ -312,9 +315,9 @@ where
 
 /// Computes the permutation contribution to the quotient polynomial over
 /// `domain`.
-fn compute_permutation_checks<F>(
+fn compute_permutation_checks<F, PC>(
     domain: &GeneralEvaluationDomain<F>,
-    prover_key: &ProverKey<F>,
+    prover_key: &ProverKey<F, PC>,
     wl_eval_8n: &[F],
     wr_eval_8n: &[F],
     wo_eval_8n: &[F],
@@ -332,6 +335,8 @@ fn compute_permutation_checks<F>(
 ) -> Result<Vec<F>, Error>
 where
     F: PrimeField,
+    PC: HomomorphicCommitment<F>,
+
 {
     let domain_8n = GeneralEvaluationDomain::<F>::new(8 * domain.size())
         .ok_or(Error::InvalidEvalDomainSize {
