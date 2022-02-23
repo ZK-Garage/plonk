@@ -133,7 +133,7 @@ where
         &wo_eval_4n,
         &w4_eval_4n,
         public_inputs_poly,
-        &f_eval_8n,
+        &f_eval_4n,
         zeta,
     )?;
 
@@ -252,7 +252,8 @@ where
                 CAVals::from_evaluations(&custom_vals),
             );
 
-            let f = f_eval_4n[i];
+            /*
+            let f = f_eval_8n[i];
 
             let lookup = prover_key.lookup.compute_quotient_i(
                 i,
@@ -264,13 +265,14 @@ where
                 *zeta,
                 lookup_challenge,
             );
+            */
 
             (arithmetic + pi_eval_4n[i])
                 + range
                 + logic
                 + fixed_base_scalar_mul
                 + curve_addition
-                + lookup
+            // + lookup
         })
         .collect())
 }

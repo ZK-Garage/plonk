@@ -67,6 +67,29 @@ where
     /// Evaluation of the permutation polynomial at `z * omega` where `omega`
     /// is a root of unity.
     pub permutation_eval: F,
+    /*     // (Shifted) Evaluation of the lookup permutation polynomial at `z * root
+    // of unity`
+    pub lookup_perm_eval: F,
+
+    /// Evaluations of the first half of sorted plonkup poly at `z`
+    pub h_1_eval: F,
+
+    /// (Shifted) Evaluations of the first half of sorted plonkup poly at `z *
+    /// root of unity`
+    pub h_1_next_eval: F,
+
+    /// (Shifted) Evaluations of the second half of sorted plonkup poly at `z *
+    /// root of unity`
+    pub h_2_eval: F,
+
+    /// Evaluations of the query polynomial at `z`
+    pub f_eval: F,
+
+    /// Evaluations of the table polynomial at `z`
+    pub table_eval: F,
+
+    /// Evaluations of the table polynomial at `z * root of unity`
+    pub table_next_eval: F, */
 }
 
 // Probably all of these should go into CustomEvals
@@ -84,12 +107,12 @@ where
 //     /// Evaluations of the first half of sorted plonkup poly at `z`
 //     pub h_1_eval: F,
 
-//     /// (Shifted) Evaluations of the first half of sorted plonkup poly at `z *
-//     /// root of unity`
+//     /// (Shifted) Evaluations of the first half of sorted plonkup poly at `z
+// *     /// root of unity`
 //     pub h_1_next_eval: F,
 
-//     /// (Shifted) Evaluations of the second half of sorted plonkup poly at `z *
-//     /// root of unity`
+//     /// (Shifted) Evaluations of the second half of sorted plonkup poly at `z
+// *     /// root of unity`
 //     pub h_2_eval: F,
 
 //     /// Evaluations of the query polynomial at `z`
@@ -206,7 +229,6 @@ where
         c_eval,
         d_eval,
     };
-
     // Permutation evaluations
     let f_eval = f_poly.evaluate(z_challenge);
     let left_sigma_eval =
@@ -238,7 +260,6 @@ where
     let a_next_eval = w_l_poly.evaluate(&shifted_z_challenge);
     let b_next_eval = w_r_poly.evaluate(&shifted_z_challenge);
     let d_next_eval = w_4_poly.evaluate(&shifted_z_challenge);
-<<<<<<< HEAD
 
     let custom_evals = CustomEvaluations {
         vals: vec![
@@ -251,12 +272,10 @@ where
             label_eval!(d_next_eval),
         ],
     };
-=======
     let permutation_eval = z_poly.evaluate(&shifted_z_challenge);
     let lookup_perm_eval = z_2_poly.evaluate(&shifted_z_challenge);
     let h_1_next_eval = h_1_poly.evaluate(&shifted_z_challenge);
     let table_next_eval = table_poly.evaluate(&shifted_z_challenge);
->>>>>>> 74f8501 (Refactor prover to include lookups (#84))
 
     let gate_constraints = compute_gate_constraint_satisfiability::<F, P>(
         range_separation_challenge,
@@ -299,21 +318,21 @@ where
     let linearisation_polynomial =
         gate_constraints + permutation + negative_quotient_term;
     // Add Lookup related evals
-                // lookup_perm_eval,
-                // h_1_eval,
-                // h_1_next_eval,
-                // h_2_eval,
-                // f_eval,
-                // table_eval,
-                // table_next_eval,
+    // lookup_perm_eval,
+    // h_1_eval,
+    // h_1_next_eval,
+    // h_2_eval,
+    // f_eval,
+    // table_eval,
+    // table_next_eval,
     Ok((
         linearisation_polynomial,
         ProofEvaluations {
             wire_evals,
             perm_evals,
             custom_evals,
-            },
-           quot_eval,
+        },
+        quot_eval,
     ))
 }
 
@@ -376,7 +395,8 @@ where
         CAVals::from_evaluations(custom_evals),
     );
 
-    let lookup = prover_key.lookup.compute_linearization(a_eval, b_eval, c_eval, d_eval, f_eval, *zeta, *lookup_separation_challenge);
+    //let lookup = prover_key.lookup.compute_linearization(a_eval, b_eval,
+    // c_eval, d_eval, f_eval, *zeta, *lookup_separation_challenge);
 
-    arithmetic + range + logic + fixed_base_scalar_mul + curve_addition + lookup
+    arithmetic + range + logic + fixed_base_scalar_mul + curve_addition //+ lookup
 }
