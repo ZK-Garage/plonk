@@ -535,8 +535,8 @@ where
     where
         R: CryptoRng + RngCore + ?Sized,
     {
-        let mut rand_var_1 = Variable::default();
-        let mut rand_var_2 = Variable::default();
+        let mut rand_var_1 = self.zero_var();
+        let mut rand_var_2 = self.zero_var();
         // Blinding wires
         for _ in 0..2 {
             rand_var_1 = self.add_input(F::rand(rng));

@@ -10,7 +10,7 @@
 
 /// The value is a reference to the actual value that was added to the
 /// constraint system
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, Default)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct Variable(pub(crate) usize);
 
 /// Stores the data for a specific wire in an arithmetic circuit
