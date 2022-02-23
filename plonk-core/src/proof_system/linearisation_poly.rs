@@ -25,9 +25,6 @@ use ark_poly::{
 use ark_serialize::{
     CanonicalDeserialize, CanonicalSerialize, Read, SerializationError, Write,
 };
-use crate::error::Error;
-use ark_ec::TEModelParameters;
-use ark_ff::{Field, PrimeField};
 
 /// Subset of the [`ProofEvaluations`]. Evaluations at `z` of the
 /// wire polynomials
