@@ -25,6 +25,9 @@ use ark_poly::{
 use ark_serialize::{
     CanonicalDeserialize, CanonicalSerialize, Read, SerializationError, Write,
 };
+use crate::error::Error;
+use ark_ec::TEModelParameters;
+use ark_ff::{Field, PrimeField};
 
 /// Subset of the [`ProofEvaluations`]. Evaluations at `z` of the
 /// wire polynomials
@@ -68,6 +71,39 @@ where
     /// is a root of unity.
     pub permutation_eval: F,
 }
+
+// Probably all of these should go into CustomEvals
+// pub struct LookUpEvals<F>
+// where
+//    F: Field,
+// {
+//     /// Evaluation of the lookup selector polynomial at `z`.
+//     pub q_lookup_eval: F,
+
+//     // (Shifted) Evaluation of the lookup permutation polynomial at `z * root
+//     // of unity`
+//     pub lookup_perm_eval: F,
+
+//     /// Evaluations of the first half of sorted plonkup poly at `z`
+//     pub h_1_eval: F,
+
+//     /// (Shifted) Evaluations of the first half of sorted plonkup poly at `z *
+//     /// root of unity`
+//     pub h_1_next_eval: F,
+
+//     /// (Shifted) Evaluations of the second half of sorted plonkup poly at `z *
+//     /// root of unity`
+//     pub h_2_eval: F,
+
+//     /// Evaluations of the query polynomial at `z`
+//     pub f_eval: F,
+
+//     /// Evaluations of the table polynomial at `z`
+//     pub table_eval: F,
+
+//     /// Evaluations of the table polynomial at `z * root of unity`
+//     pub table_next_eval: F,
+// }
 
 /// Subset of the [`ProofEvaluations`]. Evaluations at `z`  or `z *w` where `w`
 /// is the nth root of unity of selectors polynomials needed for custom gates
@@ -130,10 +166,12 @@ pub fn compute<F, P>(
     alpha: &F,
     beta: &F,
     gamma: &F,
+    zeta: &F,
     range_separation_challenge: &F,
     logic_separation_challenge: &F,
     fixed_base_separation_challenge: &F,
     var_base_separation_challenge: &F,
+    lookup_separation_challenge: &F,
     z_challenge: &F,
     w_l_poly: &DensePolynomial<F>,
     w_r_poly: &DensePolynomial<F>,
@@ -144,6 +182,11 @@ pub fn compute<F, P>(
     t_3_poly: &DensePolynomial<F>,
     t_4_poly: &DensePolynomial<F>,
     z_poly: &DensePolynomial<F>,
+    z_2_poly: &DensePolynomial<F>,
+    f_poly: &DensePolynomial<F>,
+    h_1_poly: &DensePolynomial<F>,
+    h_2_poly: &DensePolynomial<F>,
+    table_poly: &DensePolynomial<F>,
 ) -> Result<(DensePolynomial<F>, ProofEvaluations<F>), Error>
 where
     F: PrimeField,
@@ -152,6 +195,8 @@ where
     let n = domain.size();
     let omega = domain.group_gen();
     let shifted_z_challenge = *z_challenge * omega;
+
+    // let quot_eval = quot_poly.evaluate(z_challenge);
 
     // Wire evaluations
     let a_eval = w_l_poly.evaluate(z_challenge);
@@ -166,6 +211,7 @@ where
     };
 
     // Permutation evaluations
+    let f_eval = f_poly.evaluate(z_challenge);
     let left_sigma_eval =
         prover_key.permutation.left_sigma.0.evaluate(z_challenge);
     let right_sigma_eval =
@@ -187,10 +233,15 @@ where
     let q_c_eval = prover_key.arithmetic.q_c.0.evaluate(z_challenge);
     let q_l_eval = prover_key.arithmetic.q_l.0.evaluate(z_challenge);
     let q_r_eval = prover_key.arithmetic.q_r.0.evaluate(z_challenge);
+    let q_lookup_eval = prover_key.lookup.q_lookup.0.evaluate(z_challenge);
+    let h_1_eval = h_1_poly.evaluate(z_challenge);
+    let h_2_eval = h_2_poly.evaluate(z_challenge);
+    let table_eval = table_poly.evaluate(z_challenge);
 
     let a_next_eval = w_l_poly.evaluate(&shifted_z_challenge);
     let b_next_eval = w_r_poly.evaluate(&shifted_z_challenge);
     let d_next_eval = w_4_poly.evaluate(&shifted_z_challenge);
+<<<<<<< HEAD
 
     let custom_evals = CustomEvaluations {
         vals: vec![
@@ -203,6 +254,12 @@ where
             label_eval!(d_next_eval),
         ],
     };
+=======
+    let permutation_eval = z_poly.evaluate(&shifted_z_challenge);
+    let lookup_perm_eval = z_2_poly.evaluate(&shifted_z_challenge);
+    let h_1_next_eval = h_1_poly.evaluate(&shifted_z_challenge);
+    let table_next_eval = table_poly.evaluate(&shifted_z_challenge);
+>>>>>>> 74f8501 (Refactor prover to include lookups (#84))
 
     let gate_constraints = compute_gate_constraint_satisfiability::<F, P>(
         range_separation_challenge,
@@ -244,13 +301,22 @@ where
 
     let linearisation_polynomial =
         gate_constraints + permutation + negative_quotient_term;
+    // Add Lookup related evals
+                // lookup_perm_eval,
+                // h_1_eval,
+                // h_1_next_eval,
+                // h_2_eval,
+                // f_eval,
+                // table_eval,
+                // table_next_eval,
     Ok((
         linearisation_polynomial,
         ProofEvaluations {
             wire_evals,
             perm_evals,
             custom_evals,
-        },
+            },
+           quot_eval,
     ))
 }
 
@@ -313,5 +379,7 @@ where
         CAVals::from_evaluations(custom_evals),
     );
 
-    arithmetic + range + logic + fixed_base_scalar_mul + curve_addition
+    let lookup = prover_key.lookup.compute_linearization(a_eval, b_eval, c_eval, d_eval, f_eval, *zeta, *lookup_separation_challenge);
+
+    arithmetic + range + logic + fixed_base_scalar_mul + curve_addition + lookup
 }

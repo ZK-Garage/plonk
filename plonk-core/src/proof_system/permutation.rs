@@ -67,10 +67,20 @@ where
         w_4_i: F,
         z_i: F,
         z_i_next: F,
+        z_2_i: F, 
+        z_2_i_next: F,
+        t_i: F, 
+        t_i_next: F,
+        h_1_i: F,
+        h_1_i_next: F,
+        h_2_1: F,
         alpha: F,
         l1_alpha_sq: F,
+        l1_alpha_five: F,
         beta: F,
         gamma: F,
+        delta: F, 
+        epsilon: F, 
     ) -> F {
         let a = self.compute_quotient_identity_range_check_i(
             index, w_l_i, w_r_i, w_o_i, w_4_i, z_i, alpha, beta, gamma,
@@ -79,7 +89,13 @@ where
             index, w_l_i, w_r_i, w_o_i, w_4_i, z_i_next, alpha, beta, gamma,
         );
         let c = self.compute_quotient_term_check_one_i(z_i, l1_alpha_sq);
-        a + b + c
+
+        let d = self.compute_lookup_permutation_check(index, lookup_separation_challenge, f_i, z_2_i, z_2_i_next, t_i, t_i_next, h_1_i, h_1_i_next, h_2_i, (delta, epsilon));
+
+        let e = self.compute_lookup_term_check(z_2_i, l1_alpha_five);
+
+        a + b + c + d + e
+
     }
 
     /// Computes the following:
@@ -141,6 +157,48 @@ where
         -product
     }
 
+    fn compute_lookup_permutation_check(
+        &self,
+        index: usize,
+        lookup_separation_challenge: F,
+        f_i: F,
+        z_2_i: F,
+        z_2_i_next: F,
+        t_i: F,
+        t_i_next: F,
+        h_1_i: F,
+        h_1_i_next: F,
+        h_2_i: F,
+        (delta, epsilon): (F, F),
+    ) -> F {
+        let l_sep_2 = lookup_separation_challenge.square();
+        let l_sep_4 = l_sep_2.square();
+        
+
+        let one_plus_delta = delta + F::one();
+        let epsilon_one_plus_delta = epsilon * one_plus_delta;
+
+        
+        // z2(X) * (1+δ) * (ε+f(X)) * (ε*(1+δ) + t(X) + δt(Xω)) * α_1^4
+        let a = {
+            let c_1 = epsilon + f_i;
+            let c_2 = epsilon_one_plus_delta + t_i + delta * t_i_next;
+
+            z_2_i * one_plus_delta * c_1 * c_2 * l_sep_3
+        };
+
+        // − z2(Xω) * (ε*(1+δ) + h1(X) + δ*h2(X)) * (ε*(1+δ) + h2(X) + δ*h1(Xω))
+        // * α_1^4
+        let b = {
+            let d_1 = epsilon_one_plus_delta + h_1_i + delta * h_2_i;
+            let d_2 = epsilon_one_plus_delta + h_2_i + delta * h_1_i_next;
+
+            -z_2_i_next * d_1 * d_2 * l_sep_3
+        };
+
+        a + b 
+    }
+
     /// Computes the following:
     ///
     /// ```text
@@ -149,6 +207,11 @@ where
     #[inline]
     fn compute_quotient_term_check_one_i(&self, z_i: F, l1_alpha_sq: F) -> F {
         (z_i - F::one()) * l1_alpha_sq
+    }
+
+    // // L0(X) * (z2(X) − 1) * α_1^5
+    fn compute_lookup_term_check(&self, z_2_i: F, l1_alpha_five: F) -> F {
+        (z_2_i - F::one()) * l1_alpha_five
     }
 
     /// Computes the linearisation polynomial.
@@ -188,7 +251,10 @@ where
             alpha.square(),
             z_poly,
         );
-        Ok(&(&a + &b) + &c)
+        let d = self.compute_lineariser_lookup_perm_check(f_eval, t_eval, t_next_eval, h_1_eval, h_2_eval, z_next_eval, l1_eval, p_poly, h_1_poly, (delta, epsilon), lookup_separation_challenge);
+        
+        let e = self.compute_lineariser_check_is_one(&domain, z_challenge, alpha_five, z_2_coeffs);
+        Ok((&(&a + &b) + &c) + d + e)
     }
 
     /// Computes the following:
@@ -291,6 +357,47 @@ where
         let l_1_z = domain.evaluate_all_lagrange_coefficients(z_challenge)[0];
         z_coeffs * (l_1_z * alpha_sq)
     }
+
+
+    /// Compute lookup perm lineariser contribution
+    fn compute_lineariser_lookup_perm_check(
+    &self,
+    f_eval: F,
+    t_eval: F,
+    t_next_eval: F,
+    h_1_eval: F,
+    h_2_eval: F,
+    z_next_eval: F,
+    l1_eval: F,
+    p_poly: &Polynomial,
+    h_1_poly: &Polynomial,
+    (delta, epsilon): (F, F),
+    lookup_separation_challenge: F,        
+    ) -> DensePolynomial<F> {
+
+        let l_sep_2 = lookup_separation_challenge.square();
+        let l_sep_4 = l_sep_2 * l_sep_2;
+        let one_plus_delta = delta + F::one();
+        let epsilon_one_plus_delta = epsilon * one_plus_delta;
+        
+        // z2(X) * (1 + δ) * (ε + f_bar) * (ε(1+δ) + t_bar + δ*tω_bar) * α_1^4
+        let a = {
+            let a_0 = epsilon + f_eval;
+            let a_1 = epsilon_one_plus_delta + t_eval + delta * t_next_eval;
+    
+            &p_poly * (one_plus_delta * c_0 * c_1 * l_sep_4)
+        };
+        
+        // − z2ω_bar * (ε(1+δ) + h1_bar + δh2_bar) * h2(X) * α_1^4
+        let b = {
+            let d_0 = epsilon_one_plus_delta + h_1_eval + delta * h_2_eval;
+
+            &h_2_poly * (-p_next_eval * d_0 * l_sep_4)
+        };
+
+        a + b
+    }
+    
 }
 
 /// Permutation Verifier Key
@@ -383,3 +490,21 @@ where
         points.push(self.fourth_sigma.clone());
     }
 }
+
+
+        // p(X) * (1+δ) * (ε+f(X)) * (ε*(1+δ) + t(X) + δt(Xω)) * α_1^3
+        let c = {
+            let c_1 = epsilon + f_i;
+            let c_2 = epsilon_one_plus_delta + t_i + delta * t_i_next;
+
+            p_i * one_plus_delta * c_1 * c_2 * l_sep_3
+        };
+
+        // − p(Xω) * (ε*(1+δ) + h1(X) + δ*h2(X)) * (ε*(1+δ) + h2(X) + δ*h1(Xω))
+        // * α_1^3
+        let d = {
+            let d_1 = epsilon_one_plus_delta + h_1_i + delta * h_2_i;
+            let d_2 = epsilon_one_plus_delta + h_2_i + delta * h_1_i_next;
+
+            -p_i_next * d_1 * d_2 * l_sep_3
+        };

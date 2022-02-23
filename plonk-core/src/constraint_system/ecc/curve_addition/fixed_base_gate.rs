@@ -93,6 +93,7 @@ where
         self.q_arith.push(F::zero());
         self.q_range.push(F::zero());
         self.q_logic.push(F::zero());
+        self.q_lookup.push(F::zero());
 
         self.perm.add_variables_to_map(
             wnaf_round.acc_x,

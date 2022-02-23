@@ -39,6 +39,7 @@ where
     q_arith: DensePolynomial<F>,
     q_range: DensePolynomial<F>,
     q_logic: DensePolynomial<F>,
+    q_lookup: DensePolynomial<F>,
     q_fixed_group_add: DensePolynomial<F>,
     q_variable_group_add: DensePolynomial<F>,
     left_sigma: DensePolynomial<F>,
@@ -73,6 +74,7 @@ where
         self.q_arith.extend(zeroes_scalar.iter());
         self.q_range.extend(zeroes_scalar.iter());
         self.q_logic.extend(zeroes_scalar.iter());
+        self.q_lookup.extend(zeroes_scalar.iter());
         self.q_fixed_group_add.extend(zeroes_scalar.iter());
         self.q_variable_group_add.extend(zeroes_scalar.iter());
 
@@ -97,6 +99,7 @@ where
             && self.q_arith.len() == k
             && self.q_range.len() == k
             && self.q_logic.len() == k
+            && self.q_lookup.len() == k
             && self.q_fixed_group_add.len() == k
             && self.q_variable_group_add.len() == k
             && self.w_l.len() == k
@@ -181,7 +184,6 @@ where
             domain_4n.coset_fft(&selectors.q_variable_group_add),
             domain_4n,
         );
-
         let left_sigma_eval_4n = Evaluations::from_vec_and_domain(
             domain_4n.coset_fft(&selectors.left_sigma),
             domain_4n,
@@ -306,6 +308,9 @@ where
         let q_logic_poly: DensePolynomial<F> =
             DensePolynomial::from_coefficients_vec(domain.ifft(&self.q_logic));
 
+        let q_lookup_poly: DensePolynomial<F> =
+            DensePolynomial::from_coefficients_vec(domain.ifft(&self.q_lookup));
+
         let q_fixed_group_add_poly: DensePolynomial<F> =
             DensePolynomial::from_coefficients_vec(
                 domain.ifft(&self.q_fixed_group_add),
@@ -336,6 +341,7 @@ where
                 label_polynomial!(q_arith_poly),
                 label_polynomial!(q_range_poly),
                 label_polynomial!(q_logic_poly),
+                label_polynomial!(q_lookup_poly),
                 label_polynomial!(q_fixed_group_add_poly),
                 label_polynomial!(q_variable_group_add_poly),
                 label_polynomial!(left_sigma_poly),
@@ -359,12 +365,13 @@ where
             commitments[6].commitment().clone(), // q_arith_poly_commit.0,
             commitments[7].commitment().clone(), // q_range_poly_commit.0,
             commitments[8].commitment().clone(), // q_logic_poly_commit.0,
-            commitments[9].commitment().clone(), /* q_fixed_group_add_poly_commit.0, */
-            commitments[10].commitment().clone(), /* q_variable_group_add_poly_commit.0, */
-            commitments[11].commitment().clone(), // left_sigma_poly_commit.0,
-            commitments[12].commitment().clone(), // right_sigma_poly_commit.0,
-            commitments[13].commitment().clone(), // out_sigma_poly_commit.0,
-            commitments[14].commitment().clone(), /* fourth_sigma_poly_commit.0, */
+            commitments[9].commitment().clone(), /* q_lookup_poly_commit.0, */
+            commitments[10].commitment().clone(), /* q_fixed_group_add_poly_commit.0, */
+            commitments[11].commitment().clone(), /* q_variable_group_add_poly_commit.0, */
+            commitments[12].commitment().clone(), // left_sigma_poly_commit.0,
+            commitments[13].commitment().clone(), // right_sigma_poly_commit.0,
+            commitments[14].commitment().clone(), // out_sigma_poly_commit.0,
+            commitments[15].commitment().clone(), /* fourth_sigma_poly_commit.0, */
         );
 
         let selectors = SelectorPolynomials {
@@ -377,6 +384,7 @@ where
             q_arith: q_arith_poly,
             q_range: q_range_poly,
             q_logic: q_logic_poly,
+            q_lookup: q_lookup_poly,
             q_fixed_group_add: q_fixed_group_add_poly,
             q_variable_group_add: q_variable_group_add_poly,
             left_sigma: left_sigma_poly,
@@ -451,6 +459,7 @@ mod test {
         assert_eq!(composer.q_arith.len(), size);
         assert_eq!(composer.q_range.len(), size);
         assert_eq!(composer.q_logic.len(), size);
+        assert_eq!(composer.q_lookup.len(), size);
         assert_eq!(composer.q_fixed_group_add.len(), size);
         assert_eq!(composer.q_variable_group_add.len(), size);
         assert_eq!(composer.w_l.len(), size);

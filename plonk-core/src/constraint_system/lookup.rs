@@ -2,21 +2,19 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 //
-// Copyright (c) DUSK NETWORK. All rights reserved.
+// Copyright (c) ZK-Garage. All rights reserved.
 
-//! Contains the functionality of plookup gates on top of the composer
+use crate::constraint_system::{StandardComposer, Variable};
+use ark_ec::TEModelParameters;
+use ark_ff::PrimeField;
+use num_traits::{One, Zero};
 
-#![allow(clippy::too_many_arguments)]
-
-use crate::constraint_system::StandardComposer;
-use crate::constraint_system::Variable;
-use ark_ec::PairingEngine;
-use ark_ec::models::TEModelParameters;
-
-impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
-    StandardComposer<E, P> 
+impl<F, P> StandardComposer<F, P>
+where
+    F: PrimeField,
+    P: TEModelParameters<BaseField = F>,
 {
-    /// Adds a plookup gate to the circuit with its corresponding 
+    /// Adds a plookup gate to the circuit with its corresponding
     /// constraints.
     ///
     /// This type of gate is usually used when we need to have
@@ -29,12 +27,12 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
         b: Variable,
         c: Variable,
         d: Option<Variable>,
-        q_l: E::Fr,
-        q_r: E::Fr,
-        q_o: E::Fr,
-        q_4: E::Fr,
-        q_c: E::Fr,
-        pi: E::Fr,
+        q_l: F,
+        q_r: F,
+        q_o: F,
+        q_4: F,
+        q_c: F,
+        pi: Option<F>,
     ) -> Variable {
         // Check if advice wire has a value
         let d = match d {
@@ -53,19 +51,23 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
         self.q_o.push(q_o);
         self.q_c.push(q_c);
         self.q_4.push(q_4);
-        self.q_arith.push(E::Fr::zero());
-        self.q_m.push(E::Fr::zero());
-        self.q_range.push(E::Fr::zero());
-        self.q_logic.push(E::Fr::zero());
-        self.q_fixed_group_add.push(E::Fr::zero());
-        self.q_variable_group_add.push(E::Fr::zero());
+        self.q_arith.push(F::zero());
+        self.q_m.push(F::zero());
+        self.q_range.push(F::zero());
+        self.q_logic.push(F::zero());
+        self.q_fixed_group_add.push(F::zero());
+        self.q_variable_group_add.push(F::zero());
 
-        // For a lookup gate, only one selector poly is 
+        // For a lookup gate, only one selector poly is
         // turned on as the output is inputted directly
-        self.q_lookup.push(E::Fr::one());
+        self.q_lookup.push(F::one());
 
-
-        self.public_inputs.push(pi);
+        if let Some(pi) = pi {
+            assert!(self
+                .public_inputs_sparse_store
+                .insert(self.n, pi)
+                .is_none());
+        }
 
         self.perm.add_variables_to_map(a, b, c, d, self.n);
 
@@ -74,4 +76,3 @@ impl<E: PairingEngine, P: TEModelParameters<BaseField = E::Fr>>
         c
     }
 }
-
