@@ -64,30 +64,18 @@ where
     z_eval_4n.push(z_eval_4n[1]);
     z_eval_4n.push(z_eval_4n[2]);
     z_eval_4n.push(z_eval_4n[3]);
-    // z_eval_8n.push(z_eval_8n[4]);
-    // z_eval_8n.push(z_eval_8n[5]);
-    // z_eval_8n.push(z_eval_8n[6]);
-    // z_eval_8n.push(z_eval_8n[7]);
 
     let mut wl_eval_4n = domain_4n.coset_fft(w_l_poly);
     wl_eval_4n.push(wl_eval_4n[0]);
     wl_eval_4n.push(wl_eval_4n[1]);
     wl_eval_4n.push(wl_eval_4n[2]);
     wl_eval_4n.push(wl_eval_4n[3]);
-    // wl_eval_8n.push(wl_eval_8n[4]);
-    // wl_eval_8n.push(wl_eval_8n[5]);
-    // wl_eval_8n.push(wl_eval_8n[6]);
-    // wl_eval_8n.push(wl_eval_8n[7]);
 
     let mut wr_eval_4n = domain_4n.coset_fft(w_r_poly);
     wr_eval_4n.push(wr_eval_4n[0]);
     wr_eval_4n.push(wr_eval_4n[1]);
     wr_eval_4n.push(wr_eval_4n[2]);
     wr_eval_4n.push(wr_eval_4n[3]);
-    // wr_eval_8n.push(wr_eval_8n[4]);
-    // wr_eval_8n.push(wr_eval_8n[5]);
-    // wr_eval_8n.push(wr_eval_8n[6]);
-    // wr_eval_8n.push(wr_eval_8n[7]);
 
     let wo_eval_4n = domain_4n.coset_fft(w_o_poly);
 
@@ -96,10 +84,6 @@ where
     w4_eval_4n.push(w4_eval_4n[1]);
     w4_eval_4n.push(w4_eval_4n[2]);
     w4_eval_4n.push(w4_eval_4n[3]);
-    // w4_eval_8n.push(w4_eval_8n[4]);
-    // w4_eval_8n.push(w4_eval_8n[5]);
-    // w4_eval_8n.push(w4_eval_8n[6]);
-    // w4_eval_8n.push(w4_eval_8n[7]);
 
     let gate_constraints = compute_gate_constraint_satisfiability::<F, P>(
         domain,

@@ -787,7 +787,7 @@ mod test {
         F: PrimeField,
         P: TEModelParameters<BaseField = F>,
     {
-        // NOTE: Circuit size is n+3 because
+        // NOTE: Circuit size is n+4 because
         // - We have an extra gate which forces the first witness to be zero.
         //   This is used when the advice wire is not being used.
         // - We have two gates which add random values to blind the wires.
