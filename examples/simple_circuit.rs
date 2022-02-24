@@ -98,13 +98,8 @@ fn main() -> Result<(), Error> {
     //type PC = KZG10::<Bls12_381>; //Use a different polynomial commitment
     // scheme
 
-    let pp = PC::setup(
-        // +1 per wire, +2 for the permutation poly
-        1 << 12,
-        None,
-        &mut OsRng,
-    )
-    .expect("Unable to sample public parameters.");
+    let pp = PC::setup(1 << 12, None, &mut OsRng)
+        .expect("Unable to sample public parameters.");
 
     let mut circuit = TestCircuit::<BlsScalar, JubJubParameters>::default();
     // Compile the circuit

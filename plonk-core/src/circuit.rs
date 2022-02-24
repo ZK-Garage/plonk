@@ -287,14 +287,8 @@ where
     {
         // Setup PublicParams
         let circuit_size = self.padded_circuit_size();
-        let (ck, _) = PC::trim(
-            u_params,
-            // +1 per wire, +2 for the permutation poly
-            circuit_size + 6,
-            0,
-            None,
-        )
-        .map_err(to_pc_error::<F, PC>)?;
+        let (ck, _) = PC::trim(u_params, circuit_size, 0, None)
+            .map_err(to_pc_error::<F, PC>)?;
 
         //Generate & save `ProverKey` with some random values.
         let mut prover = Prover::<F, P, PC>::new(b"CircuitCompilation");
@@ -333,14 +327,8 @@ where
         PC: HomomorphicCommitment<F>,
     {
         let circuit_size = self.padded_circuit_size();
-        let (ck, _) = PC::trim(
-            u_params,
-            // +1 per wire, +2 for the permutation poly
-            circuit_size + 6,
-            0,
-            None,
-        )
-        .map_err(to_pc_error::<F, PC>)?;
+        let (ck, _) = PC::trim(u_params, circuit_size, 0, None)
+            .map_err(to_pc_error::<F, PC>)?;
         // New Prover instance
         let mut prover = Prover::new(transcript_init);
         // Fill witnesses for Prover
@@ -372,14 +360,8 @@ where
     let mut verifier: Verifier<F, P, PC> = Verifier::new(transcript_init);
     let padded_circuit_size = plonk_verifier_key.padded_circuit_size();
     verifier.verifier_key = Some(plonk_verifier_key);
-    let (_, vk) = PC::trim(
-        u_params,
-        // +1 per wire, +2 for the permutation poly
-        padded_circuit_size + 6,
-        0,
-        None,
-    )
-    .map_err(to_pc_error::<F, PC>)?;
+    let (_, vk) = PC::trim(u_params, padded_circuit_size, 0, None)
+        .map_err(to_pc_error::<F, PC>)?;
 
     verifier.verify(
         proof,

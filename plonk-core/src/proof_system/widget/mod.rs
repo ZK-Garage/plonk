@@ -298,21 +298,21 @@ where
     /// ProverKey for permutation checks
     pub(crate) permutation: permutation::ProverKey<F>,
 
-    /// Pre-processes the 8n Evaluations for the vanishing polynomial, so
+    /// Pre-processes the 4n Evaluations for the vanishing polynomial, so
     /// they do not need to be computed at the proving stage.
     ///
     /// NOTE: With this, we can combine all parts of the quotient polynomial
     /// in their evaluation phase and divide by the quotient
     /// polynomial without having to perform IFFT
-    pub(crate) v_h_coset_8n: Evaluations<F>,
+    pub(crate) v_h_coset_4n: Evaluations<F>,
 }
 
 impl<F> ProverKey<F>
 where
     F: PrimeField,
 {
-    pub(crate) fn v_h_coset_8n(&self) -> &Evaluations<F> {
-        &self.v_h_coset_8n
+    pub(crate) fn v_h_coset_4n(&self) -> &Evaluations<F> {
+        &self.v_h_coset_4n
     }
 
     /// Constructs a [`ProverKey`] from the widget ProverKey's that are
@@ -336,7 +336,7 @@ where
         out_sigma: (DensePolynomial<F>, Evaluations<F>),
         fourth_sigma: (DensePolynomial<F>, Evaluations<F>),
         linear_evaluations: Evaluations<F>,
-        v_h_coset_8n: Evaluations<F>,
+        v_h_coset_4n: Evaluations<F>,
     ) -> Self {
         Self {
             n,
@@ -360,7 +360,7 @@ where
                 fourth_sigma,
                 linear_evaluations,
             },
-            v_h_coset_8n,
+            v_h_coset_4n,
         }
     }
 }
