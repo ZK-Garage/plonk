@@ -598,6 +598,71 @@ where
         );
         self.n += 1;
     }
+
+    struct GateValues {
+        
+        variable: Vec<Variable>,
+
+       
+        selector: Vec<F>
+
+
+    }
+    impl GateValues {
+        
+    }
+    struct ConstraintErrorLocation {
+        // the row where this error occurs
+        row: usize,
+
+        // the gate values that caused the error 
+        gate_values: GateValues
+
+
+    }
+
+    impl ConstraintErrorLocation {
+
+        fn failure_location(&self) -> usize {
+        
+        // returns the error location
+            self.row 
+        }
+        fn failure_value(&self) -> Vec<usize> {
+        
+        // returns the error value
+            
+            self.gate_values
+        }
+
+    }
+    pub struct MockProver<F: Group + Field> {
+        k: u32,
+        
+    
+        /// The error location in the circuit.
+        errors_location: Vec<ConstraintErrorLocation>,
+        
+    
+        
+    
+    }
+
+    impl MockProver<F>{
+
+        fn failure_location(&self) -> usize {
+        
+        // returns the error location
+            self.row 
+        }
+        fn failure_value(&self) -> Vec<usize> {
+        
+        // returns the error value
+            
+            self.gate_values
+        }
+
+    }
     /// Utility function that checks on the "front-end"
     /// side of the PLONK implementation if the identity polynomial
     /// is satisfied for each of the [`StandardComposer`]'s gates.
