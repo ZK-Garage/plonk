@@ -601,22 +601,36 @@ where
 
     struct GateValues {
         
-        variable: Vec<Variable>,
-
-       
-        selector: Vec<F>
+    where
+        F: Field,
+    {
+        left: F,
+        right: F,
+        output: F,
+        fourth: F,
+        left_next: F,
+        right_next: F,
+        fourth_next: F,
+        left_selector: F,
+        right_selector: F,
+        constant_selector: F,
+}
 
 
     }
     impl GateValues {
         
     }
-    struct ConstraintErrorLocation {
+    struct ConstraintErrorLocation<F> 
+    where
+         F: Field,
+    
+    {
         // the row where this error occurs
         row: usize,
 
         // the gate values that caused the error 
-        gate_values: GateValues
+        gate_values: GateValues<F>
 
 
     }
