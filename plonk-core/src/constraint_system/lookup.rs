@@ -4,18 +4,17 @@
 //
 // Copyright (c) ZK-Garage. All rights reserved.
 
-use num_traits::{One, Zero};
 use crate::constraint_system::{StandardComposer, Variable};
 use ark_ec::TEModelParameters;
 use ark_ff::PrimeField;
+use num_traits::{One, Zero};
 
 impl<F, P> StandardComposer<F, P>
 where
     F: PrimeField,
-    P: TEModelParameters<BaseField = F>,  
+    P: TEModelParameters<BaseField = F>,
 {
-
-    /// Adds a plookup gate to the circuit with its corresponding 
+    /// Adds a plookup gate to the circuit with its corresponding
     /// constraints.
     ///
     /// This type of gate is usually used when we need to have
@@ -59,7 +58,7 @@ where
         self.q_fixed_group_add.push(F::zero());
         self.q_variable_group_add.push(F::zero());
 
-        // For a lookup gate, only one selector poly is 
+        // For a lookup gate, only one selector poly is
         // turned on as the output is inputted directly
         self.q_lookup.push(F::one());
 
@@ -76,5 +75,4 @@ where
 
         c
     }
-
 }

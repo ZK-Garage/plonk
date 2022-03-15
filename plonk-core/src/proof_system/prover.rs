@@ -6,6 +6,7 @@
 
 //! Prover-side of the PLONK Proving System
 
+use crate::lookup::MultiSet;
 use crate::{
     commitment::HomomorphicCommitment,
     constraint_system::{StandardComposer, Variable},
@@ -24,9 +25,8 @@ use ark_poly::{
 };
 use core::marker::PhantomData;
 use core::ops::Add;
-use num_traits::{One, Zero};
-use crate::lookup::MultiSet;
 use merlin::Transcript;
+use num_traits::{One, Zero};
 use rand::rngs::OsRng;
 
 /// Abstraction structure designed to construct a circuit and generate
@@ -248,7 +248,7 @@ where
         let mut w_4_poly =
             DensePolynomial::from_coefficients_vec(domain.ifft(w_4_scalar));
 
-        // Add blinders to witness polynomials 
+        // Add blinders to witness polynomials
         w_l_poly = Self::add_blinder(&w_l_poly, n, 1);
         w_r_poly = Self::add_blinder(&w_r_poly, n, 1);
         w_o_poly = Self::add_blinder(&w_o_poly, n, 1);
@@ -270,9 +270,9 @@ where
         transcript.append(b"w_r", w_commits[1].commitment());
         transcript.append(b"w_o", w_commits[2].commitment());
         transcript.append(b"w_4", w_commits[3].commitment());
-    
+
         // 2. Derive lookup polynomials
-        
+
         // Generate table compression factor
         let zeta = transcript.challenge_scalar(b"zeta");
         transcript.append(b"zeta", &zeta);
@@ -297,15 +297,13 @@ where
         // When q_lookup[i] is zero the wire value is replaced with a dummy
         //   value currently set as the first row of the public table
         // If q_lookup[i] is one the wire values are preserved
-        // This ensures the ith element of the compressed query table 
-        //   is an element of the compressed lookup table even when 
+        // This ensures the ith element of the compressed query table
+        //   is an element of the compressed lookup table even when
         //   q_lookup[i] is 0 so the lookup check will pass
         let f_1_scalar = w_l_scalar
             .iter()
             .zip(&self.cs.q_lookup)
-            .map(|(w, s)| {
-                *w * s + (F::one() - s) * compressed_t_multiset.0[0]
-            })
+            .map(|(w, s)| *w * s + (F::one() - s) * compressed_t_multiset.0[0])
             .collect::<Vec<F>>();
         let f_2_scalar = w_r_scalar
             .iter()
@@ -338,12 +336,14 @@ where
         let mut f_poly = DensePolynomial::from_coefficients_vec(
             domain.ifft(&compressed_f_multiset.0),
         );
-        
+
         // Add blinders to query polynomials
         let f_poly = Self::add_blinder(&f_poly, n, 1);
 
         // Commit to query polynomial
-        let (f_poly_commit, _) = PC::commit(commit_key, &[label_polynomial!(f_poly)], None).map_err(to_pc_error::<F, PC>)?;
+        let (f_poly_commit, _) =
+            PC::commit(commit_key, &[label_polynomial!(f_poly)], None)
+                .map_err(to_pc_error::<F, PC>)?;
 
         // Add f_poly commitment to transcript
         transcript.append(b"f", f_poly_commit[0].commitment());
@@ -354,27 +354,32 @@ where
             .unwrap();
 
         // Compute h polys
-        let mut h_1_poly = DensePolynomial::from_coefficients_vec(domain.ifft(&h_1.0));
-        let mut h_2_poly = DensePolynomial::from_coefficients_vec(domain.ifft(&h_2.0));
+        let mut h_1_poly =
+            DensePolynomial::from_coefficients_vec(domain.ifft(&h_1.0));
+        let mut h_2_poly =
+            DensePolynomial::from_coefficients_vec(domain.ifft(&h_2.0));
 
         // Add blinders to h polynomials
         let h_1_poly = Self::add_blinder(&h_1_poly, n, 1);
         let h_2_poly = Self::add_blinder(&h_2_poly, n, 1);
 
         // Commit to h polys
-        let (h_1_poly_commit, _) = PC::commit(commit_key, &[label_polynomial!(h_1_poly)], None).map_err(to_pc_error::<F, PC>)?;
-        let (h_2_poly_commit, _) = PC::commit(commit_key, &[label_polynomial!(h_2_poly)], None).map_err(to_pc_error::<F, PC>)?;
+        let (h_1_poly_commit, _) =
+            PC::commit(commit_key, &[label_polynomial!(h_1_poly)], None)
+                .map_err(to_pc_error::<F, PC>)?;
+        let (h_2_poly_commit, _) =
+            PC::commit(commit_key, &[label_polynomial!(h_2_poly)], None)
+                .map_err(to_pc_error::<F, PC>)?;
 
         // Add h polynomials to transcript
         transcript.append(b"h1", h_1_poly_commit[0].commitment());
         transcript.append(b"h2", h_2_poly_commit[0].commitment());
 
-        // 3. Compute permutation polynomial 
+        // 3. Compute permutation polynomial
         //
         // Compute permutation challenge `beta`.
         let beta = transcript.challenge_scalar(b"beta");
         transcript.append(b"beta", &beta);
-        
 
         // Compute permutation challenge `gamma`.
         let gamma = transcript.challenge_scalar(b"gamma");
@@ -394,8 +399,6 @@ where
         assert!(gamma != delta, "challenges must be different");
         assert!(gamma != epsilon, "challenges must be different");
         assert!(delta != epsilon, "challenges must be different");
-
-        
 
         let mut z_poly = DensePolynomial::from_coefficients_slice(
             &self.cs.perm.compute_permutation_poly(
@@ -423,7 +426,6 @@ where
         // Add permutation polynomial commitment to transcript.
         transcript.append(b"z", z_poly_commit[0].commitment());
 
-        // Compute mega permutation polynomial.
         // Compute lookup permutation poly
         let mut z_2_poly = DensePolynomial::from_coefficients_slice(
             &self.cs.perm.compute_lookup_permutation_poly(
@@ -467,15 +469,22 @@ where
 
         let fixed_base_sep_challenge =
             transcript.challenge_scalar(b"fixed base separation challenge");
-        transcript.append(b"fixed base separation challenge", &fixed_base_sep_challenge);
+        transcript.append(
+            b"fixed base separation challenge",
+            &fixed_base_sep_challenge,
+        );
 
         let var_base_sep_challenge =
             transcript.challenge_scalar(b"variable base separation challenge");
-        transcript.append(b"variable base separation challenge", &var_base_sep_challenge);
+        transcript.append(
+            b"variable base separation challenge",
+            &var_base_sep_challenge,
+        );
 
         let lookup_sep_challenge =
             transcript.challenge_scalar(b"lookup separation challenge");
-        transcript.append(b"lookup separation challenge", &lookup_sep_challenge);
+        transcript
+            .append(b"lookup separation challenge", &lookup_sep_challenge);
 
         let t_poly = quotient_poly::compute::<F, P, PC>(
             &domain,
@@ -559,12 +568,10 @@ where
             &f_poly,
             &h_1_poly,
             &h_2_poly,
-            &table_poly
+            &table_poly,
         )?;
 
         // Add evaluations to transcript.
-
-
 
         // First wire evals
         transcript.append(b"a_eval", &evaluations.wire_evals.a_eval);
@@ -583,19 +590,17 @@ where
             .append(b"out_sig_eval", &evaluations.perm_evals.out_sigma_eval);
         transcript
             .append(b"perm_eval", &evaluations.perm_evals.permutation_eval);
-        
-/*         // Third lookup evals
-        transcript.append(b"f_eval", &evaluations.proof.f_eval);
-        transcript
-            .append(b"q_lookup_eval", &evaluations.proof.q_lookup_eval);
+
+        // Third lookup evals
+        transcript.append(b"f_eval", &evaluations.perm_evals.f_eval);
+        // transcript
+        //     .append(b"q_lookup_eval", &evaluations.perm_evals.q_lookup_eval);
         transcript.append(
             b"lookup_perm_eval",
-            &evaluations.proof.lookup_perm_eval,
+            &evaluations.perm_evals.lookup_perm_eval,
         );
-        transcript.append(b"h_1_eval", &evaluations.proof.h_1_eval);
-        transcript
-            .append(b"h_1_next_eval", &evaluations.proof.h_1_next_eval);
-        transcript.append(b"h_2_eval", &evaluations.proof.h_2_eval); */
+        transcript.append(b"h_1_eval", &evaluations.perm_evals.h_1_next_eval);
+        transcript.append(b"h_2_eval", &evaluations.perm_evals.h_2_eval);
 
         // Fourth, all evals needed for custom gates
         evaluations
@@ -616,8 +621,8 @@ where
         // challenge `z`
         let aw_challenge: F = transcript.challenge_scalar(b"aggregate_witness");
 
-        /// XXX: The quotient polynmials is used here and then in the 
-        /// opening poly. It is being left in for now but it may not 
+        /// XXX: The quotient polynmials is used here and then in the
+        /// opening poly. It is being left in for now but it may not
         /// be necessary. Warrants further investigation.
         /// Ditto with the out_sigma poly.
         let aw_polys = [
@@ -655,7 +660,6 @@ where
             label_polynomial!(h_1_poly),
             label_polynomial!(z_2_poly),
             label_polynomial!(table_poly),
-
         ];
 
         let (saw_commits, saw_rands) = PC::commit(commit_key, &saw_polys, None)
@@ -673,6 +677,7 @@ where
         .map_err(to_pc_error::<F, PC>)?;
 
         Ok(Proof {
+            /// Does the z_comm also contain repeats of the a, b & c polys?
             a_comm: w_commits[0].commitment().clone(),
             b_comm: w_commits[1].commitment().clone(),
             c_comm: w_commits[2].commitment().clone(),

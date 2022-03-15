@@ -17,12 +17,12 @@
 use crate::{constraint_system::Variable, permutation::Permutation};
 use alloc::collections::BTreeMap;
 
+use crate::lookup::LookupTable;
 use ark_ec::{models::TEModelParameters, ModelParameters};
 use ark_ff::PrimeField;
 use core::marker::PhantomData;
 use hashbrown::HashMap;
 use num_traits::{One, Zero};
-use crate::lookup::LookupTable;
 
 /// The StandardComposer is the circuit-builder tool that the `plonk` repository
 /// provides to create, stored and transformed circuit descriptions
@@ -537,36 +537,21 @@ where
             self.n,
         );
 
-                // Add dummy rows to lookup table
+        // Add dummy rows to lookup table
         // Notice two rows here match dummy wire values above
         self.lookup_table.0.insert(
             0,
-            [
-                F::from(6u64),
-                F::from(7u64),
-                -F::from(20u64),
-                F::from(1u64),
-            ],
+            [F::from(6u64), F::from(7u64), -F::from(20u64), F::from(1u64)],
         );
 
         self.lookup_table.0.insert(
             0,
-            [
-                -F::from(20u64),
-                F::from(6u64),
-                F::from(7u64),
-                F::from(0u64),
-            ],
+            [-F::from(20u64), F::from(6u64), F::from(7u64), F::from(0u64)],
         );
 
         self.lookup_table.0.insert(
             0,
-            [
-                F::from(3u64),
-                F::from(1u64),
-                F::from(4u64),
-                F::from(9u64),
-            ],
+            [F::from(3u64), F::from(1u64), F::from(4u64), F::from(9u64)],
         );
 
         self.n += 1;

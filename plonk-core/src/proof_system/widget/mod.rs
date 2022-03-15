@@ -9,9 +9,8 @@
 pub mod arithmetic;
 pub mod ecc;
 pub mod logic;
-pub mod range;
 pub mod lookup;
-
+pub mod range;
 
 use crate::{
     commitment::HomomorphicCommitment,
@@ -295,9 +294,9 @@ where
 
     /// Logic Gate Selector
     pub(crate) logic_selector: (DensePolynomial<F>, Evaluations<F>),
-    
+
     /// Lookup selector
-    pub (crate) lookup: lookup::ProverKey<F, PC>,
+    pub(crate) lookup: lookup::ProverKey<F, PC>,
 
     /// Fixed Group Addition Selector
     pub(crate) fixed_group_add_selector: (DensePolynomial<F>, Evaluations<F>),
@@ -305,7 +304,6 @@ where
     /// Variable Group Addition Selector
     pub(crate) variable_group_add_selector:
         (DensePolynomial<F>, Evaluations<F>),
-    
 
     /// ProverKey for permutation checks
     pub(crate) permutation: permutation::ProverKey<F>,
@@ -373,7 +371,7 @@ where
                 table_2,
                 table_3,
                 table_4,
-            }, 
+            },
             permutation: permutation::ProverKey {
                 left_sigma,
                 right_sigma,

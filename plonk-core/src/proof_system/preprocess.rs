@@ -77,7 +77,6 @@ where
         self.q_lookup.extend(zeroes_scalar.iter());
         self.q_fixed_group_add.extend(zeroes_scalar.iter());
         self.q_variable_group_add.extend(zeroes_scalar.iter());
-        
 
         self.w_l.extend(zeroes_var.iter());
         self.w_r.extend(zeroes_var.iter());
@@ -313,11 +312,9 @@ where
 
         let q_logic_poly: DensePolynomial<F> =
             DensePolynomial::from_coefficients_vec(domain.ifft(&self.q_logic));
-        
+
         let q_lookup_poly: DensePolynomial<F> =
-            DensePolynomial::from_coefficients_vec(
-                domain.ifft(&self.q_lookup),
-            );
+            DensePolynomial::from_coefficients_vec(domain.ifft(&self.q_lookup));
 
         let q_fixed_group_add_poly: DensePolynomial<F> =
             DensePolynomial::from_coefficients_vec(
@@ -328,9 +325,6 @@ where
             DensePolynomial::from_coefficients_vec(
                 domain.ifft(&self.q_variable_group_add),
             );
-        
-    
-        
 
         // 2. Compute the sigma polynomials
         let (

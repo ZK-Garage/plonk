@@ -145,7 +145,6 @@ where
         transcript.append(b"w_4", &self.d_comm);
 
         // Compute permutation challenges and add them to transcript
-             
 
         // Compute permutation challenge `beta`.
         let beta = transcript.challenge_scalar(b"beta");
@@ -163,23 +162,13 @@ where
         let epsilon = transcript.challenge_scalar(b"epsilon");
         transcript.append(b"epsilon", &epsilon);
 
-        // Compute permutation challenge `theta`.
-        let theta = transcript.challenge_scalar(b"theta");
-        transcript.append(b"theta", &theta);
-
-        // Challenges must be different 
+        // Challenges must be different
         assert!(beta != gamma, "challenges must be different");
         assert!(beta != delta, "challenges must be different");
         assert!(beta != epsilon, "challenges must be different");
-        assert!(beta != theta, "challenges must be different");
         assert!(gamma != delta, "challenges must be different");
         assert!(gamma != epsilon, "challenges must be different");
-        assert!(gamma != theta, "challenges must be different");
         assert!(delta != epsilon, "challenges must be different");
-        assert!(delta != theta, "challenges must be different");
-        assert!(epsilon != theta, "challenges must be different");
-
-   
 
         // Add commitment to permutation polynomial to transcript
         transcript.append(b"z", &self.z_comm);
@@ -197,16 +186,23 @@ where
 
         let fixed_base_sep_challenge =
             transcript.challenge_scalar(b"fixed base separation challenge");
-        transcript.append(b"fixed base separation challenge", &fixed_base_sep_challenge);
+        transcript.append(
+            b"fixed base separation challenge",
+            &fixed_base_sep_challenge,
+        );
 
         let var_base_sep_challenge =
             transcript.challenge_scalar(b"variable base separation challenge");
-        transcript.append(b"variable base separation challenge", &var_base_sep_challenge);
+        transcript.append(
+            b"variable base separation challenge",
+            &var_base_sep_challenge,
+        );
 
-        let lookup_challenge =
+        /// Why is the type not inferred?
+        let lookup_sep_challenge: F =
             transcript.challenge_scalar(b"lookup separation challenge");
-        transcript.append(b"lookup separation challenge", &lookup_challenge);
-
+        transcript
+            .append(b"lookup separation challenge", &lookup_sep_challenge);
 
         // Add commitment to quotient polynomial to transcript
         transcript.append(b"t_1", &self.t_1_comm);
@@ -231,9 +227,12 @@ where
             alpha,
             beta,
             gamma,
+            delta,
+            epsilon,
             z_challenge,
             l1_eval,
             self.evaluations.perm_evals.permutation_eval,
+            self.evaluations.perm_evals.lookup_perm_eval,
         );
 
         // Add evaluations to transcript
@@ -258,6 +257,17 @@ where
             b"perm_eval",
             &self.evaluations.perm_evals.permutation_eval,
         );
+        transcript.append(b"f_eval", &self.evaluations.perm_evals.f_eval);
+        // transcript
+        //     .append(b"q_lookup_eval",
+        // &self.evaluations.perm_evals.q_lookup_eval);
+        transcript.append(
+            b"lookup_perm_eval",
+            &self.evaluations.perm_evals.lookup_perm_eval,
+        );
+        transcript
+            .append(b"h_1_eval", &self.evaluations.perm_evals.h_1_next_eval);
+        transcript.append(b"h_2_eval", &self.evaluations.perm_evals.h_2_eval);
 
         self.evaluations
             .custom_evals
@@ -379,38 +389,64 @@ where
         alpha: F,
         beta: F,
         gamma: F,
+        delta: F,
+        epsilon: F,
         z_challenge: F,
         l1_eval: F,
-        z_hat_eval: F,
+        z_1_eval: F,
+        z_2_eval: F,
     ) -> F {
         // Compute the public input polynomial evaluated at `z_challenge`
         let pi_eval = compute_barycentric_eval(pub_inputs, z_challenge, domain);
 
+        // Compute powers of alpha
         let alpha_sq = alpha.square();
+        let alpha_four = alpha_sq.square();
+        let alpha_five = alpha_four * alpha;
 
         // a + beta * sigma_1 + gamma
         let beta_sig1 = beta * self.evaluations.perm_evals.left_sigma_eval;
         let b_0 = self.evaluations.wire_evals.a_eval + beta_sig1 + gamma;
 
-        // b+ beta * sigma_2 + gamma
+        // b + beta * sigma_2 + gamma
         let beta_sig2 = beta * self.evaluations.perm_evals.right_sigma_eval;
         let b_1 = self.evaluations.wire_evals.b_eval + beta_sig2 + gamma;
+
+        // XXX: As per the paper, should sigma_3 be with the c?
 
         // c+ beta * sigma_3 + gamma
         let beta_sig3 = beta * self.evaluations.perm_evals.out_sigma_eval;
         let b_2 = self.evaluations.wire_evals.c_eval + beta_sig3 + gamma;
 
+        // XXX: Why no beta used here?
         // ((d + gamma) * z_hat) * alpha
         let b_3 =
-            (self.evaluations.wire_evals.d_eval + gamma) * z_hat_eval * alpha;
+            (self.evaluations.wire_evals.d_eval + gamma) * z_1_eval * alpha;
 
         let b = b_0 * b_1 * b_2 * b_3;
 
         // l_1(z) * alpha^2
         let c = l1_eval * alpha_sq;
 
+        // Compute common term
+        let epsilon_one_plus_delta = epsilon * (F::one() + delta);
+
+        // (ε( 1 + δ) + δh_2))
+        let d = epsilon_one_plus_delta
+            + (delta * self.evaluations.perm_evals.h_2_eval)
+                * z_2_eval
+                * alpha_four;
+
+        // (ε( 1 + δ) + h_2 + (δh_1)))
+        let e = epsilon_one_plus_delta
+            + self.evaluations.perm_evals.h_2_eval
+            + (delta * self.evaluations.perm_evals.h_1_next_eval);
+
+        // l_1 * alpha^5
+        let f = l1_eval * alpha_five;
+
         // Return r_0
-        pi_eval - b - c
+        pi_eval - b - c - d - e - f
     }
 
     /// Computes the commitment to `[r]_1`.
@@ -488,6 +524,7 @@ where
         // Second part
         let vanishing_poly_eval =
             domain.evaluate_vanishing_polynomial(z_challenge);
+
         // z_challenge ^ n
         let z_challenge_to_n = vanishing_poly_eval + F::one();
 

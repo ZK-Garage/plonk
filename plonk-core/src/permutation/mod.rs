@@ -830,7 +830,7 @@ impl Permutation {
 
         DensePolynomial::from_coefficients_vec(domain.ifft(&p))
     }
-    
+
     fn lookup_numerator_irreducible<F: FftField>(
         delta: &F,
         epsilon: &F,
@@ -841,10 +841,10 @@ impl Permutation {
         let prod_1 = F::one() + delta;
         let prod_2 = *epsilon + f;
         let prod_3 = (*epsilon * prod_1) + t + (*delta * t_next);
-    
+
         prod_1 * prod_2 * prod_3
     }
-    
+
     fn lookup_denominator_irreducible<F: FftField>(
         delta: F,
         epsilon: F,
@@ -855,14 +855,10 @@ impl Permutation {
         let epsilon_plus_one_delta = epsilon * (F::one() + delta);
         let prod_1 = epsilon_plus_one_delta + h_1 + (h_2 * delta);
         let prod_2 = epsilon_plus_one_delta + h_2 + (h_1_next * delta);
-    
-        prod_1 * prod_2 
+
+        prod_1 * prod_2
     }
 }
-
-
-
-
 
 /// The `bls_12-381` library does not provide a `random` method for `F`.
 /// We will use this helper function to compensate.

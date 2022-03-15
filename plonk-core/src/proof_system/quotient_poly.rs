@@ -5,6 +5,7 @@
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
 use crate::{
+    commitment::HomomorphicCommitment,
     error::Error,
     proof_system::{
         ecc::{CurveAddition, FixedBaseScalarMul},
@@ -13,7 +14,6 @@ use crate::{
         widget::GateConstraint,
         ProverKey,
     },
-    commitment::HomomorphicCommitment,
 };
 use ark_ec::TEModelParameters;
 use ark_ff::{FftField, PrimeField};
@@ -24,7 +24,7 @@ use ark_poly::{
 
 use super::{
     ecc::{CAVals, FBSMVals},
-    linearisation_poly::CustomEvaluations,
+    linearisation_poly::{CustomEvaluations, PermutationEvaluations},
     logic::LogicVals,
     range::RangeVals,
     CustomValues, WitnessValues,
@@ -49,7 +49,7 @@ pub fn compute<F, P, PC>(
     alpha: &F,
     beta: &F,
     gamma: &F,
-    delta: &F, 
+    delta: &F,
     epsilon: &F,
     zeta: &F,
     range_challenge: &F,
@@ -154,7 +154,6 @@ where
     h2_eval_8n.push(h2_eval_8n[6]);
     h2_eval_8n.push(h2_eval_8n[7]);
 
-
     let gate_constraints = compute_gate_constraint_satisfiability::<F, P, PC>(
         domain,
         *range_challenge,
@@ -181,13 +180,14 @@ where
         &w4_eval_8n,
         &z_eval_8n,
         &z2_eval_8n,
+        &f_eval_8n,
         &t_eval_8n,
         &h1_eval_8n,
         &h2_eval_8n,
         *alpha,
         *beta,
         *gamma,
-        *delta, 
+        *delta,
         *epsilon,
     )?;
 
@@ -221,7 +221,6 @@ fn compute_gate_constraint_satisfiability<F, P, PC>(
     pi_poly: &DensePolynomial<F>,
     f_eval_8n: &[F],
     zeta: &F,
-
 ) -> Result<Vec<F>, Error>
 where
     F: PrimeField,
@@ -289,26 +288,22 @@ where
                 CAVals::from_evaluations(&custom_vals),
             );
 
-/*             let f = f_eval_8n[i];
+            let f = f_eval_8n[i];
 
             let lookup = prover_key.lookup.compute_quotient_i(
                 i,
-                values.left,
-                values.right,
-                values.output,
-                values.fourth,
+                wit_vals,
                 f,
                 *zeta,
                 lookup_challenge,
-            ); */
-
+            );
 
             (arithmetic + pi_eval_8n[i])
                 + range
                 + logic
                 + fixed_base_scalar_mul
                 + curve_addition
-               // + lookup
+                + lookup
         })
         .collect())
 }
@@ -323,20 +318,20 @@ fn compute_permutation_checks<F, PC>(
     wo_eval_8n: &[F],
     w4_eval_8n: &[F],
     z_eval_8n: &[F],
-    z_2_eval_8n: &[F], 
+    z_2_eval_8n: &[F],
+    f_eval_8n: &[F],
     t_eval_8n: &[F],
     h_1_eval_8n: &[F],
     h_2_eval_8n: &[F],
     alpha: F,
     beta: F,
     gamma: F,
-    delta: F, 
+    delta: F,
     epsilon: F,
 ) -> Result<Vec<F>, Error>
 where
     F: PrimeField,
     PC: HomomorphicCommitment<F>,
-
 {
     let domain_8n = GeneralEvaluationDomain::<F>::new(8 * domain.size())
         .ok_or(Error::InvalidEvalDomainSize {
@@ -362,6 +357,7 @@ where
                 z_eval_8n[i + 8],
                 z_2_eval_8n[i],
                 z_2_eval_8n[i + 8],
+                f_eval_8n[i],
                 t_eval_8n[i],
                 t_eval_8n[i + 8],
                 h_1_eval_8n[i],
@@ -372,7 +368,7 @@ where
                 l1_alpha_five_evals[i],
                 beta,
                 gamma,
-                delta, 
+                delta,
                 epsilon,
             )
         })
