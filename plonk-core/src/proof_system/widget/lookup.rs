@@ -5,32 +5,28 @@
 // Copyright (c) ZK-Garage. All rights reserved.
 
 use crate::lookup::multiset::MultiSet;
-use crate::proof_system::widget::GateConstraint;
-use ark_ff::{Field, PrimeField, FftField};
-use core::marker::PhantomData;
 use crate::proof_system::linearisation_poly::ProofEvaluations;
+use crate::proof_system::widget::GateConstraint;
+use crate::proof_system::widget::HomomorphicCommitment;
 use ark_ec::PairingEngine;
+use ark_ff::{FftField, Field, PrimeField};
 use ark_poly::polynomial::univariate::DensePolynomial;
 use ark_poly::Evaluations;
-use crate::proof_system::widget::HomomorphicCommitment;
 use ark_serialize::*;
+use core::marker::PhantomData;
 
 /// Lookup Gates Prover Key
 #[derive(CanonicalDeserialize, CanonicalSerialize, derivative::Derivative)]
 #[derivative(
     Clone(bound = ""),
-    Debug(
-        bound = "PC::Commitment: std::fmt::Debug"
-    ),
+    Debug(bound = "PC::Commitment: std::fmt::Debug"),
     Eq(bound = "PC::Commitment: Eq"),
-    PartialEq(
-        bound = "PC::Commitment: PartialEq"
-    )
+    PartialEq(bound = "PC::Commitment: PartialEq")
 )]
-pub struct ProverKey<F, PC> 
-where 
-F: PrimeField,
-PC: HomomorphicCommitment<F>,
+pub struct ProverKey<F, PC>
+where
+    F: PrimeField,
+    PC: HomomorphicCommitment<F>,
 {
     pub q_lookup: (DensePolynomial<F>, Evaluations<F>),
     pub table_1: (MultiSet<F>, PC::Commitment, DensePolynomial<F>),
@@ -41,11 +37,11 @@ PC: HomomorphicCommitment<F>,
 
 impl<F, PC> ProverKey<F, PC>
 where
-F: PrimeField, 
-PC: HomomorphicCommitment<F>,
+    F: PrimeField,
+    PC: HomomorphicCommitment<F>,
 {
-
-    pub fn compute_quotient_i(&self,
+    pub fn compute_quotient_i(
+        &self,
         index: usize,
         w_l_i: F,
         w_r_i: F,
@@ -55,8 +51,6 @@ PC: HomomorphicCommitment<F>,
         zeta: F,
         lookup_challenge: F,
     ) -> F {
-
-
         // q_lookup(X) * (a(X) + zeta * b(X) + (zeta^2 * c(X)) + (zeta^3 * d(X)
         // - f(X))) * α_1
         let a = {
@@ -68,7 +62,6 @@ PC: HomomorphicCommitment<F>,
         };
 
         a
-
     }
 
     /// Compute linearization for lookup gates
@@ -96,29 +89,20 @@ PC: HomomorphicCommitment<F>,
         };
 
         a
-
     }
 
-    fn compress(
-        w_l: F,
-        w_r: F,
-        w_o: F,
-        w_4: F,
-        zeta: F,
-    ) -> F {
+    fn compress(w_l: F, w_r: F, w_o: F, w_4: F, zeta: F) -> F {
         let zeta_sq = zeta.square();
         let zeta_cu = zeta_sq * zeta;
-    
+
         let a = w_l;
-    
+
         let b = w_r * zeta;
-    
+
         let c = w_o * zeta_sq;
-    
+
         let d = w_4 * zeta_cu;
-    
+
         a + b + c + d
     }
-    
 }
-

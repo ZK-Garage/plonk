@@ -5,6 +5,7 @@
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
 use crate::{
+    commitment::HomomorphicCommitment,
     error::Error,
     label_eval,
     proof_system::{
@@ -15,7 +16,6 @@ use crate::{
         CustomValues, ProverKey, WitnessValues,
     },
     util::EvaluationDomainExt,
-    commitment::HomomorphicCommitment,
 };
 use ark_ec::TEModelParameters;
 use ark_ff::{Field, PrimeField};
@@ -109,12 +109,10 @@ where
 //     pub h_1_eval: F,
 
 //     /// (Shifted) Evaluations of the first half of sorted plonkup poly at `z
-// *     /// root of unity`
-//     pub h_1_next_eval: F,
+// * /// root of unity` pub h_1_next_eval: F,
 
 //     /// (Shifted) Evaluations of the second half of sorted plonkup poly at `z
-// *     /// root of unity`
-//     pub h_2_eval: F,
+// * /// root of unity` pub h_2_eval: F,
 
 //     /// Evaluations of the query polynomial at `z`
 //     pub f_eval: F,
@@ -300,14 +298,13 @@ where
         z_poly,
     )?;
 
-    // Compute the last term in the linearisation polynomial:
+    // Compute the last term in the linearisation polynomial
+    // (negative_quotient_term):
     // - Z_h(z_challenge) * [t_1(X) + z_challenge^n * t_2(X) + z_challenge^2n *
     //   t_3(X) + z_challenge^3n * t_4(X)]
-
     let vanishing_poly_eval =
         domain.evaluate_vanishing_polynomial(*z_challenge);
     let z_challenge_to_n = vanishing_poly_eval + F::one();
-
     let quotient_term = &(&(&(&(&(&(t_4_poly * z_challenge_to_n)
         + t_3_poly)
         * z_challenge_to_n)
@@ -319,7 +316,7 @@ where
 
     let linearisation_polynomial =
         gate_constraints + permutation + negative_quotient_term;
-    // Add Lookup related evals
+    // TODO Add Lookup related evals in custom evals
     // lookup_perm_eval,
     // h_1_eval,
     // h_1_next_eval,
@@ -334,7 +331,7 @@ where
             perm_evals,
             custom_evals,
         },
-        quot_eval,
+        // quot_eval, // unnecessary?
     ))
 }
 
