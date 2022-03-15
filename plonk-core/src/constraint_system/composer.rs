@@ -834,7 +834,7 @@ where
                                     - *d
                             }
                             (false, false) => F::zero(),
-                            _ => unreachable!(),
+                            _ => unreachable!("Check failed at gate  {}", i),
                         })
                 + qrange
                     * (delta(*c - four * d)
@@ -842,7 +842,7 @@ where
                         + delta(*a - four * b)
                         + delta(*d_next - four * a));
 
-            assert_eq!(k, F::zero(), "Check failed at gate {}", i,);
+            assert_eq!(k, F::zero(), "Check failed at gate {}; selector polynomials", i, qm,ql,qr,q4,qo,qc,qarith,qrange,qlogic,qfixed,qvar);
         }
     }
 }
