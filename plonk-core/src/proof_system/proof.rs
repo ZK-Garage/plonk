@@ -509,6 +509,14 @@ where
             &mut scalars,
             &mut points,
         );
+
+        Lookup::<_, P>::extend_linearisation_commitment::<PC>(
+            &plonk_verifier_key.lookup,
+            lookup_base_sep_challenge,
+            &self.evaluations,
+            &mut scalars,
+            &mut points,
+        );
         plonk_verifier_key
             .permutation
             .compute_linearisation_commitment(

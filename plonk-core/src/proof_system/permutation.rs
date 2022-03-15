@@ -203,7 +203,7 @@ where
             let d_1 = epsilon_one_plus_delta + h_1_i + delta * h_2_i;
             let d_2 = epsilon_one_plus_delta + h_2_i + delta * h_1_i_next;
 
-            -z_2_i_next * d_1 * d_2 * alpha_4
+            -z_2_i_next * (d_1 * d_2 * alpha_4)
         };
 
         a + b
@@ -383,6 +383,7 @@ where
         z_coeffs * (l_1_z * alpha_sq)
     }
 
+    /// XXX: Should this contain a use of the h_1 poly?
     /// Compute lookup perm lineariser contribution
     fn compute_lineariser_lookup_perm_check(
         &self,
@@ -391,9 +392,10 @@ where
         t_next_eval: F,
         h_1_eval: F,
         h_2_eval: F,
-        z_next_eval: F,
+        h_1_next_eval: F,
+        z2_eval: F,
         l1_eval: F,
-        p_poly: &DensePolynomial<F>,
+        z2_poly: &DensePolynomial<F>,
         h_1_poly: &DensePolynomial<F>,
         (delta, epsilon): (F, F),
         lookup_separation_challenge: F,
@@ -403,19 +405,19 @@ where
         let one_plus_delta = delta + F::one();
         let epsilon_one_plus_delta = epsilon * one_plus_delta;
 
-        // z2(X) * (1 + δ) * (ε + f(X)) * (ε(1+δ) + t(X) + δ*t(X)) * α_1^4
+        // z2(X) * (1 + δ) * (ε + f_eval) * (ε(1+δ) + t_eval + δ*t_next_eval) * α_1^4
         let a = {
             let a_0 = epsilon + f_eval;
             let a_1 = epsilon_one_plus_delta + t_eval + delta * t_next_eval;
 
-            &p_poly * (one_plus_delta * a_0 * a_1 * l_sep_4)
+            z2_poly * (one_plus_delta * a_0 * a_1 * l_sep_4)
         };
 
-        // − z2ω_bar * (ε(1+δ) + h1(X) + δh2_bar) * h2(X) * α_1^4
+        // − z2ω_bar * (ε(1+δ) + h1(X) + δh2_eval))(ε(1+δ) + h2_eval + δ* h1_next_eval) * α_1^4
         let b = {
-            let d_0 = epsilon_one_plus_delta + h_1_eval + delta * h_2_eval;
+            let d_0 = epsilon_one_plus_delta + h_1_eval + (delta * h_1_next_eval);
 
-            &h_2_poly * (-p_next_eval * d_0 * l_sep_4)
+           -z2_eval * d_0 * l_sep_4
         };
 
         a + b
