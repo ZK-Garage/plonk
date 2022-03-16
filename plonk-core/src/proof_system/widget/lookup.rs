@@ -8,6 +8,7 @@ use crate::lookup::multiset::MultiSet;
 use crate::proof_system::linearisation_poly::ProofEvaluations;
 use crate::proof_system::widget::GateConstraint;
 use crate::proof_system::widget::HomomorphicCommitment;
+use crate::util::lc;
 use ark_ec::PairingEngine;
 use ark_ff::{FftField, Field, PrimeField};
 use ark_poly::polynomial::univariate::DensePolynomial;
@@ -29,6 +30,7 @@ where
     PC: HomomorphicCommitment<F>,
 {
     pub q_lookup: (DensePolynomial<F>, Evaluations<F>),
+    // TODO vec of tables
     pub table_1: (MultiSet<F>, PC::Commitment, DensePolynomial<F>),
     pub table_2: (MultiSet<F>, PC::Commitment, DensePolynomial<F>),
     pub table_3: (MultiSet<F>, PC::Commitment, DensePolynomial<F>),
@@ -53,15 +55,10 @@ where
     ) -> F {
         // q_lookup(X) * (a(X) + zeta * b(X) + (zeta^2 * c(X)) + (zeta^3 * d(X)
         // - f(X))) * α_1
-        let a = {
-            let q_lookup_i = self.q_lookup.1[index];
-            let compressed_tuple =
-                Self::compress(w_l_i, w_r_i, w_o_i, w_4_i, zeta);
+        let q_lookup_i = self.q_lookup.1[index];
+        let compressed_tuple = Self::compress(w_l_i, w_r_i, w_o_i, w_4_i, zeta);
 
-            q_lookup_i * (compressed_tuple - f_i) * lookup_challenge
-        };
-
-        a
+        q_lookup_i * (compressed_tuple - f_i) * lookup_challenge
     }
 
     /// Compute linearization for lookup gates
@@ -77,32 +74,15 @@ where
     ) -> DensePolynomial<F> {
         let l_sep_2 = lookup_separation_challenge.square();
         let l_sep_3 = l_sep_2 * lookup_separation_challenge;
-        let zeta_sq = zeta * zeta;
-        let zeta_cu = zeta * zeta_sq;
 
-        // q_lookup(X) * f_eval * lookup_separation_challenge
-        let a = {
-            let a_0 =
-                a_eval + zeta * b_eval + zeta_sq * c_eval + zeta_cu * d_eval;
+        let a_0 = Self::compress(a_eval, b_eval, c_eval, d_eval, zeta);
 
-            &self.q_lookup.0 * ((a_0 - f_eval) * l_sep_3)
-        };
-
-        a
+        &self.q_lookup.0 * ((a_0 - f_eval) * l_sep_3)
     }
 
+    /// Compresseses a row of values into a single field element
+    /// by applying a random linear combination
     fn compress(w_l: F, w_r: F, w_o: F, w_4: F, zeta: F) -> F {
-        let zeta_sq = zeta.square();
-        let zeta_cu = zeta_sq * zeta;
-
-        let a = w_l;
-
-        let b = w_r * zeta;
-
-        let c = w_o * zeta_sq;
-
-        let d = w_4 * zeta_cu;
-
-        a + b + c + d
+        lc(vec![w_l, w_r, w_o, w_4], zeta)
     }
 }
