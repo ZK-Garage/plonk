@@ -4,6 +4,7 @@
 //
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
+use alloc::Vec;
 use ark_ec::{ModelParameters, TEModelParameters};
 use ark_ff::{BigInteger, FftField, Field, FpParameters, PrimeField};
 use ark_poly::{EvaluationDomain, GeneralEvaluationDomain};
@@ -141,6 +142,24 @@ where
             "The embedded scalar exceeds the capacity representation of the outter curve scalar");
     }
     P::ScalarField::from_le_bytes_mod_order(&scalar_repr.to_bytes_le())
+}
+
+/// Linear combination of a vector of values
+///
+/// For values [v_0, v_1,... v_k] returns:
+/// v_0 + challenge * v_1 + ... + challenge^k  * v_k
+pub fn lc<F>(values: Vec<F>, challenge: F) -> F
+where
+    F: Field,
+{
+    // Ensure valid challenge
+    assert_ne!(challenge, F::zero());
+    assert_ne!(challenge, F::one());
+
+    values
+        .iter()
+        .rev()
+        .fold(0, |acc, val| acc + val * challenge)
 }
 
 /// Macro to quickly label polynomials
