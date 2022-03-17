@@ -5,7 +5,6 @@
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
 use crate::{
-    commitment::HomomorphicCommitment,
     error::Error,
     proof_system::{
         ecc::{CurveAddition, FixedBaseScalarMul},
@@ -172,7 +171,7 @@ where
 
 /// Computes contribution to the quotient polynomial that ensures
 /// the gate constraints are satisfied.
-fn compute_gate_constraint_satisfiability<F, P, PC>(
+fn compute_gate_constraint_satisfiability<F, P>(
     domain: &GeneralEvaluationDomain<F>,
     range_challenge: F,
     logic_challenge: F,
@@ -191,7 +190,6 @@ fn compute_gate_constraint_satisfiability<F, P, PC>(
 where
     F: PrimeField,
     P: TEModelParameters<BaseField = F>,
-    PC: HomomorphicCommitment<F>,
 {
     let domain_4n = GeneralEvaluationDomain::<F>::new(4 * domain.size())
         .ok_or(Error::InvalidEvalDomainSize {

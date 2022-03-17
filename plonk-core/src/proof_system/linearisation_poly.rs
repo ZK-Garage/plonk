@@ -276,7 +276,7 @@ where
     let h_1_next_eval = h_1_poly.evaluate(&shifted_z_challenge);
     let table_next_eval = table_poly.evaluate(&shifted_z_challenge);
 
-    let gate_constraints = compute_gate_constraint_satisfiability::<F, P, PC>(
+    let gate_constraints = compute_gate_constraint_satisfiability::<F, P>(
         range_separation_challenge,
         logic_separation_challenge,
         fixed_base_separation_challenge,
@@ -336,7 +336,7 @@ where
 
 /// Computes the gate constraint satisfiability portion of the linearisation
 /// polynomial.
-fn compute_gate_constraint_satisfiability<F, P, PC>(
+fn compute_gate_constraint_satisfiability<F, P>(
     range_separation_challenge: &F,
     logic_separation_challenge: &F,
     fixed_base_separation_challenge: &F,
@@ -349,7 +349,6 @@ fn compute_gate_constraint_satisfiability<F, P, PC>(
 where
     F: PrimeField,
     P: TEModelParameters<BaseField = F>,
-    PC: HomomorphicCommitment<F>,
 {
     let wit_vals = WitnessValues {
         a_val: wire_evals.a_eval,
