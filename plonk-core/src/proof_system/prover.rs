@@ -199,7 +199,6 @@ where
         let w_4_poly =
             DensePolynomial::from_coefficients_vec(domain.ifft(w_4_scalar));
 
-        // Add blinders
         let w_polys = [
             label_polynomial!(w_l_poly),
             label_polynomial!(w_r_poly),
@@ -285,7 +284,7 @@ where
         );
 
         // Add blinders to query polynomials
-        let f_poly = Self::add_blinder(&f_poly, n, 1);
+        // let f_poly = Self::add_blinder(&f_poly, n, 1);
 
         // Commit to query polynomial
         let (f_poly_commit, _) =
@@ -307,8 +306,8 @@ where
             DensePolynomial::from_coefficients_vec(domain.ifft(&h_2.0));
 
         // Add blinders to h polynomials
-        let h_1_poly = Self::add_blinder(&h_1_poly, n, 1);
-        let h_2_poly = Self::add_blinder(&h_2_poly, n, 1);
+        // let h_1_poly = Self::add_blinder(&h_1_poly, n, 1);
+        // let h_2_poly = Self::add_blinder(&h_2_poly, n, 1);
 
         // Commit to h polys
         let (h_1_poly_commit, _) =
@@ -381,8 +380,9 @@ where
             ),
         );
 
+        // TODO: Find strategy for blinding lookups
         // Add blinder for lookup permutation poly
-        z_2_poly = Self::add_blinder(&z_2_poly, n, 2);
+        // z_2_poly = Self::add_blinder(&z_2_poly, n, 2);
 
         // Commit to lookup permutation polynomial.
         let (z_2_poly_commit, _) =
