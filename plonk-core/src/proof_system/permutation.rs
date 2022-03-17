@@ -53,11 +53,13 @@ where
      * domain elements] */
 }
 
+//TODO Define structs to tidy up function inputs
 impl<F> ProverKey<F>
 where
     F: FftField,
 {
-    /// Computes the quotient polynomial at the `i`th domain point.
+    /// Computes permutation term of the quotient polynomial at the `i`th domain
+    /// point.
     pub fn compute_quotient_i(
         &self,
         index: usize,
@@ -99,6 +101,7 @@ where
         a + b + c // + d + e
     }
 
+    /// Aux function to compute permutation term in quotient polynomial
     /// Computes the following:
     ///
     /// ```text
@@ -126,6 +129,7 @@ where
             * alpha
     }
 
+    /// Aux function to compute permutation term in quotient polynomial
     /// Computes the following:
     ///
     /// ```text
@@ -200,6 +204,7 @@ where
         a + b
     } */
 
+    /// Aux function to compute permutation term in quotient polynomial
     /// Computes the following:
     ///
     /// ```text
@@ -215,7 +220,7 @@ where
         (z_2_i - F::one()) * l1_alpha_five
     }
 
-    /// Computes the linearisation polynomial.
+    /// Computes the permutation term of the linearisation polynomial.
     pub fn compute_linearisation(
         &self,
         n: usize,
@@ -259,10 +264,11 @@ where
         //let e = self.compute_lineariser_check_is_one(&domain, z_challenge,
         // alpha_five, z_2_coeffs);
         Ok(
-            (&(&a + &b) + &c), //+ d + e
+            a + b + c, //+ d + e
         )
     }
 
+    /// Aux function to compute permutation term in linearisation polynomial
     /// Computes the following:
     ///
     /// ```text
@@ -308,6 +314,7 @@ where
                    // gamma) * alpha z(X)
     }
 
+    /// Aux function to compute permutation term in linearisation polynomial
     /// Computes the following:
     ///
     /// ```text
@@ -352,6 +359,7 @@ where
                                // Sigma_4(X)
     }
 
+    /// Aux function to compute permutation term in linearisation polynomial
     /// Computes the lineariser check.
     fn compute_lineariser_check_is_one(
         &self,
@@ -360,6 +368,7 @@ where
         alpha_sq: F,
         z_coeffs: &DensePolynomial<F>,
     ) -> DensePolynomial<F> {
+        // TODO: There may around evaluating all coefficients
         let l_1_z = domain.evaluate_all_lagrange_coefficients(z_challenge)[0];
         z_coeffs * (l_1_z * alpha_sq)
     }

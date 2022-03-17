@@ -170,6 +170,7 @@ where
     pub fn contains_all(&self, other: &Self) -> bool {
         // TODO: Use a more optimal algorithm, should probably be able to do
         // `O(nlogn)`.
+        // We can improve
         other.0.iter().all(|item| self.contains(item))
     }
 
@@ -207,7 +208,7 @@ where
     /// a random challenge, Alpha. Alpha is dervived by hashing
     /// the transcript.
     /// The function iterates over the given sets and mutiplies by alpha:
-    /// a + (b * alpha) + (c * alpha^2)  
+    /// a + (b * alpha) + (c * alpha^2)
     pub fn compress_three_arity(multisets: [&Self; 3], alpha: F) -> Self {
         let alpha_squared = alpha.square();
         multisets[0]
@@ -223,7 +224,7 @@ where
     /// a random challenge, Alpha. Alpha is dervived by hashing
     /// the transcript.
     /// The function iterates over the given sets and mutiplies by alpha:
-    /// a + (b * alpha) + (c * alpha^2) + (d * alpha^3)  
+    /// a + (b * alpha) + (c * alpha^2) + (d * alpha^3)
     pub fn compress_four_arity(multisets: [&Self; 4], alpha: F) -> Self {
         let alpha_squared = alpha.square();
         let alpha_cubed = alpha_squared * alpha;

@@ -7,40 +7,30 @@
 use crate::lookup::multiset::MultiSet;
 use crate::proof_system::linearisation_poly::ProofEvaluations;
 use crate::proof_system::widget::GateConstraint;
-use crate::proof_system::widget::HomomorphicCommitment;
 use crate::util::lc;
-use ark_ec::PairingEngine;
-use ark_ff::{FftField, Field, PrimeField};
+use ark_ff::PrimeField;
 use ark_poly::polynomial::univariate::DensePolynomial;
 use ark_poly::Evaluations;
 use ark_serialize::*;
-use core::marker::PhantomData;
 
 /// Lookup Gates Prover Key
-#[derive(CanonicalDeserialize, CanonicalSerialize, derivative::Derivative)]
-#[derivative(
-    Clone(bound = ""),
-    Debug(bound = "PC::Commitment: std::fmt::Debug"),
-    Eq(bound = "PC::Commitment: Eq"),
-    PartialEq(bound = "PC::Commitment: PartialEq")
+#[derive(
+    PartialEq, CanonicalDeserialize, CanonicalSerialize, derivative::Derivative,
 )]
-pub struct ProverKey<F, PC>
+pub struct ProverKey<F>
 where
     F: PrimeField,
-    PC: HomomorphicCommitment<F>,
 {
     pub q_lookup: (DensePolynomial<F>, Evaluations<F>),
-    // TODO vec of tables
-    pub table_1: (MultiSet<F>, PC::Commitment, DensePolynomial<F>),
-    pub table_2: (MultiSet<F>, PC::Commitment, DensePolynomial<F>),
-    pub table_3: (MultiSet<F>, PC::Commitment, DensePolynomial<F>),
-    pub table_4: (MultiSet<F>, PC::Commitment, DensePolynomial<F>),
+    pub table_1: MultiSet<F>, // PC::Commitment, DensePolynomial<F>),
+    pub table_2: MultiSet<F>, // PC::Commitment, DensePolynomial<F>),
+    pub table_3: MultiSet<F>, // PC::Commitment, DensePolynomial<F>),
+    pub table_4: MultiSet<F>, // PC::Commitment, DensePolynomial<F>),
 }
 
-impl<F, PC> ProverKey<F, PC>
+impl<F> ProverKey<F>
 where
     F: PrimeField,
-    PC: HomomorphicCommitment<F>,
 {
     pub fn compute_quotient_i(
         &self,

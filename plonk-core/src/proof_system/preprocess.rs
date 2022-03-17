@@ -127,7 +127,7 @@ where
         commit_key: &PC::CommitterKey,
         transcript: &mut Transcript,
         _pc: PhantomData<PC>,
-    ) -> Result<ProverKey<F, PC>, Error>
+    ) -> Result<ProverKey<F>, Error>
     where
         PC: HomomorphicCommitment<F>,
     {

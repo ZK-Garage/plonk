@@ -92,7 +92,7 @@ where
 
 /// Computes a linear combination of the polynomial evaluations and polynomial
 /// commitments provided a challenge.
-// TODO: complete doc
+// TODO: complete doc & use util::lc for eval combination
 pub fn linear_combination<F, H>(
     evals: &[F],
     commitments: &[H::Commitment],

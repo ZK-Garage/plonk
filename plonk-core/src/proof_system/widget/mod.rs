@@ -269,19 +269,14 @@ where
 /// [`Proof`](crate::proof_system::Proof).
 #[derive(CanonicalDeserialize, CanonicalSerialize, derivative::Derivative)]
 #[derivative(
-    Clone(bound = "lookup::ProverKey<F,PC>: Clone"),
-    Debug(
-        bound = "lookup::ProverKey<F,PC>: std::fmt::Debug, PC::Commitment: std::fmt::Debug"
-    ),
-    Eq(bound = "lookup::ProverKey<F,PC>: Eq, PC::Commitment: Eq"),
-    PartialEq(
-        bound = "lookup::ProverKey<F,PC>: PartialEq, PC::Commitment: PartialEq"
-    )
+    Clone(bound = "lookup::ProverKey<F>: Clone"),
+    Debug(bound = "lookup::ProverKey<F>: std::fmt::Debug"),
+    Eq(bound = "lookup::ProverKey<F>: Eq"),
+    PartialEq(bound = "lookup::ProverKey<F>: PartialEq")
 )]
-pub struct ProverKey<F, PC>
+pub struct ProverKey<F>
 where
     F: PrimeField,
-    PC: HomomorphicCommitment<F>,
 {
     /// Circuit size
     pub(crate) n: usize,
@@ -296,7 +291,7 @@ where
     pub(crate) logic_selector: (DensePolynomial<F>, Evaluations<F>),
 
     /// Lookup selector
-    pub(crate) lookup: lookup::ProverKey<F, PC>,
+    pub(crate) lookup: lookup::ProverKey<F>,
 
     /// Fixed Group Addition Selector
     pub(crate) fixed_group_add_selector: (DensePolynomial<F>, Evaluations<F>),
@@ -317,10 +312,9 @@ where
     pub(crate) v_h_coset_4n: Evaluations<F>,
 }
 
-impl<F, PC> ProverKey<F, PC>
+impl<F> ProverKey<F>
 where
     F: PrimeField,
-    PC: HomomorphicCommitment<F>,
 {
     pub(crate) fn v_h_coset_4n(&self) -> &Evaluations<F> {
         &self.v_h_coset_4n

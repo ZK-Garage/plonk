@@ -179,9 +179,9 @@ where
 }
 
 /// Compute the linearisation polynomial.
-pub fn compute<F, P, PC>(
+pub fn compute<F, P>(
     domain: &GeneralEvaluationDomain<F>,
-    prover_key: &ProverKey<F, PC>,
+    prover_key: &ProverKey<F>,
     alpha: &F,
     beta: &F,
     gamma: &F,
@@ -210,7 +210,6 @@ pub fn compute<F, P, PC>(
 where
     F: PrimeField,
     P: TEModelParameters<BaseField = F>,
-    PC: HomomorphicCommitment<F>,
 {
     let n = domain.size();
     let omega = domain.group_gen();
@@ -345,7 +344,7 @@ fn compute_gate_constraint_satisfiability<F, P, PC>(
     wire_evals: &WireEvaluations<F>,
     q_arith_eval: F,
     custom_evals: &CustomEvaluations<F>,
-    prover_key: &ProverKey<F, PC>,
+    prover_key: &ProverKey<F>,
 ) -> DensePolynomial<F>
 where
     F: PrimeField,

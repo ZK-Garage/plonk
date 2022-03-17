@@ -24,9 +24,7 @@ use ark_poly::{
     UVPolynomial,
 };
 use core::marker::PhantomData;
-use core::ops::Add;
 use merlin::Transcript;
-use num_traits::{One, Zero};
 
 /// Abstraction structure designed to construct a circuit and generate
 /// [`Proof`]s for it.
@@ -38,7 +36,7 @@ where
 {
     /// Proving Key which is used to create proofs about a specific PLONK
     /// circuit.
-    pub prover_key: Option<ProverKey<F, PC>>,
+    pub prover_key: Option<ProverKey<F>>,
 
     /// Circuit Description
     pub(crate) cs: StandardComposer<F, P>,
@@ -165,7 +163,7 @@ where
     pub fn prove_with_preprocessed(
         &self,
         commit_key: &PC::CommitterKey,
-        prover_key: &ProverKey<F, PC>,
+        prover_key: &ProverKey<F>,
         _data: PhantomData<PC>,
     ) -> Result<Proof<F, PC>, Error> {
         let domain =
@@ -229,10 +227,10 @@ where
         // Compress lookup table into vector of single elements
         let compressed_t_multiset = MultiSet::compress_four_arity(
             [
-                &prover_key.lookup.table_1.0,
-                &prover_key.lookup.table_2.0,
-                &prover_key.lookup.table_3.0,
-                &prover_key.lookup.table_4.0,
+                &prover_key.lookup.table_1,
+                &prover_key.lookup.table_2,
+                &prover_key.lookup.table_3,
+                &prover_key.lookup.table_4,
             ],
             zeta,
         );
@@ -430,7 +428,7 @@ where
         transcript
             .append(b"lookup separation challenge", &lookup_sep_challenge);
 
-        let t_poly = quotient_poly::compute::<F, P, PC>(
+        let t_poly = quotient_poly::compute::<F, P>(
             &domain,
             prover_key,
             &z_poly,
@@ -485,7 +483,7 @@ where
         let z_challenge = transcript.challenge_scalar(b"z");
         transcript.append(b"z", &z_challenge);
 
-        let (lin_poly, evaluations) = linearisation_poly::compute::<F, P, PC>(
+        let (lin_poly, evaluations) = linearisation_poly::compute::<F, P>(
             &domain,
             prover_key,
             &alpha,
@@ -565,10 +563,10 @@ where
         // challenge `z`
         let aw_challenge: F = transcript.challenge_scalar(b"aggregate_witness");
 
-        /// XXX: The quotient polynmials is used here and then in the
-        /// opening poly. It is being left in for now but it may not
-        /// be necessary. Warrants further investigation.
-        /// Ditto with the out_sigma poly.
+        // XXX: The quotient polynmials is used here and then in the
+        // opening poly. It is being left in for now but it may not
+        // be necessary. Warrants further investigation.
+        // Ditto with the out_sigma poly.
         let aw_polys = [
             label_polynomial!(lin_poly),
             label_polynomial!(prover_key.permutation.left_sigma.0.clone()),
