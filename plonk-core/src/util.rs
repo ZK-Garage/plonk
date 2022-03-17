@@ -4,7 +4,7 @@
 //
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
-use alloc::Vec;
+use alloc::vec::Vec;
 use ark_ec::{ModelParameters, TEModelParameters};
 use ark_ff::{BigInteger, FftField, Field, FpParameters, PrimeField};
 use ark_poly::{EvaluationDomain, GeneralEvaluationDomain};
@@ -159,7 +159,7 @@ where
     values
         .iter()
         .rev()
-        .fold(0, |acc, val| acc + val * challenge)
+        .fold(F::zero(), |acc, val| acc * challenge + *val)
 }
 
 /// Macro to quickly label polynomials
