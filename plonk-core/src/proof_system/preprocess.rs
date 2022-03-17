@@ -176,6 +176,10 @@ where
             domain_4n.coset_fft(&selectors.q_logic),
             domain_4n,
         );
+        let q_lookup_eval_4n = Evaluations::from_vec_and_domain(
+            domain_4n.coset_fft(&selectors.q_lookup),
+            domain_4n,
+        );
         let q_fixed_group_add_eval_4n = Evaluations::from_vec_and_domain(
             domain_4n.coset_fft(&selectors.q_fixed_group_add),
             domain_4n,
@@ -221,6 +225,7 @@ where
             (selectors.q_arith, q_arith_eval_4n),
             (selectors.q_range, q_range_eval_4n),
             (selectors.q_logic, q_logic_eval_4n),
+            (selectors.q_lookup, q_lookup_eval_4n),
             (selectors.q_fixed_group_add, q_fixed_group_add_eval_4n),
             (selectors.q_variable_group_add, q_variable_group_add_eval_4n),
             (selectors.left_sigma, left_sigma_eval_4n),
