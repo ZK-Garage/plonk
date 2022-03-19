@@ -224,8 +224,8 @@ where
         transcript.append(b"zeta", &zeta);
 
         // Compress lookup table into vector of single elements
-        let compressed_t_multiset = MultiSet::compress_four_arity(
-            [
+        let compressed_t_multiset = MultiSet::compress(
+            vec![
                 &prover_key.lookup.table_1,
                 &prover_key.lookup.table_2,
                 &prover_key.lookup.table_3,
@@ -268,8 +268,8 @@ where
             .collect::<Vec<F>>();
 
         // Compress all wires into a single vector
-        let compressed_f_multiset = MultiSet::compress_four_arity(
-            [
+        let compressed_f_multiset = MultiSet::compress(
+            vec![
                 &MultiSet::from(&f_1_scalar[..]),
                 &MultiSet::from(&f_2_scalar[..]),
                 &MultiSet::from(&f_3_scalar[..]),
