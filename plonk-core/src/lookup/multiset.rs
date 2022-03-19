@@ -8,7 +8,7 @@ use crate::error::Error;
 use ark_ff::{Field, PrimeField};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, GeneralEvaluationDomain,
-    Polynomial, UVPolynomial,
+    UVPolynomial,
 };
 use ark_serialize::{
     CanonicalDeserialize, CanonicalSerialize, Read, SerializationError, Write,
@@ -39,6 +39,11 @@ where
     /// Creates an empty vector with a multiset wrapper around it
     pub fn new() -> Self {
         Default::default()
+    }
+
+    /// Creates a `MultiSet` of lenght `len` with zero elements
+    pub fn with_len(len: usize) -> Self {
+        MultiSet(vec![F::zero(); len])
     }
 
     /// Generate a `MultiSet` struct from a slice of bytes.
@@ -204,40 +209,24 @@ where
         DensePolynomial::from_coefficients_vec(domain.ifft(&self.0))
     }
 
-    /// Turn three multisets into a single multiset using
-    /// a random challenge, Alpha. Alpha is dervived by hashing
-    /// the transcript.
-    /// The function iterates over the given sets and mutiplies by alpha:
-    /// a + (b * alpha) + (c * alpha^2)
-    pub fn compress_three_arity(multisets: [&Self; 3], alpha: F) -> Self {
-        let alpha_squared = alpha.square();
-        multisets[0]
-            .0
+    /// Compress a vector of multisets into a single multiset using
+    /// a RLC. A random challenge `alpha` needs to be provided. It
+    /// is dervived by hashing the transcript.
+    pub fn compress(multisets: Vec<&Self>, alpha: F) -> Self {
+        let len = multisets[0].0.len();
+        for mset in multisets.iter().skip(1) {
+            assert_eq!(mset.0.len(), len)
+        }
+        let result = multisets
             .iter()
-            .zip(multisets[1].0.iter())
-            .zip(multisets[2].0.iter())
-            .map(|((a, b), c)| *a + *b * alpha + *c * alpha_squared)
-            .collect()
+            .rev()
+            .fold(MultiSet::with_len(len), |acc, m| acc * alpha + **m);
+        result
     }
-
-    /// Turn four multisets into a single multiset using
-    /// a random challenge, Alpha. Alpha is dervived by hashing
-    /// the transcript.
-    /// The function iterates over the given sets and mutiplies by alpha:
-    /// a + (b * alpha) + (c * alpha^2) + (d * alpha^3)
-    pub fn compress_four_arity(multisets: [&Self; 4], alpha: F) -> Self {
-        let alpha_squared = alpha.square();
-        let alpha_cubed = alpha_squared * alpha;
-        multisets[0]
-            .0
-            .iter()
-            .zip(multisets[1].0.iter())
-            .zip(multisets[2].0.iter())
-            .zip(multisets[3].0.iter())
-            .map(|(((a, b), c), d)| {
-                *a + *b * alpha + *c * alpha_squared + *d * alpha_cubed
-            })
-            .collect()
+    /// TODO. If this function is only needed for testing it should be
+    /// removed frome here
+    pub fn sorted_concat(self, other: &Self) -> Result<Self, Error> {
+        todo!()
     }
 }
 
@@ -264,6 +253,7 @@ where
     }
 }
 
+/// Elementwise addtion
 impl<F> Add for MultiSet<F>
 where
     F: Field,
@@ -279,7 +269,8 @@ where
     }
 }
 
-impl<F> Mul for MultiSet<F>
+/// Elementwise multiplication
+impl<F> Mul<MultiSet<F>> for MultiSet<F>
 where
     F: Field,
 {
@@ -294,6 +285,16 @@ where
     }
 }
 
+/// Multiplication with a field element
+impl<F> Mul<F> for MultiSet<F>
+where
+    F: Field,
+{
+    type Output = Self;
+    fn mul(self, elem: F) -> Self::Output {
+        self.0.into_iter().map(|x| x * elem).collect()
+    }
+}
 #[cfg(test)]
 mod test {
     use super::*;
@@ -302,6 +303,7 @@ mod test {
     use ark_bls12_377::Fr as bls12_377_scalar_field;
     use ark_bls12_381::Fr as bls12_381_scalar_field;
     use ark_poly::EvaluationDomain;
+    use ark_poly::Polynomial;
 
     // FIXME: Run tests on both BLS fields.
 
@@ -469,10 +471,8 @@ mod test {
         );
 
         // Computed expected result
-        let compressed_element = MultiSet::compress_three_arity(
-            [&table.f_1, &table.f_2, &table.f_3],
-            alpha,
-        );
+        let compressed_element =
+            MultiSet::compress(vec![&table.f_1, &table.f_2, &table.f_3], alpha);
 
         let actual_element = F::from(1u32)
             + (F::from(2u32) * alpha)
