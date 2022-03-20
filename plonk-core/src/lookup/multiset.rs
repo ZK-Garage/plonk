@@ -124,11 +124,11 @@ where
     pub fn sorted_halve(&self, f: &Self) -> Result<(Self, Self), Error> {
         let mut counters = HashMap::with_capacity(self.len());
 
-        for element in self.0 {
+        for element in &self.0 {
             counters.insert(element, 0);
         }
 
-        for element in f.0 {
+        for element in &f.0 {
             match counters.get_mut(&element) {
                 Some(entry) => *entry += 1,
                 _ => todo!(),
@@ -138,7 +138,7 @@ where
         let mut evens = vec![];
         let mut odds = vec![];
         let mut parity = 0;
-        for element in self.0 {
+        for element in &self.0 {
             let count = counters[&element];
             for i in 0..count + 1 {
                 if i % 2 == parity {
@@ -218,9 +218,9 @@ where
             assert_eq!(mset.0.len(), len)
         }
         let result = multisets
-            .iter()
+            .into_iter()
             .rev()
-            .fold(MultiSet::with_len(len), |acc, m| acc * alpha + **m);
+            .fold(MultiSet::with_len(len), |acc, m| acc * alpha + m.clone());
         result
     }
     /// TODO. If this function is only needed for testing it should be

@@ -11,6 +11,7 @@ use crate::{
     constraint_system::StandardComposer,
     error::{to_pc_error, Error},
     label_polynomial,
+    lookup::PreprocessedLookupTable,
     proof_system::{widget, ProverKey},
 };
 use ark_ec::TEModelParameters;
@@ -134,6 +135,17 @@ where
         let (_, selectors, domain) =
             self.preprocess_shared(commit_key, transcript, _pc)?;
 
+        let preprocessed_table = PreprocessedLookupTable::<F, PC>::preprocess(
+            &self.lookup_table,
+            commit_key,
+            domain.size().try_into().unwrap(),
+        )
+        .unwrap();
+        let table_1 = preprocessed_table.t_1.0;
+        let table_2 = preprocessed_table.t_2.0;
+        let table_3 = preprocessed_table.t_3.0;
+        let table_4 = preprocessed_table.t_4.0;
+
         let domain_4n =
             GeneralEvaluationDomain::new(4 * domain.size()).ok_or(Error::InvalidEvalDomainSize {
                 log_size_of_group: (4 * domain.size()).trailing_zeros(),
@@ -234,6 +246,10 @@ where
             (selectors.fourth_sigma, fourth_sigma_eval_4n),
             linear_eval_4n,
             v_h_coset_4n,
+            table_1,
+            table_2,
+            table_3,
+            table_4,
         ))
     }
 

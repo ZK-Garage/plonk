@@ -124,10 +124,15 @@ mod test {
         P: TEModelParameters<BaseField = F>,
         PC: HomomorphicCommitment<F>,
     {
-        let pp = PC::setup(1 << 10, None, &mut OsRng)
+        let pp = PC::setup(32, None, &mut OsRng)
             .map_err(to_pc_error::<F, PC>)
             .unwrap();
-        let (committer_key, _) = PC::trim(&pp, 1 << 10, 0, None)
+        let (committer_key, _) = PC::trim(&pp, 32, 0, None)
+            .map_err(to_pc_error::<F, PC>)
+            .unwrap();
+
+        // Commit Key
+        let (ck, _) = PC::trim(&pp, 32, 0, None)
             .map_err(to_pc_error::<F, PC>)
             .unwrap();
 
@@ -138,8 +143,8 @@ mod test {
             table.insert_xor_row(4u64, 2u64, 64u64);
         });
 
-        let preprocessed_table: PreprocessedLookupTable<F, PC> =
-            PreprocessedLookupTable::preprocess(&table, &committer_key, 32)
+        let preprocessed_table =
+            PreprocessedLookupTable::<F, PC>::preprocess(&table, &ck, 32)
                 .unwrap();
 
         assert!(

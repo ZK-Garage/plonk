@@ -14,6 +14,7 @@ pub mod range;
 
 use crate::{
     commitment::HomomorphicCommitment,
+    lookup::MultiSet,
     proof_system::{
         linearisation_poly::CustomEvaluations,
         linearisation_poly::ProofEvaluations, permutation,
@@ -343,6 +344,10 @@ where
         fourth_sigma: (DensePolynomial<F>, Evaluations<F>),
         linear_evaluations: Evaluations<F>,
         v_h_coset_4n: Evaluations<F>,
+        table_1: MultiSet<F>,
+        table_2: MultiSet<F>,
+        table_3: MultiSet<F>,
+        table_4: MultiSet<F>,
     ) -> Self {
         Self {
             n,
@@ -406,6 +411,14 @@ mod test {
         Evaluations::from_vec_and_domain(values, domain)
     }
 
+    fn rand_multiset<F>(n: usize) -> MultiSet<F>
+    where
+        F: PrimeField,
+    {
+        let values: Vec<_> = (0..n).map(|_| F::rand(&mut OsRng)).collect();
+        MultiSet(values)
+    }
+
     #[test]
     fn test_serialise_deserialise_prover_key() {
         type F = ark_bls12_381::Fr;
@@ -431,6 +444,10 @@ mod test {
 
         let linear_evaluations = rand_evaluations(n);
         let v_h_coset_8n = rand_evaluations(n);
+        let table_1 = rand_multiset(n);
+        let table_2 = rand_multiset(n);
+        let table_3 = rand_multiset(n);
+        let table_4 = rand_multiset(n);
 
         let prover_key = ProverKey::from_polynomials_and_evals(
             n,
@@ -452,6 +469,10 @@ mod test {
             fourth_sigma,
             linear_evaluations,
             v_h_coset_8n,
+            table_1,
+            table_2,
+            table_3,
+            table_4,
         );
 
         let mut prover_key_bytes = vec![];

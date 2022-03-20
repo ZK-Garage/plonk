@@ -3,6 +3,7 @@
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 //
 // Copyright (c) ZK-Garage. All rights reserved.
+//! Lookup gates
 
 use crate::lookup::multiset::MultiSet;
 use crate::proof_system::linearisation_poly::ProofEvaluations;
@@ -14,17 +15,21 @@ use ark_poly::Evaluations;
 use ark_serialize::*;
 
 /// Lookup Gates Prover Key
-#[derive(
-    PartialEq, CanonicalDeserialize, CanonicalSerialize, derivative::Derivative,
-)]
+#[derive(CanonicalDeserialize, CanonicalSerialize, derivative::Derivative)]
+#[derivative(Clone, Debug, Eq, PartialEq)]
 pub struct ProverKey<F>
 where
     F: PrimeField,
 {
+    /// Lookup selector
     pub q_lookup: (DensePolynomial<F>, Evaluations<F>),
+    /// Column 1 of lookup table
     pub table_1: MultiSet<F>, // PC::Commitment, DensePolynomial<F>),
+    /// Column 2 of lookup table
     pub table_2: MultiSet<F>, // PC::Commitment, DensePolynomial<F>),
+    /// Column 3 of lookup table
     pub table_3: MultiSet<F>, // PC::Commitment, DensePolynomial<F>),
+    /// Column 4 of lookup table
     pub table_4: MultiSet<F>, // PC::Commitment, DensePolynomial<F>),
 }
 
@@ -32,6 +37,7 @@ impl<F> ProverKey<F>
 where
     F: PrimeField,
 {
+    /// Compute lookup portion of quotient polynomial
     pub fn compute_quotient_i(
         &self,
         index: usize,
