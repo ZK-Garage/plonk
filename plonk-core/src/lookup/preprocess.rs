@@ -100,11 +100,14 @@ where
 #[cfg(test)]
 mod test {
     use crate::batch_test;
+    use crate::commitment::HomomorphicCommitment;
     use crate::constraint_system::StandardComposer;
+    use crate::error::to_pc_error;
     use crate::lookup::{LookupTable, PreprocessedLookupTable};
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
     use ark_ec::{PairingEngine, TEModelParameters};
+    use ark_ff::PrimeField;
     use ark_poly::univariate::DensePolynomial;
     use ark_poly_commit::{
         kzg10::{Powers, KZG10},
@@ -115,28 +118,23 @@ mod test {
 
     /// This function creates a table and preprocesses it. Then it checks that
     /// all table columns are the same length.
-    fn test_table_preprocessing<E, P>()
+    fn test_table_preprocessing<F, P, PC>()
     where
-        E: PairingEngine,
+        F: PrimeField,
         P: TEModelParameters<BaseField = F>,
+        PC: HomomorphicCommitment<F>,
     {
         let universal_params =
-            KZG10::<E, DensePolynomial<F>>::setup(32, false, &mut OsRng)
-                .unwrap();
+        PC::setup(32, None, &mut OsRng).map_err(to_pc_error::<F, PC>).unwrap();
 
         // Commit Key
-        let (ck, _) = SonicKZG10::<E, DensePolynomial<F>>::trim(
+        let (ck, _) = PC::trim(
             &universal_params,
             32,
             0,
             None,
         )
-        .unwrap();
-
-        let powers: Powers<'_, E> = Powers {
-            powers_of_g: ck.powers_of_g.into(),
-            powers_of_gamma_g: ck.powers_of_gamma_g.into(),
-        };
+        .map_err(to_pc_error::<F, PC>).unwrap();
 
         let mut table: LookupTable<F> = LookupTable::new();
 
@@ -146,7 +144,7 @@ mod test {
         });
 
         let preprocessed_table =
-            PreprocessedLookupTable::preprocess(&table, &powers, 32).unwrap();
+            PreprocessedLookupTable::<F, PC>::preprocess(&table, &ck, 32).unwrap();
 
         assert!(
             preprocessed_table.n as usize == preprocessed_table.t_1.0.len()
