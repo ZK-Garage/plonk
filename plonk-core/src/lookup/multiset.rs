@@ -218,9 +218,9 @@ where
             assert_eq!(mset.0.len(), len)
         }
         let result = multisets
-            .iter()
+            .into_iter()
             .rev()
-            .fold(MultiSet::with_len(len), |acc, m| acc * alpha + **m);
+            .fold(MultiSet::with_len(len), |acc, m| acc * alpha + m.clone());
         result
     }
     /// TODO. If this function is only needed for testing it should be
