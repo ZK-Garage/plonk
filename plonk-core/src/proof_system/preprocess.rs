@@ -136,7 +136,7 @@ where
             self.preprocess_shared(commit_key, transcript, _pc)?;
 
         let preprocessed_table =
-            PreprocessedLookupTable::preprocess(self.lookup_table).unwrap();
+            PreprocessedLookupTable::<F, PC>::preprocess(&self.lookup_table, commit_key, domain.size().try_into().unwrap()).unwrap();
         let table_1 = preprocessed_table.t_1.0;
         let table_2 = preprocessed_table.t_2.0;
         let table_3 = preprocessed_table.t_3.0;

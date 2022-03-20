@@ -4,9 +4,12 @@
 //
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
-use crate::error::Error;
+use crate::commitment::HomomorphicCommitment;
+use crate::error::{Error, to_pc_error};
+use crate::label_polynomial;
 use crate::lookup::{LookupTable, MultiSet};
 use ark_ec::PairingEngine;
+use ark_ff::PrimeField;
 use ark_poly::domain::EvaluationDomain;
 use ark_poly::polynomial::univariate::DensePolynomial;
 use ark_poly_commit::kzg10::{Commitment, Powers, KZG10};
@@ -16,9 +19,10 @@ use ark_poly_commit::kzg10::{Commitment, Powers, KZG10};
 /// is passed to the proof alongside the table of witness
 /// values.
 #[derive(Clone, Eq, PartialEq, Debug)]
-pub struct PreprocessedLookupTable<E>
+pub struct PreprocessedLookupTable<F, PC>
 where
-    E: PairingEngine,
+F: PrimeField,
+PC: HomomorphicCommitment<F>,
 {
     /// This is the circuit size
     pub n: u32,
@@ -26,27 +30,28 @@ where
     /// This is the first column in the preprocessed
     /// table containing a MultiSet, Commitments to the
     /// MultiSet and the coefficients as a Polynomial
-    pub(crate) t_1: (MultiSet<E::Fr>, Commitment<E>, DensePolynomial<E::Fr>),
+    pub(crate) t_1: (MultiSet<F>, PC::Commitment, DensePolynomial<F>),
 
     /// This is the second column in the preprocessed
     /// table containing a MultiSet, Commitments to the
     /// MultiSet and the coefficients as a Polynomial
-    pub(crate) t_2: (MultiSet<E::Fr>, Commitment<E>, DensePolynomial<E::Fr>),
+    pub(crate) t_2: (MultiSet<F>, PC::Commitment, DensePolynomial<F>),
 
     /// This is the third column in the preprocessed
     /// table containing a MultiSet, Commitments to the
     /// MultiSet and the coefficients as a Polynomial
-    pub(crate) t_3: (MultiSet<E::Fr>, Commitment<E>, DensePolynomial<E::Fr>),
+    pub(crate) t_3: (MultiSet<F>, PC::Commitment, DensePolynomial<F>),
 
     /// This is the fourth column in the preprocessed
     /// table containing a MultiSet, Commitments to the
     /// MultiSet and the coefficients as a Polynomial
-    pub(crate) t_4: (MultiSet<E::Fr>, Commitment<E>, DensePolynomial<E::Fr>),
+    pub(crate) t_4: (MultiSet<F>, PC::Commitment, DensePolynomial<F>),
 }
 
-impl<E> PreprocessedLookupTable<E>
+impl<F, PC> PreprocessedLookupTable<F, PC>
 where
-    E: PairingEngine,
+    F: PrimeField,
+    PC: HomomorphicCommitment<F>,
 {
     /// This function takes in a precomputed look up table and
     /// pads it to the length of the circuit entries, as a power
@@ -55,8 +60,8 @@ where
     /// outputted struct will be used in the proof alongside our
     /// circuit witness table.
     pub fn preprocess(
-        table: &LookupTable<E::Fr>,
-        commit_key: &Powers<E>,
+        table: &LookupTable<F>,
+        commit_key: &PC::CommitterKey,
         n: u32,
     ) -> Result<Self, Error> {
         // n should be a power of 2
@@ -80,17 +85,14 @@ where
         let t_3_poly = t_3.to_polynomial(&domain);
         let t_4_poly = t_4.to_polynomial(&domain);
 
-        let t_1_commit = KZG10::commit(commit_key, &t_1_poly, None, None)?.0;
-        let t_2_commit = KZG10::commit(commit_key, &t_2_poly, None, None)?.0;
-        let t_3_commit = KZG10::commit(commit_key, &t_3_poly, None, None)?.0;
-        let t_4_commit = KZG10::commit(commit_key, &t_4_poly, None, None)?.0;
+        let (table_column_commitments, _) = PC::commit(commit_key, &[label_polynomial!(t_1_poly), label_polynomial!(t_2_poly), label_polynomial!(t_3_poly), label_polynomial!(t_4_poly), ] , None).map_err(to_pc_error::<F, PC>)?;
 
         Ok(Self {
             n,
-            t_1: (t_1, t_1_commit, t_1_poly),
-            t_2: (t_2, t_2_commit, t_2_poly),
-            t_3: (t_3, t_3_commit, t_3_poly),
-            t_4: (t_4, t_4_commit, t_4_poly),
+            t_1: (t_1, table_column_commitments[0].commitment().clone(), t_1_poly),
+            t_2: (t_2, table_column_commitments[1].commitment().clone(), t_2_poly),
+            t_3: (t_3, table_column_commitments[2].commitment().clone(), t_3_poly),
+            t_4: (t_4, table_column_commitments[3].commitment().clone(), t_4_poly),
         })
     }
 }
@@ -116,14 +118,14 @@ mod test {
     fn test_table_preprocessing<E, P>()
     where
         E: PairingEngine,
-        P: TEModelParameters<BaseField = E::Fr>,
+        P: TEModelParameters<BaseField = F>,
     {
         let universal_params =
-            KZG10::<E, DensePolynomial<E::Fr>>::setup(32, false, &mut OsRng)
+            KZG10::<E, DensePolynomial<F>>::setup(32, false, &mut OsRng)
                 .unwrap();
 
         // Commit Key
-        let (ck, _) = SonicKZG10::<E, DensePolynomial<E::Fr>>::trim(
+        let (ck, _) = SonicKZG10::<E, DensePolynomial<F>>::trim(
             &universal_params,
             32,
             0,
@@ -136,7 +138,7 @@ mod test {
             powers_of_gamma_g: ck.powers_of_gamma_g.into(),
         };
 
-        let mut table: LookupTable<E::Fr> = LookupTable::new();
+        let mut table: LookupTable<F> = LookupTable::new();
 
         (0..11).for_each(|a| {
             table.insert_xor_row(19u64, 6u64, 64u64);
