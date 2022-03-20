@@ -15,9 +15,8 @@ use ark_poly::Evaluations;
 use ark_serialize::*;
 
 /// Lookup Gates Prover Key
-#[derive(
-    PartialEq, CanonicalDeserialize, CanonicalSerialize, derivative::Derivative,
-)]
+#[derive(CanonicalDeserialize, CanonicalSerialize, derivative::Derivative)]
+#[derivative(Clone, Debug, Eq, PartialEq)]
 pub struct ProverKey<F>
 where
     F: PrimeField,

@@ -236,6 +236,7 @@ where
             z_challenge,
             l1_eval,
             self.evaluations.perm_evals.permutation_eval,
+            lookup_challenge,
         );
 
         // Add evaluations to transcript
@@ -384,6 +385,7 @@ where
         z_challenge: F,
         l1_eval: F,
         z_hat_eval: F,
+        lookup_challenge: F,
     ) -> F {
         // Compute the public input polynomial evaluated at `z_challenge`
         let pi_eval = compute_barycentric_eval(pub_inputs, z_challenge, domain);
