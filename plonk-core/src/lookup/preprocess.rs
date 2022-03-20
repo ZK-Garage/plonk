@@ -5,7 +5,7 @@
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
 use crate::commitment::HomomorphicCommitment;
-use crate::error::{Error, to_pc_error};
+use crate::error::{to_pc_error, Error};
 use crate::label_polynomial;
 use crate::lookup::{LookupTable, MultiSet};
 use ark_ec::PairingEngine;
@@ -21,8 +21,8 @@ use ark_poly_commit::kzg10::{Commitment, Powers, KZG10};
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub struct PreprocessedLookupTable<F, PC>
 where
-F: PrimeField,
-PC: HomomorphicCommitment<F>,
+    F: PrimeField,
+    PC: HomomorphicCommitment<F>,
 {
     /// This is the circuit size
     pub n: u32,
@@ -85,14 +85,40 @@ where
         let t_3_poly = t_3.to_polynomial(&domain);
         let t_4_poly = t_4.to_polynomial(&domain);
 
-        let (table_column_commitments, _) = PC::commit(commit_key, &[label_polynomial!(t_1_poly), label_polynomial!(t_2_poly), label_polynomial!(t_3_poly), label_polynomial!(t_4_poly), ] , None).map_err(to_pc_error::<F, PC>)?;
+        let (table_column_commitments, _) = PC::commit(
+            commit_key,
+            &[
+                label_polynomial!(t_1_poly),
+                label_polynomial!(t_2_poly),
+                label_polynomial!(t_3_poly),
+                label_polynomial!(t_4_poly),
+            ],
+            None,
+        )
+        .map_err(to_pc_error::<F, PC>)?;
 
         Ok(Self {
             n,
-            t_1: (t_1, table_column_commitments[0].commitment().clone(), t_1_poly),
-            t_2: (t_2, table_column_commitments[1].commitment().clone(), t_2_poly),
-            t_3: (t_3, table_column_commitments[2].commitment().clone(), t_3_poly),
-            t_4: (t_4, table_column_commitments[3].commitment().clone(), t_4_poly),
+            t_1: (
+                t_1,
+                table_column_commitments[0].commitment().clone(),
+                t_1_poly,
+            ),
+            t_2: (
+                t_2,
+                table_column_commitments[1].commitment().clone(),
+                t_2_poly,
+            ),
+            t_3: (
+                t_3,
+                table_column_commitments[2].commitment().clone(),
+                t_3_poly,
+            ),
+            t_4: (
+                t_4,
+                table_column_commitments[3].commitment().clone(),
+                t_4_poly,
+            ),
         })
     }
 }
@@ -124,17 +150,14 @@ mod test {
         P: TEModelParameters<BaseField = F>,
         PC: HomomorphicCommitment<F>,
     {
-        let universal_params =
-        PC::setup(32, None, &mut OsRng).map_err(to_pc_error::<F, PC>).unwrap();
+        let universal_params = PC::setup(32, None, &mut OsRng)
+            .map_err(to_pc_error::<F, PC>)
+            .unwrap();
 
         // Commit Key
-        let (ck, _) = PC::trim(
-            &universal_params,
-            32,
-            0,
-            None,
-        )
-        .map_err(to_pc_error::<F, PC>).unwrap();
+        let (ck, _) = PC::trim(&universal_params, 32, 0, None)
+            .map_err(to_pc_error::<F, PC>)
+            .unwrap();
 
         let mut table: LookupTable<F> = LookupTable::new();
 
@@ -144,7 +167,8 @@ mod test {
         });
 
         let preprocessed_table =
-            PreprocessedLookupTable::<F, PC>::preprocess(&table, &ck, 32).unwrap();
+            PreprocessedLookupTable::<F, PC>::preprocess(&table, &ck, 32)
+                .unwrap();
 
         assert!(
             preprocessed_table.n as usize == preprocessed_table.t_1.0.len()
