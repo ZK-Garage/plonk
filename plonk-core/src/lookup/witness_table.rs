@@ -8,41 +8,16 @@ use crate::error::Error;
 use crate::lookup::{LookupTable, MultiSet};
 use ark_ff::Field;
 
-/// This witness table contains quieries
-/// to a lookup table for lookup gates
-/// This table is of arity 3.
+/// This witness table contains quieries to a lookup table for lookup gates.
+/// This table can have any arity. (But for the time other parts of the codebase
+/// force 4-arity)
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct WitnessTable<F>
 where
     F: Field,
 {
-    /// This column represents the
-    /// first values inside the lookup
-    /// table. At gate checks, this
-    /// can be regarded as the first
-    /// wire
-    pub f_1: MultiSet<F>,
-
-    /// This column represents the
-    /// first values inside the lookup
-    /// table. At gate checks, this
-    /// can be regarded as the second
-    /// wire
-    pub f_2: MultiSet<F>,
-
-    /// This column represents the
-    /// first values inside the lookup
-    /// table. At gate checks, this
-    /// can be regarded as the third
-    /// wire
-    pub f_3: MultiSet<F>,
-
-    /// This column represents the
-    /// first values inside the lookup
-    /// table. At gate checks, this
-    /// can be regarded as the fourth
-    /// wire
-    pub f_4: MultiSet<F>,
+    /// Vector containing one `MulitSet` for each wire
+    pub f: Vec<MultiSet<F>>,
 }
 
 impl<F> WitnessTable<F>
@@ -58,17 +33,12 @@ where
     /// taking any vaules, or the the results, from the lookup table.
     /// If the values do no exists in the lookup table, then the proof
     /// will fail when witness and preprocessed tables are concatenated.
-    pub fn from_wire_values(
-        &mut self,
-        left_wire_val: F,
-        right_wire_val: F,
-        output_wire_val: F,
-        fourth_wire_val: F,
-    ) {
-        self.f_1.push(left_wire_val);
-        self.f_2.push(right_wire_val);
-        self.f_3.push(output_wire_val);
-        self.f_4.push(fourth_wire_val);
+    pub fn from_wire_values(&mut self, wires: Vec<F>) {
+        assert_eq!(wires.len(), self.f.len());
+        wires
+            .into_iter()
+            .zip(self.f.iter_mut())
+            .for_each(|(val, column)| column.push(val));
     }
 
     /// Attempts to look up a value from a lookup table. If successful, all four
@@ -80,15 +50,17 @@ where
         right_wire_val: F,
         fourth_wire_val: F,
     ) -> Result<(), Error> {
+        // This function is specific for 4-arity
+        assert_eq!(self.f.len(), 4);
         let output_wire_val = lookup_table.lookup(
             left_wire_val,
             right_wire_val,
             fourth_wire_val,
         )?;
-        self.f_1.push(left_wire_val);
-        self.f_2.push(right_wire_val);
-        self.f_3.push(output_wire_val);
-        self.f_4.push(fourth_wire_val);
+        self.f[0].push(left_wire_val);
+        self.f[1].push(right_wire_val);
+        self.f[2].push(output_wire_val);
+        self.f[3].push(fourth_wire_val);
         Ok(())
     }
 }
