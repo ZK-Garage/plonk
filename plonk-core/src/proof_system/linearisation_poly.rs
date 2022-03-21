@@ -5,7 +5,6 @@
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
 use crate::{
-    commitment::HomomorphicCommitment,
     error::Error,
     label_eval,
     proof_system::{
@@ -185,12 +184,12 @@ pub fn compute<F, P>(
     alpha: &F,
     beta: &F,
     gamma: &F,
-    zeta: &F,
+    _zeta: &F,
     range_separation_challenge: &F,
     logic_separation_challenge: &F,
     fixed_base_separation_challenge: &F,
     var_base_separation_challenge: &F,
-    lookup_separation_challenge: &F,
+    _lookup_separation_challenge: &F,
     z_challenge: &F,
     w_l_poly: &DensePolynomial<F>,
     w_r_poly: &DensePolynomial<F>,
@@ -229,7 +228,7 @@ where
         d_eval,
     };
     // Permutation evaluations
-    let f_eval = f_poly.evaluate(z_challenge);
+    let _f_eval = f_poly.evaluate(z_challenge);
     let left_sigma_eval =
         prover_key.permutation.left_sigma.0.evaluate(z_challenge);
     let right_sigma_eval =
@@ -251,10 +250,10 @@ where
     let q_c_eval = prover_key.arithmetic.q_c.0.evaluate(z_challenge);
     let q_l_eval = prover_key.arithmetic.q_l.0.evaluate(z_challenge);
     let q_r_eval = prover_key.arithmetic.q_r.0.evaluate(z_challenge);
-    let q_lookup_eval = prover_key.lookup.q_lookup.0.evaluate(z_challenge);
-    let h_1_eval = h_1_poly.evaluate(z_challenge);
-    let h_2_eval = h_2_poly.evaluate(z_challenge);
-    let table_eval = table_poly.evaluate(z_challenge);
+    let _q_lookup_eval = prover_key.lookup.q_lookup.0.evaluate(z_challenge);
+    let _h_1_eval = h_1_poly.evaluate(z_challenge);
+    let _h_2_eval = h_2_poly.evaluate(z_challenge);
+    let _table_eval = table_poly.evaluate(z_challenge);
 
     let a_next_eval = w_l_poly.evaluate(&shifted_z_challenge);
     let b_next_eval = w_r_poly.evaluate(&shifted_z_challenge);
@@ -272,9 +271,9 @@ where
         ],
     };
     let permutation_eval = z_poly.evaluate(&shifted_z_challenge);
-    let lookup_perm_eval = z_2_poly.evaluate(&shifted_z_challenge);
-    let h_1_next_eval = h_1_poly.evaluate(&shifted_z_challenge);
-    let table_next_eval = table_poly.evaluate(&shifted_z_challenge);
+    let _lookup_perm_eval = z_2_poly.evaluate(&shifted_z_challenge);
+    let _h_1_next_eval = h_1_poly.evaluate(&shifted_z_challenge);
+    let _table_next_eval = table_poly.evaluate(&shifted_z_challenge);
 
     let gate_constraints = compute_gate_constraint_satisfiability::<F, P>(
         range_separation_challenge,

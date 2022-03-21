@@ -385,7 +385,7 @@ where
         z_challenge: F,
         l1_eval: F,
         z_hat_eval: F,
-        lookup_challenge: F,
+        _lookup_challenge: F,
     ) -> F {
         // Compute the public input polynomial evaluated at `z_challenge`
         let pi_eval = compute_barycentric_eval(pub_inputs, z_challenge, domain);

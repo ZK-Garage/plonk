@@ -98,7 +98,7 @@ mod test {
         let pp = PC::setup(32, None, &mut OsRng)
             .map_err(to_pc_error::<F, PC>)
             .unwrap();
-        let (committer_key, _) = PC::trim(&pp, 32, 0, None)
+        let (_committer_key, _) = PC::trim(&pp, 32, 0, None)
             .map_err(to_pc_error::<F, PC>)
             .unwrap();
 
@@ -109,7 +109,7 @@ mod test {
 
         let mut table: LookupTable<F> = LookupTable::new();
 
-        (0..11).for_each(|a| {
+        (0..11).for_each(|_a| {
             table.insert_xor_row(19u64, 6u64, 64u64);
             table.insert_xor_row(4u64, 2u64, 64u64);
         });

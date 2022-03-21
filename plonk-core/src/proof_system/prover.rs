@@ -235,7 +235,7 @@ where
         );
 
         // Compute table poly
-        let mut table_poly = DensePolynomial::from_coefficients_vec(
+        let table_poly = DensePolynomial::from_coefficients_vec(
             domain.ifft(&compressed_t_multiset.0),
         );
 
@@ -279,7 +279,7 @@ where
         );
 
         // Compute query poly
-        let mut f_poly = DensePolynomial::from_coefficients_vec(
+        let f_poly = DensePolynomial::from_coefficients_vec(
             domain.ifft(&compressed_f_multiset.0),
         );
 
@@ -300,9 +300,9 @@ where
             .unwrap();
 
         // Compute h polys
-        let mut h_1_poly =
+        let h_1_poly =
             DensePolynomial::from_coefficients_vec(domain.ifft(&h_1.0));
-        let mut h_2_poly =
+        let h_2_poly =
             DensePolynomial::from_coefficients_vec(domain.ifft(&h_2.0));
 
         // Add blinders to h polynomials
@@ -368,7 +368,7 @@ where
 
         // Compute mega permutation polynomial.
         // Compute lookup permutation poly
-        let mut z_2_poly = DensePolynomial::from_coefficients_slice(
+        let z_2_poly = DensePolynomial::from_coefficients_slice(
             &self.cs.perm.compute_lookup_permutation_poly(
                 &domain,
                 &compressed_f_multiset.0,

@@ -191,7 +191,7 @@ where
         q_arith: PC::Commitment,
         q_range: PC::Commitment,
         q_logic: PC::Commitment,
-        q_lookup: PC::Commitment,
+        _q_lookup: PC::Commitment,
         q_fixed_group_add: PC::Commitment,
         q_variable_group_add: PC::Commitment,
         left_sigma: PC::Commitment,

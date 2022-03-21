@@ -47,7 +47,7 @@ where
     }
 
     /// Generate a `MultiSet` struct from a slice of bytes.
-    pub fn from_slice(bytes: &[u8]) -> Result<Self, Error> {
+    pub fn from_slice(_bytes: &[u8]) -> Result<Self, Error> {
         /* FIXME: Find correct implementation.
             let mut buffer = bytes;
             let elements = buffer
@@ -225,7 +225,7 @@ where
     }
     /// TODO. If this function is only needed for testing it should be
     /// removed frome here
-    pub fn sorted_concat(self, other: &Self) -> Result<Self, Error> {
+    pub fn sorted_concat(self, _other: &Self) -> Result<Self, Error> {
         todo!()
     }
 }

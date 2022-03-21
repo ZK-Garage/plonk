@@ -6,8 +6,8 @@
 //! Lookup gates
 
 use crate::lookup::multiset::MultiSet;
-use crate::proof_system::linearisation_poly::ProofEvaluations;
-use crate::proof_system::widget::GateConstraint;
+
+
 use crate::util::lc;
 use ark_ff::PrimeField;
 use ark_poly::polynomial::univariate::DensePolynomial;

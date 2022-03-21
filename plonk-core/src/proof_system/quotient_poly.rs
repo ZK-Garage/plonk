@@ -177,15 +177,15 @@ fn compute_gate_constraint_satisfiability<F, P>(
     logic_challenge: F,
     fixed_base_challenge: F,
     var_base_challenge: F,
-    lookup_challenge: F,
+    _lookup_challenge: F,
     prover_key: &ProverKey<F>,
     wl_eval_4n: &[F],
     wr_eval_4n: &[F],
     wo_eval_4n: &[F],
     w4_eval_4n: &[F],
     pi_poly: &DensePolynomial<F>,
-    f_eval_4n: &[F],
-    zeta: &F,
+    _f_eval_4n: &[F],
+    _zeta: &F,
 ) -> Result<Vec<F>, Error>
 where
     F: PrimeField,
@@ -309,7 +309,7 @@ where
     let l1_poly_alpha =
         compute_first_lagrange_poly_scaled(domain, alpha.square());
     let l1_alpha_sq_evals = domain_4n.coset_fft(&l1_poly_alpha.coeffs);
-    let alpha_five = (alpha.square() + alpha.square()) + alpha;
+    let _alpha_five = (alpha.square() + alpha.square()) + alpha;
     let l1_alpha_five_evals = domain_4n.coset_fft(&l1_poly_alpha.coeffs);
 
     Ok((0..domain_4n.size())
