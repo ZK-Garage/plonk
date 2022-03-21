@@ -141,10 +141,11 @@ where
             domain.size().try_into().unwrap(),
         )
         .unwrap();
-        let table_1 = preprocessed_table.t_1.0;
-        let table_2 = preprocessed_table.t_2.0;
-        let table_3 = preprocessed_table.t_3.0;
-        let table_4 = preprocessed_table.t_4.0;
+        // TODO This clones maybe could be removed
+        let table_1 = preprocessed_table.t[0].0.clone();
+        let table_2 = preprocessed_table.t[1].0.clone();
+        let table_3 = preprocessed_table.t[2].0.clone();
+        let table_4 = preprocessed_table.t[3].0.clone();
 
         let domain_4n =
             GeneralEvaluationDomain::new(4 * domain.size()).ok_or(Error::InvalidEvalDomainSize {

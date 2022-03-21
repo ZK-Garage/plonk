@@ -6,7 +6,6 @@
 
 use crate::commitment::HomomorphicCommitment;
 use crate::error::{to_pc_error, Error};
-use crate::label_polynomial;
 use crate::lookup::{LookupTable, MultiSet};
 use ark_ff::PrimeField;
 use ark_poly::domain::EvaluationDomain;
@@ -24,25 +23,9 @@ where
     /// This is the circuit size
     pub n: u32,
 
-    /// This is the first column in the preprocessed
-    /// table containing a MultiSet, Commitments to the
-    /// MultiSet and the coefficients as a Polynomial
-    pub(crate) t_1: (MultiSet<F>, PC::Commitment, DensePolynomial<F>),
-
-    /// This is the second column in the preprocessed
-    /// table containing a MultiSet, Commitments to the
-    /// MultiSet and the coefficients as a Polynomial
-    pub(crate) t_2: (MultiSet<F>, PC::Commitment, DensePolynomial<F>),
-
-    /// This is the third column in the preprocessed
-    /// table containing a MultiSet, Commitments to the
-    /// MultiSet and the coefficients as a Polynomial
-    pub(crate) t_3: (MultiSet<F>, PC::Commitment, DensePolynomial<F>),
-
-    /// This is the fourth column in the preprocessed
-    /// table containing a MultiSet, Commitments to the
-    /// MultiSet and the coefficients as a Polynomial
-    pub(crate) t_4: (MultiSet<F>, PC::Commitment, DensePolynomial<F>),
+    /// Vecoor of columns in the preprocessed table containing a
+    /// `MultiSet`, `Commitments` and `DensePolynomial`.
+    pub(crate) t: Vec<(MultiSet<F>, PC::Commitment, DensePolynomial<F>)>,
 }
 
 impl<F, PC> PreprocessedLookupTable<F, PC>
@@ -67,41 +50,29 @@ where
         let domain = EvaluationDomain::new(n as usize).unwrap();
 
         let columned_table = table.vec_to_multiset();
-        let mut t_1 = columned_table.0;
-        let mut t_2 = columned_table.1;
-        let mut t_3 = columned_table.2;
-        let mut t_4 = columned_table.3;
+        let result: Vec<(MultiSet<F>, PC::Commitment, DensePolynomial<F>)> =
+            columned_table
+                .into_iter()
+                .enumerate()
+                .map(|(index, mut column)| {
+                    column.pad(n);
+                    let poly = column.to_polynomial(&domain);
+                    let poly_name = format!("t_{}_poly", index + 1);
+                    let labeled_poly = ark_poly_commit::LabeledPolynomial::new(
+                        poly_name,
+                        poly.to_owned(),
+                        None,
+                        None,
+                    );
 
-        t_1.pad(n);
-        t_2.pad(n);
-        t_3.pad(n);
-        t_4.pad(n);
+                    let commitment =
+                        PC::commit(commit_key, &[labeled_poly], None)
+                            .map_err(to_pc_error::<F, PC>)?;
+                    Ok((column, commitment.0[0].commitment().clone(), poly))
+                })
+                .collect::<Result<_, Error>>()?;
 
-        let t_1_poly = t_1.to_polynomial(&domain);
-        let t_2_poly = t_2.to_polynomial(&domain);
-        let t_3_poly = t_3.to_polynomial(&domain);
-        let t_4_poly = t_4.to_polynomial(&domain);
-
-        let t_1_commit =
-            PC::commit(commit_key, &[label_polynomial!(t_1_poly)], None)
-                .map_err(to_pc_error::<F, PC>)?;
-        let t_2_commit =
-            PC::commit(commit_key, &[label_polynomial!(t_2_poly)], None)
-                .map_err(to_pc_error::<F, PC>)?;
-        let t_3_commit =
-            PC::commit(commit_key, &[label_polynomial!(t_3_poly)], None)
-                .map_err(to_pc_error::<F, PC>)?;
-        let t_4_commit =
-            PC::commit(commit_key, &[label_polynomial!(t_4_poly)], None)
-                .map_err(to_pc_error::<F, PC>)?;
-
-        Ok(Self {
-            n,
-            t_1: (t_1, *t_1_commit.0[0].commitment(), t_1_poly),
-            t_2: (t_2, *t_2_commit.0[0].commitment(), t_2_poly),
-            t_3: (t_3, *t_3_commit.0[0].commitment(), t_3_poly),
-            t_4: (t_4, *t_4_commit.0[0].commitment(), t_4_poly),
-        })
+        Ok(Self { n, t: result })
     }
 }
 
@@ -147,18 +118,9 @@ mod test {
             PreprocessedLookupTable::<F, PC>::preprocess(&table, &ck, 32)
                 .unwrap();
 
-        assert!(
-            preprocessed_table.n as usize == preprocessed_table.t_1.0.len()
-        );
-        assert!(
-            preprocessed_table.n as usize == preprocessed_table.t_2.0.len()
-        );
-        assert!(
-            preprocessed_table.n as usize == preprocessed_table.t_3.0.len()
-        );
-        assert!(
-            preprocessed_table.n as usize == preprocessed_table.t_4.0.len()
-        );
+        preprocessed_table.t.iter().for_each(|column| {
+            assert!(preprocessed_table.n as usize == column.0.len());
+        });
     }
 
     // Bls12-381 tests

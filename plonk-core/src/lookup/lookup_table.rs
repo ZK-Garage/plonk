@@ -146,9 +146,7 @@ where
     /// Takes in a table, which is a list of vectors containing
     /// 4 elements, and turns them into 4 distinct multisets for
     /// a, b, c and d.
-    pub fn vec_to_multiset(
-        &self,
-    ) -> (MultiSet<F>, MultiSet<F>, MultiSet<F>, MultiSet<F>) {
+    pub fn vec_to_multiset(&self) -> Vec<MultiSet<F>> {
         let mut multiset_a = MultiSet::new();
         let mut multiset_b = MultiSet::new();
         let mut multiset_c = MultiSet::new();
@@ -159,7 +157,7 @@ where
             multiset_c.push(row[2]);
             multiset_d.push(row[3]);
         });
-        (multiset_a, multiset_b, multiset_c, multiset_d)
+        vec![multiset_a, multiset_b, multiset_c, multiset_d]
     }
 
     /// Attempts to find an output value, given two input values, by querying
