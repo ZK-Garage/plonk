@@ -212,7 +212,7 @@ where
     /// Compress a vector of multisets into a single multiset using
     /// a RLC. A random challenge `alpha` needs to be provided. It
     /// is dervived by hashing the transcript.
-    pub fn compress(multisets: Vec<&Self>, alpha: F) -> Self {
+    pub fn compress(multisets: &Vec<Self>, alpha: F) -> Self {
         let len = multisets[0].0.len();
         for mset in multisets.iter().skip(1) {
             assert_eq!(mset.0.len(), len)
@@ -463,16 +463,15 @@ mod test {
         // Fill in wires directly, no need to use a
         // plookup table as this will not be going
         // into a proof
-        table.from_wire_values(
+        table.from_wire_values(vec![
             F::from(1u32),
             F::from(2u32),
             F::from(3u32),
             F::from(3u32),
-        );
+        ]);
 
         // Computed expected result
-        let compressed_element =
-            MultiSet::compress(vec![&table.f_1, &table.f_2, &table.f_3], alpha);
+        let compressed_element = MultiSet::compress(&table.f, alpha);
 
         let actual_element = F::from(1u32)
             + (F::from(2u32) * alpha)

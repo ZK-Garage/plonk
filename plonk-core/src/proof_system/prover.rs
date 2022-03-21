@@ -225,11 +225,11 @@ where
 
         // Compress lookup table into vector of single elements
         let compressed_t_multiset = MultiSet::compress(
-            vec![
-                &prover_key.lookup.table_1,
-                &prover_key.lookup.table_2,
-                &prover_key.lookup.table_3,
-                &prover_key.lookup.table_4,
+            &vec![
+                prover_key.lookup.table_1.clone(),
+                prover_key.lookup.table_2.clone(),
+                prover_key.lookup.table_3.clone(),
+                prover_key.lookup.table_4.clone(),
             ],
             zeta,
         );
@@ -269,11 +269,11 @@ where
 
         // Compress all wires into a single vector
         let compressed_f_multiset = MultiSet::compress(
-            vec![
-                &MultiSet::from(&f_1_scalar[..]),
-                &MultiSet::from(&f_2_scalar[..]),
-                &MultiSet::from(&f_3_scalar[..]),
-                &MultiSet::from(&f_4_scalar[..]),
+            &vec![
+                MultiSet::from(&f_1_scalar[..]),
+                MultiSet::from(&f_2_scalar[..]),
+                MultiSet::from(&f_3_scalar[..]),
+                MultiSet::from(&f_4_scalar[..]),
             ],
             zeta,
         );
