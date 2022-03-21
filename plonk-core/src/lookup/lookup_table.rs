@@ -8,14 +8,11 @@ use crate::error::Error;
 use crate::lookup::MultiSet;
 use ark_ff::Field;
 
-/// This struct is a table, contaning a vector,
-/// of arity 4 where each of the values is a
-/// scalar. The elements of the table are
-/// determined by the function g for
-/// g(x,y), used to compute tuples.
+/// This struct is a table, contaning a vector, of arity 4 where each of the
+/// values is a scalar. The elements of the table are determined by the function
+/// g for g(x,y), used to compute tuples.
 ///
-/// This struct will be used to determine
-/// the outputs of gates within arithmetic
+/// This struct will be used to determine the outputs of gates within arithmetic
 /// circuits.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct LookupTable<F>(pub Vec<[F; 4]>)
@@ -31,19 +28,29 @@ where
         Default::default()
     }
 
+    /// Pushes a row to the `LookupTable` vector.
+    fn push(&mut self, row: [F; 4]) {
+        self.0.push(row);
+    }
+
+    /// Returns the length of the `LookupTable` vector.
+    fn len(&self) -> usize {
+        self.0.len()
+    }
+
     /// Insert a new row for an addition operation.
     /// This function needs to know the upper bound of the amount of addition
     /// operations that will be done in the plookup table.
     pub fn insert_add_row(&mut self, a: u64, b: u64, upper_bound: u64) {
         let c = (a + b) % upper_bound;
-        self.0.push([F::from(a), F::from(b), F::from(c), F::zero()]);
+        self.push([F::from(a), F::from(b), F::from(c), F::zero()]);
     }
 
     /// Insert a new row for an addition operation.
     /// This function needs to know the upper bound of the amount of addition
     /// operations that will be done in the plookup table.
     pub fn insert_special_row(&mut self, a: F, b: F, c: F, d: F) {
-        self.0.push([a, b, c, d]);
+        self.push([a, b, c, d]);
     }
 
     /// Insert a new row for an multiplication operation.
@@ -143,21 +150,17 @@ where
         }
     }
 
-    /// Takes in a table, which is a list of vectors containing
+    /// Takes in a table, which is a vector of slices containing
     /// 4 elements, and turns them into 4 distinct multisets for
     /// a, b, c and d.
     pub fn vec_to_multiset(&self) -> Vec<MultiSet<F>> {
-        let mut multiset_a = MultiSet::new();
-        let mut multiset_b = MultiSet::new();
-        let mut multiset_c = MultiSet::new();
-        let mut multiset_d = MultiSet::new();
+        let mut result = vec![MultiSet::new(); self.len()];
         self.0.iter().for_each(|row| {
-            multiset_a.push(row[0]);
-            multiset_b.push(row[1]);
-            multiset_c.push(row[2]);
-            multiset_d.push(row[3]);
+            result.iter_mut().enumerate().for_each(|(index, multiset)| {
+                multiset.push(row[index]);
+            })
         });
-        vec![multiset_a, multiset_b, multiset_c, multiset_d]
+        result
     }
 
     /// Attempts to find an output value, given two input values, by querying
