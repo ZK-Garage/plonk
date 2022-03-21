@@ -590,6 +590,7 @@ where
             self.q_logic.push(F::zero());
             self.q_fixed_group_add.push(F::zero());
             self.q_variable_group_add.push(F::zero());
+            self.q_lookup.push(F::zero());
 
             self.perm.add_variables_to_map(
                 rand_var_1, rand_var_2, rand_var_3, rand_var_4, self.n,
@@ -617,6 +618,7 @@ where
         self.q_logic.push(F::zero());
         self.q_fixed_group_add.push(F::zero());
         self.q_variable_group_add.push(F::zero());
+        self.q_lookup.push(F::zero());
 
         self.perm.add_variables_to_map(
             rand_var_1,
