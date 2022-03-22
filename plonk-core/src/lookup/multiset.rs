@@ -90,6 +90,13 @@ where
         self.0.push(value)
     }
 
+    /// Extendes values onto the end of the Multiset
+    pub fn extend<T>(&mut self, iter: T)
+    where
+        T: IntoIterator<Item = F>,
+    {
+        self.0.extend(iter)
+    }
     /// Fetches last element in MultiSet.
     /// Returns None if there are no elements in the MultiSet.
     pub fn last(&self) -> Option<&F> {
@@ -235,10 +242,12 @@ where
             .fold(MultiSet::with_len(len), |acc, m| acc * alpha + m.clone());
         result
     }
-    /// TODO. If this function is only needed for testing it should be
-    /// removed frome here
-    pub fn sorted_concat(self, _other: &Self) -> Result<Self, Error> {
-        todo!()
+
+    /// Concatenates with a new `MultiSet` and sort
+    pub fn sorted_concat(&mut self, other: Self) {
+        // TODO This could be a performance bottleneck
+        self.extend(other.0);
+        self.0.sort();
     }
 }
 
@@ -432,7 +441,7 @@ mod test {
         assert!(t.contains_all(&f));
         assert!(t.contains(&F::from(2u32)));
 
-        let s = t.sorted_concat(&f);
+        t.sorted_concat(f);
 
         // The sets should be merged but also
         // in the ascending order
@@ -458,10 +467,11 @@ mod test {
             F::from(7u32),
         ]);
 
-        assert_eq!(s.unwrap(), concatenated_set);
+        assert_eq!(t, concatenated_set);
     }
 
-    fn multiset_compression_input<F>()
+    // TODO Delete if not used
+    fn _multiset_compression_input<F>()
     where
         F: Field,
     {
