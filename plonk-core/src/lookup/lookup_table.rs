@@ -154,7 +154,7 @@ where
     /// 4 elements, and turns them into 4 distinct multisets for
     /// a, b, c and d.
     pub fn vec_to_multiset(&self) -> Vec<MultiSet<F>> {
-        let mut result = vec![MultiSet::new(); self.len()];
+        let mut result = vec![MultiSet::new(); 4];
         self.0.iter().for_each(|row| {
             result.iter_mut().enumerate().for_each(|(index, multiset)| {
                 multiset.push(row[index]);

@@ -14,7 +14,7 @@ use ark_poly::polynomial::univariate::DensePolynomial;
 /// This table will be the preprocessed version of the precomputed table,
 /// T, with arity 4. This structure is passed to the proof alongside the
 /// table of witness values.
-#[derive(Clone, Eq, PartialEq, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct PreprocessedLookupTable<F, PC>
 where
     F: PrimeField,
@@ -23,7 +23,7 @@ where
     /// This is the circuit size
     pub n: u32,
 
-    /// Vecoor of columns in the preprocessed table containing a
+    /// Vector of columns in the preprocessed table containing a
     /// `MultiSet`, `Commitments` and `DensePolynomial`.
     pub(crate) t: Vec<(MultiSet<F>, PC::Commitment, DensePolynomial<F>)>,
 }

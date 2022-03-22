@@ -14,7 +14,7 @@ use ark_serialize::{
     CanonicalDeserialize, CanonicalSerialize, Read, SerializationError, Write,
 };
 use core::ops::{Add, Mul};
-use hashbrown::HashMap;
+use std::collections::BTreeMap;
 
 /// MultiSet is struct containing vectors of scalars, which
 /// individually represents either a wire value or an index
@@ -59,8 +59,8 @@ where
         todo!()
     }
 
-    /// Given a [`MultiSet`], return it in it's bytes representation
-    /// element by element.
+    /// Given a [`MultiSet`], return it in it's bytes representation element by
+    /// element.
     pub fn to_var_bytes(&self) -> Vec<u8> {
         self.0
             .iter()
@@ -74,11 +74,13 @@ where
             .collect()
     }
 
-    /// Extends the length of the multiset to n elements
-    /// The n will be the size of the arithmetic circuit.
-    /// This will extend the vectors to the size
+    /// Extends the length of the multiset to n elements The n will be the size
+    /// of the arithmetic circuit. This will extend the vectors to the size
     pub fn pad(&mut self, n: u32) {
         assert!(n.is_power_of_two());
+        if self.is_empty() {
+            self.push(F::zero())
+        };
         let diff = n - self.len() as u32;
         self.0.extend(vec![self.0[0]; diff as usize]);
     }
@@ -110,45 +112,55 @@ where
         self.0.iter().position(move |x| x == element)
     }
 
-    /// XXX: DOC this & test.
     /// Concatenates and sorts two Multisets together.
-    /// From the Plookup paper, if we have t: {1,2,4,3}
-    /// and f: {2,3,4,1}.
-    /// We first check if all elements of f exist in t
-    /// Then we combine the multisets together and sort
-    /// their elements together. The final MultiSet will
-    /// look as follows, s: {1,1,2,2,3,3,4,4}.
-    /// Splits a multiset into alternating halves of the same length
-    /// as specified in the Plonkup paper. A multiset must have even
-    /// cardinality to be split in this manner.
+    ///
+    /// All elements of f must exist in t. TODO Define Error for this case.
+    /// From the Plookup paper, if we have t: {1,2,4,3} and f: {2,3,4,1}.
+    /// We combine the multisets together and sort their elements together.
+    /// The final MultiSet will look as follows, s: {1,1,2,2,3,3,4,4}.
+    /// Splits a multiset into alternating halves of the same length (if even).
     pub fn sorted_halve(&self, f: &Self) -> Result<(Self, Self), Error> {
-        let mut counters = HashMap::with_capacity(self.len());
+        let mut counters: BTreeMap<F, usize> = BTreeMap::new();
 
+        let n_elems = self.len() + f.len();
+        // Insert elemnts on of t in sorted struct
+        let mut val;
         for element in &self.0 {
-            counters.insert(element, 0);
+            match counters.get(element) {
+                Some(v) => val = v + 1,
+                _ => val = 1,
+            };
+            counters.insert(element.clone(), val);
         }
 
+        // Insert elemnts on of f in sorted struct + check they are in t
         for element in &f.0 {
             match counters.get_mut(&element) {
                 Some(entry) => *entry += 1,
+                // TODO Raise Error indicating some element of `f` not in `t`
                 _ => todo!(),
             }
         }
 
-        let mut evens = vec![];
-        let mut odds = vec![];
+        let mut evens = Vec::with_capacity(n_elems + (n_elems % 2));
+        let mut odds = Vec::with_capacity(n_elems);
         let mut parity = 0;
-        for element in &self.0 {
-            let count = counters[&element];
-            for i in 0..count + 1 {
-                if i % 2 == parity {
-                    evens.push(element.clone());
+        counters.into_iter().for_each(|(elem, count)| {
+            let half_count = count / 2;
+            evens.extend(vec![elem.clone(); half_count]);
+            odds.extend(vec![elem.clone(); half_count]);
+            // if odd count => add extra element to corresponding
+            // vec and flip prev_parity
+            if count % 2 == 1 {
+                if parity == 1 {
+                    odds.push(elem.clone());
+                    parity = 0;
                 } else {
-                    odds.push(element.clone());
+                    evens.push(elem.clone());
+                    parity = 1
                 }
             }
-            parity = (count + 1) % 2;
-        }
+        });
 
         Ok((Self(evens), Self(odds)))
     }
