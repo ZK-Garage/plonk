@@ -41,6 +41,11 @@ where
         Default::default()
     }
 
+    /// Creates a `MultiSet` witch capacity for `len` elements
+    pub fn with_capacity(len: usize) -> Self {
+        MultiSet(Vec::with_capacity(len))
+    }
+
     /// Creates a `MultiSet` of lenght `len` with zero elements
     pub fn with_len(len: usize) -> Self {
         MultiSet(vec![F::zero(); len])

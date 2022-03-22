@@ -24,6 +24,7 @@ use ark_poly::{
     UVPolynomial,
 };
 use core::marker::PhantomData;
+use itertools::izip;
 use merlin::Transcript;
 
 /// Abstraction structure designed to construct a circuit and generate
@@ -211,7 +212,6 @@ where
             .map_err(to_pc_error::<F, PC>)?;
 
         // Add witness polynomial commitments to transcript.
-        //transcript.append_commitments(&*w_commits, PhantomData::<PC>);
         transcript.append(b"w_l", w_commits[0].commitment());
         transcript.append(b"w_r", w_commits[1].commitment());
         transcript.append(b"w_o", w_commits[2].commitment());
@@ -234,6 +234,15 @@ where
             zeta,
         );
 
+        // TODO Remove if redundant
+        // Pad the compressed table
+        // let t_pad = vec![
+        //     *compressed_t_multiset.0.last().unwrap();
+        //     n - compressed_t_multiset.len()
+        // ];
+        // let compressed_t_multiset_scalars =
+        //     [&compressed_t_multiset.0[..], &t_pad[..]].concat();
+
         // Compute table poly
         let table_poly = DensePolynomial::from_coefficients_vec(
             domain.ifft(&compressed_t_multiset.0),
@@ -246,37 +255,27 @@ where
         // This ensures the ith element of the compressed query table
         //   is an element of the compressed lookup table even when
         //   q_lookup[i] is 0 so the lookup check will pass
-        let f_1_scalar = w_l_scalar
-            .iter()
-            .zip(&self.cs.q_lookup)
-            .map(|(w, s)| *w * s + (F::one() - s) * compressed_t_multiset.0[0])
-            .collect::<Vec<F>>();
-        let f_2_scalar = w_r_scalar
-            .iter()
-            .zip(&self.cs.q_lookup)
-            .map(|(w, s)| *w * s)
-            .collect::<Vec<F>>();
-        let f_3_scalar = w_o_scalar
-            .iter()
-            .zip(&self.cs.q_lookup)
-            .map(|(w, s)| *w * s)
-            .collect::<Vec<F>>();
-        let f_4_scalar = w_4_scalar
-            .iter()
-            .zip(&self.cs.q_lookup)
-            .map(|(w, s)| *w * s)
-            .collect::<Vec<F>>();
-
+        let mut f_scalars: Vec<MultiSet<F>> =
+            vec![MultiSet::with_capacity(w_l_scalar.len()); 4];
+        for (q_lookup, w_l, w_r, w_o, w_4) in izip!(
+            &self.cs.q_lookup,
+            w_l_scalar,
+            w_r_scalar,
+            w_o_scalar,
+            w_4_scalar,
+        ) {
+            if q_lookup.is_zero() {
+                f_scalars[0].push(compressed_t_multiset.0[0]);
+                f_scalars.iter_mut().skip(1).for_each(|f| f.push(F::zero()));
+            } else {
+                f_scalars[0].push(*w_l);
+                f_scalars[1].push(*w_r);
+                f_scalars[2].push(*w_o);
+                f_scalars[3].push(*w_4);
+            }
+        }
         // Compress all wires into a single vector
-        let compressed_f_multiset = MultiSet::compress(
-            &vec![
-                MultiSet::from(&f_1_scalar[..]),
-                MultiSet::from(&f_2_scalar[..]),
-                MultiSet::from(&f_3_scalar[..]),
-                MultiSet::from(&f_4_scalar[..]),
-            ],
-            zeta,
-        );
+        let compressed_f_multiset = MultiSet::compress(&f_scalars, zeta);
 
         // Compute query poly
         let f_poly = DensePolynomial::from_coefficients_vec(
