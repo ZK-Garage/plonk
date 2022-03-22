@@ -26,7 +26,9 @@ where
 {
     /// Initialses empty witness table of arity 4
     pub fn new() -> Self {
-        Default::default()
+        Self {
+            f: vec![MultiSet::new(); 4],
+        }
     }
 
     /// This allows the witness table to be filled directly without
