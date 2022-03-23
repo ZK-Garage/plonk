@@ -7,7 +7,6 @@
 
 use crate::lookup::multiset::MultiSet;
 
-
 use crate::util::lc;
 use ark_ff::PrimeField;
 use ark_poly::polynomial::univariate::DensePolynomial;

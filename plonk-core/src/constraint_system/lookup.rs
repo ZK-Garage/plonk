@@ -76,3 +76,66 @@ where
         c
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::{
+        batch_test, commitment::HomomorphicCommitment,
+        constraint_system::helper::*, lookup::LookupTable,
+    };
+    use ark_bls12_377::Bls12_377;
+    use ark_bls12_381::Bls12_381;
+
+    fn test_plookup_xor<F, P, PC>()
+    where
+        F: PrimeField,
+        P: TEModelParameters<BaseField = F>,
+        PC: HomomorphicCommitment<F>,
+    {
+        let res = gadget_tester::<F, P, PC>(
+            |composer: &mut StandardComposer<F, P>| {
+                let xor_1bit = LookupTable::<F>::xor_table(0, 1);
+                composer.lookup_table = xor_1bit;
+                let zero = composer.zero_var;
+                let one = composer.add_input(F::one());
+                let negative_one = composer.add_input(-F::one());
+
+                composer.lookup_gate(
+                    one,
+                    one,
+                    zero,
+                    Some(negative_one),
+                    F::zero(),
+                    F::zero(),
+                    F::zero(),
+                    F::zero(),
+                    F::zero(),
+                    None,
+                );
+            },
+            4,
+        );
+        assert!(res.is_ok(), "{:?}", res.err().unwrap());
+    }
+
+    // Bls12-381 tests
+    batch_test!(
+        [
+            test_plookup_xor
+        ],
+        [] => (
+            Bls12_381, ark_ed_on_bls12_381::EdwardsParameters
+        )
+    );
+
+    // Bls12-377 tests
+    batch_test!(
+        [
+            test_plookup_xor
+        ],
+        [] => (
+            Bls12_377, ark_ed_on_bls12_377::EdwardsParameters
+        )
+    );
+}
