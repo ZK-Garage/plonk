@@ -77,6 +77,7 @@ pub struct LookupEvaluations<F>
 where
     F: Field,
 {
+    pub q_lookup_eval: F,
     // (Shifted) Evaluation of the lookup permutation polynomial at `z * root
     // of unity`
     pub z2_next_eval: F,
@@ -230,6 +231,9 @@ where
     // Arith selector evaluation
     let q_arith_eval = prover_key.arithmetic.q_arith.0.evaluate(z_challenge);
 
+    // Lookup selector evaluation
+    let q_lookup_eval = prover_key.lookup.q_lookup.0.evaluate(z_challenge);
+
     // Custom gate evaluations
     let q_c_eval = prover_key.arithmetic.q_c.0.evaluate(z_challenge);
     let q_l_eval = prover_key.arithmetic.q_l.0.evaluate(z_challenge);
@@ -272,6 +276,7 @@ where
     );
 
     let lookup_evals = LookupEvaluations {
+        q_lookup_eval,
         z2_next_eval,
         h1_eval,
         h1_next_eval,

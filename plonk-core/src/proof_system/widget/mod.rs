@@ -170,6 +170,9 @@ where
 
     /// VerifierKey for permutation checks
     pub(crate) permutation: permutation::VerifierKey<PC::Commitment>,
+
+    /// VerifierKey for Lookup Gate
+    pub(crate) lookup: lookup::VerifierKey<F, PC>,
 }
 
 impl<F, PC> VerifierKey<F, PC>
@@ -191,7 +194,7 @@ where
         q_arith: PC::Commitment,
         q_range: PC::Commitment,
         q_logic: PC::Commitment,
-        _q_lookup: PC::Commitment,
+        q_lookup: PC::Commitment,
         q_fixed_group_add: PC::Commitment,
         q_variable_group_add: PC::Commitment,
         left_sigma: PC::Commitment,
@@ -220,6 +223,7 @@ where
                 out_sigma,
                 fourth_sigma,
             },
+            lookup: lookup::VerifierKey { q_lookup },
         }
     }
 

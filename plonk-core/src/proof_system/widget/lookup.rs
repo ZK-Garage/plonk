@@ -12,7 +12,7 @@ use crate::util::lc;
 use ark_ff::{FftField, PrimeField};
 use ark_poly::polynomial::univariate::DensePolynomial;
 use ark_poly::{EvaluationDomain, Evaluations, GeneralEvaluationDomain};
-use ark_poly_commit::PCCommitment;
+use ark_poly_commit::PolynomialCommitment;
 use ark_serialize::*;
 
 /// Lookup Gates Prover Key
@@ -210,71 +210,78 @@ where
     }
 }
 
-/// Permutation Verifier Key
+/// LookUp Verifier Key
 #[derive(CanonicalDeserialize, CanonicalSerialize, derivative::Derivative)]
 #[derivative(
-    Clone(bound = ""),
-    Debug(bound = "PCC: std::fmt::Debug"),
-    Eq(bound = "PCC: Eq"),
-    PartialEq(bound = "PCC: PartialEq")
+    Clone,
+    Copy(bound = "PC::Commitment: Copy"),
+    Debug(bound = "PC::Commitment: std::fmt::Debug"),
+    Eq(bound = "PC::Commitment: Eq"),
+    PartialEq(bound = "PC::Commitment: PartialEq")
 )]
-pub struct VerifierKey<PCC>
+pub struct VerifierKey<F, PC>
 where
-    PCC: PCCommitment + Default,
+    F: PrimeField,
+    PC: PolynomialCommitment<F, DensePolynomial<F>>,
 {
     /// Lookup Selector Commitment
-    pub q_lookup: PCC,
+    pub q_lookup: PC::Commitment,
 }
 
-impl<PCC> VerifierKey<PCC>
+impl<F, PC> VerifierKey<F, PC>
 where
-    PCC: PCCommitment + Default,
+    F: PrimeField,
+    PC: PolynomialCommitment<F, DensePolynomial<F>>,
 {
     /// Computes the linearisation commitments.
-    pub fn compute_linearisation_commitment<F: FftField>(
+    pub fn compute_linearisation_commitment(
         &self,
         scalars: &mut Vec<F>,
-        points: &mut Vec<PCC>,
+        points: &mut Vec<PC::Commitment>,
         evaluations: &ProofEvaluations<F>,
         (delta, epsilon, zeta): (F, F, F),
-        lookup_sep: F,
         l1_eval: F,
-        z2_comm: PCC,
-        h1_comm: PCC,
+        z2_comm: PC::Commitment,
+        h1_comm: PC::Commitment,
     ) {
-        let f = {
-            let f_0 = evaluations.wire_evals.a_eval
-                - evaluations.lookup_evals.f_eval
-                + zeta * evaluations.wire_evals.b_eval
-                + zeta * zeta * evaluations.wire_evals.c_eval
-                + zeta * zeta * zeta * evaluations.wire_evals.d_eval;
-            f_0 * lookup_sep
-        };
+        // f =q_lookup * (lc([a_eval, b_eval, c_eval, d_eval] , zeta) - f_eval)
+        // lookup_sep is the eval of q_lookup and should be in the proof
+
+        let q_lookup_eval = evaluations.lookup_evals.q_lookup_eval;
+        let f = q_lookup_eval
+            * (lc(
+                vec![
+                    evaluations.wire_evals.a_eval,
+                    evaluations.wire_evals.b_eval,
+                    evaluations.wire_evals.c_eval,
+                    evaluations.wire_evals.d_eval,
+                ],
+                zeta,
+            ) - evaluations.lookup_evals.f_eval);
 
         scalars.push(f);
         points.push(self.q_lookup.clone());
 
         // (1 + δ) * (ε + f_bar) * (ε(1+δ) + t_bar + δ*tω_bar) *  lookup_sep^2
+        // + L_1 * lookup_sep^3
         let one_plus_delta = F::one() + delta;
         let epsilon_one_plus_delta = epsilon * one_plus_delta;
-        let lookup_sep_sq = lookup_sep.square();
-        let lookup_sep_cu = lookup_sep_sq * lookup_sep;
+        let q_lookup_eval_sq = q_lookup_eval.square();
+        let q_lookup_eval_cu = q_lookup_eval_sq * q_lookup_eval;
         let z = {
             let z_0 = epsilon + evaluations.lookup_evals.f_eval;
             let z_1 = epsilon_one_plus_delta
                 + evaluations.lookup_evals.table_eval
                 + delta * evaluations.lookup_evals.table_next_eval;
-            let z_2 = l1_eval * lookup_sep_cu;
-            one_plus_delta * z_0 * z_1 * lookup_sep_sq + z_2
+            let z_2 = l1_eval * q_lookup_eval_cu;
+            one_plus_delta * z_0 * z_1 * q_lookup_eval_sq + z_2
         };
 
         scalars.push(z);
         points.push(z2_comm);
 
-        let lookup_sep_cu = lookup_sep_sq * lookup_sep;
-
         let w = {
-            let w_0 = -evaluations.lookup_evals.z2_next_eval * lookup_sep_cu;
+            let w_0 = -evaluations.lookup_evals.z2_next_eval * q_lookup_eval_cu;
             let w_1 = epsilon_one_plus_delta
                 + evaluations.lookup_evals.h2_eval
                 + delta * evaluations.lookup_evals.h1_eval;

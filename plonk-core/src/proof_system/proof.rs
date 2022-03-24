@@ -277,6 +277,9 @@ where
             alpha,
             beta,
             gamma,
+            delta,
+            epsilon,
+            theta,
             range_sep_challenge,
             logic_sep_challenge,
             fixed_base_sep_challenge,
@@ -424,6 +427,9 @@ where
         alpha: F,
         beta: F,
         gamma: F,
+        delta: F,
+        epsilon: F,
+        zeta: F,
         range_sep_challenge: F,
         logic_sep_challenge: F,
         fixed_base_sep_challenge: F,
@@ -437,6 +443,7 @@ where
     {
         // 5 for each type of gate + 1 for permutations + 4 for each piece of
         // the quotient poly
+        // TODO How much more for lookups?
         let mut scalars = Vec::with_capacity(10);
         let mut points = Vec::with_capacity(10);
 
@@ -476,6 +483,15 @@ where
             &self.evaluations,
             &mut scalars,
             &mut points,
+        );
+        plonk_verifier_key.lookup.compute_linearisation_commitment(
+            &mut scalars,
+            &mut points,
+            &self.evaluations,
+            (delta, epsilon, zeta),
+            l1_eval,
+            self.z_2_comm.clone(),
+            self.h_1_comm.clone(),
         );
         plonk_verifier_key
             .permutation
