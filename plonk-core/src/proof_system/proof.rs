@@ -146,6 +146,10 @@ where
 
         // Compute permutation challenges and add them to transcript
 
+        // Compute permutation challenge `zeta`.
+        let zeta = transcript.challenge_scalar(b"beta");
+        transcript.append(b"zeta", &zeta);
+
         // Compute permutation challenge `beta`.
         let beta = transcript.challenge_scalar(b"beta");
         transcript.append(b"beta", &beta);
@@ -162,21 +166,13 @@ where
         let epsilon = transcript.challenge_scalar(b"epsilon");
         transcript.append(b"epsilon", &epsilon);
 
-        // Compute permutation challenge `theta`.
-        let theta = transcript.challenge_scalar(b"theta");
-        transcript.append(b"theta", &theta);
-
         // Challenges must be different
         assert!(beta != gamma, "challenges must be different");
         assert!(beta != delta, "challenges must be different");
         assert!(beta != epsilon, "challenges must be different");
-        assert!(beta != theta, "challenges must be different");
         assert!(gamma != delta, "challenges must be different");
         assert!(gamma != epsilon, "challenges must be different");
-        assert!(gamma != theta, "challenges must be different");
         assert!(delta != epsilon, "challenges must be different");
-        assert!(delta != theta, "challenges must be different");
-        assert!(epsilon != theta, "challenges must be different");
 
         // Add commitment to permutation polynomial to transcript
         transcript.append(b"z", &self.z_comm);
@@ -279,7 +275,7 @@ where
             gamma,
             delta,
             epsilon,
-            theta,
+            zeta,
             range_sep_challenge,
             logic_sep_challenge,
             fixed_base_sep_challenge,
