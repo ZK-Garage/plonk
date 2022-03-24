@@ -5,13 +5,13 @@
 // Copyright (c) ZK-Garage. All rights reserved.
 //! Lookup gates
 
+use crate::error::Error;
 use crate::lookup::multiset::MultiSet;
-
 use crate::proof_system::linearisation_poly::ProofEvaluations;
 use crate::util::lc;
 use ark_ff::{FftField, PrimeField};
 use ark_poly::polynomial::univariate::DensePolynomial;
-use ark_poly::Evaluations;
+use ark_poly::{EvaluationDomain, Evaluations, GeneralEvaluationDomain};
 use ark_poly_commit::PCCommitment;
 use ark_serialize::*;
 
@@ -39,6 +39,61 @@ where
     F: PrimeField,
 {
     /// Compute lookup portion of quotient polynomial
+    pub fn compute_lookup_quotient_term(
+        &self,
+        domain: &GeneralEvaluationDomain<F>,
+        wl_eval_4n: &[F],
+        wr_eval_4n: &[F],
+        wo_eval_4n: &[F],
+        w4_eval_4n: &[F],
+        f_eval_4n: &[F],
+        table_eval_4n: &[F],
+        h1_eval_4n: &[F],
+        h2_eval_4n: &[F],
+        z2_eval_4n: &[F],
+        l1_eval_4n: &[F],
+        delta: F,
+        epsilon: F,
+        zeta: F,
+        lookup_sep: F,
+    ) -> Result<Vec<F>, Error>
+    where
+        F: PrimeField,
+    {
+        let domain_4n = GeneralEvaluationDomain::<F>::new(4 * domain.size())
+        .ok_or(Error::InvalidEvalDomainSize {
+        log_size_of_group: (4 * domain.size()).trailing_zeros(),
+        adicity:
+            <<F as FftField>::FftParams as ark_ff::FftParameters>::TWO_ADICITY,
+    })?;
+
+        Ok((0..domain_4n.size())
+            .map(|i| {
+                self.compute_quotient_i(
+                    i,
+                    wl_eval_4n[i],
+                    wr_eval_4n[i],
+                    wo_eval_4n[i],
+                    w4_eval_4n[i],
+                    f_eval_4n[i],
+                    table_eval_4n[i],
+                    table_eval_4n[i + 4],
+                    h1_eval_4n[i],
+                    h1_eval_4n[i + 4],
+                    h2_eval_4n[i],
+                    z2_eval_4n[i],
+                    z2_eval_4n[i + 4],
+                    l1_eval_4n[i],
+                    delta,
+                    epsilon,
+                    zeta,
+                    lookup_sep,
+                )
+            })
+            .collect())
+    }
+
+    /// Compute evals of lookup portion of quotient polynomial
     pub fn compute_quotient_i(
         &self,
         index: usize,
