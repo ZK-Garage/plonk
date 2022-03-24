@@ -35,18 +35,27 @@ pub fn compute<F, P>(
     domain: &GeneralEvaluationDomain<F>,
     prover_key: &ProverKey<F>,
     z_poly: &DensePolynomial<F>,
+    z2_poly: &DensePolynomial<F>,
     w_l_poly: &DensePolynomial<F>,
     w_r_poly: &DensePolynomial<F>,
     w_o_poly: &DensePolynomial<F>,
     w_4_poly: &DensePolynomial<F>,
     public_inputs_poly: &DensePolynomial<F>,
+    f_poly: &DensePolynomial<F>,
+    table_poly: &DensePolynomial<F>,
+    h1_poly: &DensePolynomial<F>,
+    h2_poly: &DensePolynomial<F>,
     alpha: &F,
     beta: &F,
     gamma: &F,
+    delta: &F,
+    epsilon: &F,
+    zeta: &F,
     range_challenge: &F,
     logic_challenge: &F,
     fixed_base_challenge: &F,
     var_base_challenge: &F,
+    lookup_challenge: &F,
 ) -> Result<DensePolynomial<F>, Error>
 where
     F: PrimeField,
@@ -58,6 +67,8 @@ where
         adicity:
             <<F as FftField>::FftParams as ark_ff::FftParameters>::TWO_ADICITY,
     })?;
+
+    let l1_eval_4n = compute_first_lagrange_poly_scaled(&domain_4n, F::one());
 
     let mut z_eval_4n = domain_4n.coset_fft(z_poly);
     z_eval_4n.push(z_eval_4n[0]);
@@ -84,6 +95,28 @@ where
     w4_eval_4n.push(w4_eval_4n[1]);
     w4_eval_4n.push(w4_eval_4n[2]);
     w4_eval_4n.push(w4_eval_4n[3]);
+
+    let mut z2_eval_4n = domain_4n.coset_fft(z2_poly);
+    z2_eval_4n.push(z2_eval_4n[0]);
+    z2_eval_4n.push(z2_eval_4n[1]);
+    z2_eval_4n.push(z2_eval_4n[2]);
+    z2_eval_4n.push(z2_eval_4n[3]);
+
+    let f_eval_4n = domain_4n.coset_fft(f_poly);
+
+    let mut table_eval_4n = domain_4n.coset_fft(table_poly);
+    table_eval_4n.push(table_eval_4n[0]);
+    table_eval_4n.push(table_eval_4n[1]);
+    table_eval_4n.push(table_eval_4n[2]);
+    table_eval_4n.push(table_eval_4n[3]);
+
+    let mut h1_eval_4n = domain_4n.coset_fft(h1_poly);
+    h1_eval_4n.push(h1_eval_4n[0]);
+    h1_eval_4n.push(h1_eval_4n[1]);
+    h1_eval_4n.push(h1_eval_4n[2]);
+    h1_eval_4n.push(h1_eval_4n[3]);
+
+    let h2_eval_4n = domain_4n.coset_fft(h2_poly);
 
     let gate_constraints = compute_gate_constraint_satisfiability::<F, P>(
         domain,
@@ -112,9 +145,27 @@ where
         *gamma,
     )?;
 
+    let lookup = prover_key.lookup.compute_lookup_quotient_term(
+        domain,
+        &wl_eval_4n,
+        &wr_eval_4n,
+        &wo_eval_4n,
+        &w4_eval_4n,
+        &f_eval_4n,
+        &table_eval_4n,
+        &h1_eval_4n,
+        &h2_eval_4n,
+        &z2_eval_4n,
+        &l1_eval_4n,
+        *delta,
+        *epsilon,
+        *zeta,
+        *lookup_challenge,
+    )?;
+
     let quotient = (0..domain_4n.size())
         .map(|i| {
-            let numerator = gate_constraints[i] + permutation[i];
+            let numerator = gate_constraints[i] + permutation[i] + lookup[i];
             let denominator = prover_key.v_h_coset_4n()[i];
             numerator * denominator.inverse().unwrap()
         })
