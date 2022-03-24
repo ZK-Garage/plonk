@@ -35,27 +35,18 @@ pub fn compute<F, P>(
     domain: &GeneralEvaluationDomain<F>,
     prover_key: &ProverKey<F>,
     z_poly: &DensePolynomial<F>,
-    z_2_poly: &DensePolynomial<F>,
     w_l_poly: &DensePolynomial<F>,
     w_r_poly: &DensePolynomial<F>,
     w_o_poly: &DensePolynomial<F>,
     w_4_poly: &DensePolynomial<F>,
     public_inputs_poly: &DensePolynomial<F>,
-    f_poly: &DensePolynomial<F>,
-    t_poly: &DensePolynomial<F>,
-    h_1_poly: &DensePolynomial<F>,
-    h_2_poly: &DensePolynomial<F>,
     alpha: &F,
     beta: &F,
     gamma: &F,
-    delta: &F,
-    epsilon: &F,
-    zeta: &F,
     range_challenge: &F,
     logic_challenge: &F,
     fixed_base_challenge: &F,
     var_base_challenge: &F,
-    lookup_challenge: &F,
 ) -> Result<DensePolynomial<F>, Error>
 where
     F: PrimeField,
@@ -80,12 +71,6 @@ where
     wl_eval_4n.push(wl_eval_4n[2]);
     wl_eval_4n.push(wl_eval_4n[3]);
 
-    let mut z2_eval_4n = domain_4n.coset_fft(z_2_poly);
-    z2_eval_4n.push(z2_eval_4n[0]);
-    z2_eval_4n.push(z2_eval_4n[1]);
-    z2_eval_4n.push(z2_eval_4n[2]);
-    z2_eval_4n.push(z2_eval_4n[3]);
-
     let mut wr_eval_4n = domain_4n.coset_fft(w_r_poly);
     wr_eval_4n.push(wr_eval_4n[0]);
     wr_eval_4n.push(wr_eval_4n[1]);
@@ -100,41 +85,18 @@ where
     w4_eval_4n.push(w4_eval_4n[2]);
     w4_eval_4n.push(w4_eval_4n[3]);
 
-    let f_eval_4n = domain_4n.coset_fft(f_poly);
-
-    let mut t_eval_4n = domain_4n.coset_fft(t_poly);
-    t_eval_4n.push(t_eval_4n[0]);
-    t_eval_4n.push(t_eval_4n[1]);
-    t_eval_4n.push(t_eval_4n[2]);
-    t_eval_4n.push(t_eval_4n[3]);
-
-    let mut h1_eval_4n = domain_4n.coset_fft(h_1_poly);
-    h1_eval_4n.push(h1_eval_4n[0]);
-    h1_eval_4n.push(h1_eval_4n[1]);
-    h1_eval_4n.push(h1_eval_4n[2]);
-    h1_eval_4n.push(h1_eval_4n[3]);
-
-    let mut h2_eval_4n = domain_4n.coset_fft(h_2_poly);
-    h2_eval_4n.push(h2_eval_4n[0]);
-    h2_eval_4n.push(h2_eval_4n[1]);
-    h2_eval_4n.push(h2_eval_4n[2]);
-    h2_eval_4n.push(h2_eval_4n[3]);
-
     let gate_constraints = compute_gate_constraint_satisfiability::<F, P>(
         domain,
         *range_challenge,
         *logic_challenge,
         *fixed_base_challenge,
         *var_base_challenge,
-        *lookup_challenge,
         prover_key,
         &wl_eval_4n,
         &wr_eval_4n,
         &wo_eval_4n,
         &w4_eval_4n,
         public_inputs_poly,
-        &f_eval_4n,
-        zeta,
     )?;
 
     let permutation = compute_permutation_checks::<F>(
@@ -145,15 +107,9 @@ where
         &wo_eval_4n,
         &w4_eval_4n,
         &z_eval_4n,
-        &z2_eval_4n,
-        &t_eval_4n,
-        &h1_eval_4n,
-        &h2_eval_4n,
         *alpha,
         *beta,
         *gamma,
-        *delta,
-        *epsilon,
     )?;
 
     let quotient = (0..domain_4n.size())
@@ -177,15 +133,12 @@ fn compute_gate_constraint_satisfiability<F, P>(
     logic_challenge: F,
     fixed_base_challenge: F,
     var_base_challenge: F,
-    _lookup_challenge: F,
     prover_key: &ProverKey<F>,
     wl_eval_4n: &[F],
     wr_eval_4n: &[F],
     wo_eval_4n: &[F],
     w4_eval_4n: &[F],
     pi_poly: &DensePolynomial<F>,
-    _f_eval_4n: &[F],
-    _zeta: &F,
 ) -> Result<Vec<F>, Error>
 where
     F: PrimeField,
@@ -252,27 +205,11 @@ where
                 CAVals::from_evaluations(&custom_vals),
             );
 
-            /*
-            let f = f_eval_8n[i];
-
-            let lookup = prover_key.lookup.compute_quotient_i(
-                i,
-                values.left,
-                values.right,
-                values.output,
-                values.fourth,
-                f,
-                *zeta,
-                lookup_challenge,
-            );
-            */
-
             (arithmetic + pi_eval_4n[i])
                 + range
                 + logic
                 + fixed_base_scalar_mul
                 + curve_addition
-            // + lookup
         })
         .collect())
 }
@@ -287,15 +224,9 @@ fn compute_permutation_checks<F>(
     wo_eval_4n: &[F],
     w4_eval_4n: &[F],
     z_eval_4n: &[F],
-    z_2_eval_4n: &[F],
-    t_eval_4n: &[F],
-    h_1_eval_4n: &[F],
-    h_2_eval_4n: &[F],
     alpha: F,
     beta: F,
     gamma: F,
-    delta: F,
-    epsilon: F,
 ) -> Result<Vec<F>, Error>
 where
     F: PrimeField,
@@ -309,8 +240,6 @@ where
     let l1_poly_alpha =
         compute_first_lagrange_poly_scaled(domain, alpha.square());
     let l1_alpha_sq_evals = domain_4n.coset_fft(&l1_poly_alpha.coeffs);
-    let _alpha_five = (alpha.square() + alpha.square()) + alpha;
-    let l1_alpha_five_evals = domain_4n.coset_fft(&l1_poly_alpha.coeffs);
 
     Ok((0..domain_4n.size())
         .map(|i| {
@@ -322,20 +251,10 @@ where
                 w4_eval_4n[i],
                 z_eval_4n[i],
                 z_eval_4n[i + 4],
-                z_2_eval_4n[i],
-                z_2_eval_4n[i + 4],
-                t_eval_4n[i],
-                t_eval_4n[i + 4],
-                h_1_eval_4n[i],
-                h_1_eval_4n[i + 4],
-                h_2_eval_4n[i],
                 alpha,
                 l1_alpha_sq_evals[i],
-                l1_alpha_five_evals[i],
                 beta,
                 gamma,
-                delta,
-                epsilon,
             )
         })
         .collect())
