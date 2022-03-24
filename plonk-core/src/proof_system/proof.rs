@@ -529,7 +529,7 @@ where
 /// ```text
 /// L_0(X) = (X^n - 1) / n * (X - 1)
 /// ```
-fn compute_first_lagrange_evaluation<F>(
+pub fn compute_first_lagrange_evaluation<F>(
     domain: &GeneralEvaluationDomain<F>,
     z_h_eval: &F,
     z_challenge: &F,
