@@ -212,7 +212,6 @@ where
         d_eval,
     };
     // Permutation evaluations
-    let f_eval = f_poly.evaluate(z_challenge);
     let left_sigma_eval =
         prover_key.permutation.left_sigma.0.evaluate(z_challenge);
     let right_sigma_eval =
@@ -220,6 +219,7 @@ where
     let out_sigma_eval =
         prover_key.permutation.out_sigma.0.evaluate(z_challenge);
     let permutation_eval = z_poly.evaluate(&shifted_z_challenge);
+
     let perm_evals = PermutationEvaluations {
         left_sigma_eval,
         right_sigma_eval,
@@ -234,10 +234,6 @@ where
     let q_c_eval = prover_key.arithmetic.q_c.0.evaluate(z_challenge);
     let q_l_eval = prover_key.arithmetic.q_l.0.evaluate(z_challenge);
     let q_r_eval = prover_key.arithmetic.q_r.0.evaluate(z_challenge);
-    let h1_eval = h1_poly.evaluate(z_challenge);
-    let h2_eval = h2_poly.evaluate(z_challenge);
-    let table_eval = table_poly.evaluate(z_challenge);
-
     let a_next_eval = w_l_poly.evaluate(&shifted_z_challenge);
     let b_next_eval = w_r_poly.evaluate(&shifted_z_challenge);
     let d_next_eval = w_4_poly.evaluate(&shifted_z_challenge);
@@ -253,9 +249,13 @@ where
             label_eval!(d_next_eval),
         ],
     };
-    let permutation_eval = z_poly.evaluate(&shifted_z_challenge);
+
     let z2_next_eval = z2_poly.evaluate(&shifted_z_challenge);
+    let h1_eval = h1_poly.evaluate(z_challenge);
     let h1_next_eval = h1_poly.evaluate(&shifted_z_challenge);
+    let h2_eval = h2_poly.evaluate(z_challenge);
+    let f_eval = f_poly.evaluate(z_challenge);
+    let table_eval = table_poly.evaluate(z_challenge);
     let table_next_eval = table_poly.evaluate(&shifted_z_challenge);
 
     // Compute the last term in the linearisation polynomial

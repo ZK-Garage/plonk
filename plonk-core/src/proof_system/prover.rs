@@ -488,6 +488,8 @@ where
             &alpha,
             &beta,
             &gamma,
+            &delta,
+            &epsilon,
             &zeta,
             &range_sep_challenge,
             &logic_sep_challenge,

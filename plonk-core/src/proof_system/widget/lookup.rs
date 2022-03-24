@@ -25,13 +25,13 @@ where
     /// Lookup selector
     pub q_lookup: (DensePolynomial<F>, Evaluations<F>),
     /// Column 1 of lookup table
-    pub table_1: MultiSet<F>, // PC::Commitment, DensePolynomial<F>),
+    pub table_1: MultiSet<F>,
     /// Column 2 of lookup table
-    pub table_2: MultiSet<F>, // PC::Commitment, DensePolynomial<F>),
+    pub table_2: MultiSet<F>,
     /// Column 3 of lookup table
-    pub table_3: MultiSet<F>, // PC::Commitment, DensePolynomial<F>),
+    pub table_3: MultiSet<F>,
     /// Column 4 of lookup table
-    pub table_4: MultiSet<F>, // PC::Commitment, DensePolynomial<F>),
+    pub table_4: MultiSet<F>,
 }
 
 impl<F> ProverKey<F>
