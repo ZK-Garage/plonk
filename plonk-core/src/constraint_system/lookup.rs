@@ -112,6 +112,19 @@ mod test {
                     F::zero(),
                     None,
                 );
+
+                composer.lookup_gate(
+                    one,
+                    zero,
+                    one,
+                    Some(negative_one),
+                    F::zero(),
+                    F::zero(),
+                    F::zero(),
+                    F::zero(),
+                    F::zero(),
+                    None,
+                );
             },
             4,
         );
