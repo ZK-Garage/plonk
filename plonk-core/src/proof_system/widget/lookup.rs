@@ -117,31 +117,32 @@ where
     ) -> F {
         // q_lookup(X) * (a(X) + zeta * b(X) + (zeta^2 * c(X)) + (zeta^3 * d(X)
         // - f(X))) * α_1
-        let q_lookup_i = self.q_lookup.1[index];
-        let compressed_tuple = Self::compress(w_l_i, w_r_i, w_o_i, w_4_i, zeta);
-
         let lookup_sep_sq = lookup_sep.square();
         let lookup_sep_cu = lookup_sep_sq * lookup_sep;
         let one_plus_delta = delta + F::one();
         let epsilon_one_plus_delta = epsilon * one_plus_delta;
 
-        let a = q_lookup_i * (compressed_tuple - f_i) * lookup_sep;
+        let a = {
+            let q_lookup_i = self.q_lookup.1[index];
+            let compressed_tuple = lc(vec![w_l_i, w_r_i, w_o_i, w_4_i], zeta);
+            q_lookup_i * (compressed_tuple - f_i) * lookup_sep
+        };
 
         // z2(X) * (1+δ) * (ε+f(X)) * (ε*(1+δ) + t(X) + δt(Xω)) * lookup_sep^2
         let b = {
-            let b_1 = epsilon + f_i;
-            let b_2 = epsilon_one_plus_delta + table_i + delta * table_i_next;
+            let b_0 = epsilon + f_i;
+            let b_1 = epsilon_one_plus_delta + table_i + delta * table_i_next;
 
-            z2_i * one_plus_delta * b_1 * b_2 * lookup_sep_sq
+            z2_i * one_plus_delta * b_0 * b_1 * lookup_sep_sq
         };
 
         // − z2(Xω) * (ε*(1+δ) + h1(X) + δ*h2(X)) * (ε*(1+δ) + h2(X) + δ*h1(Xω))
         // * lookup_sep^2
         let c = {
-            let c_1 = epsilon_one_plus_delta + h1_i + delta * h2_i;
-            let c_2 = epsilon_one_plus_delta + h2_i + delta * h1_i_next;
+            let c_0 = epsilon_one_plus_delta + h1_i + delta * h2_i;
+            let c_1 = epsilon_one_plus_delta + h2_i + delta * h1_i_next;
 
-            -z2_i_next * c_1 * c_2 * lookup_sep_sq
+            -z2_i_next * c_0 * c_1 * lookup_sep_sq
         };
 
         let d = { (z2_i - F::one()) * l1_i * lookup_sep_cu };
@@ -160,7 +161,7 @@ where
         f_eval: F,
         table_eval: F,
         table_next_eval: F,
-        h1_eval: F,
+        h1_next_eval: F,
         h2_eval: F,
         z2_next_eval: F,
         delta: F,
@@ -168,17 +169,18 @@ where
         zeta: F,
         z2_poly: &DensePolynomial<F>,
         h1_poly: &DensePolynomial<F>,
-        lookup_separation_challenge: F,
+        lookup_sep: F,
     ) -> DensePolynomial<F> {
-        let a = {
-            let a_0 = Self::compress(a_eval, b_eval, c_eval, d_eval, zeta);
-            &self.q_lookup.0 * ((a_0 - f_eval) * lookup_separation_challenge)
-        };
 
-        let lookup_sep_sq = lookup_separation_challenge.square();
-        let lookup_sep_cu = lookup_separation_challenge * lookup_sep_sq;
+        let lookup_sep_sq = lookup_sep.square();
+        let lookup_sep_cu = lookup_sep * lookup_sep_sq;
         let one_plus_delta = delta + F::one();
         let epsilon_one_plus_delta = epsilon * one_plus_delta;
+
+        let a = {
+            let compressed_tuple = lc(vec![a_eval, b_eval, c_eval, d_eval], zeta);
+            &self.q_lookup.0 * ((compressed_tuple - f_eval) * lookup_sep)
+        };
 
         // z2(X) * (1 + δ) * (ε + f_bar) * (ε(1+δ) + t_bar + δ*tω_bar) *
         // lookup_sep^2
@@ -186,27 +188,19 @@ where
             let b_0 = epsilon + f_eval;
             let b_1 =
                 epsilon_one_plus_delta + table_eval + delta * table_next_eval;
+            let b_2 =  l1_eval * lookup_sep_cu;
 
-            z2_poly * (one_plus_delta * b_0 * b_1 * lookup_sep_sq)
+            z2_poly * (one_plus_delta * b_0 * b_1 * lookup_sep_sq + b_2)
         };
 
-        // h1(X) * (−z2ω_bar) * (ε(1+δ) + h2_bar  + δh1_bar) * lookup_sep^2
+        // h1(X) * (−z2ω_bar) * (ε(1+δ) + h2_bar  + δh1ω_bar) * lookup_sep^2
         let c = {
             let c_0 = -z2_next_eval * lookup_sep_sq;
-            let c_1 = epsilon_one_plus_delta + h2_eval + delta * h1_eval;
+            let c_1 = epsilon_one_plus_delta + h2_eval + delta * h1_next_eval;
 
             h1_poly * (c_0 * c_1)
         };
-
-        let d = { z2_poly * (l1_eval * lookup_sep_cu) };
-
-        a + b + c + d
-    }
-
-    /// Compresseses a row of values into a single field element
-    /// by applying a random linear combination
-    fn compress(w_l: F, w_r: F, w_o: F, w_4: F, zeta: F) -> F {
-        lc(vec![w_l, w_r, w_o, w_4], zeta)
+        a + b + c
     }
 }
 
@@ -248,54 +242,54 @@ where
         points: &mut Vec<PC::Commitment>,
         evaluations: &ProofEvaluations<F>,
         (delta, epsilon, zeta): (F, F, F),
+        lookup_sep: F,
         l1_eval: F,
         z2_comm: PC::Commitment,
         h1_comm: PC::Commitment,
     ) {
-        // f =q_lookup * (lc([a_eval, b_eval, c_eval, d_eval] , zeta) - f_eval)
-        // lookup_sep is the eval of q_lookup and should be in the proof
 
-        let q_lookup_eval = evaluations.lookup_evals.q_lookup_eval;
-        let f = q_lookup_eval
-            * (lc(
-                vec![
-                    evaluations.wire_evals.a_eval,
-                    evaluations.wire_evals.b_eval,
-                    evaluations.wire_evals.c_eval,
-                    evaluations.wire_evals.d_eval,
-                ],
-                zeta,
-            ) - evaluations.lookup_evals.f_eval);
+        let one_plus_delta = F::one() + delta;
+        let epsilon_one_plus_delta = epsilon * one_plus_delta;
+        let lookup_sep_sq = lookup_sep.square();
+        let lookup_sep_cu = lookup_sep_sq * lookup_sep;
 
-        scalars.push(f);
+        let a = {
+            let compressed_eval = lc(vec![
+                evaluations.wire_evals.a_eval,
+                evaluations.wire_evals.b_eval,
+                evaluations.wire_evals.c_eval,
+                evaluations.wire_evals.d_eval,
+            ],zeta
+        );
+
+            let a_0 = compressed_eval - evaluations.lookup_evals.f_eval;
+            a_0 * lookup_sep
+        };
+
+        scalars.push(a);
         points.push(self.q_lookup.clone());
 
         // (1 + δ) * (ε + f_bar) * (ε(1+δ) + t_bar + δ*tω_bar) *  lookup_sep^2
-        // + L_1 * lookup_sep^3
-        let one_plus_delta = F::one() + delta;
-        let epsilon_one_plus_delta = epsilon * one_plus_delta;
-        let q_lookup_eval_sq = q_lookup_eval.square();
-        let q_lookup_eval_cu = q_lookup_eval_sq * q_lookup_eval;
-        let z = {
-            let z_0 = epsilon + evaluations.lookup_evals.f_eval;
-            let z_1 = epsilon_one_plus_delta
+        let b = {
+            let b_0 = epsilon + evaluations.lookup_evals.f_eval;
+            let b_1 = epsilon_one_plus_delta
                 + evaluations.lookup_evals.table_eval
                 + delta * evaluations.lookup_evals.table_next_eval;
-            let z_2 = l1_eval * q_lookup_eval_cu;
-            one_plus_delta * z_0 * z_1 * q_lookup_eval_sq + z_2
+            let b_2 = l1_eval * lookup_sep_cu;
+            one_plus_delta * b_0 * b_1 * lookup_sep_sq + b_2
         };
 
-        scalars.push(z);
+        scalars.push(b);
         points.push(z2_comm);
 
-        let w = {
-            let w_0 = -evaluations.lookup_evals.z2_next_eval * q_lookup_eval_cu;
-            let w_1 = epsilon_one_plus_delta
+        let c = {
+            let c_0 = -evaluations.lookup_evals.z2_next_eval * lookup_sep_sq;
+            let c_1 = epsilon_one_plus_delta
                 + evaluations.lookup_evals.h2_eval
-                + delta * evaluations.lookup_evals.h1_eval;
-            w_0 * w_1
+                + delta * evaluations.lookup_evals.h1_next_eval;
+            c_0 * c_1
         };
-        scalars.push(w);
+        scalars.push(c);
         points.push(h1_comm);
     }
 }

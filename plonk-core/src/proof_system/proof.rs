@@ -202,9 +202,9 @@ where
             &var_base_sep_challenge,
         );
 
-        let lookup_challenge =
+        let lookup_sep_challenge =
             transcript.challenge_scalar(b"lookup separation challenge");
-        transcript.append(b"lookup separation challenge", &lookup_challenge);
+        transcript.append(b"lookup separation challenge", &lookup_sep_challenge);
 
         // Add commitment to quotient polynomial to transcript
         transcript.append(b"t_1", &self.t_1_comm);
@@ -229,10 +229,15 @@ where
             alpha,
             beta,
             gamma,
+            delta,
+            epsilon,
             z_challenge,
             l1_eval,
             self.evaluations.perm_evals.permutation_eval,
-            lookup_challenge,
+            self.evaluations.lookup_evals.z2_next_eval,
+            self.evaluations.lookup_evals.h1_next_eval,
+            self.evaluations.lookup_evals.h2_eval,
+            lookup_sep_challenge,
         );
 
         // Add evaluations to transcript
@@ -280,6 +285,7 @@ where
             logic_sep_challenge,
             fixed_base_sep_challenge,
             var_base_sep_challenge,
+            lookup_sep_challenge,
             z_challenge,
             l1_eval,
             plonk_verifier_key,
@@ -381,25 +387,33 @@ where
         alpha: F,
         beta: F,
         gamma: F,
+        delta: F,
+        epsilon: F,
         z_challenge: F,
         l1_eval: F,
         z_hat_eval: F,
-        _lookup_challenge: F,
+        z2_next_eval: F,
+        h1_next_eval: F,
+        h2_eval: F,
+        lookup_sep_challenge: F,
     ) -> F {
         // Compute the public input polynomial evaluated at `z_challenge`
         let pi_eval = compute_barycentric_eval(pub_inputs, z_challenge, domain);
 
         let alpha_sq = alpha.square();
 
+        let lookup_sep_challenge_sq = lookup_sep_challenge.square();
+        let lookup_sep_challenge_cu = lookup_sep_challenge_sq * lookup_sep_challenge;
+
         // a + beta * sigma_1 + gamma
         let beta_sig1 = beta * self.evaluations.perm_evals.left_sigma_eval;
         let b_0 = self.evaluations.wire_evals.a_eval + beta_sig1 + gamma;
 
-        // b+ beta * sigma_2 + gamma
+        // b + beta * sigma_2 + gamma
         let beta_sig2 = beta * self.evaluations.perm_evals.right_sigma_eval;
         let b_1 = self.evaluations.wire_evals.b_eval + beta_sig2 + gamma;
 
-        // c+ beta * sigma_3 + gamma
+        // c + beta * sigma_3 + gamma
         let beta_sig3 = beta * self.evaluations.perm_evals.out_sigma_eval;
         let b_2 = self.evaluations.wire_evals.c_eval + beta_sig3 + gamma;
 
@@ -412,8 +426,17 @@ where
         // l_1(z) * alpha^2
         let c = l1_eval * alpha_sq;
 
+        let epsilon_one_plus_delta = epsilon * (F::one() + delta);
+
+        let d_0 = lookup_sep_challenge_sq * z2_next_eval;
+        let d_1 = epsilon_one_plus_delta + delta * h2_eval;
+        let d_2 = epsilon_one_plus_delta + h2_eval + delta * h1_next_eval;
+        let d = d_0 * d_1 * d_2;
+
+        let e = lookup_sep_challenge_cu * l1_eval;
+
         // Return r_0
-        pi_eval - b - c
+        pi_eval - b - c - d - e
     }
 
     /// Computes the commitment to `[r]_1`.
@@ -430,6 +453,7 @@ where
         logic_sep_challenge: F,
         fixed_base_sep_challenge: F,
         var_base_sep_challenge: F,
+        lookup_sep_challenge: F,
         z_challenge: F,
         l1_eval: F,
         plonk_verifier_key: &PlonkVerifierKey<F, PC>,
@@ -485,6 +509,7 @@ where
             &mut points,
             &self.evaluations,
             (delta, epsilon, zeta),
+            lookup_sep_challenge,
             l1_eval,
             self.z_2_comm.clone(),
             self.h_1_comm.clone(),
