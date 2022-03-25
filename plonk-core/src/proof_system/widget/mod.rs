@@ -201,6 +201,10 @@ where
         right_sigma: PC::Commitment,
         out_sigma: PC::Commitment,
         fourth_sigma: PC::Commitment,
+        table_1: PC::Commitment,
+        table_2: PC::Commitment,
+        table_3: PC::Commitment,
+        table_4: PC::Commitment,
     ) -> Self {
         Self {
             n,
@@ -223,7 +227,13 @@ where
                 out_sigma,
                 fourth_sigma,
             },
-            lookup: lookup::VerifierKey { q_lookup },
+            lookup: lookup::VerifierKey {
+                q_lookup,
+                table_1,
+                table_2,
+                table_3,
+                table_4,
+            },
         }
     }
 
@@ -518,6 +528,11 @@ mod test {
         let out_sigma = PC::Commitment::default();
         let fourth_sigma = PC::Commitment::default();
 
+        let table_1 = PC::Commitment::default();
+        let table_2 = PC::Commitment::default();
+        let table_3 = PC::Commitment::default();
+        let table_4 = PC::Commitment::default();
+
         let verifier_key = VerifierKey::<F, PC>::from_polynomial_commitments(
             n,
             q_m,
@@ -536,6 +551,10 @@ mod test {
             right_sigma,
             out_sigma,
             fourth_sigma,
+            table_1,
+            table_2,
+            table_3,
+            table_4,
         );
 
         let mut verifier_key_bytes = vec![];

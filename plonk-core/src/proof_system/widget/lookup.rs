@@ -226,6 +226,14 @@ where
 {
     /// Lookup Selector Commitment
     pub q_lookup: PC::Commitment,
+    /// Commitment to first table column
+    pub table_1: PC::Commitment,
+    /// Commitment to second table column
+    pub table_2: PC::Commitment,
+    /// Commitment to third table column
+    pub table_3: PC::Commitment,
+    /// Commitment to fourth table column
+    pub table_4: PC::Commitment,
 }
 
 impl<F, PC> VerifierKey<F, PC>
