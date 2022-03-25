@@ -146,6 +146,10 @@ where
 
         // Compute permutation challenges and add them to transcript
 
+        // Compute permutation challenge `zeta`.
+        let zeta = transcript.challenge_scalar(b"beta");
+        transcript.append(b"zeta", &zeta);
+
         // Compute permutation challenge `beta`.
         let beta = transcript.challenge_scalar(b"beta");
         transcript.append(b"beta", &beta);
@@ -162,21 +166,13 @@ where
         let epsilon = transcript.challenge_scalar(b"epsilon");
         transcript.append(b"epsilon", &epsilon);
 
-        // Compute permutation challenge `theta`.
-        let theta = transcript.challenge_scalar(b"theta");
-        transcript.append(b"theta", &theta);
-
         // Challenges must be different
         assert!(beta != gamma, "challenges must be different");
         assert!(beta != delta, "challenges must be different");
         assert!(beta != epsilon, "challenges must be different");
-        assert!(beta != theta, "challenges must be different");
         assert!(gamma != delta, "challenges must be different");
         assert!(gamma != epsilon, "challenges must be different");
-        assert!(gamma != theta, "challenges must be different");
         assert!(delta != epsilon, "challenges must be different");
-        assert!(delta != theta, "challenges must be different");
-        assert!(epsilon != theta, "challenges must be different");
 
         // Add commitment to permutation polynomial to transcript
         transcript.append(b"z", &self.z_comm);
@@ -277,6 +273,9 @@ where
             alpha,
             beta,
             gamma,
+            delta,
+            epsilon,
+            zeta,
             range_sep_challenge,
             logic_sep_challenge,
             fixed_base_sep_challenge,
@@ -424,6 +423,9 @@ where
         alpha: F,
         beta: F,
         gamma: F,
+        delta: F,
+        epsilon: F,
+        zeta: F,
         range_sep_challenge: F,
         logic_sep_challenge: F,
         fixed_base_sep_challenge: F,
@@ -437,6 +439,7 @@ where
     {
         // 5 for each type of gate + 1 for permutations + 4 for each piece of
         // the quotient poly
+        // TODO How much more for lookups?
         let mut scalars = Vec::with_capacity(10);
         let mut points = Vec::with_capacity(10);
 
@@ -476,6 +479,15 @@ where
             &self.evaluations,
             &mut scalars,
             &mut points,
+        );
+        plonk_verifier_key.lookup.compute_linearisation_commitment(
+            &mut scalars,
+            &mut points,
+            &self.evaluations,
+            (delta, epsilon, zeta),
+            l1_eval,
+            self.z_2_comm.clone(),
+            self.h_1_comm.clone(),
         );
         plonk_verifier_key
             .permutation
@@ -529,7 +541,7 @@ where
 /// ```text
 /// L_0(X) = (X^n - 1) / n * (X - 1)
 /// ```
-fn compute_first_lagrange_evaluation<F>(
+pub fn compute_first_lagrange_evaluation<F>(
     domain: &GeneralEvaluationDomain<F>,
     z_h_eval: &F,
     z_challenge: &F,

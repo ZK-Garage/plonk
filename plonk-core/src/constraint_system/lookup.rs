@@ -7,7 +7,6 @@
 use crate::constraint_system::{StandardComposer, Variable};
 use ark_ec::TEModelParameters;
 use ark_ff::PrimeField;
-use num_traits::{One, Zero};
 
 impl<F, P> StandardComposer<F, P>
 where

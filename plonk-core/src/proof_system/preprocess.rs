@@ -132,20 +132,8 @@ where
     where
         PC: HomomorphicCommitment<F>,
     {
-        let (_, selectors, domain) =
+        let (_, selectors, domain, preprocessed_table) =
             self.preprocess_shared(commit_key, transcript, _pc)?;
-
-        let preprocessed_table = PreprocessedLookupTable::<F, PC>::preprocess(
-            &self.lookup_table,
-            commit_key,
-            domain.size().try_into().unwrap(),
-        )
-        .unwrap();
-        // TODO This clones maybe could be removed
-        let table_1 = preprocessed_table.t[0].0.clone();
-        let table_2 = preprocessed_table.t[1].0.clone();
-        let table_3 = preprocessed_table.t[2].0.clone();
-        let table_4 = preprocessed_table.t[3].0.clone();
 
         let domain_4n =
             GeneralEvaluationDomain::new(4 * domain.size()).ok_or(Error::InvalidEvalDomainSize {
@@ -247,10 +235,10 @@ where
             (selectors.fourth_sigma, fourth_sigma_eval_4n),
             linear_eval_4n,
             v_h_coset_4n,
-            table_1,
-            table_2,
-            table_3,
-            table_4,
+            preprocessed_table.t[0].0.clone(),
+            preprocessed_table.t[1].0.clone(),
+            preprocessed_table.t[2].0.clone(),
+            preprocessed_table.t[3].0.clone(),
         ))
     }
 
@@ -266,7 +254,7 @@ where
     where
         PC: HomomorphicCommitment<F>,
     {
-        let (verifier_key, _, _) =
+        let (verifier_key, _, _, _) =
             self.preprocess_shared(commit_key, transcript, _pc)?;
         Ok(verifier_key)
     }
@@ -286,6 +274,7 @@ where
             widget::VerifierKey<F, PC>,
             SelectorPolynomials<F>,
             GeneralEvaluationDomain<F>,
+            PreprocessedLookupTable<F, PC>,
         ),
         Error,
     >
@@ -297,6 +286,14 @@ where
             adicity:
                 <<F as FftField>::FftParams as ark_ff::FftParameters>::TWO_ADICITY,
         })?;
+
+        let preprocessed_table = PreprocessedLookupTable::<F, PC>::preprocess(
+            &self.lookup_table,
+            commit_key,
+            domain.size() as u32,
+        )
+        .unwrap();
+
         // Check that the length of the wires is consistent.
         self.check_poly_same_len()?;
 
@@ -394,6 +391,10 @@ where
             commitments[13].commitment().clone(), // right_sigma_poly_commit.0,
             commitments[14].commitment().clone(), // out_sigma_poly_commit.0,
             commitments[15].commitment().clone(), /* fourth_sigma_poly_commit.0, */
+            preprocessed_table.t[0].1.clone(),
+            preprocessed_table.t[1].1.clone(),
+            preprocessed_table.t[2].1.clone(),
+            preprocessed_table.t[3].1.clone(),
         );
 
         let selectors = SelectorPolynomials {
@@ -418,7 +419,7 @@ where
         // Add the circuit description to the transcript
         verifier_key.seed_transcript(transcript);
 
-        Ok((verifier_key, selectors, domain))
+        Ok((verifier_key, selectors, domain, preprocessed_table))
     }
 }
 

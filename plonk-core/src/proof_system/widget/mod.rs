@@ -170,6 +170,9 @@ where
 
     /// VerifierKey for permutation checks
     pub(crate) permutation: permutation::VerifierKey<PC::Commitment>,
+
+    /// VerifierKey for Lookup Gate
+    pub(crate) lookup: lookup::VerifierKey<F, PC>,
 }
 
 impl<F, PC> VerifierKey<F, PC>
@@ -191,13 +194,17 @@ where
         q_arith: PC::Commitment,
         q_range: PC::Commitment,
         q_logic: PC::Commitment,
-        _q_lookup: PC::Commitment,
+        q_lookup: PC::Commitment,
         q_fixed_group_add: PC::Commitment,
         q_variable_group_add: PC::Commitment,
         left_sigma: PC::Commitment,
         right_sigma: PC::Commitment,
         out_sigma: PC::Commitment,
         fourth_sigma: PC::Commitment,
+        table_1: PC::Commitment,
+        table_2: PC::Commitment,
+        table_3: PC::Commitment,
+        table_4: PC::Commitment,
     ) -> Self {
         Self {
             n,
@@ -219,6 +226,13 @@ where
                 right_sigma,
                 out_sigma,
                 fourth_sigma,
+            },
+            lookup: lookup::VerifierKey {
+                q_lookup,
+                table_1,
+                table_2,
+                table_3,
+                table_4,
             },
         }
     }
@@ -514,6 +528,11 @@ mod test {
         let out_sigma = PC::Commitment::default();
         let fourth_sigma = PC::Commitment::default();
 
+        let table_1 = PC::Commitment::default();
+        let table_2 = PC::Commitment::default();
+        let table_3 = PC::Commitment::default();
+        let table_4 = PC::Commitment::default();
+
         let verifier_key = VerifierKey::<F, PC>::from_polynomial_commitments(
             n,
             q_m,
@@ -532,6 +551,10 @@ mod test {
             right_sigma,
             out_sigma,
             fourth_sigma,
+            table_1,
+            table_2,
+            table_3,
+            table_4,
         );
 
         let mut verifier_key_bytes = vec![];
