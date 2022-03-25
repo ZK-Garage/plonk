@@ -290,7 +290,7 @@ where
         let preprocessed_table = PreprocessedLookupTable::<F, PC>::preprocess(
             &self.lookup_table,
             commit_key,
-            domain.size().try_into().unwrap(),
+            domain.size() as u32,
         )
         .unwrap();
 
