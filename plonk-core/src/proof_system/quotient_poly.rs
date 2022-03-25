@@ -68,7 +68,8 @@ where
             <<F as FftField>::FftParams as ark_ff::FftParameters>::TWO_ADICITY,
     })?;
 
-    let l1_eval_4n = compute_first_lagrange_poly_scaled(&domain_4n, F::one());
+    let l1_poly = compute_first_lagrange_poly_scaled(&domain, F::one());
+    let l1_eval_4n = domain_4n.coset_fft(&l1_poly);
 
     let mut z_eval_4n = domain_4n.coset_fft(z_poly);
     z_eval_4n.push(z_eval_4n[0]);
