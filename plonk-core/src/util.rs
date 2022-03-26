@@ -343,7 +343,7 @@ where
 }
 
 /// prints out composer in nicer form
-pub fn debug_print<F: PrimeField, P: ModelParameters<BaseField = F>>(composer: StandardComposer<F, P>) -> String {
+pub fn composer_debug_print<F: PrimeField, P: ModelParameters<BaseField = F>>(composer: &StandardComposer<F, P>) -> String {
     let debug_str = format!(
         "\
         \n\
