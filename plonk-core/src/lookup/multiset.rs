@@ -13,8 +13,8 @@ use ark_poly::{
 use ark_serialize::{
     CanonicalDeserialize, CanonicalSerialize, Read, SerializationError, Write,
 };
+use hashbrown::HashMap;
 use core::ops::{Add, Mul};
-use std::collections::BTreeMap;
 
 /// MultiSet is struct containing vectors of scalars, which
 /// individually represents either a wire value or an index
@@ -132,7 +132,7 @@ where
     /// The final MultiSet will look as follows, s: {1,1,2,2,3,3,4,4}.
     /// Splits a multiset into alternating halves of the same length (if even).
     pub fn sorted_halve(&self, f: &Self) -> Result<(Self, Self), Error> {
-        let mut counters: BTreeMap<F, usize> = BTreeMap::new();
+        let mut counters: HashMap<F, usize> = HashMap::new();
 
         let n_elems = self.len() + f.len();
         // Insert elemnts on of t in sorted struct
