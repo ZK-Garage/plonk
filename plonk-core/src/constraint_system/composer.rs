@@ -221,7 +221,7 @@ where
             composer.add_witness_to_circuit_description(F::zero());
 
         // Add dummy constraints
-        //composer.add_blinding_factors(&mut rand::rngs::OsRng);
+        composer.add_blinding_factors(&mut rand::rngs::OsRng);
 
         composer
     }
