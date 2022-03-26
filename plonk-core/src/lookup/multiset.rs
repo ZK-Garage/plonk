@@ -158,13 +158,13 @@ where
         let mut odds = Vec::with_capacity(n_elems);
         let mut parity = 0;
         self.0.iter().for_each(|elem| {
-            let count = counters.get(elem).unwrap();
-            let half_count = count / 2;
+            let count = counters.get_mut(elem).unwrap();
+            let half_count = *count / 2;
             evens.extend(vec![elem.clone(); half_count]);
             odds.extend(vec![elem.clone(); half_count]);
             // if odd count => add extra element to corresponding
             // vec and flip prev_parity
-            if count % 2 == 1 {
+            if *count % 2 == 1 {
                 if parity == 1 {
                     odds.push(elem.clone());
                     parity = 0;
@@ -173,6 +173,7 @@ where
                     parity = 1
                 }
             }
+            *count = 0usize;
         });
 
         Ok((Self(evens), Self(odds)))
