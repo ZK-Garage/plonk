@@ -144,7 +144,7 @@ where
             };
             counters.insert(element.clone(), val);
         }
-
+ 
         // Insert elemnts on of f in sorted struct + check they are in t
         for element in &f.0 {
             match counters.get_mut(&element) {
@@ -157,7 +157,8 @@ where
         let mut evens = Vec::with_capacity(n_elems + (n_elems % 2));
         let mut odds = Vec::with_capacity(n_elems);
         let mut parity = 0;
-        counters.into_iter().for_each(|(elem, count)| {
+        self.0.iter().for_each(|elem| {
+            let count = counters.get(elem).unwrap();
             let half_count = count / 2;
             evens.extend(vec![elem.clone(); half_count]);
             odds.extend(vec![elem.clone(); half_count]);
