@@ -221,7 +221,7 @@ where
         // 2. Derive lookup polynomials
 
         // Generate table compression factor
-        let zeta = -F::from(7 as u64);//transcript.challenge_scalar(b"zeta");
+        let zeta = transcript.challenge_scalar(b"zeta");
         transcript.append(b"zeta", &zeta);
 
         // Compress lookup table into vector of single elements
@@ -330,11 +330,11 @@ where
         let gamma = transcript.challenge_scalar(b"gamma");
         transcript.append(b"gamma", &gamma);
         // Compute permutation challenge `delta`.
-        let delta = F::from(3 as u64);//transcript.challenge_scalar(b"delta");
+        let delta = transcript.challenge_scalar(b"delta");
         transcript.append(b"delta", &delta);
 
         // Compute permutation challenge `epsilon`.
-        let epsilon = F::from(2 as u64);//transcript.challenge_scalar(b"epsilon");
+        let epsilon = transcript.challenge_scalar(b"epsilon");
         transcript.append(b"epsilon", &epsilon);
 
         // Challenges must be different
@@ -423,8 +423,7 @@ where
             &var_base_sep_challenge,
         );
 
-        let lookup_sep_challenge =
-        F::from(1 as u64);//transcript.challenge_scalar(b"lookup separation challenge");
+        let lookup_sep_challenge = transcript.challenge_scalar(b"lookup separation challenge");
         transcript
             .append(b"lookup separation challenge", &lookup_sep_challenge);
 
