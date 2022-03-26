@@ -7,6 +7,7 @@
 //! Prover-side of the PLONK Proving System
 
 use crate::lookup::MultiSet;
+use crate::util::*;
 use crate::{
     commitment::HomomorphicCommitment,
     constraint_system::{StandardComposer, Variable},
@@ -220,7 +221,7 @@ where
         // 2. Derive lookup polynomials
 
         // Generate table compression factor
-        let zeta = transcript.challenge_scalar(b"zeta");
+        let zeta = -F::from(7 as u64);//transcript.challenge_scalar(b"zeta");
         transcript.append(b"zeta", &zeta);
 
         // Compress lookup table into vector of single elements
@@ -233,7 +234,7 @@ where
             ],
             zeta,
         );
-
+        println!("table multiset:\n{}", abbreviate_vec(&compressed_t_multiset.0));
         // TODO Remove if redundant
         // Pad the compressed table
         // let t_pad = vec![
@@ -276,7 +277,7 @@ where
         }
         // Compress all wires into a single vector
         let compressed_f_multiset = MultiSet::compress(&f_scalars, zeta);
-
+        println!("f multiset:\n{}", abbreviate_vec(&compressed_f_multiset.0));
         // Compute query poly
         let f_poly = DensePolynomial::from_coefficients_vec(
             domain.ifft(&compressed_f_multiset.0),
@@ -329,11 +330,11 @@ where
         let gamma = transcript.challenge_scalar(b"gamma");
         transcript.append(b"gamma", &gamma);
         // Compute permutation challenge `delta`.
-        let delta = transcript.challenge_scalar(b"delta");
+        let delta = F::from(3 as u64);//transcript.challenge_scalar(b"delta");
         transcript.append(b"delta", &delta);
 
         // Compute permutation challenge `epsilon`.
-        let epsilon = transcript.challenge_scalar(b"epsilon");
+        let epsilon = F::from(2 as u64);//transcript.challenge_scalar(b"epsilon");
         transcript.append(b"epsilon", &epsilon);
 
         // Challenges must be different
@@ -423,9 +424,15 @@ where
         );
 
         let lookup_sep_challenge =
-            transcript.challenge_scalar(b"lookup separation challenge");
+        F::from(1 as u64);//transcript.challenge_scalar(b"lookup separation challenge");
         transcript
             .append(b"lookup separation challenge", &lookup_sep_challenge);
+
+        println!("z2_poly evals\n{}", poly_eval_debug_print(&z_2_poly, domain));
+        println!("h1_poly evals\n{}", poly_eval_debug_print(&h_1_poly, domain));
+        println!("h2_poly evals\n{}", poly_eval_debug_print(&h_2_poly, domain));
+        println!("f_poly evals\n{}", poly_eval_debug_print(&f_poly, domain));
+        println!("table_poly evals\n{}", poly_eval_debug_print(&table_poly, domain));
 
         let t_poly = quotient_poly::compute::<F, P>(
             &domain,
@@ -453,6 +460,15 @@ where
             &var_base_sep_challenge,
             &lookup_sep_challenge,
         )?;
+        let domain_8n =
+        GeneralEvaluationDomain::<F>::new(4*self.cs.circuit_size()).ok_or(Error::InvalidEvalDomainSize {
+            log_size_of_group: 4*self.cs.circuit_size().trailing_zeros(),
+            adicity: <<F as ark_ff::FftField>::FftParams as ark_ff::FftParameters>::TWO_ADICITY,
+        })?;
+
+        println!("prover composer\n{}", composer_debug_print(&self.cs));
+        println!("quotient poly evals\n{:?}", poly_eval_debug_print(&t_poly, domain_8n));
+
 
         let (t_1_poly, t_2_poly, t_3_poly, t_4_poly) =
             self.split_tx_poly(n, &t_poly);
