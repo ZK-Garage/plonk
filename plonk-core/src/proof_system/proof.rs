@@ -320,24 +320,28 @@ where
 
         let aw_commits = [
             label_commitment!(lin_comm),
-            // label_commitment!(plonk_verifier_key.permutation.left_sigma),
-            // label_commitment!(plonk_verifier_key.permutation.right_sigma),
-            // label_commitment!(plonk_verifier_key.permutation.out_sigma),
-            // label_commitment!(self.a_comm),
-            // label_commitment!(self.b_comm),
-            // label_commitment!(self.c_comm),
-            // label_commitment!(self.d_comm),
+            label_commitment!(plonk_verifier_key.permutation.left_sigma),
+            label_commitment!(plonk_verifier_key.permutation.right_sigma),
+            label_commitment!(plonk_verifier_key.permutation.out_sigma),
+            label_commitment!(self.f_comm),
+            label_commitment!(self.h_2_comm),
+            label_commitment!(self.a_comm),
+            label_commitment!(self.b_comm),
+            label_commitment!(self.c_comm),
+            label_commitment!(self.d_comm),
         ];
 
         let aw_evals = [
             -r0,
-            // self.evaluations.perm_evals.left_sigma_eval,
-            // self.evaluations.perm_evals.right_sigma_eval,
-            // self.evaluations.perm_evals.out_sigma_eval,
-            // self.evaluations.wire_evals.a_eval,
-            // self.evaluations.wire_evals.b_eval,
-            // self.evaluations.wire_evals.c_eval,
-            // self.evaluations.wire_evals.d_eval,
+            self.evaluations.perm_evals.left_sigma_eval,
+            self.evaluations.perm_evals.right_sigma_eval,
+            self.evaluations.perm_evals.out_sigma_eval,
+            self.evaluations.lookup_evals.f_eval,
+            self.evaluations.lookup_evals.h2_eval,
+            self.evaluations.wire_evals.a_eval,
+            self.evaluations.wire_evals.b_eval,
+            self.evaluations.wire_evals.c_eval,
+            self.evaluations.wire_evals.d_eval,
         ];
 
         let saw_challenge: F =
@@ -348,6 +352,8 @@ where
             label_commitment!(self.a_comm),
             label_commitment!(self.b_comm),
             label_commitment!(self.d_comm),
+            label_commitment!(self.h_1_comm),
+            label_commitment!(self.z_2_comm),
         ];
 
         let saw_evals = [
@@ -355,6 +361,8 @@ where
             self.evaluations.custom_evals.get("a_next_eval"),
             self.evaluations.custom_evals.get("b_next_eval"),
             self.evaluations.custom_evals.get("d_next_eval"),
+            self.evaluations.lookup_evals.h1_next_eval,
+            self.evaluations.lookup_evals.z2_next_eval,
         ];
 
         match PC::check(
@@ -370,21 +378,21 @@ where
             Ok(false) => Err(Error::ProofVerificationError),
             Err(e) => panic!("{:?}", e),
         }
-        // .and_then(|_| {
-        //     match PC::check(
-        //         verifier_key,
-        //         &saw_commits,
-        //         &(z_challenge * domain.element(1)),
-        //         saw_evals,
-        //         &self.saw_opening,
-        //         saw_challenge,
-        //         None,
-        //     ) {
-        //         Ok(true) => Ok(()),
-        //         Ok(false) => Err(Error::ProofVerificationError),
-        //         Err(e) => panic!("{:?}", e),
-        //     }
-        // })
+        .and_then(|_| {
+            match PC::check(
+                verifier_key,
+                &saw_commits,
+                &(z_challenge * domain.element(1)),
+                saw_evals,
+                &self.saw_opening,
+                saw_challenge,
+                None,
+            ) {
+                Ok(true) => Ok(()),
+                Ok(false) => Err(Error::ProofVerificationError),
+                Err(e) => panic!("{:?}", e),
+            }
+        })
     }
 
     fn compute_r0(

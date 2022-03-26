@@ -298,7 +298,8 @@ where
         let (h_1, h_2) = compressed_t_multiset
             .sorted_halve(&compressed_f_multiset)
             .unwrap();
-
+        println!("h1 multiset:\n{}", abbreviate_vec(&h_1.0));
+        println!("h2 multiset:\n{}", abbreviate_vec(&h_2.0));
         // Compute h polys
         let h_1_poly =
             DensePolynomial::from_coefficients_vec(domain.ifft(&h_1.0));
@@ -585,11 +586,11 @@ where
         // Ditto with the out_sigma poly.
         let aw_polys = [
             label_polynomial!(lin_poly),
-           // label_polynomial!(prover_key.permutation.left_sigma.0.clone()),
-            //label_polynomial!(prover_key.permutation.right_sigma.0.clone()),
-           // label_polynomial!(prover_key.permutation.out_sigma.0.clone()),
-            //label_polynomial!(f_poly),
-            //label_polynomial!(h_2_poly),
+            label_polynomial!(prover_key.permutation.left_sigma.0.clone()),
+            label_polynomial!(prover_key.permutation.right_sigma.0.clone()),
+            label_polynomial!(prover_key.permutation.out_sigma.0.clone()),
+            label_polynomial!(f_poly),
+            label_polynomial!(h_2_poly),
             //label_polynomial!(table_poly),
         ];
 
@@ -617,7 +618,7 @@ where
             label_polynomial!(w_4_poly),
             label_polynomial!(h_1_poly),
             label_polynomial!(z_2_poly),
-            label_polynomial!(table_poly),
+            //label_polynomial!(table_poly),
         ];
 
         let (saw_commits, saw_rands) = PC::commit(commit_key, &saw_polys, None)
