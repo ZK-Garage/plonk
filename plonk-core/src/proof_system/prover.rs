@@ -570,12 +570,12 @@ where
         // Ditto with the out_sigma poly.
         let aw_polys = [
             label_polynomial!(lin_poly),
-            label_polynomial!(prover_key.permutation.left_sigma.0.clone()),
-            label_polynomial!(prover_key.permutation.right_sigma.0.clone()),
-            label_polynomial!(prover_key.permutation.out_sigma.0.clone()),
-            label_polynomial!(f_poly),
-            label_polynomial!(h_2_poly),
-            label_polynomial!(table_poly),
+           // label_polynomial!(prover_key.permutation.left_sigma.0.clone()),
+            //label_polynomial!(prover_key.permutation.right_sigma.0.clone()),
+           // label_polynomial!(prover_key.permutation.out_sigma.0.clone()),
+            //label_polynomial!(f_poly),
+            //label_polynomial!(h_2_poly),
+            //label_polynomial!(table_poly),
         ];
 
         let (aw_commits, aw_rands) = PC::commit(commit_key, &aw_polys, None)
@@ -594,7 +594,7 @@ where
 
         let saw_challenge: F =
             transcript.challenge_scalar(b"aggregate_witness");
-
+        println!("prover saw\n{}", saw_challenge);
         let saw_polys = [
             label_polynomial!(z_poly),
             label_polynomial!(w_l_poly),

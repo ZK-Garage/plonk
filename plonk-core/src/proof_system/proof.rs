@@ -144,11 +144,18 @@ where
         transcript.append(b"w_o", &self.c_comm);
         transcript.append(b"w_4", &self.d_comm);
 
-        // Compute permutation challenges and add them to transcript
+        // Compute table compression challenge `zeta`.
+        let zeta = transcript.challenge_scalar(b"zeta");
+        transcript.append(b"zeta", &zeta);       
 
-        // Compute permutation challenge `zeta`.
-        let zeta = transcript.challenge_scalar(b"beta");
-        transcript.append(b"zeta", &zeta);
+        // Add f_poly commitment to transcript
+        transcript.append(b"f", &self.f_comm);
+
+        // Add h polynomials to transcript
+        transcript.append(b"h1", &self.h_1_comm);
+        transcript.append(b"h2", &self.h_2_comm);
+
+        // Compute permutation challenges and add them to transcript
 
         // Compute permutation challenge `beta`.
         let beta = transcript.challenge_scalar(b"beta");
@@ -313,29 +320,29 @@ where
 
         let aw_commits = [
             label_commitment!(lin_comm),
-            label_commitment!(plonk_verifier_key.permutation.left_sigma),
-            label_commitment!(plonk_verifier_key.permutation.right_sigma),
-            label_commitment!(plonk_verifier_key.permutation.out_sigma),
-            label_commitment!(self.a_comm),
-            label_commitment!(self.b_comm),
-            label_commitment!(self.c_comm),
-            label_commitment!(self.d_comm),
+            // label_commitment!(plonk_verifier_key.permutation.left_sigma),
+            // label_commitment!(plonk_verifier_key.permutation.right_sigma),
+            // label_commitment!(plonk_verifier_key.permutation.out_sigma),
+            // label_commitment!(self.a_comm),
+            // label_commitment!(self.b_comm),
+            // label_commitment!(self.c_comm),
+            // label_commitment!(self.d_comm),
         ];
 
         let aw_evals = [
             -r0,
-            self.evaluations.perm_evals.left_sigma_eval,
-            self.evaluations.perm_evals.right_sigma_eval,
-            self.evaluations.perm_evals.out_sigma_eval,
-            self.evaluations.wire_evals.a_eval,
-            self.evaluations.wire_evals.b_eval,
-            self.evaluations.wire_evals.c_eval,
-            self.evaluations.wire_evals.d_eval,
+            // self.evaluations.perm_evals.left_sigma_eval,
+            // self.evaluations.perm_evals.right_sigma_eval,
+            // self.evaluations.perm_evals.out_sigma_eval,
+            // self.evaluations.wire_evals.a_eval,
+            // self.evaluations.wire_evals.b_eval,
+            // self.evaluations.wire_evals.c_eval,
+            // self.evaluations.wire_evals.d_eval,
         ];
 
         let saw_challenge: F =
             transcript.challenge_scalar(b"aggregate_witness");
-
+            println!("verifeir saw\n{}", saw_challenge);
         let saw_commits = [
             label_commitment!(self.z_comm),
             label_commitment!(self.a_comm),
@@ -363,21 +370,21 @@ where
             Ok(false) => Err(Error::ProofVerificationError),
             Err(e) => panic!("{:?}", e),
         }
-        .and_then(|_| {
-            match PC::check(
-                verifier_key,
-                &saw_commits,
-                &(z_challenge * domain.element(1)),
-                saw_evals,
-                &self.saw_opening,
-                saw_challenge,
-                None,
-            ) {
-                Ok(true) => Ok(()),
-                Ok(false) => Err(Error::ProofVerificationError),
-                Err(e) => panic!("{:?}", e),
-            }
-        })
+        // .and_then(|_| {
+        //     match PC::check(
+        //         verifier_key,
+        //         &saw_commits,
+        //         &(z_challenge * domain.element(1)),
+        //         saw_evals,
+        //         &self.saw_opening,
+        //         saw_challenge,
+        //         None,
+        //     ) {
+        //         Ok(true) => Ok(()),
+        //         Ok(false) => Err(Error::ProofVerificationError),
+        //         Err(e) => panic!("{:?}", e),
+        //     }
+        // })
     }
 
     fn compute_r0(
