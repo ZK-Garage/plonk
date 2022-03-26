@@ -93,60 +93,60 @@ where
             .collect())
     }
 
-        /// Compute lookup portion of quotient polynomial
-        pub fn debug_compute_lookup_quotient_term(
-            &self,
-            domain: &GeneralEvaluationDomain<F>,
-            wl_eval_4n: &[F],
-            wr_eval_4n: &[F],
-            wo_eval_4n: &[F],
-            w4_eval_4n: &[F],
-            f_eval_4n: &[F],
-            table_eval_4n: &[F],
-            h1_eval_4n: &[F],
-            h2_eval_4n: &[F],
-            z2_eval_4n: &[F],
-            l1_eval_4n: &[F],
-            delta: F,
-            epsilon: F,
-            zeta: F,
-            lookup_sep: F,
-        ) -> Result<Vec<(F,F,F,F,F)>, Error>
-        where
-            F: PrimeField,
-        {
-            let domain_4n = GeneralEvaluationDomain::<F>::new(4 * domain.size())
+    /// Compute lookup portion of quotient polynomial
+    pub fn debug_compute_lookup_quotient_term(
+        &self,
+        domain: &GeneralEvaluationDomain<F>,
+        wl_eval_4n: &[F],
+        wr_eval_4n: &[F],
+        wo_eval_4n: &[F],
+        w4_eval_4n: &[F],
+        f_eval_4n: &[F],
+        table_eval_4n: &[F],
+        h1_eval_4n: &[F],
+        h2_eval_4n: &[F],
+        z2_eval_4n: &[F],
+        l1_eval_4n: &[F],
+        delta: F,
+        epsilon: F,
+        zeta: F,
+        lookup_sep: F,
+    ) -> Result<Vec<(F, F, F, F, F)>, Error>
+    where
+        F: PrimeField,
+    {
+        let domain_4n = GeneralEvaluationDomain::<F>::new(4 * domain.size())
             .ok_or(Error::InvalidEvalDomainSize {
             log_size_of_group: (4 * domain.size()).trailing_zeros(),
             adicity:
                 <<F as FftField>::FftParams as ark_ff::FftParameters>::TWO_ADICITY,
         })?;
-    
-            Ok((0..domain_4n.size())
-                .map(|i| {
-                    self.debug_compute_quotient_i(
-                        i,
-                        wl_eval_4n[i],
-                        wr_eval_4n[i],
-                        wo_eval_4n[i],
-                        w4_eval_4n[i],
-                        f_eval_4n[i],
-                        table_eval_4n[i],
-                        table_eval_4n[i + 4],
-                        h1_eval_4n[i],
-                        h1_eval_4n[i + 4],
-                        h2_eval_4n[i],
-                        z2_eval_4n[i],
-                        z2_eval_4n[i + 4],
-                        l1_eval_4n[i],
-                        delta,
-                        epsilon,
-                        zeta,
-                        lookup_sep,
-                    )
-                })
-                .collect())
-        }
+
+        Ok((0..domain_4n.size())
+            .map(|i| {
+                self.debug_compute_quotient_i(
+                    i,
+                    wl_eval_4n[i],
+                    wr_eval_4n[i],
+                    wo_eval_4n[i],
+                    w4_eval_4n[i],
+                    f_eval_4n[i],
+                    table_eval_4n[i],
+                    table_eval_4n[i + 4],
+                    h1_eval_4n[i],
+                    h1_eval_4n[i + 4],
+                    h2_eval_4n[i],
+                    z2_eval_4n[i],
+                    z2_eval_4n[i + 4],
+                    l1_eval_4n[i],
+                    delta,
+                    epsilon,
+                    zeta,
+                    lookup_sep,
+                )
+            })
+            .collect())
+    }
 
     /// Compute evals of lookup portion of quotient polynomial
     pub fn compute_quotient_i(
@@ -258,7 +258,7 @@ where
 
         let d = { (z2_i - F::one()) * l1_i * lookup_sep_cu };
 
-        (a, b, c, d, a+b+c+d)
+        (a, b, c, d, a + b + c + d)
     }
     /// Compute linearization for lookup gates
     pub(crate) fn compute_linearisation(
@@ -281,14 +281,14 @@ where
         h1_poly: &DensePolynomial<F>,
         lookup_sep: F,
     ) -> DensePolynomial<F> {
-
         let lookup_sep_sq = lookup_sep.square();
         let lookup_sep_cu = lookup_sep * lookup_sep_sq;
         let one_plus_delta = delta + F::one();
         let epsilon_one_plus_delta = epsilon * one_plus_delta;
 
         let a = {
-            let compressed_tuple = lc(vec![a_eval, b_eval, c_eval, d_eval], zeta);
+            let compressed_tuple =
+                lc(vec![a_eval, b_eval, c_eval, d_eval], zeta);
             &self.q_lookup.0 * ((compressed_tuple - f_eval) * lookup_sep)
         };
 
@@ -298,7 +298,7 @@ where
             let b_0 = epsilon + f_eval;
             let b_1 =
                 epsilon_one_plus_delta + table_eval + delta * table_next_eval;
-            let b_2 =  l1_eval * lookup_sep_cu;
+            let b_2 = l1_eval * lookup_sep_cu;
 
             z2_poly * (one_plus_delta * b_0 * b_1 * lookup_sep_sq + b_2)
         };
@@ -357,20 +357,21 @@ where
         z2_comm: PC::Commitment,
         h1_comm: PC::Commitment,
     ) {
-
         let one_plus_delta = F::one() + delta;
         let epsilon_one_plus_delta = epsilon * one_plus_delta;
         let lookup_sep_sq = lookup_sep.square();
         let lookup_sep_cu = lookup_sep_sq * lookup_sep;
 
         let a = {
-            let compressed_eval = lc(vec![
-                evaluations.wire_evals.a_eval,
-                evaluations.wire_evals.b_eval,
-                evaluations.wire_evals.c_eval,
-                evaluations.wire_evals.d_eval,
-            ],zeta
-        );
+            let compressed_eval = lc(
+                vec![
+                    evaluations.wire_evals.a_eval,
+                    evaluations.wire_evals.b_eval,
+                    evaluations.wire_evals.c_eval,
+                    evaluations.wire_evals.d_eval,
+                ],
+                zeta,
+            );
 
             let a_0 = compressed_eval - evaluations.lookup_evals.f_eval;
             a_0 * lookup_sep

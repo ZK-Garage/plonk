@@ -13,8 +13,8 @@ use ark_poly::{
 use ark_serialize::{
     CanonicalDeserialize, CanonicalSerialize, Read, SerializationError, Write,
 };
-use hashbrown::HashMap;
 use core::ops::{Add, Mul};
+use hashbrown::HashMap;
 
 /// MultiSet is struct containing vectors of scalars, which
 /// individually represents either a wire value or an index
@@ -144,7 +144,7 @@ where
             };
             counters.insert(element.clone(), val);
         }
- 
+
         // Insert elemnts on of f in sorted struct + check they are in t
         for element in &f.0 {
             match counters.get_mut(&element) {

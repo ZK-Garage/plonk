@@ -146,7 +146,7 @@ where
 
         // Compute table compression challenge `zeta`.
         let zeta = transcript.challenge_scalar(b"zeta");
-        transcript.append(b"zeta", &zeta);       
+        transcript.append(b"zeta", &zeta);
 
         // Add f_poly commitment to transcript
         transcript.append(b"f", &self.f_comm);
@@ -211,7 +211,8 @@ where
 
         let lookup_sep_challenge =
             transcript.challenge_scalar(b"lookup separation challenge");
-        transcript.append(b"lookup separation challenge", &lookup_sep_challenge);
+        transcript
+            .append(b"lookup separation challenge", &lookup_sep_challenge);
 
         // Add commitment to quotient polynomial to transcript
         transcript.append(b"t_1", &self.t_1_comm);
@@ -346,7 +347,7 @@ where
 
         let saw_challenge: F =
             transcript.challenge_scalar(b"aggregate_witness");
-            println!("verifeir saw\n{}", saw_challenge);
+
         let saw_commits = [
             label_commitment!(self.z_comm),
             label_commitment!(self.a_comm),
@@ -418,7 +419,8 @@ where
         let alpha_sq = alpha.square();
 
         let lookup_sep_challenge_sq = lookup_sep_challenge.square();
-        let lookup_sep_challenge_cu = lookup_sep_challenge_sq * lookup_sep_challenge;
+        let lookup_sep_challenge_cu =
+            lookup_sep_challenge_sq * lookup_sep_challenge;
 
         // a + beta * sigma_1 + gamma
         let beta_sig1 = beta * self.evaluations.perm_evals.left_sigma_eval;
