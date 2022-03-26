@@ -575,7 +575,7 @@ where
             label_polynomial!(prover_key.permutation.out_sigma.0.clone()),
             label_polynomial!(f_poly),
             label_polynomial!(h_2_poly),
-            //label_polynomial!(table_poly),
+            label_polynomial!(table_poly),
         ];
 
         let (aw_commits, aw_rands) = PC::commit(commit_key, &aw_polys, None)
@@ -602,7 +602,7 @@ where
             label_polynomial!(w_4_poly),
             label_polynomial!(h_1_poly),
             label_polynomial!(z_2_poly),
-            //label_polynomial!(table_poly),
+            label_polynomial!(table_poly),
         ];
 
         let (saw_commits, saw_rands) = PC::commit(commit_key, &saw_polys, None)

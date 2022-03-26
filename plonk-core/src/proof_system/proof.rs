@@ -299,6 +299,16 @@ where
             plonk_verifier_key,
         );
 
+        let table_comm = PC::multi_scalar_mul(
+            &[
+                plonk_verifier_key.lookup.table_1.clone(),
+                plonk_verifier_key.lookup.table_2.clone(),
+                plonk_verifier_key.lookup.table_3.clone(),
+                plonk_verifier_key.lookup.table_4.clone(),
+            ],
+            &[F::one(), zeta, zeta * zeta, zeta * zeta * zeta],
+        );
+
         // Commitment Scheme
         // Now we delegate computation to the commitment scheme by batch
         // checking two proofs.
@@ -326,6 +336,7 @@ where
             label_commitment!(plonk_verifier_key.permutation.out_sigma),
             label_commitment!(self.f_comm),
             label_commitment!(self.h_2_comm),
+            label_commitment!(table_comm),
             label_commitment!(self.a_comm),
             label_commitment!(self.b_comm),
             label_commitment!(self.c_comm),
@@ -339,6 +350,7 @@ where
             self.evaluations.perm_evals.out_sigma_eval,
             self.evaluations.lookup_evals.f_eval,
             self.evaluations.lookup_evals.h2_eval,
+            self.evaluations.lookup_evals.table_eval,
             self.evaluations.wire_evals.a_eval,
             self.evaluations.wire_evals.b_eval,
             self.evaluations.wire_evals.c_eval,
@@ -355,6 +367,7 @@ where
             label_commitment!(self.d_comm),
             label_commitment!(self.h_1_comm),
             label_commitment!(self.z_2_comm),
+            label_commitment!(table_comm),
         ];
 
         let saw_evals = [
@@ -364,6 +377,7 @@ where
             self.evaluations.custom_evals.get("d_next_eval"),
             self.evaluations.lookup_evals.h1_next_eval,
             self.evaluations.lookup_evals.z2_next_eval,
+            self.evaluations.lookup_evals.table_next_eval,
         ];
 
         match PC::check(
