@@ -13,8 +13,8 @@ use ark_poly::{
 use ark_serialize::{
     CanonicalDeserialize, CanonicalSerialize, Read, SerializationError, Write,
 };
+use hashbrown::HashMap;
 use core::ops::{Add, Mul};
-use std::collections::BTreeMap;
 
 /// MultiSet is struct containing vectors of scalars, which
 /// individually represents either a wire value or an index
@@ -132,7 +132,7 @@ where
     /// The final MultiSet will look as follows, s: {1,1,2,2,3,3,4,4}.
     /// Splits a multiset into alternating halves of the same length (if even).
     pub fn sorted_halve(&self, f: &Self) -> Result<(Self, Self), Error> {
-        let mut counters: BTreeMap<F, usize> = BTreeMap::new();
+        let mut counters: HashMap<F, usize> = HashMap::new();
 
         let n_elems = self.len() + f.len();
         // Insert elemnts on of t in sorted struct
@@ -144,7 +144,7 @@ where
             };
             counters.insert(element.clone(), val);
         }
-
+ 
         // Insert elemnts on of f in sorted struct + check they are in t
         for element in &f.0 {
             match counters.get_mut(&element) {
@@ -157,7 +157,8 @@ where
         let mut evens = Vec::with_capacity(n_elems + (n_elems % 2));
         let mut odds = Vec::with_capacity(n_elems);
         let mut parity = 0;
-        counters.into_iter().for_each(|(elem, count)| {
+        self.0.iter().for_each(|elem| {
+            let count = counters.get(elem).unwrap();
             let half_count = count / 2;
             evens.extend(vec![elem.clone(); half_count]);
             odds.extend(vec![elem.clone(); half_count]);
