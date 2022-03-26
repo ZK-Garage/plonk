@@ -146,7 +146,7 @@ where
         *gamma,
     )?;
 
-    let debug_lookup= prover_key.lookup.debug_compute_lookup_quotient_term(
+    let lookup= prover_key.lookup.compute_lookup_quotient_term(
         domain,
         &wl_eval_4n,
         &wr_eval_4n,
@@ -163,22 +163,38 @@ where
         *zeta,
         *lookup_challenge,
     )?;
-    let lookup_a = domain_4n.fft(&domain_4n.coset_ifft(&debug_lookup.iter().map(|(a,b,c,d,q)| *a).collect::<Vec<F>>()));
-    let lookup_b_plus_c = domain_4n.fft(&domain_4n.coset_ifft(&debug_lookup.iter().map(|(a,b,c,d,q)| *b+*c).collect::<Vec<F>>()));
-    //let lookup_c = domain_4n.fft(&domain_4n.coset_ifft(&debug_lookup.iter().map(|(a,b,c,d,q)| *c).collect::<Vec<F>>()));
-    let lookup_d = domain_4n.fft(&domain_4n.coset_ifft(&debug_lookup.iter().map(|(a,b,c,d,q)| *d).collect::<Vec<F>>()));
-    println!("lookup a\n{}", abbreviate_vec(&lookup_a));
-    println!("lookup b plus c\n{}", abbreviate_vec(&lookup_b_plus_c));
-    //println!("lookup c\n{}", abbreviate_vec(&lookup_c));
-    println!("lookup d\n{}", abbreviate_vec(&lookup_d));
 
-    let lookup = debug_lookup.iter().map(|(a,b,c,d,q)| *q).collect::<Vec<F>>();
+    // let debug_lookup= prover_key.lookup.debug_compute_lookup_quotient_term(
+    //     domain,
+    //     &wl_eval_4n,
+    //     &wr_eval_4n,
+    //     &wo_eval_4n,
+    //     &w4_eval_4n,
+    //     &f_eval_4n,
+    //     &table_eval_4n,
+    //     &h1_eval_4n,
+    //     &h2_eval_4n,
+    //     &z2_eval_4n,
+    //     &l1_eval_4n,
+    //     *delta,
+    //     *epsilon,
+    //     *zeta,
+    //     *lookup_challenge,
+    // )?;
+    // let lookup_a = domain_4n.fft(&domain_4n.coset_ifft(&debug_lookup.iter().map(|(a,b,c,d,q)| *a).collect::<Vec<F>>()));
+    // let lookup_b_plus_c = domain_4n.fft(&domain_4n.coset_ifft(&debug_lookup.iter().map(|(a,b,c,d,q)| *b+*c).collect::<Vec<F>>()));
+    // //let lookup_c = domain_4n.fft(&domain_4n.coset_ifft(&debug_lookup.iter().map(|(a,b,c,d,q)| *c).collect::<Vec<F>>()));
+    // let lookup_d = domain_4n.fft(&domain_4n.coset_ifft(&debug_lookup.iter().map(|(a,b,c,d,q)| *d).collect::<Vec<F>>()));
+    // println!("lookup a\n{}", abbreviate_vec(&lookup_a));
+    // println!("lookup b plus c\n{}", abbreviate_vec(&lookup_b_plus_c));
+    // //println!("lookup c\n{}", abbreviate_vec(&lookup_c));
+    // println!("lookup d\n{}", abbreviate_vec(&lookup_d));
 
     let quotient = (0..domain_4n.size())
         .map(|i| {
-            let numerator = lookup[i];// gate_constraints[i] + permutation[i] + lookup[i];
+            let numerator = gate_constraints[i] + permutation[i] + lookup[i];
             let denominator = prover_key.v_h_coset_4n()[i];
-            numerator// * denominator.inverse().unwrap()
+            numerator * denominator.inverse().unwrap()
         })
         .collect::<Vec<_>>();
 
