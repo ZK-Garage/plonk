@@ -134,9 +134,9 @@ $e(P,Q+Q')=e(P,Q)+e(P,Q')$
 ​​From which, we deduce the following transformations:
 
 
-$$e([a]P,[b]Q)=e(P,[b]Q)^a=e([a]P,Q)^b=e(P,Q)^{ab}=e([b]P,[a]Q)$$
+$$e(aP,bQ)=e(P,bQ)^a=e(aP,Q)^b=e(P,Q)^{ab}=e(bP,aQ)$$
 
-for $P,P'\in G_1$ and $Q,Q'\in G_2$ and $a,b\in \Z$
+for $P,P'\in G_1$ and $Q,Q'\in G_2$ and $a,b\in \Z_q^*$
 
 ### Pairing friendly curves
 

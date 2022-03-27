@@ -83,7 +83,7 @@ There are two types of constraints:
 
 We introduce a permutation argument  used to assure the correct execution of the circuit. It allows to check the connection between different wires inside of the circuit and make sure that the output of a certain circuit is equal to the input of another for example $(c_2=b_3)$  where $c_2$ is the output of circuit $2$ and $b_3$ is the right input of circuit $3$.
 
-Let $\phi_1,..........,\phi_k \in F_{<d}[X]$ and $\sigma :[kn]\rightarrow [kn] $ for $k$ = number of wires. We say for a set of polynomials $(g_1,.......,g_k) \in (F_{<d}[X])^k$ that $$(g_1,g_2,........,g_k)=\sigma(\phi_1,...........,\phi_k)$$ if the following holds:
+Let $\phi_1,..........,\phi_k \in F_{<d}[X]$ and $\sigma :[kn]\rightarrow [kn] $ for $k$ = number of polynomials. We say for a set of polynomials $(g_1,.......,g_k) \in (F_{<d}[X])^k$ that $$(g_1,g_2,........,g_k)=\sigma(\phi_1,...........,\phi_k)$$ if the following holds:
 
 $g_{(l)}=\phi_{(\sigma(l))}$  for $l \in [kn]$  where $\phi_{((j-1).n+i)}=\phi_j(w^i), g_{((j-1).n+i)}=g_j(w^i)$
 
@@ -134,8 +134,8 @@ $$srs=([1]_1,[x]_1,[x^2]_1,[x^3]_1,.............[x^{d-1}]_1,[1]_2,[x]_2)$$
 where   $[x]_1 =x.g_1$  and   $x_2=x.g_2$.
 
 
-* $com(,srs)$: the commitment is computed as follows,
-$$com(,srs):=[\phi(x)]_1$$
+* $com(\phi(x),srs)$: the commitment is computed as follows,
+$$com(\phi(x),srs):=[\phi(x)]_1$$
 
 
 * $open:$ we present two scenarios:
@@ -144,10 +144,10 @@ $$com(,srs):=[\phi(x)]_1$$
 
        a. Verifier sends a random $\gamma\in F$
 
-       b. Prover computes $$h(x)=\sum_{i=1}^{t}\gamma^{i-1}.\dfrac{\phi_i(x)-\phi_i(z)}{x-z}$$ and then uses $srs$ to compute the commitment $W$ and send it to verifier $$W=h[(x)]_1$$
+       b. Prover computes $$h(x)=\sum_{i=1}^{t}\gamma^{i-1}.\dfrac{\phi_i(x)-\phi_i(z)}{x-z}$$ and then uses $srs$ to compute the commitment $W$ and send it to verifier $$W=[h(x)]_1$$
 
    c.  Verifier computes the following:
-    $$F=\sum_{i\in[t]}\gamma^{i-1}.cm_i \;and\;      v=[\sum_{i\in[t]}\gamma^{i-1}.s_i]_1$$
+    $$F=\sum_{i\in[t]}\gamma^{i-1} \cdot cm_i \;and\;      v=[\sum_{i\in[t]}\gamma^{i-1} \cdot s_i]_1$$
     and accepts iff $$e(F-v,[1]_2).e(-W,[x-z]_2)=1$$
 
 2. Let $z,z'$ be two distinct evaluation points and $t_1,t_2$ be the number of polynomials
