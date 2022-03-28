@@ -173,7 +173,7 @@ where
         .collect::<Vec<_>>();
 
     Ok(DensePolynomial::from_coefficients_vec(
-        domain_4n.coset_ifft(quotient.as_slice()),
+        domain_4n.coset_ifft(&quotient),
     ))
 }
 
