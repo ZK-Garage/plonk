@@ -69,13 +69,12 @@ where
     pub fn to_var_bytes(&self) -> Vec<u8> {
         self.0
             .iter()
-            .map(|item| {
+            .flat_map(|item| {
                 // FIXME: Is there a better way to do this in arkworks?
                 let mut bytes = vec![];
                 item.write(&mut bytes).expect("This never fails.");
                 bytes
             })
-            .flatten()
             .collect()
     }
 
@@ -142,12 +141,12 @@ where
                 Some(v) => val = v + 1,
                 _ => val = 1,
             };
-            counters.insert(element.clone(), val);
+            counters.insert(*element, val);
         }
 
         // Insert elemnts on of f in sorted struct + check they are in t
         for element in &f.0 {
-            match counters.get_mut(&element) {
+            match counters.get_mut(element) {
                 Some(entry) => *entry += 1,
                 // TODO Raise Error indicating some element of `f` not in `t`
                 _ => todo!(),
@@ -160,16 +159,16 @@ where
         self.0.iter().for_each(|elem| {
             let count = counters.get_mut(elem).unwrap();
             let half_count = *count / 2;
-            evens.extend(vec![elem.clone(); half_count]);
-            odds.extend(vec![elem.clone(); half_count]);
+            evens.extend(vec![*elem; half_count]);
+            odds.extend(vec![*elem; half_count]);
             // if odd count => add extra element to corresponding
             // vec and flip prev_parity
             if *count % 2 == 1 {
                 if parity == 1 {
-                    odds.push(elem.clone());
+                    odds.push(*elem);
                     parity = 0;
                 } else {
-                    evens.push(elem.clone());
+                    evens.push(*elem);
                     parity = 1
                 }
             }
@@ -238,16 +237,15 @@ where
     /// Compress a vector of multisets into a single multiset using
     /// a RLC. A random challenge `alpha` needs to be provided. It
     /// is dervived by hashing the transcript.
-    pub fn compress(multisets: &Vec<Self>, alpha: F) -> Self {
+    pub fn compress(multisets: &[Self], alpha: F) -> Self {
         let len = multisets[0].0.len();
         for mset in multisets.iter().skip(1) {
             assert_eq!(mset.0.len(), len)
         }
-        let result = multisets
-            .into_iter()
+        multisets
+            .iter()
             .rev()
-            .fold(MultiSet::with_len(len), |acc, m| acc * alpha + m.clone());
-        result
+            .fold(MultiSet::with_len(len), |acc, m| acc * alpha + m.clone())
     }
 
     /// Concatenates with a new `MultiSet` and sort

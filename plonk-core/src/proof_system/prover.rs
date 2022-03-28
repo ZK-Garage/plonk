@@ -225,7 +225,7 @@ where
 
         // Compress lookup table into vector of single elements
         let compressed_t_multiset = MultiSet::compress(
-            &vec![
+            &[
                 prover_key.lookup.table_1.clone(),
                 prover_key.lookup.table_2.clone(),
                 prover_key.lookup.table_3.clone(),

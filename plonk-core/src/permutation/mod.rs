@@ -784,7 +784,7 @@ impl Permutation {
             .map(|(((((f, t), t_next), h_1), h_1_next), h_2)| {
                 (
                     Self::lookup_numerator_irreducible(
-                        &delta, &epsilon, &f, &t, &t_next,
+                        &delta, &epsilon, f, t, &t_next,
                     ),
                     Self::lookup_denominator_irreducible(
                         delta, epsilon, *h_1, h_1_next, *h_2,
