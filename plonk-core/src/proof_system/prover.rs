@@ -225,7 +225,7 @@ where
 
         // Compress lookup table into vector of single elements
         let compressed_t_multiset = MultiSet::compress(
-            &vec![
+            &[
                 prover_key.lookup.table_1.clone(),
                 prover_key.lookup.table_2.clone(),
                 prover_key.lookup.table_3.clone(),
@@ -255,10 +255,16 @@ where
         // This ensures the ith element of the compressed query table
         //   is an element of the compressed lookup table even when
         //   q_lookup[i] is 0 so the lookup check will pass
+
+        let q_lookup_pad = vec![F::zero(); n - self.cs.q_lookup.len()];
+        let padded_q_lookup =
+            &[self.cs.q_lookup.as_slice(), q_lookup_pad.as_slice()].concat();
+
         let mut f_scalars: Vec<MultiSet<F>> =
             vec![MultiSet::with_capacity(w_l_scalar.len()); 4];
+
         for (q_lookup, w_l, w_r, w_o, w_4) in izip!(
-            &self.cs.q_lookup,
+            padded_q_lookup,
             w_l_scalar,
             w_r_scalar,
             w_o_scalar,
@@ -274,6 +280,7 @@ where
                 f_scalars[3].push(*w_4);
             }
         }
+
         // Compress all wires into a single vector
         let compressed_f_multiset = MultiSet::compress(&f_scalars, zeta);
 
