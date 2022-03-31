@@ -125,7 +125,7 @@ where
 
     /// Concatenates and sorts two Multisets together.
     ///
-    /// All elements of f must exist in t. TODO Define Error for this case.
+    /// All elements of f must exist in t.
     /// From the Plookup paper, if we have t: {1,2,4,3} and f: {2,3,4,1}.
     /// We combine the multisets together and sort their elements together.
     /// The final MultiSet will look as follows, s: {1,1,2,2,3,3,4,4}.
@@ -144,12 +144,11 @@ where
             counters.insert(*element, val);
         }
 
-        // Insert elemnts on of f in sorted struct + check they are in t
+        // Insert elements on of f in sorted struct + check they are in t
         for element in &f.0 {
             match counters.get_mut(element) {
                 Some(entry) => *entry += 1,
-                // TODO Raise Error indicating some element of `f` not in `t`
-                _ => todo!(),
+                _ => return Err(Error::ElementNotIndexed),
             }
         }
 
