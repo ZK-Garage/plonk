@@ -85,6 +85,7 @@ mod test {
     };
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
+    use rand::{rngs::OsRng, RngCore};
 
     fn test_plookup_xor<F, P, PC>()
     where
@@ -94,16 +95,32 @@ mod test {
     {
         let res = gadget_tester::<F, P, PC>(
             |composer: &mut StandardComposer<F, P>| {
-                let xor_1bit = LookupTable::<F>::xor_table(0, 1);
-                composer.lookup_table = xor_1bit;
-                let zero = composer.zero_var;
-                let one = composer.add_input(F::one());
+                let rng = &mut OsRng;
+
+                composer.lookup_table = LookupTable::<F>::xor_table(0, 4);
+
                 let negative_one = composer.add_input(-F::one());
 
+                let rand1 = rng.next_u64() % 16;
+                let rand2 = rng.next_u64() % 16;
+                let rand3 = rng.next_u64() % 16;
+
+                let rand1_var = composer.add_input(F::from(rand1));
+                let rand2_var = composer.add_input(F::from(rand2));
+                let rand3_var = composer.add_input(F::from(rand3));
+
+                let xor12 = rand1 ^ rand2;
+                let xor13 = rand1 ^ rand3;
+                let xor23 = rand2 ^ rand3;
+
+                let xor12_var = composer.add_input(F::from(xor12));
+                let xor13_var = composer.add_input(F::from(xor13));
+                let xor23_var = composer.add_input(F::from(xor23));
+
                 composer.lookup_gate(
-                    one,
-                    one,
-                    zero,
+                    rand1_var,
+                    rand2_var,
+                    xor12_var,
                     Some(negative_one),
                     F::zero(),
                     F::zero(),
@@ -114,9 +131,9 @@ mod test {
                 );
 
                 composer.lookup_gate(
-                    one,
-                    zero,
-                    one,
+                    rand1_var,
+                    rand3_var,
+                    xor13_var,
                     Some(negative_one),
                     F::zero(),
                     F::zero(),
@@ -125,8 +142,29 @@ mod test {
                     F::zero(),
                     None,
                 );
+
+                composer.lookup_gate(
+                    rand2_var,
+                    rand3_var,
+                    xor23_var,
+                    Some(negative_one),
+                    F::zero(),
+                    F::zero(),
+                    F::zero(),
+                    F::zero(),
+                    F::zero(),
+                    None,
+                );
+
+                composer.arithmetic_gate(|gate| {
+                    gate.add(F::one(), F::one())
+                        .witness(rand1_var, rand2_var, None)
+                });
+                composer.arithmetic_gate(|gate| {
+                    gate.mul(F::one()).witness(rand2_var, rand3_var, None)
+                });
             },
-            4,
+            256,
         );
         assert!(res.is_ok(), "{:?}", res.err().unwrap());
     }
