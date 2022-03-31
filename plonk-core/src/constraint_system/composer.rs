@@ -23,6 +23,7 @@ use ark_ff::PrimeField;
 use core::marker::PhantomData;
 use hashbrown::HashMap;
 use rand::{CryptoRng, RngCore};
+use std::cmp::max;
 
 /// The StandardComposer is the circuit-builder tool that the `plonk` repository
 /// provides to create, stored and transformed circuit descriptions
@@ -126,6 +127,11 @@ where
     /// Returns the number of gates in the circuit
     pub fn circuit_size(&self) -> usize {
         self.n
+    }
+
+    /// Returns the length of the circuit that can accomodate the lookup table
+    pub fn total_size(&self) -> usize {
+        max(self.n, self.lookup_table.size())
     }
 
     /// Constructs a dense vector of the Public Inputs from the positions and

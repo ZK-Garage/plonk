@@ -281,8 +281,8 @@ where
     where
         PC: HomomorphicCommitment<F>,
     {
-        let domain = GeneralEvaluationDomain::new(self.circuit_size()).ok_or(Error::InvalidEvalDomainSize {
-            log_size_of_group: (self.circuit_size()).trailing_zeros(),
+        let domain = GeneralEvaluationDomain::new(self.total_size()).ok_or(Error::InvalidEvalDomainSize {
+            log_size_of_group: (self.total_size()).trailing_zeros(),
             adicity:
                 <<F as FftField>::FftParams as ark_ff::FftParameters>::TWO_ADICITY,
         })?;

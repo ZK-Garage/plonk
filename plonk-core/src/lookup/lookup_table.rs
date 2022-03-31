@@ -34,7 +34,7 @@ where
     }
 
     /// Returns the length of the `LookupTable` vector.
-    fn _len(&self) -> usize {
+    pub fn size(&self) -> usize {
         self.0.len()
     }
 

@@ -63,7 +63,7 @@ where
         // Commit Key
         let (ck, _) = PC::trim(
             &universal_params,
-            prover.circuit_size().next_power_of_two(),
+            prover.total_size().next_power_of_two(),
             0,
             None,
         )
@@ -93,7 +93,7 @@ where
     // Compute Commit and Verifier Key
     let (ck, vk) = PC::trim(
         &universal_params,
-        verifier.circuit_size().next_power_of_two(),
+        verifier.total_size().next_power_of_two(),
         0,
         None,
     )

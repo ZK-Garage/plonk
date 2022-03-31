@@ -86,6 +86,11 @@ where
         self.cs.circuit_size()
     }
 
+    /// Returns the size of the circuit that accomodates the lookup table
+    pub fn total_size(&self) -> usize {
+        self.cs.total_size()
+    }
+
     /// Preprocesses the underlying constraint system.
     pub fn preprocess(
         &mut self,

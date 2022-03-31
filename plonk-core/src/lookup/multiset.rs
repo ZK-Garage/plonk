@@ -85,8 +85,10 @@ where
         if self.is_empty() {
             self.push(F::zero())
         };
-        let diff = n - self.len() as u32;
-        self.0.extend(vec![self.0[0]; diff as usize]);
+        if n > self.len() as u32 {
+            let diff = n - self.len() as u32;
+            self.0.extend(vec![self.0[0]; diff as usize]);
+        }
     }
 
     /// Pushes chosen value onto the end of the Multiset

@@ -69,6 +69,11 @@ where
         self.cs.circuit_size()
     }
 
+    /// Returns the size of the circuit that accomodates the lookup table
+    pub fn total_size(&self) -> usize {
+        self.cs.total_size()
+    }
+
     /// Returns a mutable copy of the underlying composer.
     pub fn mut_cs(&mut self) -> &mut StandardComposer<F, P> {
         &mut self.cs
