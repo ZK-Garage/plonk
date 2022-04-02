@@ -239,15 +239,6 @@ where
             zeta,
         );
 
-        // TODO Remove if redundant
-        // Pad the compressed table
-        // let t_pad = vec![
-        //     *compressed_t_multiset.0.last().unwrap();
-        //     n - compressed_t_multiset.len()
-        // ];
-        // let compressed_t_multiset_scalars =
-        //     [&compressed_t_multiset.0[..], &t_pad[..]].concat();
-
         // Compute table poly
         let table_poly = DensePolynomial::from_coefficients_vec(
             domain.ifft(&compressed_t_multiset.0),

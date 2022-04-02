@@ -41,27 +41,14 @@ where
         Default::default()
     }
 
-    /// Creates a `MultiSet` witch capacity for `len` elements
+    /// Creates a [`MultiSet`] witch capacity for `len` elements
     pub fn with_capacity(len: usize) -> Self {
         MultiSet(Vec::with_capacity(len))
     }
 
-    /// Creates a `MultiSet` of lenght `len` with zero elements
+    /// Creates a `MultiSet` of length `len` filled with zeros
     pub fn with_len(len: usize) -> Self {
         MultiSet(vec![F::zero(); len])
-    }
-
-    /// Generate a `MultiSet` struct from a slice of bytes.
-    pub fn from_slice(_bytes: &[u8]) -> Result<Self, Error> {
-        /* FIXME: Find correct implementation.
-            let mut buffer = bytes;
-            let elements = buffer
-                .chunks(F::SIZE)
-                .map(F::from_slice)
-                .collect::<Result<_, Error>>()?;
-            Ok(Self(elements))
-        */
-        todo!()
     }
 
     /// Given a [`MultiSet`], return it in it's bytes representation element by
@@ -78,8 +65,9 @@ where
             .collect()
     }
 
-    /// Extends the length of the multiset to n elements The n will be the size
-    /// of the arithmetic circuit. This will extend the vectors to the size
+    /// Extends the length of the multiset to n elements The `n` will be the
+    /// size of the arithmetic circuit. This will extend the vectors to the
+    /// size
     pub fn pad(&mut self, n: u32) {
         assert!(n.is_power_of_two());
         if self.is_empty() {
@@ -103,6 +91,7 @@ where
     {
         self.0.extend(iter)
     }
+
     /// Fetches last element in MultiSet.
     /// Returns None if there are no elements in the MultiSet.
     pub fn last(&self) -> Option<&F> {
@@ -135,15 +124,14 @@ where
     pub fn sorted_halve(&self, f: &Self) -> Result<(Self, Self), Error> {
         let mut counters: HashMap<F, usize> = HashMap::new();
 
-        let n_elems = self.len() + f.len();
         // Insert elemnts on of t in sorted struct
-        let mut val;
         for element in &self.0 {
-            match counters.get(element) {
-                Some(v) => val = v + 1,
-                _ => val = 1,
+            match counters.get_mut(element) {
+                Some(v) => *v += 1,
+                _ => {
+                    counters.insert(*element, 1);
+                }
             };
-            counters.insert(*element, val);
         }
 
         // Insert elements on of f in sorted struct + check they are in t
@@ -154,22 +142,24 @@ where
             }
         }
 
-        let mut evens = Vec::with_capacity(n_elems + (n_elems % 2));
-        let mut odds = Vec::with_capacity(n_elems);
+        let n_elems = self.len() + f.len();
+        let half_len = n_elems / 2;
+        let mut evens = Vec::with_capacity(half_len + (n_elems % 2));
+        let mut odds = Vec::with_capacity(half_len);
         let mut parity = 0;
-        self.0.iter().for_each(|elem| {
-            let count = counters.get_mut(elem).unwrap();
+        self.0.iter().for_each(|&elem| {
+            let count = counters.get_mut(&elem).unwrap();
             let half_count = *count / 2;
-            evens.extend(vec![*elem; half_count]);
-            odds.extend(vec![*elem; half_count]);
+            evens.extend(vec![elem; half_count]);
+            odds.extend(vec![elem; half_count]);
             // if odd count => add extra element to corresponding
             // vec and flip prev_parity
             if *count % 2 == 1 {
                 if parity == 1 {
-                    odds.push(*elem);
+                    odds.push(elem);
                     parity = 0;
                 } else {
-                    evens.push(*elem);
+                    evens.push(elem);
                     parity = 1
                 }
             }
@@ -183,8 +173,9 @@ where
     /// as specified in the Plonkup paper. A multiset must have even
     /// cardinality to be split in this manner.
     pub fn halve_alternating(&self) -> (Self, Self) {
-        let mut evens = vec![];
-        let mut odds = vec![];
+        let half_len = self.len() / 2;
+        let mut evens = Vec::with_capacity(half_len);
+        let mut odds = Vec::with_capacity(half_len);
         for i in 0..self.len() {
             if i % 2 == 0 {
                 evens.push(self.0[i]);
@@ -199,9 +190,7 @@ where
     /// This function will be used to check if the all elements
     /// in set f, from the paper, are contained inside t.
     pub fn contains_all(&self, other: &Self) -> bool {
-        // TODO: Use a more optimal algorithm, should probably be able to do
-        // `O(nlogn)`.
-        // We can improve
+        // Unoptimized function only used for testing
         other.0.iter().all(|item| self.contains(item))
     }
 
@@ -327,8 +316,8 @@ mod test {
     use super::*;
     use crate::batch_field_test;
     use crate::lookup::WitnessTable;
-    use ark_bls12_377::Fr as bls12_377_scalar_field;
-    use ark_bls12_381::Fr as bls12_381_scalar_field;
+    use ark_bls12_377::Fr as Bls12_377_scalar_field;
+    use ark_bls12_381::Fr as Bls12_381_scalar_field;
     use ark_poly::EvaluationDomain;
     use ark_poly::Polynomial;
 
@@ -520,7 +509,7 @@ mod test {
             test_is_subset,
             test_full_compression_into_s
         ],
-        [] => bls12_381_scalar_field
+        [] => Bls12_381_scalar_field
     );
 
     // Bls12-377 tests
@@ -531,6 +520,6 @@ mod test {
             test_is_subset,
             test_full_compression_into_s
         ],
-        [] => bls12_377_scalar_field
+        [] => Bls12_377_scalar_field
     );
 }

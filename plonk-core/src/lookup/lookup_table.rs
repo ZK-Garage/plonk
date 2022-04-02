@@ -222,8 +222,8 @@ where
 mod test {
     use super::*;
     use crate::batch_field_test;
-    use ark_bls12_377::Fr as bls12_377_scalar_field;
-    use ark_bls12_381::Fr as bls12_381_scalar_field;
+    use ark_bls12_377::Fr as Bls12_377_scalar_field;
+    use ark_bls12_381::Fr as Bls12_381_scalar_field;
 
     fn test_add_table<F>()
     where
@@ -350,7 +350,7 @@ mod test {
             test_missing_lookup_value,
             test_concatenated_table
         ],
-        [] => bls12_381_scalar_field
+        [] => Bls12_381_scalar_field
     );
 
     // Bls12-377 tests
@@ -363,6 +363,6 @@ mod test {
             test_missing_lookup_value,
             test_concatenated_table
         ],
-        [] => bls12_377_scalar_field
+        [] => Bls12_377_scalar_field
     );
 }
