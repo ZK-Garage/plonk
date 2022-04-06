@@ -315,6 +315,7 @@ where
             plonk_verifier_key,
         );
 
+        let zeta_sq = zeta.square();
         let table_comm = PC::multi_scalar_mul(
             &[
                 plonk_verifier_key.lookup.table_1.clone(),
@@ -322,7 +323,7 @@ where
                 plonk_verifier_key.lookup.table_3.clone(),
                 plonk_verifier_key.lookup.table_4.clone(),
             ],
-            &[F::one(), zeta, zeta * zeta, zeta * zeta * zeta],
+            &[F::one(), zeta, zeta_sq, zeta_sq * zeta],
         );
 
         // Commitment Scheme
