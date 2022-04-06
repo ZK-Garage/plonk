@@ -4,7 +4,7 @@
 //
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
-use crate::error::Error;
+use crate::{error::Error, util::lc};
 use ark_ff::{Field, PrimeField};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, GeneralEvaluationDomain,
@@ -228,14 +228,11 @@ where
     /// a RLC. A random challenge `alpha` needs to be provided. It
     /// is dervived by hashing the transcript.
     pub fn compress(multisets: &[Self], alpha: F) -> Self {
-        let len = multisets[0].0.len();
+        let len = multisets[0].len();
         for mset in multisets.iter().skip(1) {
-            assert_eq!(mset.0.len(), len)
+            assert_eq!(mset.len(), len)
         }
-        multisets
-            .iter()
-            .rev()
-            .fold(MultiSet::with_len(len), |acc, m| acc * alpha + m.clone())
+        lc(multisets, &alpha)
     }
 
     /// Concatenates with a new `MultiSet` and sort

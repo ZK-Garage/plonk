@@ -5,7 +5,7 @@
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
 use ark_ec::{ModelParameters, TEModelParameters};
-use ark_ff::{BigInteger, FftField, Field, FpParameters, PrimeField, Zero};
+use ark_ff::{BigInteger, FftField, Field, FpParameters, PrimeField};
 use ark_poly::{EvaluationDomain, GeneralEvaluationDomain};
 use core::ops::Mul;
 use std::ops::Add;
@@ -151,17 +151,23 @@ where
 /// v_0 + challenge * v_1 + ... + challenge^k  * v_k
 pub fn lc<T, F>(values: &[T], challenge: &F) -> T
 where
-    T: Mul<F, Output = T> + Add<T> + Zero + Clone,
+    T: Mul<F, Output = T> + Add<T, Output = T> + Clone,
     F: Field,
 {
     // Ensure valid challenge
     assert_ne!(*challenge, F::zero());
     assert_ne!(*challenge, F::one());
 
+    let kth_val = match values.last() {
+        Some(val) => val.clone(),
+        _ => panic!("At least one value must be provided to compute a linear combination")
+    };
+
     values
         .iter()
         .rev()
-        .fold(T::zero(), |acc, val| acc * *challenge + val.clone())
+        .skip(1)
+        .fold(kth_val, |acc, val| acc * *challenge + val.clone())
 }
 
 /// Macro to quickly label polynomials
@@ -203,4 +209,72 @@ macro_rules! get_label {
     ($eval:expr) => {
         stringify!($comm).to_owned()
     };
+}
+
+#[cfg(test)]
+mod test {
+    use crate::batch_field_test;
+
+    use super::*;
+    use ark_bls12_377::Fr as Bls12_377_scalar_field;
+    use ark_bls12_381::Fr as Bls12_381_scalar_field;
+    use ark_ff::Field;
+    use rand::rngs::OsRng;
+
+    fn test_correct_lc<F: Field>() {
+        let n_iter = 10;
+        for _ in 0..n_iter {
+            let a = F::rand(&mut OsRng);
+            let b = F::rand(&mut OsRng);
+            let c = F::rand(&mut OsRng);
+            let d = F::rand(&mut OsRng);
+            let e = F::rand(&mut OsRng);
+            let challenge = F::rand(&mut OsRng);
+            let expected = a
+                + b * challenge
+                + c * challenge * challenge
+                + d * challenge * challenge * challenge
+                + e * challenge * challenge * challenge * challenge;
+
+            let result = lc(&[a, b, c, d, e], &challenge);
+            assert_eq!(result, expected)
+        }
+    }
+
+    fn test_incorrect_lc<F: Field>() {
+        let n_iter = 10;
+        for _ in 0..n_iter {
+            let a = F::rand(&mut OsRng);
+            let b = F::rand(&mut OsRng);
+            let c = F::rand(&mut OsRng);
+            let d = F::rand(&mut OsRng);
+            let e = F::rand(&mut OsRng);
+            let challenge = F::rand(&mut OsRng);
+            let expected = F::one()
+                + a
+                + b * challenge
+                + c * challenge * challenge
+                + d * challenge * challenge * challenge
+                + e * challenge * challenge * challenge * challenge;
+
+            let result = lc(&[a, b, c, d, e], &challenge);
+            assert_eq!(result, expected)
+        }
+    }
+    batch_field_test!(
+        [
+        test_correct_lc
+        ],
+        [
+        test_incorrect_lc
+        ] => Bls12_381_scalar_field
+    );
+    batch_field_test!(
+        [
+        test_correct_lc
+        ],
+        [
+        test_incorrect_lc
+        ] => Bls12_377_scalar_field
+    );
 }
