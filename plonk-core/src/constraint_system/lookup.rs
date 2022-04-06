@@ -101,9 +101,9 @@ mod test {
 
                 let negative_one = composer.add_input(-F::one());
 
-                let rand1 = rng.next_u64() % 16;
-                let rand2 = rng.next_u64() % 16;
-                let rand3 = rng.next_u64() % 16;
+                let rand1 = rng.next_u32() % 16;
+                let rand2 = rng.next_u32() % 16;
+                let rand3 = rng.next_u32() % 16;
 
                 let rand1_var = composer.add_input(F::from(rand1));
                 let rand2_var = composer.add_input(F::from(rand2));
