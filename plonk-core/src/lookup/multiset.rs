@@ -177,23 +177,6 @@ where
         Ok((Self(evens), Self(odds)))
     }
 
-    /// Splits a multiset into alternating halves of the same length
-    /// as specified in the Plonkup paper. A multiset must have even
-    /// cardinality to be split in this manner.
-    pub fn halve_alternating(&self) -> (Self, Self) {
-        let half_len = self.len() / 2;
-        let mut evens = Vec::with_capacity(half_len);
-        let mut odds = Vec::with_capacity(half_len);
-        for i in 0..self.len() {
-            if i % 2 == 0 {
-                evens.push(self.0[i]);
-            } else {
-                odds.push(self.0[i]);
-            }
-        }
-        (Self(evens), Self(odds))
-    }
-
     /// Checks whether one mutltiset is a subset of another.
     /// This function will be used to check if the all elements
     /// in set f, from the paper, are contained inside t.
@@ -205,18 +188,6 @@ where
     /// Checks if an element is in the MultiSet
     pub fn contains(&self, entry: &F) -> bool {
         self.0.contains(entry)
-    }
-
-    /// Splits a multiset into halves as specified by the paper
-    /// The last element of the first half should be the same
-    /// as the first element of the second half.
-    /// Since a multiset can never have an even cardinality, we
-    /// always split it in the way described above.
-    pub fn halve(&self) -> (Self, Self) {
-        let length = self.0.len();
-        let first_half = Self::from(&self.0[..=length / 2]);
-        let second_half = Self::from(&self.0[length / 2..]);
-        (first_half, second_half)
     }
 
     /// Treats each element in the multiset as evaluation points
@@ -241,13 +212,6 @@ where
             assert_eq!(mset.len(), len)
         }
         lc(multisets, &alpha)
-    }
-
-    /// Concatenates with a new `MultiSet` and sort
-    pub fn sorted_concat(&mut self, other: Self) {
-        // TODO This could be a performance bottleneck
-        self.extend(other.0);
-        self.0.sort();
     }
 }
 
@@ -326,48 +290,6 @@ mod test {
     use ark_bls12_381::Fr as Bls12_381_scalar_field;
     use ark_poly::EvaluationDomain;
     use ark_poly::Polynomial;
-
-    // FIXME: Run tests on both BLS fields.
-
-    fn test_halve<F>()
-    where
-        F: Field,
-    {
-        let mut s = MultiSet::new();
-        s.push(F::from(0u32));
-        s.push(F::from(1u32));
-        s.push(F::from(2u32));
-        s.push(F::from(3u32));
-        s.push(F::from(4u32));
-        s.push(F::from(5u32));
-        s.push(F::from(6u32));
-
-        let (h_1, h_2) = s.halve();
-        assert_eq!(h_1.len(), 4);
-        assert_eq!(h_2.len(), 4);
-
-        let left_half = MultiSet(vec![
-            F::from(0u32),
-            F::from(1u32),
-            F::from(2u32),
-            F::from(3u32),
-        ]);
-
-        assert_eq!(left_half, h_1);
-
-        let right_half = MultiSet(vec![
-            F::from(3u32),
-            F::from(4u32),
-            F::from(5u32),
-            F::from(6u32),
-        ]);
-
-        assert_eq!(right_half, h_2);
-
-        // The last element of the first half should equal the first
-        // element of the second half.
-        assert_eq!(h_1.0.last().unwrap(), &h_2.0[0])
-    }
 
     fn test_to_polynomial<F>()
     where
