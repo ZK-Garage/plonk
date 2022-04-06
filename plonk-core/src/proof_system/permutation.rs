@@ -298,7 +298,7 @@ where
 #[derive(CanonicalDeserialize, CanonicalSerialize, derivative::Derivative)]
 #[derivative(
     Clone(bound = ""),
-    Debug(bound = "PCC: std::fmt::Debug"),
+    Debug(bound = "PCC: core::fmt::Debug"),
     Eq(bound = "PCC: Eq"),
     PartialEq(bound = "PCC: PartialEq")
 )]

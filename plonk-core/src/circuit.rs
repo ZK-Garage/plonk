@@ -68,7 +68,7 @@ where
 #[derive(CanonicalDeserialize, CanonicalSerialize, derivative::Derivative)]
 #[derivative(
     Clone(bound = ""),
-    Debug(bound = "VerifierKey<F,PC>: std::fmt::Debug"),
+    Debug(bound = "VerifierKey<F,PC>: core::fmt::Debug"),
     Eq(bound = "VerifierKey<F,PC>: Eq"),
     PartialEq(bound = "VerifierKey<F,PC>: PartialEq")
 )]

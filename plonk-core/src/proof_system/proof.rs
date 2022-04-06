@@ -47,7 +47,7 @@ use merlin::Transcript;
 #[derivative(
     Clone(bound = "PC::Commitment: Clone, PC::Proof: Clone"),
     Debug(
-        bound = "PC::Commitment: std::fmt::Debug, PC::Proof: std::fmt::Debug"
+        bound = "PC::Commitment: core::fmt::Debug, PC::Proof: core::fmt::Debug"
     ),
     Default(bound = "PC::Commitment: Default, PC::Proof: Default"),
     Eq(bound = "PC::Commitment: Eq, PC::Proof: Eq"),

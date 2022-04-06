@@ -208,7 +208,7 @@ where
 #[derivative(
     Clone,
     Copy(bound = "PC::Commitment: Copy"),
-    Debug(bound = "PC::Commitment: std::fmt::Debug"),
+    Debug(bound = "PC::Commitment: core::fmt::Debug"),
     Eq(bound = "PC::Commitment: Eq"),
     PartialEq(bound = "PC::Commitment: PartialEq")
 )]

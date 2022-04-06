@@ -138,7 +138,7 @@ where
 #[derivative(
     Clone(bound = ""),
     Debug(
-        bound = "arithmetic::VerifierKey<F,PC>: std::fmt::Debug, PC::Commitment: std::fmt::Debug"
+        bound = "arithmetic::VerifierKey<F,PC>: core::fmt::Debug, PC::Commitment: core::fmt::Debug"
     ),
     Eq(bound = "arithmetic::VerifierKey<F,PC>: Eq, PC::Commitment: Eq"),
     PartialEq(
