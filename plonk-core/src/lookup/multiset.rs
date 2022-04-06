@@ -177,8 +177,10 @@ where
     /// Checks whether one mutltiset is a subset of another.
     /// This function will be used to check if the all elements
     /// in set f, from the paper, are contained inside t.
-    pub fn contains_all(&self, other: &Self) -> bool {
-        // Unoptimized function only used for testing
+    ///
+    /// Unoptimized function only used for testing
+    #[allow(dead_code)]
+    pub(crate) fn contains_all(&self, other: &Self) -> bool {
         other.0.iter().all(|item| self.contains(item))
     }
 
