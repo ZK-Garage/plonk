@@ -139,7 +139,7 @@ where
                 _ => {
                     counters.insert(*element, 1);
                 }
-            };
+            }
         }
 
         // Insert elements on of f in sorted struct + check they are in t
@@ -316,6 +316,7 @@ where
         self.0.into_iter().map(|x| x * elem).collect()
     }
 }
+
 #[cfg(test)]
 mod test {
     use super::*;
