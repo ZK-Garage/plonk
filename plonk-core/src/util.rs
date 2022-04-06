@@ -4,10 +4,11 @@
 //
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
-use alloc::vec::Vec;
 use ark_ec::{ModelParameters, TEModelParameters};
-use ark_ff::{BigInteger, FftField, Field, FpParameters, PrimeField};
+use ark_ff::{BigInteger, FftField, Field, FpParameters, PrimeField, Zero};
 use ark_poly::{EvaluationDomain, GeneralEvaluationDomain};
+use core::ops::Mul;
+use std::ops::Add;
 
 /// Returns an iterator over increasing powers of the given `scalar` starting
 /// at `0`.
@@ -144,22 +145,23 @@ where
     P::ScalarField::from_le_bytes_mod_order(&scalar_repr.to_bytes_le())
 }
 
-/// Linear combination of a vector of values
+/// Linear combination of a series of values
 ///
 /// For values [v_0, v_1,... v_k] returns:
 /// v_0 + challenge * v_1 + ... + challenge^k  * v_k
-pub fn lc<F>(values: Vec<F>, challenge: F) -> F
+pub fn lc<T, F>(values: &[T], challenge: &F) -> T
 where
+    T: Mul<F, Output = T> + Add<T> + Zero + Clone,
     F: Field,
 {
     // Ensure valid challenge
-    assert_ne!(challenge, F::zero());
-    assert_ne!(challenge, F::one());
+    assert_ne!(*challenge, F::zero());
+    assert_ne!(*challenge, F::one());
 
     values
         .iter()
         .rev()
-        .fold(F::zero(), |acc, val| acc * challenge + *val)
+        .fold(T::zero(), |acc, val| acc * *challenge + val.clone())
 }
 
 /// Macro to quickly label polynomials

@@ -124,7 +124,7 @@ where
 
         let a = {
             let q_lookup_i = self.q_lookup.1[index];
-            let compressed_tuple = lc(vec![w_l_i, w_r_i, w_o_i, w_4_i], zeta);
+            let compressed_tuple = lc(&[w_l_i, w_r_i, w_o_i, w_4_i], &zeta);
             q_lookup_i * (compressed_tuple - f_i) * lookup_sep
         };
 
@@ -177,8 +177,7 @@ where
         let epsilon_one_plus_delta = epsilon * one_plus_delta;
 
         let a = {
-            let compressed_tuple =
-                lc(vec![a_eval, b_eval, c_eval, d_eval], zeta);
+            let compressed_tuple = lc(&[a_eval, b_eval, c_eval, d_eval], &zeta);
             &self.q_lookup.0 * ((compressed_tuple - f_eval) * lookup_sep)
         };
 
@@ -254,13 +253,13 @@ where
 
         let a = {
             let compressed_eval = lc(
-                vec![
+                &[
                     evaluations.wire_evals.a_eval,
                     evaluations.wire_evals.b_eval,
                     evaluations.wire_evals.c_eval,
                     evaluations.wire_evals.d_eval,
                 ],
-                zeta,
+                &zeta,
             );
 
             let a_0 = compressed_eval - evaluations.lookup_evals.f_eval;
