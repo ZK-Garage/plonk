@@ -14,7 +14,7 @@ use ark_serialize::{
     CanonicalDeserialize, CanonicalSerialize, Read, SerializationError, Write,
 };
 use core::ops::{Add, Mul};
-use hashbrown::HashMap;
+use indexmap::IndexMap;
 
 /// MultiSet is struct containing vectors of scalars, which
 /// individually represents either a wire value or an index
@@ -130,7 +130,7 @@ where
     /// Then the two even-and-odd halves will be: h1: {2,2,1,3} and h2:
     /// {2,4,3,3}.
     pub fn combine_split(&self, f: &Self) -> Result<(Self, Self), Error> {
-        let mut counters: HashMap<F, usize> = HashMap::new();
+        let mut counters: IndexMap<F, usize> = IndexMap::new();
 
         // Insert elemnts on of t in sorted struct
         for element in &self.0 {
@@ -155,24 +155,20 @@ where
         let mut evens = Vec::with_capacity(half_len + (n_elems % 2));
         let mut odds = Vec::with_capacity(half_len);
         let mut parity = 0;
-        self.0.iter().for_each(|&elem| {
-            let count = counters.get_mut(&elem).unwrap();
-            let half_count = *count / 2;
+        for (elem, count) in counters {
+            let half_count = count / 2;
             evens.extend(vec![elem; half_count]);
             odds.extend(vec![elem; half_count]);
-            // if odd count => add extra element to corresponding
-            // vec and flip prev_parity
-            if *count % 2 == 1 {
+            if count % 2 == 1 {
                 if parity == 1 {
                     odds.push(elem);
                     parity = 0;
                 } else {
                     evens.push(elem);
-                    parity = 1
+                    parity = 1;
                 }
             }
-            *count = 0usize;
-        });
+        }
 
         Ok((Self(evens), Self(odds)))
     }
