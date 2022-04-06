@@ -44,34 +44,27 @@ where
         commit_key: &PC::CommitterKey,
         n: u32,
     ) -> Result<Self, Error> {
-        // n should be a power of 2
-        assert!(n & (n - 1) == 0);
-
+        assert!(n.is_power_of_two());
         let domain = EvaluationDomain::new(n as usize).unwrap();
-
-        let columned_table = table.vec_to_multiset();
-        let result: Vec<(MultiSet<F>, PC::Commitment, DensePolynomial<F>)> =
-            columned_table
-                .into_iter()
-                .enumerate()
-                .map(|(index, mut column)| {
-                    column.pad(n);
-                    let poly = column.to_polynomial(&domain);
-                    let poly_name = format!("t_{}_poly", index + 1);
-                    let labeled_poly = ark_poly_commit::LabeledPolynomial::new(
-                        poly_name,
-                        poly.to_owned(),
-                        None,
-                        None,
-                    );
-
-                    let commitment =
-                        PC::commit(commit_key, &[labeled_poly], None)
-                            .map_err(to_pc_error::<F, PC>)?;
-                    Ok((column, commitment.0[0].commitment().clone(), poly))
-                })
-                .collect::<Result<_, Error>>()?;
-
+        let result = table
+            .vec_to_multiset()
+            .into_iter()
+            .enumerate()
+            .map(|(index, mut column)| {
+                column.pad(n);
+                let poly = column.to_polynomial(&domain);
+                let poly_name = format!("t_{}_poly", index + 1);
+                let labeled_poly = ark_poly_commit::LabeledPolynomial::new(
+                    poly_name,
+                    poly.to_owned(),
+                    None,
+                    None,
+                );
+                let commitment = PC::commit(commit_key, &[labeled_poly], None)
+                    .map_err(to_pc_error::<F, PC>)?;
+                Ok((column, commitment.0[0].commitment().clone(), poly))
+            })
+            .collect::<Result<_, Error>>()?;
         Ok(Self { n, t: result })
     }
 }
