@@ -292,7 +292,7 @@ where
 
         // Compute s, as the sorted and concatenated version of f and t
         let (h_1, h_2) = compressed_t_multiset
-            .sorted_halve(&compressed_f_multiset)
+            .combine_split(&compressed_f_multiset)
             .unwrap();
 
         // Compute h polys

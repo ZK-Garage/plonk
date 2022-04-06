@@ -114,14 +114,22 @@ where
         self.0.iter().position(move |x| x == element)
     }
 
-    /// Concatenates and sorts two Multisets together.
+    /// Combines two multisets and splits them into alternating halves
+    /// of the same length, subject to the ordering in the multiset
+    /// calling the method (t).
+    /// All elements of the incoming multiset f must exist in t.
     ///
-    /// All elements of f must exist in t.
-    /// From the Plookup paper, if we have t: {1,2,4,3} and f: {2,3,4,1}.
-    /// We combine the multisets together and sort their elements together.
-    /// The final MultiSet will look as follows, s: {1,1,2,2,3,3,4,4}.
-    /// Splits a multiset into alternating halves of the same length (if even).
-    pub fn sorted_halve(&self, f: &Self) -> Result<(Self, Self), Error> {
+    /// Field elements in both multisets are first grouped into buckets of the
+    /// same value. Then the buckets are concatenated in the same order as
+    /// the elements of t and and split into even and odd-indexed halves.
+    /// This is a more efficient way to arrive at a "sorted concatenation" of
+    /// two multisets that avoids performing a sort.
+    ///
+    /// From the Plonkup paper, if we have t: {2,4,1,3} and f: {2,3,3,2},
+    /// the combined multiset will look as follows, s: {2,2,2,4,1,3,3,3}.
+    /// Then the two even-and-odd halves will be: h1: {2,2,1,3} and h2:
+    /// {2,4,3,3}.
+    pub fn combine_split(&self, f: &Self) -> Result<(Self, Self), Error> {
         let mut counters: HashMap<F, usize> = HashMap::new();
 
         // Insert elemnts on of t in sorted struct
