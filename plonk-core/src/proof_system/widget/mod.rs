@@ -429,8 +429,10 @@ mod test {
     where
         F: PrimeField,
     {
-        let values: Vec<_> = (0..n).map(|_| F::rand(&mut OsRng)).collect();
-        MultiSet(values)
+        let mut rng = OsRng;
+        core::iter::from_fn(|| Some(F::rand(&mut rng)))
+            .take(n)
+            .collect()
     }
 
     #[test]
