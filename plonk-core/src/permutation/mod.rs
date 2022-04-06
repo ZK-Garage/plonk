@@ -788,17 +788,13 @@ impl Permutation {
             .collect();
 
         let mut state = F::one();
-        let mut p = Vec::with_capacity(n);
+        let mut p = Vec::with_capacity(n + 1);
         p.push(state);
-
         for s in product_arguments {
             state *= s;
             p.push(state);
         }
-
-        // remove the last element
-        p.remove(n);
-
+        p.pop();
         assert_eq!(n, p.len());
 
         DensePolynomial::from_coefficients_vec(domain.ifft(&p))
