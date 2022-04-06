@@ -28,14 +28,19 @@ where
         Default::default()
     }
 
+    /// Returns the length of the `LookupTable` vector.
+    pub fn size(&self) -> usize {
+        self.0.len()
+    }
+
     /// Pushes a row to the `LookupTable` vector.
     fn push(&mut self, row: [F; 4]) {
         self.0.push(row);
     }
 
-    /// Returns the length of the `LookupTable` vector.
-    pub fn size(&self) -> usize {
-        self.0.len()
+    /// Insert a new row
+    pub fn insert_row(&mut self, a: F, b: F, c: F, d: F) {
+        self.push([a, b, c, d]);
     }
 
     /// Insert a new row for an addition operation.
@@ -43,14 +48,7 @@ where
     /// operations that will be done in the plookup table.
     pub fn insert_add_row(&mut self, a: u64, b: u64, upper_bound: u64) {
         let c = (a + b) % upper_bound;
-        self.push([F::from(a), F::from(b), F::from(c), F::zero()]);
-    }
-
-    /// Insert a new row for an addition operation.
-    /// This function needs to know the upper bound of the amount of addition
-    /// operations that will be done in the plookup table.
-    pub fn insert_special_row(&mut self, a: F, b: F, c: F, d: F) {
-        self.push([a, b, c, d]);
+        self.insert_row(F::from(a), F::from(b), F::from(c), F::zero());
     }
 
     /// Insert a new row for an multiplication operation.
@@ -58,7 +56,7 @@ where
     /// multiplication operations that will be done in the plookup table.
     pub fn insert_mul_row(&mut self, a: u64, b: u64, upper_bound: u64) {
         let c = (a * b) % upper_bound;
-        self.0.push([F::from(a), F::from(b), F::from(c), F::one()]);
+        self.insert_row(F::from(a), F::from(b), F::from(c), F::one());
     }
 
     /// Insert a new row for an XOR operation.
@@ -66,7 +64,7 @@ where
     /// operations that will be done in the plookup table.
     pub fn insert_xor_row(&mut self, a: u64, b: u64, upper_bound: u64) {
         let c = (a ^ b) % upper_bound;
-        self.0.push([F::from(a), F::from(b), F::from(c), -F::one()]);
+        self.insert_row(F::from(a), F::from(b), F::from(c), -F::one());
     }
 
     /// Insert a new row for an AND operation.
@@ -74,8 +72,7 @@ where
     /// operations that will be done in the plookup table.
     pub fn insert_and_row(&mut self, a: u64, b: u64, upper_bound: u64) {
         let c = (a & b) % upper_bound;
-        self.0
-            .push([F::from(a), F::from(b), F::from(c), F::from(2u64)]);
+        self.insert_row(F::from(a), F::from(b), F::from(c), F::from(2u64));
     }
 
     /// Function builds a table from more than one operation. This is denoted
