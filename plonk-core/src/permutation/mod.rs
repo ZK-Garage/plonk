@@ -764,10 +764,10 @@ impl Permutation {
     ) -> DensePolynomial<F> {
         let n = domain.size();
 
-        assert_eq!(f.len(), domain.size());
-        assert_eq!(t.len(), domain.size());
-        assert_eq!(h_1.len(), domain.size());
-        assert_eq!(h_2.len(), domain.size());
+        assert_eq!(f.len(), n);
+        assert_eq!(t.len(), n);
+        assert_eq!(h_1.len(), n);
+        assert_eq!(h_2.len(), n);
 
         let t_next: Vec<F> = [&t[1..], &[t[0]]].concat();
         let h_1_next: Vec<F> = [&h_1[1..], &[h_1[0]]].concat();
@@ -838,13 +838,6 @@ impl Permutation {
 
         prod_1 * prod_2
     }
-}
-
-/// The `bls_12-381` library does not provide a `random` method for `F`.
-/// We will use this helper function to compensate.
-#[allow(dead_code)]
-pub(crate) fn random_scalar<F: FftField, R: RngCore>(rng: &mut R) -> F {
-    F::rand(rng)
 }
 
 #[cfg(test)]
