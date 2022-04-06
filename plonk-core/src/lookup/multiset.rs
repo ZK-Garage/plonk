@@ -132,7 +132,7 @@ where
     pub fn combine_split(&self, f: &Self) -> Result<(Self, Self), Error> {
         let mut counters: IndexMap<F, usize> = IndexMap::new();
 
-        // Insert elemnts on of t in sorted struct
+        // Creates buckets out of the values in t
         for element in &self.0 {
             match counters.get_mut(element) {
                 Some(v) => *v += 1,
@@ -142,7 +142,8 @@ where
             }
         }
 
-        // Insert elements on of f in sorted struct + check they are in t
+        // Insert elements of f into buckets and checks that elements of f are
+        // in t
         for element in &f.0 {
             match counters.get_mut(element) {
                 Some(entry) => *entry += 1,
