@@ -73,9 +73,9 @@ where
         if self.is_empty() {
             self.push(F::zero())
         };
-        if n > self.len() as u32 {
-            let diff = n - self.len() as u32;
-            self.0.extend(vec![self.0[0]; diff as usize]);
+        let n = n as usize;
+        if n > self.len() {
+            self.0.resize(n, self.0[0])
         }
     }
 
