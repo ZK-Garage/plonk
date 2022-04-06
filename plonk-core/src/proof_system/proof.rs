@@ -271,6 +271,22 @@ where
             &self.evaluations.perm_evals.permutation_eval,
         );
 
+        transcript.append(b"f_eval", &self.evaluations.lookup_evals.f_eval);
+        transcript.append(
+            b"q_lookup_eval",
+            &self.evaluations.lookup_evals.q_lookup_eval,
+        );
+        transcript.append(
+            b"lookup_perm_eval",
+            &self.evaluations.lookup_evals.z2_next_eval,
+        );
+        transcript.append(b"h_1_eval", &self.evaluations.lookup_evals.h1_eval);
+        transcript.append(
+            b"h_1_next_eval",
+            &self.evaluations.lookup_evals.h1_next_eval,
+        );
+        transcript.append(b"h_2_eval", &self.evaluations.lookup_evals.h2_eval);
+
         self.evaluations
             .custom_evals
             .vals
