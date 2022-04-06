@@ -64,7 +64,6 @@ merlin = { version = "3.0", default-features = false }
 num-traits = { version = "0.2.14" }
 rand = { version = "0.8", default-features = false, features = ["getrandom"] }
 
-
 [dev-dependencies]
 ark-bls12-377 = "0.3"
 ark-bls12-381 = "0.3"
@@ -74,4 +73,3 @@ criterion = "0.3"
 paste = "1.0.6"
 rand = "0.8.0"
 tempdir = "0.3"
-
