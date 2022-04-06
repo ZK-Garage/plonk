@@ -199,8 +199,6 @@ where
     let omega = domain.group_gen();
     let shifted_z_challenge = *z_challenge * omega;
 
-    // let quot_eval = quot_poly.evaluate(z_challenge);
-
     // Wire evaluations
     let a_eval = w_l_poly.evaluate(z_challenge);
     let b_eval = w_r_poly.evaluate(z_challenge);
@@ -347,7 +345,6 @@ where
             lookup_evals,
             custom_evals,
         },
-        // quot_eval, // unnecessary?
     ))
 }
 
