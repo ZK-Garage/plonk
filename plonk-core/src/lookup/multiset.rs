@@ -334,7 +334,7 @@ mod test {
         assert!(!t.contains_all(&n));
     }
 
-    fn test_full_compression_into_s<F>()
+    fn test_combine_split<F>()
     where
         F: Field,
     {
@@ -346,7 +346,6 @@ mod test {
         t.push(F::from(4u32));
         t.push(F::from(5u32));
         t.push(F::from(6u32));
-        t.push(F::from(7u32));
 
         let mut f = MultiSet::new();
         f.push(F::from(3u32));
@@ -364,33 +363,33 @@ mod test {
         assert!(t.contains_all(&f));
         assert!(t.contains(&F::from(2u32)));
 
-        t.sorted_concat(f);
+        let (h1, h2) = t.combine_split(&f).unwrap();
 
-        // The sets should be merged but also
-        // in the ascending order
-        let concatenated_set = MultiSet(vec![
-            F::zero(),
-            F::zero(),
+        let evens = MultiSet(vec![
             F::zero(),
             F::zero(),
             F::one(),
+            F::from(2u32),
+            F::from(2u32),
+            F::from(3u32),
+            F::from(4u32),
+            F::from(5u32),
+            F::from(6u32),
+        ]);
+        let odds = MultiSet(vec![
+            F::zero(),
+            F::zero(),
             F::one(),
             F::from(2u32),
-            F::from(2u32),
-            F::from(2u32),
-            F::from(3u32),
             F::from(3u32),
             F::from(3u32),
             F::from(4u32),
-            F::from(4u32),
-            F::from(5u32),
             F::from(5u32),
             F::from(6u32),
-            F::from(6u32),
-            F::from(7u32),
         ]);
 
-        assert_eq!(t, concatenated_set);
+        assert_eq!(evens, h1);
+        assert_eq!(odds, h2);
     }
 
     // TODO Delete if not used
@@ -432,10 +431,9 @@ mod test {
     // Bls12-381 tests
     batch_field_test!(
         [
-            test_halve,
             test_to_polynomial,
             test_is_subset,
-            test_full_compression_into_s
+            test_combine_split
         ],
         [] => Bls12_381_scalar_field
     );
@@ -443,10 +441,9 @@ mod test {
     // Bls12-377 tests
     batch_field_test!(
         [
-            test_halve,
             test_to_polynomial,
             test_is_subset,
-            test_full_compression_into_s
+            test_combine_split
         ],
         [] => Bls12_377_scalar_field
     );
