@@ -32,7 +32,7 @@ where
                         variable: Variable| {
             // Since four quads can fit into one gate, the gate index does
             // not change for every four wires
-            let gate_index = composer.circuit_size() + (i / 4);
+            let gate_index = composer.n + (i / 4);
 
             let wire_data = match i % 4 {
                 0 => {

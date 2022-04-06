@@ -80,15 +80,9 @@ where
         &mut self.cs
     }
 
-    /// Returns the number of gates in the circuit thet the `Prover` actually
-    /// stores inside.
-    pub fn circuit_size(&self) -> usize {
-        self.cs.circuit_size()
-    }
-
-    /// Returns the size of the circuit that accomodates the lookup table
-    pub fn total_size(&self) -> usize {
-        self.cs.total_size()
+    /// Returns the smallest power of two needed for the curcuit
+    pub fn circuit_bound(&self) -> usize {
+        self.cs.circuit_bound()
     }
 
     /// Preprocesses the underlying constraint system.
@@ -173,8 +167,8 @@ where
         _data: PhantomData<PC>,
     ) -> Result<Proof<F, PC>, Error> {
         let domain =
-            GeneralEvaluationDomain::new(self.cs.circuit_size()).ok_or(Error::InvalidEvalDomainSize {
-                log_size_of_group: self.cs.circuit_size().trailing_zeros(),
+            GeneralEvaluationDomain::new(self.cs.circuit_bound()).ok_or(Error::InvalidEvalDomainSize {
+                log_size_of_group: self.cs.circuit_bound().trailing_zeros(),
                 adicity: <<F as ark_ff::FftField>::FftParams as ark_ff::FftParameters>::TWO_ADICITY,
             })?;
         let n = domain.size();

@@ -54,7 +54,7 @@ where
         &mut self,
         composer: &mut StandardComposer<F, P>,
     ) -> Result<(), Error> {
-        while composer.circuit_size() < self.size - 1 {
+        while composer.circuit_bound() < self.size - 1 {
             composer.add_dummy_constraints();
         }
         Ok(())

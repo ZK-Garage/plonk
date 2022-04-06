@@ -281,8 +281,8 @@ where
     where
         PC: HomomorphicCommitment<F>,
     {
-        let domain = GeneralEvaluationDomain::new(self.total_size()).ok_or(Error::InvalidEvalDomainSize {
-            log_size_of_group: (self.total_size()).trailing_zeros(),
+        let domain = GeneralEvaluationDomain::new(self.circuit_bound()).ok_or(Error::InvalidEvalDomainSize {
+            log_size_of_group: (self.circuit_bound()).trailing_zeros(),
             adicity:
                 <<F as FftField>::FftParams as ark_ff::FftParameters>::TWO_ADICITY,
         })?;
@@ -374,7 +374,7 @@ where
         .map_err(to_pc_error::<F, PC>)?;
 
         let verifier_key = widget::VerifierKey::from_polynomial_commitments(
-            self.circuit_size(),
+            self.n,
             commitments[0].commitment().clone(), // q_m_poly_commit.0,
             commitments[1].commitment().clone(), // q_l_poly_commit.0,
             commitments[2].commitment().clone(), // q_r_poly_commit.0,

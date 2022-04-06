@@ -61,13 +61,9 @@ where
         gadget(prover.mut_cs());
 
         // Commit Key
-        let (ck, _) = PC::trim(
-            &universal_params,
-            prover.total_size().next_power_of_two(),
-            0,
-            None,
-        )
-        .map_err(to_pc_error::<F, PC>)?;
+        let (ck, _) =
+            PC::trim(&universal_params, prover.circuit_bound(), 0, None)
+                .map_err(to_pc_error::<F, PC>)?;
 
         // Preprocess circuit
         prover.preprocess(&ck)?;
@@ -91,13 +87,9 @@ where
     gadget(verifier.mut_cs());
 
     // Compute Commit and Verifier Key
-    let (ck, vk) = PC::trim(
-        &universal_params,
-        verifier.total_size().next_power_of_two(),
-        0,
-        None,
-    )
-    .map_err(to_pc_error::<F, PC>)?;
+    let (ck, vk) =
+        PC::trim(&universal_params, verifier.circuit_bound(), 0, None)
+            .map_err(to_pc_error::<F, PC>)?;
 
     // Preprocess circuit
     verifier.preprocess(&ck)?;

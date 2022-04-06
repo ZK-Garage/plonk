@@ -124,14 +124,14 @@ where
     F: PrimeField,
     P: ModelParameters<BaseField = F>,
 {
-    /// Returns the number of gates in the circuit
-    pub fn circuit_size(&self) -> usize {
-        self.n
+    /// Returns the length of the circuit that can accomodate the lookup table
+    fn total_size(&self) -> usize {
+        max(self.n, self.lookup_table.size())
     }
 
-    /// Returns the length of the circuit that can accomodate the lookup table
-    pub fn total_size(&self) -> usize {
-        max(self.n, self.lookup_table.size())
+    /// Returns the smallest power of two needed for the curcuit
+    pub fn circuit_bound(&self) -> usize {
+        self.total_size().next_power_of_two()
     }
 
     /// Constructs a dense vector of the Public Inputs from the positions and
@@ -830,7 +830,7 @@ mod test {
         // - We have two gates which add random values to blind the wires.
         // - Another gate which adds 2 pairs of equal points to blind the
         //   permutation polynomial
-        assert_eq!(4, StandardComposer::<F, P>::new().circuit_size())
+        assert_eq!(4, StandardComposer::<F, P>::new().n)
     }
 
     /// Tests that an empty circuit proof passes.

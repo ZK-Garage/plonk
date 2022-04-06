@@ -892,7 +892,8 @@ mod test {
         cs.poly_gate(x3, x4, x2, one, zero, zero, -two, zero, None);
 
         let domain =
-            GeneralEvaluationDomain::<F>::new(cs.circuit_size()).unwrap();
+            GeneralEvaluationDomain::<F>::new(cs.circuit_bound()).unwrap();
+
         let pad = vec![F::zero(); domain.size() - cs.w_l.len()];
         let mut w_l_scalar: Vec<F> =
             cs.w_l.iter().map(|v| cs.variables[v]).collect();
@@ -910,7 +911,7 @@ mod test {
 
         let sigmas: Vec<Vec<F>> = cs
             .perm
-            .compute_sigma_permutations(cs.circuit_size())
+            .compute_sigma_permutations(cs.circuit_bound())
             .iter()
             .map(|wd| cs.perm.compute_permutation_lagrange(wd, &domain))
             .collect();
