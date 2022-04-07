@@ -406,7 +406,7 @@ mod test {
     use ark_ec::models::TEModelParameters;
     use ark_poly::polynomial::univariate::DensePolynomial;
     use ark_poly::{EvaluationDomain, GeneralEvaluationDomain, UVPolynomial};
-    use rand::rngs::OsRng;
+    use rand_core::OsRng;
 
     fn rand_poly_eval<F>(n: usize) -> (DensePolynomial<F>, Evaluations<F>)
     where

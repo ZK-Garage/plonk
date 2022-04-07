@@ -22,7 +22,6 @@ default = [
     "asm",
     "itertools/default",
     "parallel",
-    "rand/std",
 ]
 
 # Raw Assembly
@@ -63,7 +62,7 @@ indexmap = { version = "1.8.1", default-features = false }
 itertools = { version = "0.10.1", default-features = false }
 merlin = { version = "3.0", default-features = false }
 num-traits = { version = "0.2.14" }
-rand = { version = "0.8", default-features = false, features = ["getrandom"] }
+rand_core = {version = "0.6", default-features=false, features = ["getrandom"] }
 
 [dev-dependencies]
 ark-bls12-377 = "0.3"
@@ -72,5 +71,4 @@ ark-ed-on-bls12-377 = "0.3"
 ark-ed-on-bls12-381 = "0.3"
 criterion = "0.3"
 paste = "1.0.6"
-rand = "0.8.0"
 tempdir = "0.3"

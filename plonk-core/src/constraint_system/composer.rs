@@ -23,7 +23,7 @@ use ark_ff::PrimeField;
 use core::cmp::max;
 use core::marker::PhantomData;
 use hashbrown::HashMap;
-use rand::{CryptoRng, RngCore};
+use rand_core::{CryptoRng, RngCore};
 
 /// The StandardComposer is the circuit-builder tool that the `plonk` repository
 /// provides to create, stored and transformed circuit descriptions
@@ -227,7 +227,7 @@ where
             composer.add_witness_to_circuit_description(F::zero());
 
         // Add dummy constraints
-        composer.add_blinding_factors(&mut rand::rngs::OsRng);
+        composer.add_blinding_factors(&mut rand_core::OsRng);
 
         composer
     }
@@ -816,7 +816,7 @@ mod test {
     };
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
-    use rand::rngs::OsRng;
+    use rand_core::OsRng;
 
     /// Tests that a circuit initially has 3 gates.
     fn test_initial_circuit_size<F, P>()

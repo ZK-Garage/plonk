@@ -78,7 +78,7 @@ mod test {
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
     use ark_ec::TEModelParameters;
-    use rand::rngs::OsRng;
+    use rand_core::OsRng;
 
     /// This function creates a table and preprocesses it. Then it checks that
     /// all table columns are the same length.

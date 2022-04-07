@@ -11,9 +11,8 @@ use crate::{
     proof_system::{Prover, Verifier},
 };
 use ark_ec::TEModelParameters;
-use rand::rngs::OsRng;
-
 use ark_ff::PrimeField;
+use rand_core::OsRng;
 
 /// Adds dummy constraints using arithmetic gates.
 #[allow(dead_code)]

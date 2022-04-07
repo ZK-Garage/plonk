@@ -852,7 +852,7 @@ mod test {
     use ark_ff::{Field, PrimeField};
     use ark_poly::univariate::DensePolynomial;
     use ark_poly::Polynomial;
-    use rand::rngs::OsRng;
+    use rand_core::OsRng;
 
     fn test_multizip_permutation_poly<F, P>()
     where

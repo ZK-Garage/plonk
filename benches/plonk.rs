@@ -18,7 +18,7 @@ use core::marker::PhantomData;
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use plonk::commitment::{HomomorphicCommitment, IPA, KZG10};
 use plonk::prelude::*;
-use rand::rngs::OsRng;
+use rand_core::OsRng;
 
 /// Benchmark Circuit
 #[derive(derivative::Derivative)]

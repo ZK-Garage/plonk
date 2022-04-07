@@ -85,7 +85,7 @@ mod test {
     };
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
-    use rand::{rngs::OsRng, RngCore};
+    use rand_core::{OsRng, RngCore};
 
     fn test_plookup_xor<F, P, PC>()
     where

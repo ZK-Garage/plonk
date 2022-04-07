@@ -50,8 +50,7 @@ blake2 = "0.9"
 criterion = "0.3"
 derivative = "2.2.0"
 paste = "1.0.6"
-rand = "0.8.0"
-rand_core = "0.6"
+rand_core = {version = "0.6", default-features=false, features = ["getrandom"] }
 tempdir = "0.3"
 ark-vesta = "0.3"
 

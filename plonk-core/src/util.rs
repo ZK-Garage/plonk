@@ -219,7 +219,7 @@ mod test {
     use ark_bls12_377::Fr as Bls12_377_scalar_field;
     use ark_bls12_381::Fr as Bls12_381_scalar_field;
     use ark_ff::Field;
-    use rand::rngs::OsRng;
+    use rand_core::OsRng;
 
     fn test_correct_lc<F: Field>() {
         let n_iter = 10;
