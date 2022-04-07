@@ -20,10 +20,10 @@ use alloc::collections::BTreeMap;
 use crate::lookup::LookupTable;
 use ark_ec::{models::TEModelParameters, ModelParameters};
 use ark_ff::PrimeField;
+use core::cmp::max;
 use core::marker::PhantomData;
 use hashbrown::HashMap;
 use rand::{CryptoRng, RngCore};
-use std::cmp::max;
 
 /// The StandardComposer is the circuit-builder tool that the `plonk` repository
 /// provides to create, stored and transformed circuit descriptions
