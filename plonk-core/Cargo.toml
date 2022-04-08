@@ -1,6 +1,6 @@
 [package]
 name = "plonk-core"
-version = "0.0.0"
+version = "0.1.0"
 authors = ["ZK-GARAGE Authors"]
 readme = "README.md"
 repository = "https://github.com/zk-garage/plonk"
