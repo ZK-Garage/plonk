@@ -51,7 +51,7 @@ where
         self.insert_row(F::from(a), F::from(b), F::from(c), F::zero());
     }
 
-    /// Insert a new row for an multiplication operation.
+    /// Insert a new row for a multiplication operation.
     /// This function needs to know the upper bound of the amount of
     /// multiplication operations that will be done in the plookup table.
     pub fn insert_mul_row(&mut self, a: u64, b: u64, upper_bound: u64) {
