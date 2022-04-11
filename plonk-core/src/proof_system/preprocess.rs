@@ -375,22 +375,22 @@ where
 
         let verifier_key = widget::VerifierKey::from_polynomial_commitments(
             self.n,
-            commitments[0].commitment().clone(), // q_m_poly_commit.0,
-            commitments[1].commitment().clone(), // q_l_poly_commit.0,
-            commitments[2].commitment().clone(), // q_r_poly_commit.0,
-            commitments[3].commitment().clone(), // q_o_poly_commit.0,
-            commitments[4].commitment().clone(), // q_4_poly_commit.0,
-            commitments[5].commitment().clone(), // q_c_poly_commit.0,
-            commitments[6].commitment().clone(), // q_arith_poly_commit.0,
-            commitments[7].commitment().clone(), // q_range_poly_commit.0,
-            commitments[8].commitment().clone(), // q_logic_poly_commit.0,
-            commitments[9].commitment().clone(), /* q_lookup_poly_commit.0, */
-            commitments[10].commitment().clone(), /* q_fixed_group_add_poly_commit.0, */
-            commitments[11].commitment().clone(), /* q_variable_group_add_poly_commit.0, */
-            commitments[12].commitment().clone(), // left_sigma_poly_commit.0,
-            commitments[13].commitment().clone(), // right_sigma_poly_commit.0,
-            commitments[14].commitment().clone(), // out_sigma_poly_commit.0,
-            commitments[15].commitment().clone(), /* fourth_sigma_poly_commit.0, */
+            commitments[0].commitment().clone(), // q_m
+            commitments[1].commitment().clone(), // q_l
+            commitments[2].commitment().clone(), // q_r
+            commitments[3].commitment().clone(), // q_o
+            commitments[4].commitment().clone(), // q_4
+            commitments[5].commitment().clone(), // q_c
+            commitments[6].commitment().clone(), // q_arith
+            commitments[7].commitment().clone(), // q_range
+            commitments[8].commitment().clone(), // q_logic
+            commitments[9].commitment().clone(), // q_lookup
+            commitments[10].commitment().clone(), // q_fixed_group_add
+            commitments[11].commitment().clone(), // q_variable_group_add
+            commitments[12].commitment().clone(), // left_sigma
+            commitments[13].commitment().clone(), // right_sigma
+            commitments[14].commitment().clone(), // out_sigma
+            commitments[15].commitment().clone(), // fourth_sigma
             preprocessed_table.t[0].1.clone(),
             preprocessed_table.t[1].1.clone(),
             preprocessed_table.t[2].1.clone(),

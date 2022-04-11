@@ -509,11 +509,18 @@ where
     where
         P: TEModelParameters<BaseField = F>,
     {
-        // 5 for each type of gate + 1 for permutations + 4 for each piece of
-        // the quotient poly
-        // TODO How much more for lookups?
-        let mut scalars = Vec::with_capacity(10);
-        let mut points = Vec::with_capacity(10);
+        //    6 for arithmetic
+        // +  1 for range
+        // +  1 for logic
+        // +  1 for fixed base mul
+        // +  1 for curve add
+        // +  3 for lookups
+        // +  2 for permutation
+        // +  4 for each piece of the quotient poly
+        // = 19 total scalars and points
+
+        let mut scalars = Vec::with_capacity(19);
+        let mut points = Vec::with_capacity(19);
 
         plonk_verifier_key
             .arithmetic

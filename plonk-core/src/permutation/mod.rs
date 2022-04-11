@@ -781,61 +781,44 @@ impl Permutation {
             // Derive the numerator and denominator for each gate plonkup
             // gate and pair the results
             .map(|(((((f, t), t_next), h_1), h_1_next), h_2)| {
-                (
-                    Self::lookup_numerator_irreducible(
-                        &delta, &epsilon, f, t, &t_next,
-                    ),
-                    Self::lookup_denominator_irreducible(
-                        delta, epsilon, *h_1, h_1_next, *h_2,
-                    ),
+                Self::lookup_ratio(
+                    delta, epsilon, *f, *t, t_next, *h_1, h_1_next, *h_2,
                 )
             })
-            .map(|(num, den)| num * den.inverse().unwrap())
             .collect();
 
         let mut state = F::one();
-        let mut p = Vec::with_capacity(n);
+        let mut p = Vec::with_capacity(n + 1);
         p.push(state);
-
         for s in product_arguments {
             state *= s;
             p.push(state);
         }
-
-        // remove the last element
-        p.remove(n);
-
+        p.pop();
         assert_eq!(n, p.len());
 
         DensePolynomial::from_coefficients_vec(domain.ifft(&p))
     }
 
-    fn lookup_numerator_irreducible<F: FftField>(
-        delta: &F,
-        epsilon: &F,
-        f: &F,
-        t: &F,
-        t_next: &F,
-    ) -> F {
-        let prod_1 = F::one() + delta;
-        let prod_2 = *epsilon + f;
-        let prod_3 = (*epsilon * prod_1) + t + (*delta * t_next);
-
-        prod_1 * prod_2 * prod_3
-    }
-
-    fn lookup_denominator_irreducible<F: FftField>(
+    fn lookup_ratio<F: FftField>(
         delta: F,
         epsilon: F,
+        f: F,
+        t: F,
+        t_next: F,
         h_1: F,
         h_1_next: F,
         h_2: F,
     ) -> F {
-        let epsilon_plus_one_delta = epsilon * (F::one() + delta);
-        let prod_1 = epsilon_plus_one_delta + h_1 + (h_2 * delta);
-        let prod_2 = epsilon_plus_one_delta + h_2 + (h_1_next * delta);
-
-        prod_1 * prod_2
+        let one_plus_delta = F::one() + delta;
+        let epsilon_one_plus_delta = epsilon * one_plus_delta;
+        one_plus_delta
+            * (epsilon + f)
+            * (epsilon_one_plus_delta + t + (delta * t_next))
+            * ((epsilon_one_plus_delta + h_1 + (h_2 * delta))
+                * (epsilon_one_plus_delta + h_2 + (h_1_next * delta)))
+                .inverse()
+                .unwrap()
     }
 }
 
