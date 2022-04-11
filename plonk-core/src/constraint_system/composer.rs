@@ -487,7 +487,11 @@ where
     /// description which are guaranteed to always satisfy the gate equation.
     /// This function is only used in benchmarking
     pub fn add_dummy_constraints(&mut self) {
-        // Add a dummy constraint so that we do not have zero polynomials
+        let var_six = self.add_input(F::from(6u64));
+        let var_one = self.add_input(F::one());
+        let var_seven = self.add_input(F::from(7u64));
+        let var_min_twenty = self.add_input(-F::from(20u64));
+
         self.q_m.push(F::from(1u64));
         self.q_l.push(F::from(2u64));
         self.q_r.push(F::from(3u64));
@@ -500,10 +504,6 @@ where
         self.q_fixed_group_add.push(F::zero());
         self.q_variable_group_add.push(F::zero());
         self.q_lookup.push(F::one());
-        let var_six = self.add_input(F::from(6u64));
-        let var_one = self.add_input(F::from(1u64));
-        let var_seven = self.add_input(F::from(7u64));
-        let var_min_twenty = self.add_input(-F::from(20u64));
         self.w_l.push(var_six);
         self.w_r.push(var_seven);
         self.w_o.push(var_min_twenty);
@@ -516,12 +516,11 @@ where
             self.n,
         );
         self.n += 1;
-        //Add another dummy constraint so that we do not get the identity
-        // permutation
-        self.q_m.push(F::from(1u64));
-        self.q_l.push(F::from(1u64));
-        self.q_r.push(F::from(1u64));
-        self.q_o.push(F::from(1u64));
+
+        self.q_m.push(F::one());
+        self.q_l.push(F::one());
+        self.q_r.push(F::one());
+        self.q_o.push(F::one());
         self.q_c.push(F::from(127u64));
         self.q_4.push(F::zero());
         self.q_arith.push(F::one());
@@ -541,25 +540,33 @@ where
             self.zero_var,
             self.n,
         );
-
-        // Add dummy rows to lookup table
-        // Notice two rows here match dummy wire values above
-        self.lookup_table.0.insert(
-            0,
-            [F::from(6u64), F::from(7u64), -F::from(20u64), F::from(1u64)],
-        );
-
-        self.lookup_table.0.insert(
-            0,
-            [-F::from(20u64), F::from(6u64), F::from(7u64), F::from(0u64)],
-        );
-
-        self.lookup_table.0.insert(
-            0,
-            [F::from(3u64), F::from(1u64), F::from(4u64), F::from(9u64)],
-        );
-
         self.n += 1;
+    }
+
+    /// Adds 3 dummy rows to the lookup table
+    /// The first rows match the witness values used for `add_dummy_constraint`
+    /// This function is only used for benchmarking
+    pub fn add_dummy_lookup_table(&mut self) {
+        self.lookup_table.insert_row(
+            F::from(6u64),
+            F::from(7u64),
+            -F::from(20u64),
+            F::one(),
+        );
+
+        self.lookup_table.insert_row(
+            -F::from(20u64),
+            F::from(6u64),
+            F::from(7u64),
+            F::zero(),
+        );
+
+        self.lookup_table.insert_row(
+            F::from(3u64),
+            F::one(),
+            F::from(4u64),
+            F::from(9u64),
+        );
     }
 
     /// This function is used to add a blinding factors to the witness
