@@ -57,7 +57,6 @@ where
         self.0
             .iter()
             .flat_map(|item| {
-                // FIXME: Is there a better way to do this in arkworks?
                 let mut bytes = vec![];
                 item.write(&mut bytes).expect("This never fails.");
                 bytes
