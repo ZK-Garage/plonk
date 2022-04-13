@@ -179,7 +179,7 @@ where
     /// in set f, from the paper, are contained inside t.
     ///
     /// Unoptimized function only used for testing
-    #[allow(dead_code)]
+    #[cfg(test)]
     pub(crate) fn contains_all(&self, other: &Self) -> bool {
         other.0.iter().all(|item| self.contains(item))
     }
