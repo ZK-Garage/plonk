@@ -177,6 +177,12 @@ where
         // Commitments
         let mut transcript = self.preprocessed_transcript.clone();
 
+        // Append Public Inputs to the transcript
+        let pi_dense = self.cs.construct_dense_pi_vec();
+        for val in &pi_dense {
+            transcript.append(b"pi", val)
+        }
+
         // 1. Compute witness Polynomials
         //
         // Convert Variables to scalars padding them to the
@@ -248,9 +254,8 @@ where
         transcript.append(b"z", z_poly_commit[0].commitment());
 
         // 3. Compute public inputs polynomial.
-        let pi_poly = DensePolynomial::from_coefficients_vec(
-            domain.ifft(&self.cs.construct_dense_pi_vec()),
-        );
+        let pi_poly =
+            DensePolynomial::from_coefficients_vec(domain.ifft(&pi_dense));
 
         // 4. Compute quotient polynomial
         //
