@@ -137,7 +137,7 @@ where
     /// Constructs a dense vector of the Public Inputs from the positions and
     /// the sparse vector that contains the values.
     pub fn construct_dense_pi_vec(&self) -> Vec<F> {
-        let mut pi = vec![F::zero(); self.n];
+        let mut pi = vec![F::zero(); self.n.next_power_of_two()];
         self.public_inputs_sparse_store
             .iter()
             .for_each(|(pos, value)| {
