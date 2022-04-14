@@ -129,6 +129,10 @@ where
                 adicity: <<F as FftField>::FftParams as ark_ff::FftParameters>::TWO_ADICITY,
             })?;
 
+        for val in pub_inputs {
+            transcript.append(b"pi", val)
+        }
+
         // Subgroup checks are done when the proof is deserialised.
 
         // In order for the Verifier and Prover to have the same view in the
