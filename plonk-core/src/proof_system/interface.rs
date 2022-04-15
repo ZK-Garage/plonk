@@ -7,6 +7,7 @@
 //! Interface to compile, prove, and verify PLONK circuits.
 
 use std::marker::PhantomData;
+use ark_serialize::{CanonicalDeserialize, CanonicalSerialize, SerializationError, Read, Write};
 use merlin::Transcript;
 
 use ark_ec::{ModelParameters, TEModelParameters};
@@ -21,6 +22,7 @@ use crate::{
     constraint_system::{StandardComposer, Variable}, 
     commitment::HomomorphicCommitment, 
     proof_system::{
+        arithmetic,
         ProverKey,
         VerifierKey,
         quotient_poly,
@@ -31,43 +33,6 @@ use crate::{
     error::{Error, to_pc_error},
     transcript::TranscriptProtocol,
 };
-
-trait Configuration {
-    /// Total Number of Wires Accessible to the Compiler
-    const WIRE_COUNT: usize;
-
-    /// Scalar Field Type
-    /// 
-    /// This type represents the underlying coefficient field for polynomial constraints.
-    type Field: ark_ff::Field;
-
-    /// Polynomial Commitment Type
-    type Commitment;
-
-    /// Polynomial Commitment Opening Type
-    type Opening;
-
-    // TODO
-    // /// Polynomial Commitment Scheme Type
-    // type PolynomialCommitment: commitment::PolynomialCommitment<
-    //     Self::Field,
-    //     Commitment = Self::Commitment,
-    //     Proof = Self::Opening
-    // >;
-}
-
-/// Scalar Field Type
-// pub type Field<C> = <C as Configuration>::Field;
-
-// /// Polynomial Commitment Scheme Type
-// pub type PolynomialCommitment<C> = <C as Configuration>::PolynomialCommitment;
-
-// TODO: A temporary workaround before PolynomialCommitment trait is implemented.
-/// Public Parameters Type
-// pub type PublicParameters = UniversalParams<Bls12<Parameters>>;
-// pub type PublicParams<C> = <
-//     PolynomialCommitment<C> as commitment::PolynomialCommitment<Field<C>>
-// >::PublicParameters;
 
 fn to_scalars<F, P>(
     circuit: &StandardComposer<F, P>,
@@ -125,7 +90,7 @@ pub fn compile<F, P, PC>(
     public_parameters: &PC::UniversalParams,
     circuit: &mut StandardComposer<F, P>,
     circuit_size: usize,
-) -> Result<(ProvingKey<PC, F>, VerifyingKey<F, PC>), Error>
+) -> Result<(ProvingKey<F>, VerifyingKey<F, PC>), Error>
 where
     F: PrimeField,
     P: TEModelParameters<BaseField = F>,
@@ -156,28 +121,42 @@ where
     let verifying_key = VerifyingKey {
         verifier_key: verifier_key,
         public_input_pos: public_input_pos,
-        public_parameters: public_parameters.clone(),
     };
 
     let proving_key = ProvingKey {
         prover_key: prover_key,
-        public_parameters: public_parameters.clone(),
     };
 
     Ok((proving_key, verifying_key))
 }
 
 /// Struct for proving key
-pub struct ProvingKey<PC, F>
+#[derive(CanonicalDeserialize, CanonicalSerialize, derivative::Derivative)]
+#[derivative(
+    Clone(bound = ""),
+    Debug(bound = ""),
+    Eq(bound = ""),
+    PartialEq(bound = "")
+)]
+pub struct ProvingKey<F>
 where
-    PC: HomomorphicCommitment<F>,
     F: PrimeField,
 {
     prover_key: ProverKey<F>,
-    public_parameters: PC::UniversalParams,
 }
 
 /// Struct for verifying key
+#[derive(CanonicalDeserialize, CanonicalSerialize, derivative::Derivative)]
+#[derivative(
+    Clone(bound = ""),
+    Debug(
+        bound = "arithmetic::VerifierKey<F,PC>: std::fmt::Debug, PC::Commitment: std::fmt::Debug"
+    ),
+    Eq(bound = "arithmetic::VerifierKey<F,PC>: Eq, PC::Commitment: Eq"),
+    PartialEq(
+        bound = "arithmetic::VerifierKey<F,PC>: PartialEq, PC::Commitment: PartialEq"
+    )
+)]
 pub struct VerifyingKey<F, PC>
 where
     F: PrimeField,
@@ -185,12 +164,12 @@ where
 {
     verifier_key: VerifierKey<F, PC>,
     public_input_pos: Vec<usize>,
-    public_parameters: PC::UniversalParams,
 }
 
 /// Generate proof
 pub fn prove<F, P, PC>(
-    proving_key: &ProvingKey<PC, F>,
+    public_parameters:  &PC::UniversalParams,
+    proving_key: &ProvingKey<F>,
     circuit: StandardComposer<F, P>,
     circuit_size: usize,
 ) -> Result<Proof<F, PC>, Error>
@@ -200,7 +179,7 @@ where
     PC: HomomorphicCommitment<F>,
 {
     let (commit_key, _) = PC::trim(
-        &proving_key.public_parameters, 
+        &public_parameters, 
         circuit_size,
         0,
         None,
@@ -473,6 +452,7 @@ where
 
 /// Verify a proof
 pub fn verify<F, P, PC>(
+    public_parameters: &PC::UniversalParams,
     verifying_key: &VerifyingKey<F, PC>,
     public_input: &[F],
     proof: &Proof<F, PC>
@@ -485,7 +465,7 @@ where
     let mut verifier: Verifier<F, P, PC> = Verifier::new(b"Test");
     let padded_circuit_size = verifying_key.verifier_key.padded_circuit_size();
     verifier.verifier_key = Some(verifying_key.verifier_key.clone());
-    let (_, vk) = PC::trim(&verifying_key.public_parameters, padded_circuit_size, 0, None)
+    let (_, vk) = PC::trim(&public_parameters, padded_circuit_size, 0, None)
         .map_err(to_pc_error::<F, PC>)?;
 
     let res = verifier.verify(
