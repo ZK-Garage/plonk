@@ -32,43 +32,6 @@ use crate::{
     transcript::TranscriptProtocol,
 };
 
-trait Configuration {
-    /// Total Number of Wires Accessible to the Compiler
-    const WIRE_COUNT: usize;
-
-    /// Scalar Field Type
-    /// 
-    /// This type represents the underlying coefficient field for polynomial constraints.
-    type Field: ark_ff::Field;
-
-    /// Polynomial Commitment Type
-    type Commitment;
-
-    /// Polynomial Commitment Opening Type
-    type Opening;
-
-    // TODO
-    // /// Polynomial Commitment Scheme Type
-    // type PolynomialCommitment: commitment::PolynomialCommitment<
-    //     Self::Field,
-    //     Commitment = Self::Commitment,
-    //     Proof = Self::Opening
-    // >;
-}
-
-/// Scalar Field Type
-// pub type Field<C> = <C as Configuration>::Field;
-
-// /// Polynomial Commitment Scheme Type
-// pub type PolynomialCommitment<C> = <C as Configuration>::PolynomialCommitment;
-
-// TODO: A temporary workaround before PolynomialCommitment trait is implemented.
-/// Public Parameters Type
-// pub type PublicParameters = UniversalParams<Bls12<Parameters>>;
-// pub type PublicParams<C> = <
-//     PolynomialCommitment<C> as commitment::PolynomialCommitment<Field<C>>
-// >::PublicParameters;
-
 fn to_scalars<F, P>(
     circuit: &StandardComposer<F, P>,
     vars: &[Variable]
