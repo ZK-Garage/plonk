@@ -7,6 +7,7 @@
 //! Interface to compile, prove, and verify PLONK circuits.
 
 use std::marker::PhantomData;
+use ark_poly_commit::{PolynomialCommitment};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize, SerializationError, Read, Write};
 use merlin::Transcript;
 
@@ -90,20 +91,24 @@ pub fn compile<F, P, PC>(
     public_parameters: &PC::UniversalParams,
     circuit: &mut StandardComposer<F, P>,
     circuit_size: usize,
-) -> Result<(ProvingKey<F>, VerifyingKey<F, PC>), Error>
+) -> Result<(ProvingKey<F, PC>, VerifyingKey<F, PC>), Error>
 where
     F: PrimeField,
     P: TEModelParameters<BaseField = F>,
     PC: HomomorphicCommitment<F>,
 {
     // Setup Public Parameters
-    let (commit_key, _) = PC::trim(public_parameters, circuit_size, 0, None)
-        .map_err(to_pc_error::<F, PC>)?;
+    let (committer_key, vk) = PC::trim(
+        public_parameters, 
+        circuit_size, 
+        0, 
+        None
+    ).map_err(to_pc_error::<F, PC>)?;
     
     // Generate & save `ProverKey` with some random values.
     let mut preprocessed_prover_transcript = Transcript::new(b"CircuitCompilation");
     let prover_key = circuit.preprocess_prover(
-        &commit_key, 
+        &committer_key, 
         &mut preprocessed_prover_transcript, 
         PhantomData::<PC>,
     )?;
@@ -111,7 +116,7 @@ where
     // Generate & save `VerifierKey` with some random values.
     let mut preprocessed_verifier_transcript = Transcript::new(b"CircuitCompilation");
     let verifier_key = circuit.preprocess_verifier(
-        &commit_key, 
+        &committer_key, 
         &mut preprocessed_verifier_transcript, 
         PhantomData::<PC>,
     )?;
@@ -121,10 +126,12 @@ where
     let verifying_key = VerifyingKey {
         verifier_key: verifier_key,
         public_input_pos: public_input_pos,
+        vk: vk,
     };
 
     let proving_key = ProvingKey {
         prover_key: prover_key,
+        committer_key: committer_key,
     };
 
     Ok((proving_key, verifying_key))
@@ -135,14 +142,14 @@ where
 #[derivative(
     Clone(bound = ""),
     Debug(bound = ""),
-    Eq(bound = ""),
-    PartialEq(bound = "")
 )]
-pub struct ProvingKey<F>
+pub struct ProvingKey<F, PC>
 where
     F: PrimeField,
+    PC: HomomorphicCommitment<F>,
 {
     prover_key: ProverKey<F>,
+    committer_key: <PC as PolynomialCommitment<F, DensePolynomial<F>>>::CommitterKey,
 }
 
 /// Struct for verifying key
@@ -152,10 +159,6 @@ where
     Debug(
         bound = "arithmetic::VerifierKey<F,PC>: std::fmt::Debug, PC::Commitment: std::fmt::Debug"
     ),
-    Eq(bound = "arithmetic::VerifierKey<F,PC>: Eq, PC::Commitment: Eq"),
-    PartialEq(
-        bound = "arithmetic::VerifierKey<F,PC>: PartialEq, PC::Commitment: PartialEq"
-    )
 )]
 pub struct VerifyingKey<F, PC>
 where
@@ -164,27 +167,19 @@ where
 {
     verifier_key: VerifierKey<F, PC>,
     public_input_pos: Vec<usize>,
+    vk: <PC as PolynomialCommitment<F, DensePolynomial<F>>>::VerifierKey,
 }
 
 /// Generate proof
 pub fn prove<F, P, PC>(
-    public_parameters:  &PC::UniversalParams,
-    proving_key: &ProvingKey<F>,
+    proving_key: &ProvingKey<F, PC>,
     circuit: StandardComposer<F, P>,
-    circuit_size: usize,
 ) -> Result<Proof<F, PC>, Error>
 where
     P: TEModelParameters<BaseField = F>,
     F: PrimeField,
     PC: HomomorphicCommitment<F>,
 {
-    let (commit_key, _) = PC::trim(
-        &public_parameters, 
-        circuit_size,
-        0,
-        None,
-    ).map_err(to_pc_error::<F, PC>)?;
-
     let prover_key = proving_key.prover_key.clone();
     let mut transcript = Transcript::new(b"Test");
 
@@ -225,7 +220,7 @@ where
     ];
 
     // Commit to witness polynomials.
-    let (w_commits, w_rands) = PC::commit(&commit_key, w_polys.iter(), None)
+    let (w_commits, w_rands) = PC::commit(&proving_key.committer_key, w_polys.iter(), None)
         .map_err(to_pc_error::<F, PC>)?;
 
     // Add witness polynomial commitments to transcript.
@@ -259,7 +254,7 @@ where
 
     // Commit to permutation polynomial.
     let (z_poly_commit, _) =
-        PC::commit(&commit_key, &[label_polynomial!(z_poly)], None)
+        PC::commit(&proving_key.committer_key, &[label_polynomial!(z_poly)], None)
             .map_err(to_pc_error::<F, PC>)?;
 
     // Add permutation polynomial commitment to transcript.
@@ -307,7 +302,7 @@ where
 
     // Commit to splitted quotient polynomial
     let (t_commits, _) = PC::commit(
-        &commit_key,
+        &proving_key.committer_key,
         &[
             label_polynomial!(t_1_poly),
             label_polynomial!(t_2_poly),
@@ -396,11 +391,11 @@ where
         label_polynomial!(prover_key.permutation.out_sigma.0.clone()),
     ];
 
-    let (aw_commits, aw_rands) = PC::commit(&commit_key, &aw_polys, None)
+    let (aw_commits, aw_rands) = PC::commit(&proving_key.committer_key, &aw_polys, None)
         .map_err(to_pc_error::<F, PC>)?;
 
     let aw_opening = PC::open(
-        &commit_key,
+        &proving_key.committer_key,
         aw_polys.iter().chain(w_polys.iter()),
         aw_commits.iter().chain(w_commits.iter()),
         &z_challenge,
@@ -420,11 +415,11 @@ where
         label_polynomial!(w_4_poly),
     ];
 
-    let (saw_commits, saw_rands) = PC::commit(&commit_key, &saw_polys, None)
+    let (saw_commits, saw_rands) = PC::commit(&proving_key.committer_key, &saw_polys, None)
         .map_err(to_pc_error::<F, PC>)?;
 
     let saw_opening = PC::open(
-        &commit_key,
+        &proving_key.committer_key,
         &saw_polys,
         &saw_commits,
         &(z_challenge * domain.element(1)),
@@ -452,7 +447,6 @@ where
 
 /// Verify a proof
 pub fn verify<F, P, PC>(
-    public_parameters: &PC::UniversalParams,
     verifying_key: &VerifyingKey<F, PC>,
     public_input: &[F],
     proof: &Proof<F, PC>
@@ -465,12 +459,10 @@ where
     let mut verifier: Verifier<F, P, PC> = Verifier::new(b"Test");
     let padded_circuit_size = verifying_key.verifier_key.padded_circuit_size();
     verifier.verifier_key = Some(verifying_key.verifier_key.clone());
-    let (_, vk) = PC::trim(&public_parameters, padded_circuit_size, 0, None)
-        .map_err(to_pc_error::<F, PC>)?;
 
     let res = verifier.verify(
         proof,
-        &vk,
+        &verifying_key.vk,
         build_pi(public_input, &verifying_key.public_input_pos, padded_circuit_size)
             .as_slice(),
     );

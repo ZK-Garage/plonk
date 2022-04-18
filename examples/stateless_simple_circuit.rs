@@ -105,10 +105,8 @@ fn main() -> Result<(), Error> {
 
     // Prove
     let proof = prove::<BlsScalar, JubJubParameters, PC>(
-        &pp,
         &proving_key,
         composer,
-        circuit_size,
     ).unwrap();
 
     // Verify
@@ -122,7 +120,6 @@ fn main() -> Result<(), Error> {
         .finish();
 
     let verify_status = verify::<BlsScalar, JubJubParameters, PC>(
-        &pp,
         &verifying_key,
         &public_inputs,
         &proof,
