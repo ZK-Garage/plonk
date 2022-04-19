@@ -8,7 +8,7 @@ use crate::error::Error;
 use crate::lookup::{LookupTable, MultiSet};
 use ark_ff::Field;
 
-/// This witness table contains quieries to a lookup table for lookup gates.
+/// This witness table contains queries to a lookup table for lookup gates.
 /// This table can have any arity. (But for the time other parts of the codebase
 /// force 4-arity)
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
@@ -16,7 +16,7 @@ pub struct WitnessTable<F>
 where
     F: Field,
 {
-    /// Vector containing one `MulitSet` for each wire
+    /// Vector containing one `MultiSet` for each wire
     pub f: Vec<MultiSet<F>>,
 }
 
@@ -24,7 +24,7 @@ impl<F> WitnessTable<F>
 where
     F: Field,
 {
-    /// Initialses empty witness table of arity 4
+    /// Initializes empty witness table of arity 4
     pub fn new() -> Self {
         Self {
             f: vec![MultiSet::new(); 4],
@@ -32,8 +32,8 @@ where
     }
 
     /// This allows the witness table to be filled directly without
-    /// taking any vaules, or the the results, from the lookup table.
-    /// If the values do no exists in the lookup table, then the proof
+    /// taking any values, or the results, from the lookup table.
+    /// If the values do no exist in the lookup table, then the proof
     /// will fail when witness and preprocessed tables are concatenated.
     pub fn from_wire_values(&mut self, wires: Vec<F>) {
         assert_eq!(wires.len(), self.f.len());

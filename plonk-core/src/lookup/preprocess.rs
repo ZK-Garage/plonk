@@ -24,7 +24,7 @@ where
     pub n: u32,
 
     /// Vector of columns in the preprocessed table containing a
-    /// `MultiSet`, `Commitments` and `DensePolynomial`.
+    /// `MultiSet`, `Commitment` and `DensePolynomial`.
     pub(crate) t: Vec<(MultiSet<F>, PC::Commitment, DensePolynomial<F>)>,
 }
 

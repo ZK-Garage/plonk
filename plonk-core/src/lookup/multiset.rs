@@ -203,7 +203,7 @@ where
 
     /// Compress a vector of multisets into a single multiset using
     /// a RLC. A random challenge `alpha` needs to be provided. It
-    /// is dervived by hashing the transcript.
+    /// is derived by hashing the transcript.
     pub fn compress(multisets: &[Self], alpha: F) -> Self {
         let len = multisets[0].len();
         for mset in multisets.iter().skip(1) {
