@@ -44,32 +44,40 @@ where
     }
 
     /// Insert a new row for an addition operation.
+    ///
     /// This function needs to know the upper bound of the amount of addition
     /// operations that will be done in the plookup table.
+    /// The result will be:  a + b mod 2^uppder_bound
     pub fn insert_add_row(&mut self, a: u64, b: u64, upper_bound: u64) {
         let c = (a + b) % upper_bound;
         self.insert_row(F::from(a), F::from(b), F::from(c), F::zero());
     }
 
     /// Insert a new row for a multiplication operation.
+    ///
     /// This function needs to know the upper bound of the amount of
     /// multiplication operations that will be done in the plookup table.
+    /// The result will be:  a * b mod 2^uppder_bound
     pub fn insert_mul_row(&mut self, a: u64, b: u64, upper_bound: u64) {
         let c = (a * b) % upper_bound;
         self.insert_row(F::from(a), F::from(b), F::from(c), F::one());
     }
 
     /// Insert a new row for an XOR operation.
+    ///
     /// This function needs to know the upper bound of the amount of XOR
     /// operations that will be done in the plookup table.
+    /// The result will be:  a XOR b mod 2^uppder_bound
     pub fn insert_xor_row(&mut self, a: u64, b: u64, upper_bound: u64) {
         let c = (a ^ b) % upper_bound;
         self.insert_row(F::from(a), F::from(b), F::from(c), -F::one());
     }
 
     /// Insert a new row for an AND operation.
-    /// This function needs to know the upper bound of the amount of XOR
+    ///
+    /// This function needs to know the upper bound of the amount of AND
     /// operations that will be done in the plookup table.
+    /// The result will be:  a AND b mod 2^uppder_bound
     pub fn insert_and_row(&mut self, a: u64, b: u64, upper_bound: u64) {
         let c = (a & b) % upper_bound;
         self.insert_row(F::from(a), F::from(b), F::from(c), F::from(2u64));
@@ -83,13 +91,12 @@ where
     /// the index of the 4th wire is 0.
     /// These numbers require exponentiation outside, for the lower bound,
     /// otherwise the range cannot start from zero, as 2^0 = 1.
-    pub fn insert_multi_add(&mut self, lower_bound: u64, n: u8) {
-        let upper_bound = 2u64.pow(n.into());
-        let range = lower_bound..upper_bound;
-        for a in range.clone() {
-            range
-                .clone()
-                .for_each(|b| self.insert_add_row(a, b, upper_bound));
+    pub fn insert_multi_add(&mut self, lower_bound: u64, n: u32) {
+        let upper_bound = 2u64.pow(n);
+        for a in lower_bound..upper_bound {
+            for b in lower_bound..upper_bound {
+                self.insert_add_row(a, b, upper_bound);
+            }
         }
     }
 
@@ -101,13 +108,12 @@ where
     /// These numbers require exponentiation outside, for the lower bound,
     /// otherwise the range cannot start from zero, as 2^0 = 1.
     /// Particular multiplication row(s) can be added with this function.
-    pub fn insert_multi_mul(&mut self, lower_bound: u64, n: u8) {
-        let upper_bound = 2u64.pow(n.into());
-        let range = lower_bound..upper_bound;
-        for a in range.clone() {
-            range
-                .clone()
-                .for_each(|b| self.insert_mul_row(a, b, upper_bound));
+    pub fn insert_multi_mul(&mut self, lower_bound: u64, n: u32) {
+        let upper_bound = 2u64.pow(n);
+        for a in lower_bound..upper_bound {
+            for b in lower_bound..upper_bound {
+                self.insert_mul_row(a, b, upper_bound);
+            }
         }
     }
 
@@ -119,13 +125,12 @@ where
     /// These numbers require exponentiation outside, for the lower bound,
     /// otherwise the range cannot start from zero, as 2^0 = 1.
     /// Particular XOR row(s) can be added with this function.
-    pub fn insert_multi_xor(&mut self, lower_bound: u64, n: u8) {
-        let upper_bound = 2u64.pow(n.into());
-        let range = lower_bound..upper_bound;
-        for a in range.clone() {
-            range
-                .clone()
-                .for_each(|b| self.insert_xor_row(a, b, upper_bound));
+    pub fn insert_multi_xor(&mut self, lower_bound: u64, n: u32) {
+        let upper_bound = 2u64.pow(n);
+        for a in lower_bound..upper_bound {
+            for b in lower_bound..upper_bound {
+                self.insert_xor_row(a, b, upper_bound);
+            }
         }
     }
 
@@ -137,13 +142,12 @@ where
     /// These numbers require exponentiation outside, for the lower bound,
     /// otherwise the range cannot start from zero, as 2^0 = 1.
     /// Particular AND row(s) can be added with this function.
-    pub fn insert_multi_and(&mut self, lower_bound: u64, n: u8) {
-        let upper_bound = 2u64.pow(n.into());
-        let range = lower_bound..upper_bound;
-        for a in range.clone() {
-            range
-                .clone()
-                .for_each(|b| self.insert_and_row(a, b, upper_bound));
+    pub fn insert_multi_and(&mut self, lower_bound: u64, n: u32) {
+        let upper_bound = 2u64.pow(n);
+        for a in lower_bound..upper_bound {
+            for b in lower_bound..upper_bound {
+                self.insert_and_row(a, b, upper_bound);
+            }
         }
     }
 
@@ -177,40 +181,25 @@ where
 
     /// Creates an addition table for addends from the lower bound up to the
     /// upper bound 2^n
-    pub fn add_table(lower_bound: usize, n: u32) -> LookupTable<F> {
-        let upper_bound = 2usize.pow(n);
+    pub fn add_table(lower_bound: u64, n: u32) -> LookupTable<F> {
         let mut table = LookupTable::new();
-        for i in lower_bound..upper_bound {
-            for j in lower_bound..upper_bound {
-                table.insert_add_row(i as u64, j as u64, upper_bound as u64);
-            }
-        }
+        table.insert_multi_add(lower_bound, n);
         table
     }
 
     /// Creates an xor table for addends from the lower bound up to the upper
     /// bound 2^n
-    pub fn xor_table(lower_bound: usize, n: u32) -> LookupTable<F> {
-        let upper_bound = 2usize.pow(n);
+    pub fn xor_table(lower_bound: u64, n: u32) -> LookupTable<F> {
         let mut table = LookupTable::new();
-        for i in lower_bound..upper_bound {
-            for j in lower_bound..upper_bound {
-                table.insert_xor_row(i as u64, j as u64, upper_bound as u64);
-            }
-        }
+        table.insert_multi_xor(lower_bound, n);
         table
     }
 
     /// Creates an addition table for addends from the lower bound up to the
     /// upper bound 2^n
-    pub fn mul_table(lower_bound: usize, n: u32) -> LookupTable<F> {
-        let upper_bound = 2usize.pow(n);
+    pub fn mul_table(lower_bound: u64, n: u32) -> LookupTable<F> {
         let mut table = LookupTable::new();
-        for i in lower_bound..upper_bound {
-            for j in lower_bound..upper_bound {
-                table.insert_mul_row(i as u64, j as u64, upper_bound as u64);
-            }
-        }
+        table.insert_multi_mul(lower_bound, n);
         table
     }
 }
