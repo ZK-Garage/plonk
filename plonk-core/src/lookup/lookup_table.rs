@@ -301,7 +301,6 @@ mod test {
             .is_err());
     }
 
-    /* FIXME: Check XOR implemenation for fields. */
     fn test_concatenated_table<F: ark_ff::PrimeField>()
     where
         F: Field,
