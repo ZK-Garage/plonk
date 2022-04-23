@@ -15,22 +15,12 @@ where
 {
     /// Adds a plookup gate to the circuit with its corresponding
     /// constraints.
-    ///
-    /// This type of gate is usually used when we need to have
-    /// the largest amount of performance and the minimum circuit-size
-    /// possible. Since it allows the end-user to set every selector coefficient
-    /// as scaling value on the gate eq.
     pub fn lookup_gate(
         &mut self,
         a: Variable,
         b: Variable,
         c: Variable,
         d: Option<Variable>,
-        q_l: F,
-        q_r: F,
-        q_o: F,
-        q_4: F,
-        q_c: F,
         pi: Option<F>,
     ) -> Variable {
         // Check if advice wire has a value
@@ -45,13 +35,13 @@ where
         self.w_4.push(d);
 
         // Add selector vectors
-        self.q_l.push(q_l);
-        self.q_r.push(q_r);
-        self.q_o.push(q_o);
-        self.q_c.push(q_c);
-        self.q_4.push(q_4);
-        self.q_arith.push(F::zero());
         self.q_m.push(F::zero());
+        self.q_l.push(F::zero());
+        self.q_r.push(F::zero());
+        self.q_o.push(F::zero());
+        self.q_c.push(F::zero());
+        self.q_4.push(F::zero());
+        self.q_arith.push(F::zero());
         self.q_range.push(F::zero());
         self.q_logic.push(F::zero());
         self.q_fixed_group_add.push(F::zero());
@@ -122,11 +112,6 @@ mod test {
                     rand2_var,
                     xor12_var,
                     Some(negative_one),
-                    F::zero(),
-                    F::zero(),
-                    F::zero(),
-                    F::zero(),
-                    F::zero(),
                     None,
                 );
 
@@ -135,11 +120,6 @@ mod test {
                     rand3_var,
                     xor13_var,
                     Some(negative_one),
-                    F::zero(),
-                    F::zero(),
-                    F::zero(),
-                    F::zero(),
-                    F::zero(),
                     None,
                 );
 
@@ -148,11 +128,6 @@ mod test {
                     rand3_var,
                     xor23_var,
                     Some(negative_one),
-                    F::zero(),
-                    F::zero(),
-                    F::zero(),
-                    F::zero(),
-                    F::zero(),
                     None,
                 );
 
