@@ -32,7 +32,7 @@ where
                         variable: Variable| {
             // Since four quads can fit into one gate, the gate index does
             // not change for every four wires
-            let gate_index = composer.circuit_size() + (i / 4);
+            let gate_index = composer.n + (i / 4);
 
             let wire_data = match i % 4 {
                 0 => {
@@ -174,6 +174,7 @@ where
         self.q_variable_group_add.extend(zeros.iter());
         self.q_range.extend(ones.iter());
         self.q_logic.extend(zeros.iter());
+        self.q_lookup.extend(zeros.iter());
         self.n += used_gates;
 
         // As mentioned above, we must switch off the range constraint for the

@@ -11,9 +11,8 @@ use crate::{
     proof_system::{Prover, Verifier},
 };
 use ark_ec::TEModelParameters;
-use rand::rngs::OsRng;
-
 use ark_ff::PrimeField;
+use rand_core::OsRng;
 
 /// Adds dummy constraints using arithmetic gates.
 #[allow(dead_code)]
@@ -61,13 +60,9 @@ where
         gadget(prover.mut_cs());
 
         // Commit Key
-        let (ck, _) = PC::trim(
-            &universal_params,
-            prover.circuit_size().next_power_of_two(),
-            0,
-            None,
-        )
-        .map_err(to_pc_error::<F, PC>)?;
+        let (ck, _) =
+            PC::trim(&universal_params, prover.circuit_bound(), 0, None)
+                .map_err(to_pc_error::<F, PC>)?;
 
         // Preprocess circuit
         prover.preprocess(&ck)?;
@@ -91,13 +86,9 @@ where
     gadget(verifier.mut_cs());
 
     // Compute Commit and Verifier Key
-    let (ck, vk) = PC::trim(
-        &universal_params,
-        verifier.circuit_size().next_power_of_two(),
-        0,
-        None,
-    )
-    .map_err(to_pc_error::<F, PC>)?;
+    let (ck, vk) =
+        PC::trim(&universal_params, verifier.circuit_bound(), 0, None)
+            .map_err(to_pc_error::<F, PC>)?;
 
     // Preprocess circuit
     verifier.preprocess(&ck)?;

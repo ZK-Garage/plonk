@@ -57,7 +57,8 @@ impl<F> ProverKey<F>
 where
     F: FftField,
 {
-    /// Computes the quotient polynomial at the `i`th domain point.
+    /// Computes permutation term of the quotient polynomial at the `i`th domain
+    /// point.
     pub fn compute_quotient_i(
         &self,
         index: usize,
@@ -151,7 +152,7 @@ where
         (z_i - F::one()) * l1_alpha_sq
     }
 
-    /// Computes the linearisation polynomial.
+    /// Computes the permutation term of the linearisation polynomial.
     pub fn compute_linearisation(
         &self,
         n: usize,
@@ -297,7 +298,7 @@ where
 #[derive(CanonicalDeserialize, CanonicalSerialize, derivative::Derivative)]
 #[derivative(
     Clone(bound = ""),
-    Debug(bound = "PCC: std::fmt::Debug"),
+    Debug(bound = "PCC: core::fmt::Debug"),
     Eq(bound = "PCC: Eq"),
     PartialEq(bound = "PCC: PartialEq")
 )]

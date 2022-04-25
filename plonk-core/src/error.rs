@@ -74,6 +74,12 @@ pub enum Error {
     /// This error occurs when a malformed scalar is decoded from a byte
     /// array.
     ScalarMalformed,
+
+    // Plonkup errors
+    /// Query element not found in lookup table
+    ElementNotIndexed,
+    /// Cannot commit to table column polynomial
+    TablePreProcessingError,
 }
 
 impl From<ark_poly_commit::error::Error> for Error {
@@ -152,6 +158,12 @@ impl std::fmt::Display for Error {
             Self::NotEnoughBytes => write!(f, "not enough bytes left to read"),
             Self::PointMalformed => write!(f, "point bytes malformed"),
             Self::ScalarMalformed => write!(f, "scalar bytes malformed"),
+            Self::ElementNotIndexed => {
+                write!(f, "element not found in lookup table")
+            }
+            Self::TablePreProcessingError => {
+                write!(f, "lookup table not preprocessed correctly")
+            }
         }
     }
 }

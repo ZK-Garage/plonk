@@ -68,7 +68,7 @@ where
 #[derive(CanonicalDeserialize, CanonicalSerialize, derivative::Derivative)]
 #[derivative(
     Clone(bound = ""),
-    Debug(bound = "VerifierKey<F,PC>: std::fmt::Debug"),
+    Debug(bound = "VerifierKey<F,PC>: core::fmt::Debug"),
     Eq(bound = "VerifierKey<F,PC>: Eq"),
     PartialEq(bound = "VerifierKey<F,PC>: PartialEq")
 )]
@@ -130,7 +130,7 @@ where
 /// use plonk_core::prelude::*;
 /// use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 /// use num_traits::{Zero, One};
-/// use rand::rngs::OsRng;
+/// use rand_core::OsRng;
 ///
 /// fn main() -> Result<(), Error> {
 /// // Implements a circuit that checks:
@@ -401,7 +401,7 @@ mod test {
         ProjectiveCurve,
     };
     use ark_ff::{FftField, PrimeField};
-    use rand::rngs::OsRng;
+    use rand_core::OsRng;
 
     // Implements a circuit that checks:
     // 1) a + b = c where C is a PI

@@ -64,9 +64,9 @@ where
         }
     }
 
-    /// Returns the number of gates in the circuit.
-    pub fn circuit_size(&self) -> usize {
-        self.cs.circuit_size()
+    /// Returns the smallest power of two needed for the curcuit
+    pub fn circuit_bound(&self) -> usize {
+        self.cs.circuit_bound()
     }
 
     /// Returns a mutable copy of the underlying composer.

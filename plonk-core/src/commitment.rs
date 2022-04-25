@@ -9,7 +9,7 @@ pub trait HomomorphicCommitment<F>:
     PolynomialCommitment<F, DensePolynomial<F>>
 where
     F: PrimeField,
-    Self::VerifierKey: std::fmt::Debug,
+    Self::VerifierKey: core::fmt::Debug,
 {
     /// Combine a linear combination of homomorphic commitments
     fn multi_scalar_mul(
@@ -92,7 +92,7 @@ where
 
 /// Computes a linear combination of the polynomial evaluations and polynomial
 /// commitments provided a challenge.
-// TODO: complete doc
+// TODO: complete doc & use util::lc for eval combination
 pub fn linear_combination<F, H>(
     evals: &[F],
     commitments: &[H::Commitment],
@@ -120,8 +120,8 @@ pub fn aggregate_polynomials<F: Field>(
     polynomials: &[DensePolynomial<F>],
     challenge: F,
 ) -> DensePolynomial<F> {
+    use core::ops::Add;
     use num_traits::Zero;
-    use std::ops::Add;
     crate::util::powers_of(challenge)
         .zip(polynomials)
         .map(|(challenge, poly)| poly * challenge)

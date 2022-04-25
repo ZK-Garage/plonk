@@ -15,7 +15,7 @@ use ark_poly::univariate::DensePolynomial;
 use ark_poly_commit::sonic_pc::SonicKZG10;
 use ark_poly_commit::PolynomialCommitment;
 use plonk::prelude::*;
-use rand::rngs::OsRng;
+use rand_core::OsRng;
 
 use ark_ec::models::twisted_edwards_extended::GroupAffine;
 use ark_ec::{AffineCurve, ProjectiveCurve};

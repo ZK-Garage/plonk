@@ -18,7 +18,7 @@ use core::marker::PhantomData;
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use plonk::commitment::{HomomorphicCommitment, IPA, KZG10};
 use plonk::prelude::*;
-use rand::rngs::OsRng;
+use rand_core::OsRng;
 
 /// Benchmark Circuit
 #[derive(derivative::Derivative)]
@@ -54,7 +54,8 @@ where
         &mut self,
         composer: &mut StandardComposer<F, P>,
     ) -> Result<(), Error> {
-        while composer.circuit_size() < self.size - 1 {
+        composer.add_dummy_lookup_table();
+        while composer.circuit_bound() < self.size - 1 {
             composer.add_dummy_constraints();
         }
         Ok(())

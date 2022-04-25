@@ -47,7 +47,7 @@ use merlin::Transcript;
 #[derivative(
     Clone(bound = "PC::Commitment: Clone, PC::Proof: Clone"),
     Debug(
-        bound = "PC::Commitment: std::fmt::Debug, PC::Proof: std::fmt::Debug"
+        bound = "PC::Commitment: core::fmt::Debug, PC::Proof: core::fmt::Debug"
     ),
     Default(bound = "PC::Commitment: Default, PC::Proof: Default"),
     Eq(bound = "PC::Commitment: Eq, PC::Proof: Eq"),
@@ -72,6 +72,18 @@ where
 
     /// Commitment to the permutation polynomial.
     pub(crate) z_comm: PC::Commitment,
+
+    /// Commitment to the lookup query polynomial.
+    pub(crate) f_comm: PC::Commitment,
+
+    /// Commitment to first half of sorted polynomial
+    pub(crate) h_1_comm: PC::Commitment,
+
+    /// Commitment to second half of sorted polynomial
+    pub(crate) h_2_comm: PC::Commitment,
+
+    /// Commitment to the lookup permutation polynomial.
+    pub(crate) z_2_comm: PC::Commitment,
 
     /// Commitment to the quotient polynomial.
     pub(crate) t_1_comm: PC::Commitment,
@@ -132,27 +144,75 @@ where
         transcript.append(b"w_o", &self.c_comm);
         transcript.append(b"w_4", &self.d_comm);
 
-        // Compute beta and gamma challenges
+        // Compute table compression challenge `zeta`.
+        let zeta = transcript.challenge_scalar(b"zeta");
+        transcript.append(b"zeta", &zeta);
+
+        // Add f_poly commitment to transcript
+        transcript.append(b"f", &self.f_comm);
+
+        // Add h polynomials to transcript
+        transcript.append(b"h1", &self.h_1_comm);
+        transcript.append(b"h2", &self.h_2_comm);
+
+        // Compute permutation challenges and add them to transcript
+
+        // Compute permutation challenge `beta`.
         let beta = transcript.challenge_scalar(b"beta");
         transcript.append(b"beta", &beta);
+
+        // Compute permutation challenge `gamma`.
         let gamma = transcript.challenge_scalar(b"gamma");
         transcript.append(b"gamma", &gamma);
 
+        // Compute permutation challenge `delta`.
+        let delta = transcript.challenge_scalar(b"delta");
+        transcript.append(b"delta", &delta);
+
+        // Compute permutation challenge `epsilon`.
+        let epsilon = transcript.challenge_scalar(b"epsilon");
+        transcript.append(b"epsilon", &epsilon);
+
+        // Challenges must be different
         assert!(beta != gamma, "challenges must be different");
+        assert!(beta != delta, "challenges must be different");
+        assert!(beta != epsilon, "challenges must be different");
+        assert!(gamma != delta, "challenges must be different");
+        assert!(gamma != epsilon, "challenges must be different");
+        assert!(delta != epsilon, "challenges must be different");
 
         // Add commitment to permutation polynomial to transcript
         transcript.append(b"z", &self.z_comm);
 
         // Compute quotient challenge
         let alpha = transcript.challenge_scalar(b"alpha");
+        transcript.append(b"alpha", &alpha);
         let range_sep_challenge =
             transcript.challenge_scalar(b"range separation challenge");
+        transcript.append(b"range seperation challenge", &range_sep_challenge);
+
         let logic_sep_challenge =
             transcript.challenge_scalar(b"logic separation challenge");
+        transcript.append(b"logic seperation challenge", &logic_sep_challenge);
+
         let fixed_base_sep_challenge =
             transcript.challenge_scalar(b"fixed base separation challenge");
+        transcript.append(
+            b"fixed base separation challenge",
+            &fixed_base_sep_challenge,
+        );
+
         let var_base_sep_challenge =
             transcript.challenge_scalar(b"variable base separation challenge");
+        transcript.append(
+            b"variable base separation challenge",
+            &var_base_sep_challenge,
+        );
+
+        let lookup_sep_challenge =
+            transcript.challenge_scalar(b"lookup separation challenge");
+        transcript
+            .append(b"lookup separation challenge", &lookup_sep_challenge);
 
         // Add commitment to quotient polynomial to transcript
         transcript.append(b"t_1", &self.t_1_comm);
@@ -162,6 +222,7 @@ where
 
         // Compute evaluation point challenge
         let z_challenge = transcript.challenge_scalar(b"z");
+        transcript.append(b"z", &z_challenge);
 
         // Compute zero polynomial evaluated at `z_challenge`
         let z_h_eval = domain.evaluate_vanishing_polynomial(z_challenge);
@@ -176,9 +237,15 @@ where
             alpha,
             beta,
             gamma,
+            delta,
+            epsilon,
             z_challenge,
             l1_eval,
             self.evaluations.perm_evals.permutation_eval,
+            self.evaluations.lookup_evals.z2_next_eval,
+            self.evaluations.lookup_evals.h1_next_eval,
+            self.evaluations.lookup_evals.h2_eval,
+            lookup_sep_challenge,
         );
 
         // Add evaluations to transcript
@@ -204,6 +271,22 @@ where
             &self.evaluations.perm_evals.permutation_eval,
         );
 
+        transcript.append(b"f_eval", &self.evaluations.lookup_evals.f_eval);
+        transcript.append(
+            b"q_lookup_eval",
+            &self.evaluations.lookup_evals.q_lookup_eval,
+        );
+        transcript.append(
+            b"lookup_perm_eval",
+            &self.evaluations.lookup_evals.z2_next_eval,
+        );
+        transcript.append(b"h_1_eval", &self.evaluations.lookup_evals.h1_eval);
+        transcript.append(
+            b"h_1_next_eval",
+            &self.evaluations.lookup_evals.h1_next_eval,
+        );
+        transcript.append(b"h_2_eval", &self.evaluations.lookup_evals.h2_eval);
+
         self.evaluations
             .custom_evals
             .vals
@@ -219,13 +302,28 @@ where
             alpha,
             beta,
             gamma,
+            delta,
+            epsilon,
+            zeta,
             range_sep_challenge,
             logic_sep_challenge,
             fixed_base_sep_challenge,
             var_base_sep_challenge,
+            lookup_sep_challenge,
             z_challenge,
             l1_eval,
             plonk_verifier_key,
+        );
+
+        let zeta_sq = zeta.square();
+        let table_comm = PC::multi_scalar_mul(
+            &[
+                plonk_verifier_key.lookup.table_1.clone(),
+                plonk_verifier_key.lookup.table_2.clone(),
+                plonk_verifier_key.lookup.table_3.clone(),
+                plonk_verifier_key.lookup.table_4.clone(),
+            ],
+            &[F::one(), zeta, zeta_sq, zeta_sq * zeta],
         );
 
         // Commitment Scheme
@@ -253,6 +351,9 @@ where
             label_commitment!(plonk_verifier_key.permutation.left_sigma),
             label_commitment!(plonk_verifier_key.permutation.right_sigma),
             label_commitment!(plonk_verifier_key.permutation.out_sigma),
+            label_commitment!(self.f_comm),
+            label_commitment!(self.h_2_comm),
+            label_commitment!(table_comm),
             label_commitment!(self.a_comm),
             label_commitment!(self.b_comm),
             label_commitment!(self.c_comm),
@@ -264,6 +365,9 @@ where
             self.evaluations.perm_evals.left_sigma_eval,
             self.evaluations.perm_evals.right_sigma_eval,
             self.evaluations.perm_evals.out_sigma_eval,
+            self.evaluations.lookup_evals.f_eval,
+            self.evaluations.lookup_evals.h2_eval,
+            self.evaluations.lookup_evals.table_eval,
             self.evaluations.wire_evals.a_eval,
             self.evaluations.wire_evals.b_eval,
             self.evaluations.wire_evals.c_eval,
@@ -278,6 +382,9 @@ where
             label_commitment!(self.a_comm),
             label_commitment!(self.b_comm),
             label_commitment!(self.d_comm),
+            label_commitment!(self.h_1_comm),
+            label_commitment!(self.z_2_comm),
+            label_commitment!(table_comm),
         ];
 
         let saw_evals = [
@@ -285,6 +392,9 @@ where
             self.evaluations.custom_evals.get("a_next_eval"),
             self.evaluations.custom_evals.get("b_next_eval"),
             self.evaluations.custom_evals.get("d_next_eval"),
+            self.evaluations.lookup_evals.h1_next_eval,
+            self.evaluations.lookup_evals.z2_next_eval,
+            self.evaluations.lookup_evals.table_next_eval,
         ];
 
         match PC::check(
@@ -324,24 +434,34 @@ where
         alpha: F,
         beta: F,
         gamma: F,
+        delta: F,
+        epsilon: F,
         z_challenge: F,
         l1_eval: F,
         z_hat_eval: F,
+        z2_next_eval: F,
+        h1_next_eval: F,
+        h2_eval: F,
+        lookup_sep_challenge: F,
     ) -> F {
         // Compute the public input polynomial evaluated at `z_challenge`
         let pi_eval = compute_barycentric_eval(pub_inputs, z_challenge, domain);
 
         let alpha_sq = alpha.square();
 
+        let lookup_sep_challenge_sq = lookup_sep_challenge.square();
+        let lookup_sep_challenge_cu =
+            lookup_sep_challenge_sq * lookup_sep_challenge;
+
         // a + beta * sigma_1 + gamma
         let beta_sig1 = beta * self.evaluations.perm_evals.left_sigma_eval;
         let b_0 = self.evaluations.wire_evals.a_eval + beta_sig1 + gamma;
 
-        // b+ beta * sigma_2 + gamma
+        // b + beta * sigma_2 + gamma
         let beta_sig2 = beta * self.evaluations.perm_evals.right_sigma_eval;
         let b_1 = self.evaluations.wire_evals.b_eval + beta_sig2 + gamma;
 
-        // c+ beta * sigma_3 + gamma
+        // c + beta * sigma_3 + gamma
         let beta_sig3 = beta * self.evaluations.perm_evals.out_sigma_eval;
         let b_2 = self.evaluations.wire_evals.c_eval + beta_sig3 + gamma;
 
@@ -354,8 +474,17 @@ where
         // l_1(z) * alpha^2
         let c = l1_eval * alpha_sq;
 
+        let epsilon_one_plus_delta = epsilon * (F::one() + delta);
+
+        let d_0 = lookup_sep_challenge_sq * z2_next_eval;
+        let d_1 = epsilon_one_plus_delta + delta * h2_eval;
+        let d_2 = epsilon_one_plus_delta + h2_eval + delta * h1_next_eval;
+        let d = d_0 * d_1 * d_2;
+
+        let e = lookup_sep_challenge_cu * l1_eval;
+
         // Return r_0
-        pi_eval - b - c
+        pi_eval - b - c - d - e
     }
 
     /// Computes the commitment to `[r]_1`.
@@ -365,10 +494,14 @@ where
         alpha: F,
         beta: F,
         gamma: F,
+        delta: F,
+        epsilon: F,
+        zeta: F,
         range_sep_challenge: F,
         logic_sep_challenge: F,
         fixed_base_sep_challenge: F,
         var_base_sep_challenge: F,
+        lookup_sep_challenge: F,
         z_challenge: F,
         l1_eval: F,
         plonk_verifier_key: &PlonkVerifierKey<F, PC>,
@@ -376,10 +509,18 @@ where
     where
         P: TEModelParameters<BaseField = F>,
     {
-        // 5 for each type of gate + 1 for permutations + 4 for each piece of
-        // the quotient poly
-        let mut scalars = Vec::with_capacity(10);
-        let mut points = Vec::with_capacity(10);
+        //    6 for arithmetic
+        // +  1 for range
+        // +  1 for logic
+        // +  1 for fixed base mul
+        // +  1 for curve add
+        // +  3 for lookups
+        // +  2 for permutation
+        // +  4 for each piece of the quotient poly
+        // = 19 total scalars and points
+
+        let mut scalars = Vec::with_capacity(19);
+        let mut points = Vec::with_capacity(19);
 
         plonk_verifier_key
             .arithmetic
@@ -417,6 +558,16 @@ where
             &self.evaluations,
             &mut scalars,
             &mut points,
+        );
+        plonk_verifier_key.lookup.compute_linearisation_commitment(
+            &mut scalars,
+            &mut points,
+            &self.evaluations,
+            (delta, epsilon, zeta),
+            lookup_sep_challenge,
+            l1_eval,
+            self.z_2_comm.clone(),
+            self.h_1_comm.clone(),
         );
         plonk_verifier_key
             .permutation
@@ -470,7 +621,7 @@ where
 /// ```text
 /// L_0(X) = (X^n - 1) / n * (X - 1)
 /// ```
-fn compute_first_lagrange_evaluation<F>(
+pub fn compute_first_lagrange_evaluation<F>(
     domain: &GeneralEvaluationDomain<F>,
     z_h_eval: &F,
     z_challenge: &F,

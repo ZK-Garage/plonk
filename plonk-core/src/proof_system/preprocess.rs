@@ -11,6 +11,7 @@ use crate::{
     constraint_system::StandardComposer,
     error::{to_pc_error, Error},
     label_polynomial,
+    lookup::PreprocessedLookupTable,
     proof_system::{widget, ProverKey},
 };
 use ark_ec::TEModelParameters;
@@ -39,6 +40,7 @@ where
     q_arith: DensePolynomial<F>,
     q_range: DensePolynomial<F>,
     q_logic: DensePolynomial<F>,
+    q_lookup: DensePolynomial<F>,
     q_fixed_group_add: DensePolynomial<F>,
     q_variable_group_add: DensePolynomial<F>,
     left_sigma: DensePolynomial<F>,
@@ -73,6 +75,7 @@ where
         self.q_arith.extend(zeroes_scalar.iter());
         self.q_range.extend(zeroes_scalar.iter());
         self.q_logic.extend(zeroes_scalar.iter());
+        self.q_lookup.extend(zeroes_scalar.iter());
         self.q_fixed_group_add.extend(zeroes_scalar.iter());
         self.q_variable_group_add.extend(zeroes_scalar.iter());
 
@@ -97,6 +100,7 @@ where
             && self.q_arith.len() == k
             && self.q_range.len() == k
             && self.q_logic.len() == k
+            && self.q_lookup.len() == k
             && self.q_fixed_group_add.len() == k
             && self.q_variable_group_add.len() == k
             && self.w_l.len() == k
@@ -128,7 +132,7 @@ where
     where
         PC: HomomorphicCommitment<F>,
     {
-        let (_, selectors, domain) =
+        let (_, selectors, domain, preprocessed_table) =
             self.preprocess_shared(commit_key, transcript, _pc)?;
 
         let domain_4n =
@@ -173,6 +177,10 @@ where
             domain_4n.coset_fft(&selectors.q_logic),
             domain_4n,
         );
+        let q_lookup_eval_4n = Evaluations::from_vec_and_domain(
+            domain_4n.coset_fft(&selectors.q_lookup),
+            domain_4n,
+        );
         let q_fixed_group_add_eval_4n = Evaluations::from_vec_and_domain(
             domain_4n.coset_fft(&selectors.q_fixed_group_add),
             domain_4n,
@@ -181,7 +189,6 @@ where
             domain_4n.coset_fft(&selectors.q_variable_group_add),
             domain_4n,
         );
-
         let left_sigma_eval_4n = Evaluations::from_vec_and_domain(
             domain_4n.coset_fft(&selectors.left_sigma),
             domain_4n,
@@ -219,6 +226,7 @@ where
             (selectors.q_arith, q_arith_eval_4n),
             (selectors.q_range, q_range_eval_4n),
             (selectors.q_logic, q_logic_eval_4n),
+            (selectors.q_lookup, q_lookup_eval_4n),
             (selectors.q_fixed_group_add, q_fixed_group_add_eval_4n),
             (selectors.q_variable_group_add, q_variable_group_add_eval_4n),
             (selectors.left_sigma, left_sigma_eval_4n),
@@ -227,6 +235,10 @@ where
             (selectors.fourth_sigma, fourth_sigma_eval_4n),
             linear_eval_4n,
             v_h_coset_4n,
+            preprocessed_table.t[0].0.clone(),
+            preprocessed_table.t[1].0.clone(),
+            preprocessed_table.t[2].0.clone(),
+            preprocessed_table.t[3].0.clone(),
         ))
     }
 
@@ -242,7 +254,7 @@ where
     where
         PC: HomomorphicCommitment<F>,
     {
-        let (verifier_key, _, _) =
+        let (verifier_key, _, _, _) =
             self.preprocess_shared(commit_key, transcript, _pc)?;
         Ok(verifier_key)
     }
@@ -262,17 +274,26 @@ where
             widget::VerifierKey<F, PC>,
             SelectorPolynomials<F>,
             GeneralEvaluationDomain<F>,
+            PreprocessedLookupTable<F, PC>,
         ),
         Error,
     >
     where
         PC: HomomorphicCommitment<F>,
     {
-        let domain = GeneralEvaluationDomain::new(self.circuit_size()).ok_or(Error::InvalidEvalDomainSize {
-            log_size_of_group: (self.circuit_size()).trailing_zeros(),
+        let domain = GeneralEvaluationDomain::new(self.circuit_bound()).ok_or(Error::InvalidEvalDomainSize {
+            log_size_of_group: (self.circuit_bound()).trailing_zeros(),
             adicity:
                 <<F as FftField>::FftParams as ark_ff::FftParameters>::TWO_ADICITY,
         })?;
+
+        let preprocessed_table = PreprocessedLookupTable::<F, PC>::preprocess(
+            &self.lookup_table,
+            commit_key,
+            domain.size() as u32,
+        )
+        .unwrap();
+
         // Check that the length of the wires is consistent.
         self.check_poly_same_len()?;
 
@@ -306,6 +327,9 @@ where
         let q_logic_poly: DensePolynomial<F> =
             DensePolynomial::from_coefficients_vec(domain.ifft(&self.q_logic));
 
+        let q_lookup_poly: DensePolynomial<F> =
+            DensePolynomial::from_coefficients_vec(domain.ifft(&self.q_lookup));
+
         let q_fixed_group_add_poly: DensePolynomial<F> =
             DensePolynomial::from_coefficients_vec(
                 domain.ifft(&self.q_fixed_group_add),
@@ -336,6 +360,7 @@ where
                 label_polynomial!(q_arith_poly),
                 label_polynomial!(q_range_poly),
                 label_polynomial!(q_logic_poly),
+                label_polynomial!(q_lookup_poly),
                 label_polynomial!(q_fixed_group_add_poly),
                 label_polynomial!(q_variable_group_add_poly),
                 label_polynomial!(left_sigma_poly),
@@ -349,22 +374,27 @@ where
         .map_err(to_pc_error::<F, PC>)?;
 
         let verifier_key = widget::VerifierKey::from_polynomial_commitments(
-            self.circuit_size(),
-            commitments[0].commitment().clone(), // q_m_poly_commit.0,
-            commitments[1].commitment().clone(), // q_l_poly_commit.0,
-            commitments[2].commitment().clone(), // q_r_poly_commit.0,
-            commitments[3].commitment().clone(), // q_o_poly_commit.0,
-            commitments[4].commitment().clone(), // q_4_poly_commit.0,
-            commitments[5].commitment().clone(), // q_c_poly_commit.0,
-            commitments[6].commitment().clone(), // q_arith_poly_commit.0,
-            commitments[7].commitment().clone(), // q_range_poly_commit.0,
-            commitments[8].commitment().clone(), // q_logic_poly_commit.0,
-            commitments[9].commitment().clone(), /* q_fixed_group_add_poly_commit.0, */
-            commitments[10].commitment().clone(), /* q_variable_group_add_poly_commit.0, */
-            commitments[11].commitment().clone(), // left_sigma_poly_commit.0,
-            commitments[12].commitment().clone(), // right_sigma_poly_commit.0,
-            commitments[13].commitment().clone(), // out_sigma_poly_commit.0,
-            commitments[14].commitment().clone(), /* fourth_sigma_poly_commit.0, */
+            self.n,
+            commitments[0].commitment().clone(), // q_m
+            commitments[1].commitment().clone(), // q_l
+            commitments[2].commitment().clone(), // q_r
+            commitments[3].commitment().clone(), // q_o
+            commitments[4].commitment().clone(), // q_4
+            commitments[5].commitment().clone(), // q_c
+            commitments[6].commitment().clone(), // q_arith
+            commitments[7].commitment().clone(), // q_range
+            commitments[8].commitment().clone(), // q_logic
+            commitments[9].commitment().clone(), // q_lookup
+            commitments[10].commitment().clone(), // q_fixed_group_add
+            commitments[11].commitment().clone(), // q_variable_group_add
+            commitments[12].commitment().clone(), // left_sigma
+            commitments[13].commitment().clone(), // right_sigma
+            commitments[14].commitment().clone(), // out_sigma
+            commitments[15].commitment().clone(), // fourth_sigma
+            preprocessed_table.t[0].1.clone(),
+            preprocessed_table.t[1].1.clone(),
+            preprocessed_table.t[2].1.clone(),
+            preprocessed_table.t[3].1.clone(),
         );
 
         let selectors = SelectorPolynomials {
@@ -377,6 +407,7 @@ where
             q_arith: q_arith_poly,
             q_range: q_range_poly,
             q_logic: q_logic_poly,
+            q_lookup: q_lookup_poly,
             q_fixed_group_add: q_fixed_group_add_poly,
             q_variable_group_add: q_variable_group_add_poly,
             left_sigma: left_sigma_poly,
@@ -388,7 +419,7 @@ where
         // Add the circuit description to the transcript
         verifier_key.seed_transcript(transcript);
 
-        Ok((verifier_key, selectors, domain))
+        Ok((verifier_key, selectors, domain, preprocessed_table))
     }
 }
 
@@ -451,6 +482,7 @@ mod test {
         assert_eq!(composer.q_arith.len(), size);
         assert_eq!(composer.q_range.len(), size);
         assert_eq!(composer.q_logic.len(), size);
+        assert_eq!(composer.q_lookup.len(), size);
         assert_eq!(composer.q_fixed_group_add.len(), size);
         assert_eq!(composer.q_variable_group_add.len(), size);
         assert_eq!(composer.w_l.len(), size);

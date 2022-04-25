@@ -2,17 +2,19 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 //
-// Copyright (c) DUSK NETWORK. All rights reserved.
+// Copyright (c) ZK-Garage. All rights reserved.
 
 //! Proof System Widgets
 
 pub mod arithmetic;
 pub mod ecc;
 pub mod logic;
+pub mod lookup;
 pub mod range;
 
 use crate::{
     commitment::HomomorphicCommitment,
+    lookup::MultiSet,
     proof_system::{
         linearisation_poly::CustomEvaluations,
         linearisation_poly::ProofEvaluations, permutation,
@@ -136,7 +138,7 @@ where
 #[derivative(
     Clone(bound = ""),
     Debug(
-        bound = "arithmetic::VerifierKey<F,PC>: std::fmt::Debug, PC::Commitment: std::fmt::Debug"
+        bound = "arithmetic::VerifierKey<F,PC>: core::fmt::Debug, PC::Commitment: core::fmt::Debug"
     ),
     Eq(bound = "arithmetic::VerifierKey<F,PC>: Eq, PC::Commitment: Eq"),
     PartialEq(
@@ -168,6 +170,9 @@ where
 
     /// VerifierKey for permutation checks
     pub(crate) permutation: permutation::VerifierKey<PC::Commitment>,
+
+    /// VerifierKey for Lookup Gate
+    pub(crate) lookup: lookup::VerifierKey<F, PC>,
 }
 
 impl<F, PC> VerifierKey<F, PC>
@@ -189,12 +194,17 @@ where
         q_arith: PC::Commitment,
         q_range: PC::Commitment,
         q_logic: PC::Commitment,
+        q_lookup: PC::Commitment,
         q_fixed_group_add: PC::Commitment,
         q_variable_group_add: PC::Commitment,
         left_sigma: PC::Commitment,
         right_sigma: PC::Commitment,
         out_sigma: PC::Commitment,
         fourth_sigma: PC::Commitment,
+        table_1: PC::Commitment,
+        table_2: PC::Commitment,
+        table_3: PC::Commitment,
+        table_4: PC::Commitment,
     ) -> Self {
         Self {
             n,
@@ -216,6 +226,13 @@ where
                 right_sigma,
                 out_sigma,
                 fourth_sigma,
+            },
+            lookup: lookup::VerifierKey {
+                q_lookup,
+                table_1,
+                table_2,
+                table_3,
+                table_4,
             },
         }
     }
@@ -267,10 +284,10 @@ where
 /// [`Proof`](crate::proof_system::Proof).
 #[derive(CanonicalDeserialize, CanonicalSerialize, derivative::Derivative)]
 #[derivative(
-    Clone(bound = ""),
-    Debug(bound = ""),
-    Eq(bound = ""),
-    PartialEq(bound = "")
+    Clone(bound = "lookup::ProverKey<F>: Clone"),
+    Debug(bound = "lookup::ProverKey<F>: std::fmt::Debug"),
+    Eq(bound = "lookup::ProverKey<F>: Eq"),
+    PartialEq(bound = "lookup::ProverKey<F>: PartialEq")
 )]
 pub struct ProverKey<F>
 where
@@ -287,6 +304,9 @@ where
 
     /// Logic Gate Selector
     pub(crate) logic_selector: (DensePolynomial<F>, Evaluations<F>),
+
+    /// Lookup selector
+    pub(crate) lookup: lookup::ProverKey<F>,
 
     /// Fixed Group Addition Selector
     pub(crate) fixed_group_add_selector: (DensePolynomial<F>, Evaluations<F>),
@@ -329,6 +349,7 @@ where
         q_arith: (DensePolynomial<F>, Evaluations<F>),
         q_range: (DensePolynomial<F>, Evaluations<F>),
         q_logic: (DensePolynomial<F>, Evaluations<F>),
+        q_lookup: (DensePolynomial<F>, Evaluations<F>),
         q_fixed_group_add: (DensePolynomial<F>, Evaluations<F>),
         q_variable_group_add: (DensePolynomial<F>, Evaluations<F>),
         left_sigma: (DensePolynomial<F>, Evaluations<F>),
@@ -337,6 +358,10 @@ where
         fourth_sigma: (DensePolynomial<F>, Evaluations<F>),
         linear_evaluations: Evaluations<F>,
         v_h_coset_4n: Evaluations<F>,
+        table_1: MultiSet<F>,
+        table_2: MultiSet<F>,
+        table_3: MultiSet<F>,
+        table_4: MultiSet<F>,
     ) -> Self {
         Self {
             n,
@@ -353,6 +378,13 @@ where
             logic_selector: q_logic,
             fixed_group_add_selector: q_fixed_group_add,
             variable_group_add_selector: q_variable_group_add,
+            lookup: lookup::ProverKey {
+                q_lookup,
+                table_1,
+                table_2,
+                table_3,
+                table_4,
+            },
             permutation: permutation::ProverKey {
                 left_sigma,
                 right_sigma,
@@ -374,7 +406,7 @@ mod test {
     use ark_ec::models::TEModelParameters;
     use ark_poly::polynomial::univariate::DensePolynomial;
     use ark_poly::{EvaluationDomain, GeneralEvaluationDomain, UVPolynomial};
-    use rand::rngs::OsRng;
+    use rand_core::OsRng;
 
     fn rand_poly_eval<F>(n: usize) -> (DensePolynomial<F>, Evaluations<F>)
     where
@@ -393,6 +425,16 @@ mod test {
         Evaluations::from_vec_and_domain(values, domain)
     }
 
+    fn rand_multiset<F>(n: usize) -> MultiSet<F>
+    where
+        F: PrimeField,
+    {
+        let mut rng = OsRng;
+        core::iter::from_fn(|| Some(F::rand(&mut rng)))
+            .take(n)
+            .collect()
+    }
+
     #[test]
     fn test_serialise_deserialise_prover_key() {
         type F = ark_bls12_381::Fr;
@@ -407,6 +449,7 @@ mod test {
         let q_arith = rand_poly_eval(n);
         let q_range = rand_poly_eval(n);
         let q_logic = rand_poly_eval(n);
+        let q_lookup = rand_poly_eval(n);
         let q_fixed_group_add = rand_poly_eval(n);
         let q_variable_group_add = rand_poly_eval(n);
 
@@ -417,6 +460,10 @@ mod test {
 
         let linear_evaluations = rand_evaluations(n);
         let v_h_coset_8n = rand_evaluations(n);
+        let table_1 = rand_multiset(n);
+        let table_2 = rand_multiset(n);
+        let table_3 = rand_multiset(n);
+        let table_4 = rand_multiset(n);
 
         let prover_key = ProverKey::from_polynomials_and_evals(
             n,
@@ -429,6 +476,7 @@ mod test {
             q_arith,
             q_range,
             q_logic,
+            q_lookup,
             q_fixed_group_add,
             q_variable_group_add,
             left_sigma,
@@ -437,6 +485,10 @@ mod test {
             fourth_sigma,
             linear_evaluations,
             v_h_coset_8n,
+            table_1,
+            table_2,
+            table_3,
+            table_4,
         );
 
         let mut prover_key_bytes = vec![];
@@ -469,6 +521,7 @@ mod test {
         let q_arith = PC::Commitment::default();
         let q_range = PC::Commitment::default();
         let q_logic = PC::Commitment::default();
+        let q_lookup = PC::Commitment::default();
         let q_fixed_group_add = PC::Commitment::default();
         let q_variable_group_add = PC::Commitment::default();
 
@@ -476,6 +529,11 @@ mod test {
         let right_sigma = PC::Commitment::default();
         let out_sigma = PC::Commitment::default();
         let fourth_sigma = PC::Commitment::default();
+
+        let table_1 = PC::Commitment::default();
+        let table_2 = PC::Commitment::default();
+        let table_3 = PC::Commitment::default();
+        let table_4 = PC::Commitment::default();
 
         let verifier_key = VerifierKey::<F, PC>::from_polynomial_commitments(
             n,
@@ -488,12 +546,17 @@ mod test {
             q_arith,
             q_range,
             q_logic,
+            q_lookup,
             q_fixed_group_add,
             q_variable_group_add,
             left_sigma,
             right_sigma,
             out_sigma,
             fourth_sigma,
+            table_1,
+            table_2,
+            table_3,
+            table_4,
         );
 
         let mut verifier_key_bytes = vec![];

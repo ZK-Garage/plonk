@@ -11,6 +11,7 @@
 mod arithmetic;
 mod boolean;
 mod logic;
+mod lookup;
 mod range;
 
 pub(crate) mod composer;

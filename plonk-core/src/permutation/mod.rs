@@ -18,7 +18,6 @@ use ark_poly::{
 use constants::*;
 use hashbrown::HashMap;
 use itertools::izip;
-use rand::RngCore;
 
 /// Permutation provides the necessary state information and functions
 /// to create the permutation polynomial. In the literature, Z(X) is the
@@ -751,13 +750,76 @@ impl Permutation {
 
         DensePolynomial::<F>::from_coefficients_vec(domain.ifft(&z))
     }
-}
 
-/// The `bls_12-381` library does not provide a `random` method for `F`.
-/// We wil use this helper function to compensate.
-#[allow(dead_code)]
-pub(crate) fn random_scalar<F: FftField, R: RngCore>(rng: &mut R) -> F {
-    F::rand(rng)
+    pub(crate) fn compute_lookup_permutation_poly<F: FftField>(
+        &self,
+        domain: &GeneralEvaluationDomain<F>,
+        f: &[F],
+        t: &[F],
+        h_1: &[F],
+        h_2: &[F],
+        delta: F,
+        epsilon: F,
+    ) -> DensePolynomial<F> {
+        let n = domain.size();
+
+        assert_eq!(f.len(), n);
+        assert_eq!(t.len(), n);
+        assert_eq!(h_1.len(), n);
+        assert_eq!(h_2.len(), n);
+
+        let t_next: Vec<F> = [&t[1..], &[t[0]]].concat();
+        let h_1_next: Vec<F> = [&h_1[1..], &[h_1[0]]].concat();
+
+        let product_arguments: Vec<F> = f
+            .iter()
+            .zip(t)
+            .zip(t_next)
+            .zip(h_1)
+            .zip(h_1_next)
+            .zip(h_2)
+            // Derive the numerator and denominator for each gate plonkup
+            // gate and pair the results
+            .map(|(((((f, t), t_next), h_1), h_1_next), h_2)| {
+                Self::lookup_ratio(
+                    delta, epsilon, *f, *t, t_next, *h_1, h_1_next, *h_2,
+                )
+            })
+            .collect();
+
+        let mut state = F::one();
+        let mut p = Vec::with_capacity(n + 1);
+        p.push(state);
+        for s in product_arguments {
+            state *= s;
+            p.push(state);
+        }
+        p.pop();
+        assert_eq!(n, p.len());
+
+        DensePolynomial::from_coefficients_vec(domain.ifft(&p))
+    }
+
+    fn lookup_ratio<F: FftField>(
+        delta: F,
+        epsilon: F,
+        f: F,
+        t: F,
+        t_next: F,
+        h_1: F,
+        h_1_next: F,
+        h_2: F,
+    ) -> F {
+        let one_plus_delta = F::one() + delta;
+        let epsilon_one_plus_delta = epsilon * one_plus_delta;
+        one_plus_delta
+            * (epsilon + f)
+            * (epsilon_one_plus_delta + t + (delta * t_next))
+            * ((epsilon_one_plus_delta + h_1 + (h_2 * delta))
+                * (epsilon_one_plus_delta + h_2 + (h_1_next * delta)))
+                .inverse()
+                .unwrap()
+    }
 }
 
 #[cfg(test)]
@@ -773,7 +835,7 @@ mod test {
     use ark_ff::{Field, PrimeField};
     use ark_poly::univariate::DensePolynomial;
     use ark_poly::Polynomial;
-    use rand::rngs::OsRng;
+    use rand_core::OsRng;
 
     fn test_multizip_permutation_poly<F, P>()
     where
@@ -805,7 +867,8 @@ mod test {
         cs.poly_gate(x3, x4, x2, one, zero, zero, -two, zero, None);
 
         let domain =
-            GeneralEvaluationDomain::<F>::new(cs.circuit_size()).unwrap();
+            GeneralEvaluationDomain::<F>::new(cs.circuit_bound()).unwrap();
+
         let pad = vec![F::zero(); domain.size() - cs.w_l.len()];
         let mut w_l_scalar: Vec<F> =
             cs.w_l.iter().map(|v| cs.variables[v]).collect();
@@ -823,7 +886,7 @@ mod test {
 
         let sigmas: Vec<Vec<F>> = cs
             .perm
-            .compute_sigma_permutations(cs.circuit_size())
+            .compute_sigma_permutations(cs.circuit_bound())
             .iter()
             .map(|wd| cs.perm.compute_permutation_lagrange(wd, &domain))
             .collect();

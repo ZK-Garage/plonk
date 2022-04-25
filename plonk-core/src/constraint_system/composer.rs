@@ -17,11 +17,13 @@
 use crate::{constraint_system::Variable, permutation::Permutation};
 use alloc::collections::BTreeMap;
 
+use crate::lookup::LookupTable;
 use ark_ec::{models::TEModelParameters, ModelParameters};
 use ark_ff::PrimeField;
+use core::cmp::max;
 use core::marker::PhantomData;
 use hashbrown::HashMap;
-use rand::{CryptoRng, RngCore};
+use rand_core::{CryptoRng, RngCore};
 
 /// The StandardComposer is the circuit-builder tool that the `plonk` repository
 /// provides to create, stored and transformed circuit descriptions
@@ -81,6 +83,8 @@ where
     pub(crate) q_fixed_group_add: Vec<F>,
     /// Variable base group addition selector
     pub(crate) q_variable_group_add: Vec<F>,
+    /// Lookup gate selector
+    pub(crate) q_lookup: Vec<F>,
 
     /// Sparse representation of the Public Inputs linking the positions of the
     /// non-zero ones to it's actual values.
@@ -95,6 +99,9 @@ where
     pub(crate) w_o: Vec<Variable>,
     /// Fourth wire witness vector.
     pub(crate) w_4: Vec<Variable>,
+
+    /// Public lookup table
+    pub(crate) lookup_table: LookupTable<F>,
 
     /// A zero Variable that is a part of the circuit description.
     /// We reserve a variable to be zero in the system
@@ -117,9 +124,14 @@ where
     F: PrimeField,
     P: ModelParameters<BaseField = F>,
 {
-    /// Returns the number of gates in the circuit
-    pub fn circuit_size(&self) -> usize {
-        self.n
+    /// Returns the length of the circuit that can accomodate the lookup table
+    fn total_size(&self) -> usize {
+        max(self.n, self.lookup_table.size())
+    }
+
+    /// Returns the smallest power of two needed for the curcuit
+    pub fn circuit_bound(&self) -> usize {
+        self.total_size().next_power_of_two()
     }
 
     /// Constructs a dense vector of the Public Inputs from the positions and
@@ -197,11 +209,13 @@ where
             q_logic: Vec::with_capacity(expected_size),
             q_fixed_group_add: Vec::with_capacity(expected_size),
             q_variable_group_add: Vec::with_capacity(expected_size),
+            q_lookup: Vec::with_capacity(expected_size),
             public_inputs_sparse_store: BTreeMap::new(),
             w_l: Vec::with_capacity(expected_size),
             w_r: Vec::with_capacity(expected_size),
             w_o: Vec::with_capacity(expected_size),
             w_4: Vec::with_capacity(expected_size),
+            lookup_table: LookupTable::new(),
             zero_var: Variable(0),
             variables: HashMap::with_capacity(expected_size),
             perm: Permutation::new(),
@@ -213,7 +227,7 @@ where
             composer.add_witness_to_circuit_description(F::zero());
 
         // Add dummy constraints
-        composer.add_blinding_factors(&mut rand::rngs::OsRng);
+        composer.add_blinding_factors(&mut rand_core::OsRng);
 
         composer
     }
@@ -277,6 +291,7 @@ where
         self.q_logic.push(F::zero());
         self.q_fixed_group_add.push(F::zero());
         self.q_variable_group_add.push(F::zero());
+        self.q_lookup.push(F::zero());
 
         if let Some(pi) = pi {
             assert!(self
@@ -472,7 +487,11 @@ where
     /// description which are guaranteed to always satisfy the gate equation.
     /// This function is only used in benchmarking
     pub fn add_dummy_constraints(&mut self) {
-        // Add a dummy constraint so that we do not have zero polynomials
+        let var_six = self.add_input(F::from(6u64));
+        let var_one = self.add_input(F::one());
+        let var_seven = self.add_input(F::from(7u64));
+        let var_min_twenty = self.add_input(-F::from(20u64));
+
         self.q_m.push(F::from(1u64));
         self.q_l.push(F::from(2u64));
         self.q_r.push(F::from(3u64));
@@ -484,10 +503,7 @@ where
         self.q_logic.push(F::zero());
         self.q_fixed_group_add.push(F::zero());
         self.q_variable_group_add.push(F::zero());
-        let var_six = self.add_input(F::from(6u64));
-        let var_one = self.add_input(F::from(1u64));
-        let var_seven = self.add_input(F::from(7u64));
-        let var_min_twenty = self.add_input(-F::from(20u64));
+        self.q_lookup.push(F::one());
         self.w_l.push(var_six);
         self.w_r.push(var_seven);
         self.w_o.push(var_min_twenty);
@@ -500,12 +516,11 @@ where
             self.n,
         );
         self.n += 1;
-        //Add another dummy constraint so that we do not get the identity
-        // permutation
-        self.q_m.push(F::from(1u64));
-        self.q_l.push(F::from(1u64));
-        self.q_r.push(F::from(1u64));
-        self.q_o.push(F::from(1u64));
+
+        self.q_m.push(F::one());
+        self.q_l.push(F::one());
+        self.q_r.push(F::one());
+        self.q_o.push(F::one());
         self.q_c.push(F::from(127u64));
         self.q_4.push(F::zero());
         self.q_arith.push(F::one());
@@ -513,6 +528,7 @@ where
         self.q_logic.push(F::zero());
         self.q_fixed_group_add.push(F::zero());
         self.q_variable_group_add.push(F::zero());
+        self.q_lookup.push(F::one());
         self.w_l.push(var_min_twenty);
         self.w_r.push(var_six);
         self.w_o.push(var_seven);
@@ -525,6 +541,32 @@ where
             self.n,
         );
         self.n += 1;
+    }
+
+    /// Adds 3 dummy rows to the lookup table
+    /// The first rows match the witness values used for `add_dummy_constraint`
+    /// This function is only used for benchmarking
+    pub fn add_dummy_lookup_table(&mut self) {
+        self.lookup_table.insert_row(
+            F::from(6u64),
+            F::from(7u64),
+            -F::from(20u64),
+            F::one(),
+        );
+
+        self.lookup_table.insert_row(
+            -F::from(20u64),
+            F::from(6u64),
+            F::from(7u64),
+            F::zero(),
+        );
+
+        self.lookup_table.insert_row(
+            F::from(3u64),
+            F::one(),
+            F::from(4u64),
+            F::from(9u64),
+        );
     }
 
     /// This function is used to add a blinding factors to the witness
@@ -561,6 +603,7 @@ where
             self.q_logic.push(F::zero());
             self.q_fixed_group_add.push(F::zero());
             self.q_variable_group_add.push(F::zero());
+            self.q_lookup.push(F::zero());
 
             self.perm.add_variables_to_map(
                 rand_var_1, rand_var_2, rand_var_3, rand_var_4, self.n,
@@ -588,6 +631,7 @@ where
         self.q_logic.push(F::zero());
         self.q_fixed_group_add.push(F::zero());
         self.q_variable_group_add.push(F::zero());
+        self.q_lookup.push(F::zero());
 
         self.perm.add_variables_to_map(
             rand_var_1,
@@ -779,7 +823,7 @@ mod test {
     };
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
-    use rand::rngs::OsRng;
+    use rand_core::OsRng;
 
     /// Tests that a circuit initially has 3 gates.
     fn test_initial_circuit_size<F, P>()
@@ -793,7 +837,7 @@ mod test {
         // - We have two gates which add random values to blind the wires.
         // - Another gate which adds 2 pairs of equal points to blind the
         //   permutation polynomial
-        assert_eq!(4, StandardComposer::<F, P>::new().circuit_size())
+        assert_eq!(4, StandardComposer::<F, P>::new().n)
     }
 
     /// Tests that an empty circuit proof passes.

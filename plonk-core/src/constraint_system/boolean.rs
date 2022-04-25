@@ -40,6 +40,7 @@ where
         self.q_logic.push(F::zero());
         self.q_fixed_group_add.push(F::zero());
         self.q_variable_group_add.push(F::zero());
+        self.q_lookup.push(F::zero());
 
         self.perm
             .add_variables_to_map(a, a, a, self.zero_var, self.n);
