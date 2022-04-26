@@ -18,6 +18,8 @@ use ark_ff::PrimeField;
 use core::marker::PhantomData;
 use merlin::Transcript;
 
+use super::pi::PI;
+
 /// Abstraction structure designed verify [`Proof`]s.
 pub struct Verifier<F, P, PC>
 where
@@ -105,7 +107,7 @@ where
         &self,
         proof: &Proof<F, PC>,
         pc_verifier_key: &PC::VerifierKey,
-        public_inputs: &[F],
+        public_inputs: &PI<F>,
     ) -> Result<(), Error> {
         proof.verify::<P>(
             self.verifier_key.as_ref().unwrap(),

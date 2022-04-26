@@ -33,6 +33,8 @@ use ark_serialize::{
 };
 use merlin::Transcript;
 
+use super::pi::PI;
+
 /// A Proof is a composition of `Commitment`s to the Witness, Permutation,
 /// Quotient, Shifted and Opening polynomials as well as the
 /// `ProofEvaluations`.
@@ -118,7 +120,7 @@ where
         plonk_verifier_key: &PlonkVerifierKey<F, PC>,
         transcript: &mut Transcript,
         verifier_key: &PC::VerifierKey,
-        pub_inputs: &[F],
+        pub_inputs: &PI<F>,
     ) -> Result<(), Error>
     where
         P: TEModelParameters<BaseField = F>,
@@ -129,8 +131,13 @@ where
                 adicity: <<F as FftField>::FftParams as ark_ff::FftParameters>::TWO_ADICITY,
             })?;
 
-        for val in pub_inputs {
-            transcript.append(b"pi", val)
+        // Append Public Inputs to the transcript
+        for (pos, val) in pub_inputs.iter() {
+            if !val.is_zero() {
+                let static_label =
+                    Box::leak(format!("pi{}", pos).into_boxed_str());
+                transcript.append(static_label.as_bytes(), val)
+            }
         }
 
         // Subgroup checks are done when the proof is deserialised.
@@ -237,7 +244,7 @@ where
 
         let r0 = self.compute_r0(
             &domain,
-            pub_inputs,
+            &pub_inputs.as_evals(),
             alpha,
             beta,
             gamma,

@@ -179,9 +179,12 @@ where
         let mut transcript = self.preprocessed_transcript.clone();
 
         // Append Public Inputs to the transcript
-        let pi_dense = self.cs.construct_dense_pi_vec();
-        for val in &pi_dense {
-            transcript.append(b"pi", val)
+        for (pos, val) in self.cs.get_pi().iter() {
+            if !val.is_zero() {
+                let static_label =
+                    Box::leak(format!("pi{}", pos).into_boxed_str());
+                transcript.append(static_label.as_bytes(), val)
+            }
         }
 
         // 1. Compute witness Polynomials
@@ -392,8 +395,7 @@ where
                 .map_err(to_pc_error::<F, PC>)?;
 
         // 3. Compute public inputs polynomial.
-        let pi_poly =
-            DensePolynomial::from_coefficients_vec(domain.ifft(&pi_dense));
+        let pi_poly = self.cs.get_pi().into();
 
         // 4. Compute quotient polynomial
         //
