@@ -52,10 +52,7 @@ where
         self.q_lookup.push(F::one());
 
         if let Some(pi) = pi {
-            assert!(self
-                .public_inputs_sparse_store
-                .insert(self.n, pi)
-                .is_none());
+            self.public_inputs.insert(self.n, pi);
         }
 
         self.perm.add_variables_to_map(a, b, c, d, self.n);

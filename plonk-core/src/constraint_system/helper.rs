@@ -58,6 +58,7 @@ where
 
         // Add gadgets
         gadget(prover.mut_cs());
+        prover.cs.public_inputs.update_size(prover.circuit_bound());
 
         // Commit Key
         let (ck, _) =
@@ -69,7 +70,7 @@ where
 
         // Once the prove method is called, the public inputs are cleared
         // So pre-fetch these before calling Prove
-        let public_inputs = prover.cs.construct_dense_pi_vec();
+        let public_inputs = prover.cs.get_pi().clone();
 
         // Compute Proof
         (prover.prove(&ck)?, public_inputs)
@@ -78,12 +79,17 @@ where
     //
     // Create a Verifier object
     let mut verifier = Verifier::new(b"demo");
+    // panic!("{:?}", verifier.cs.public_inputs);
 
     // Additionally key the transcript
     verifier.key_transcript(b"key", b"additional seed information");
 
     // Add gadgets
     gadget(verifier.mut_cs());
+    verifier
+        .cs
+        .public_inputs
+        .update_size(verifier.circuit_bound());
 
     // Compute Commit and Verifier Key
     let (ck, vk) =

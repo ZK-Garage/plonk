@@ -136,11 +136,7 @@ where
         self.q_lookup.push(F::zero());
 
         if let Some(pi) = gate.pi {
-            let insert_res = self.public_inputs_sparse_store.insert(self.n, pi);
-            assert!(
-                insert_res.is_none(),
-                "Attempting to overwrite an already existing PI"
-            )
+            self.public_inputs.insert(self.n, pi);
         };
 
         let c = gate_witness.2.unwrap_or_else(|| {
