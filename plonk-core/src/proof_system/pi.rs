@@ -51,17 +51,6 @@ impl<F> PI<F>
 where
     F: PrimeField,
 {
-    //TODO Remove if unused
-    // #[inline]
-    // pub fn len(&self) -> usize {
-    //     self.values.len()
-    // }
-
-    // #[inline]
-    // pub fn is_empty(&self) -> bool {
-    //     self.values.is_empty()
-    // }
-
     /// Creates a new struct for [`PI`].
     pub fn new(n: usize) -> Self {
         assert!(n.is_power_of_two());
