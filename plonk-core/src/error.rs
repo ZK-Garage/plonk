@@ -30,6 +30,8 @@ pub enum Error {
     UninitializedPIGenerator,
     /// PublicInput serialization error
     InvalidPublicInputBytes,
+    /// PublicInput value conversion error
+    InvalidPublicInputValue,
     /// This error occurs when the Prover structure already contains a
     /// preprocessed circuit inside, but you call preprocess again.
     CircuitAlreadyPreprocessed,
@@ -127,6 +129,9 @@ impl std::fmt::Display for Error {
             }
             Self::InvalidPublicInputBytes => {
                 write!(f, "invalid public input bytes")
+            }
+            Self::InvalidPublicInputValue => {
+                write!(f, "public input value conversion error")
             }
             Self::MismatchedPolyLen => {
                 write!(f, "the length of the wires is not the same")
