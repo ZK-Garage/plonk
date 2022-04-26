@@ -258,7 +258,8 @@ where
     }
 
     /// Generates a proof using the provided [`ProverKey`] and
-    /// [`PC::UniversalParams`]. Returns a proof and the Public Inputs
+    /// [`ark_poly_commit::PCUniversalParams`]. Returns a
+    /// [`crate::proof_system::Proof`] and the [`PI`].
     fn gen_proof<PC>(
         &mut self,
         u_params: &PC::UniversalParams,
@@ -309,7 +310,7 @@ where
     let (_, vk) = PC::trim(u_params, padded_circuit_size, 0, None)
         .map_err(to_pc_error::<F, PC>)?;
 
-    verifier.verify(proof, &vk, &public_inputs)
+    verifier.verify(proof, &vk, public_inputs)
 }
 
 #[cfg(test)]

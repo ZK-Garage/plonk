@@ -4,8 +4,8 @@
 //
 // Copyright (c) ZK-Garage. All rights reserved.
 
-//! Public Inputs of the circuit. This values are available for the [`Prover`]
-//! and [`Verifier`].
+//! Public Inputs of the circuit. This values are available for the
+//! [`super::Prover`] and [`super::Verifier`].
 //!
 //! This module contains the implementation of the [`PI`] struct and all the
 //! basic manipulations such as inserting new values and getting the public
@@ -68,7 +68,7 @@ where
 
     /// Inserts a new public input value at a given position.
     pub fn insert(&mut self, pos: usize, val: F) {
-        if let Some(_) = self.values.insert(pos, val) {
+        if self.values.insert(pos, val).is_some() {
             panic!("Insertion in public inputs conflicts with previous value at position {}", pos);
         }
     }
@@ -103,7 +103,7 @@ where
                 .to_field_elements()
                 .ok_or(Error::InvalidPublicInputValue)?;
 
-            for (pos2, elem) in item_repr.into_iter().enumerate() {
+            for (pos2, elem) in item_repr.iter().enumerate() {
                 self.values.insert(init_pos + pos1 + pos2, *elem);
                 result += 1;
             }
@@ -119,20 +119,13 @@ where
     }
 }
 
-impl<F> Into<DensePolynomial<F>> for &PI<F>
+impl<F> From<&PI<F>> for DensePolynomial<F>
 where
     F: PrimeField,
 {
-    fn into(self) -> DensePolynomial<F> {
-        let domain = GeneralEvaluationDomain::<F>::new(self.n).unwrap();
-        let evals = self.as_evals();
+    fn from(pi: &PI<F>) -> Self {
+        let domain = GeneralEvaluationDomain::<F>::new(pi.n).unwrap();
+        let evals = pi.as_evals();
         DensePolynomial::from_coefficients_vec(domain.ifft(&evals))
     }
 }
-
-// impl<F> for PI<F>
-// where
-//     F: Field,
-// {
-
-// }

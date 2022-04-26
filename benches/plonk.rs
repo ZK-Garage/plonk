@@ -137,10 +137,10 @@ where
     let mut verifying_benchmarks = c.benchmark_group("verify");
     for degree in MINIMUM_DEGREE..MAXIMUM_DEGREE {
         let mut circuit = BenchCircuit::<F, P>::new(degree);
-        let (pk_p, verifier_data) =
+        let (pk_p, vk) =
             circuit.compile(&pp).expect("Unable to compile circuit.");
-        let proof = circuit.gen_proof::<HC>(&pp, pk_p.clone(), &label).unwrap();
-        let VerifierData { key, pi_pos } = verifier_data;
+        let (proof, pi) =
+            circuit.gen_proof::<HC>(&pp, pk_p.clone(), &label).unwrap();
         verifying_benchmarks.bench_with_input(
             BenchmarkId::from_parameter(degree),
             &degree,
@@ -148,10 +148,9 @@ where
                 b.iter(|| {
                     plonk::circuit::verify_proof::<F, P, HC>(
                         &pp,
-                        key.clone(),
+                        vk.clone(),
                         &proof,
-                        &[],
-                        &pi_pos,
+                        &pi,
                         &label,
                     )
                     .expect("Unable to verify benchmark circuit.");
