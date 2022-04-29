@@ -26,7 +26,9 @@ use ark_serialize::{
 use crate::prelude::Error;
 
 ///  Public Inputs
-#[derive(CanonicalDeserialize, CanonicalSerialize, Clone, PartialEq, Debug)]
+#[derive(
+    CanonicalDeserialize, CanonicalSerialize, Clone, PartialEq, Debug, Hash,
+)]
 pub struct PI<F>
 where
     F: PrimeField,
@@ -67,9 +69,17 @@ where
     }
 
     /// Inserts a new public input value at a given position.
+    ///
+    /// If the value provided is zero no insertion will be made as zeros are the
+    /// implicit value of empty positions.
+    /// The function will panic if an insertion is atempted in an already
+    /// occupied position.
     pub fn insert(&mut self, pos: usize, val: F) {
-        if self.values.insert(pos, val).is_some() {
+        if self.values.contains_key(&pos) {
             panic!("Insertion in public inputs conflicts with previous value at position {}", pos);
+        }
+        if val != F::zero() {
+            self.values.insert(pos, val);
         }
     }
 
@@ -87,7 +97,8 @@ where
     /// Inserts all the elements of `iter` converted into constraint field
     /// elements in consecutive positions.
     /// Returns the number of field elements occupied by `iter`
-    /// [`Error::InvalidPublicInputValue`] if the input could not be converted.
+    /// [`Error::InvalidPublicInputValue`] if the input could not be
+    /// converted.
     fn extend<'t, T, I>(
         &mut self,
         init_pos: usize,
@@ -104,7 +115,7 @@ where
                 .ok_or(Error::InvalidPublicInputValue)?;
 
             for (pos2, elem) in item_repr.iter().enumerate() {
-                self.values.insert(init_pos + pos1 + pos2, *elem);
+                self.insert(init_pos + pos1 + pos2, *elem);
                 result += 1;
             }
         }

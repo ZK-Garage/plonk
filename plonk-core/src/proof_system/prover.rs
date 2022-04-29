@@ -80,7 +80,7 @@ where
         &mut self.cs
     }
 
-    /// Returns the smallest power of two needed for the curcuit
+    /// Returns the smallest power of two needed for the curcuit.
     pub fn circuit_bound(&self) -> usize {
         self.cs.circuit_bound()
     }
@@ -135,7 +135,7 @@ where
         self.cs = StandardComposer::new();
     }
 
-    /// Clears all data in the `Prover` instance.
+    /// Clears all data in the [`Prover`] instance.
     ///
     /// This function is used when the user wants to use the same `Prover` to
     /// make a [`Proof`] regarding a different circuit.
@@ -179,13 +179,7 @@ where
         let mut transcript = self.preprocessed_transcript.clone();
 
         // Append Public Inputs to the transcript
-        for (pos, val) in self.cs.get_pi().iter() {
-            if !val.is_zero() {
-                let static_label =
-                    Box::leak(format!("pi{}", pos).into_boxed_str());
-                transcript.append(static_label.as_bytes(), val)
-            }
-        }
+        transcript.append(b"pi", self.cs.get_pi());
 
         // 1. Compute witness Polynomials
         //

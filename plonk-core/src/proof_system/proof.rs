@@ -4,11 +4,11 @@
 //
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
-//! A Proof stores the commitments to all of the elements that
-//! are needed to univocally identify a prove of some statement.
+//! A Proof stores the commitments to all of the elements that are needed to
+//! univocally identify a prove of some statement.
 //!
-//! This module contains the implementation of the `StandardComposer`s
-//! `Proof` structure and it's methods.
+//! This module contains the implementation of the `StandardComposer`s [`Proof`]
+//! structure and it's methods.
 
 use crate::{
     commitment::HomomorphicCommitment,
@@ -36,12 +36,11 @@ use merlin::Transcript;
 use super::pi::PI;
 
 /// A Proof is a composition of `Commitment`s to the Witness, Permutation,
-/// Quotient, Shifted and Opening polynomials as well as the
-/// `ProofEvaluations`.
+/// Quotient, Shifted and Opening polynomials as well as the `ProofEvaluations`.
 ///
-/// It's main goal is to allow the `Verifier` to
-/// formally verify that the secret witnesses used to generate the [`Proof`]
-/// satisfy a circuit that both [`Prover`](super::Prover) and
+/// It's main goal is to allow the [`Verifier`](super::Verifier) to formally
+/// verify that the secret witnesses used to generate the [`Proof`] satisfy a
+/// circuit that both [`Prover`](super::Prover) and
 /// [`Verifier`](super::Verifier) have in common succintly and without any
 /// capabilities of adquiring any kind of knowledge about the witness used to
 /// construct the Proof.
@@ -132,13 +131,7 @@ where
             })?;
 
         // Append Public Inputs to the transcript
-        for (pos, val) in pub_inputs.iter() {
-            if !val.is_zero() {
-                let static_label =
-                    Box::leak(format!("pi{}", pos).into_boxed_str());
-                transcript.append(static_label.as_bytes(), val)
-            }
-        }
+        transcript.append(b"pi", pub_inputs);
 
         // Subgroup checks are done when the proof is deserialised.
 
