@@ -128,3 +128,66 @@ where
         DensePolynomial::from_coefficients_vec(domain.ifft(&evals))
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::batch_field_test;
+    use ark_bls12_377::Fr as Bls12_377_scalar_field;
+    use ark_bls12_381::Fr as Bls12_381_scalar_field;
+
+    // Checks PI representation is not affected by insertion order
+    // or extra zeros.
+    fn test_pi_unique_repr<F>()
+    where
+        F: FftField,
+    {
+        let mut pi_1 = PI::new(8);
+
+        pi_1.insert(2, F::from(2u64));
+        pi_1.insert(5, F::from(5u64));
+        pi_1.insert(6, F::from(6u64));
+
+        let mut pi_2 = PI::new(8);
+
+        pi_2.insert(6, F::from(6u64));
+        pi_2.insert(5, F::from(5u64));
+        pi_2.insert(2, F::from(2u64));
+
+        pi_2.insert(0, F::zero());
+        pi_2.insert(1, F::zero());
+        assert_eq!(pi_1, pi_2);
+    }
+
+    // Checks PI does not allow to override already inserted values.
+    fn test_pi_dup_insertion<F>()
+    where
+        F: FftField,
+    {
+        let mut pi_1 = PI::new(8);
+
+        pi_1.insert(2, F::from(2u64));
+        pi_1.insert(5, F::from(5u64));
+        pi_1.insert(5, F::from(2u64));
+    }
+
+    // Bls12-381 tests
+    batch_field_test!(
+        [
+            test_pi_unique_repr
+        ],
+        [
+           test_pi_dup_insertion
+        ] => Bls12_381_scalar_field
+    );
+
+    // Bls12-377 tests
+    batch_field_test!(
+        [
+            test_pi_unique_repr
+        ],
+        [
+           test_pi_dup_insertion
+        ] => Bls12_377_scalar_field
+    );
+}
