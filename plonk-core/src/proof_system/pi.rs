@@ -11,8 +11,6 @@
 //! basic manipulations such as inserting new values and getting the public
 //! inputs in evaluation or coefficient form.
 
-use core::ops::Deref;
-
 use alloc::collections::BTreeMap;
 use ark_ff::{PrimeField, ToConstraintField};
 use ark_poly::{
@@ -37,16 +35,6 @@ where
     n: usize,
     // non-zero values of the public input
     values: BTreeMap<usize, F>,
-}
-
-impl<F> Deref for PI<F>
-where
-    F: PrimeField,
-{
-    type Target = BTreeMap<usize, F>;
-    fn deref(&self) -> &Self::Target {
-        &self.values
-    }
 }
 
 impl<F> PI<F>
