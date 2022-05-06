@@ -12,7 +12,7 @@
 //! inputs in evaluation or coefficient form.
 
 use alloc::collections::BTreeMap;
-use ark_ff::{PrimeField, ToConstraintField};
+use ark_ff::{FftField, ToConstraintField};
 use ark_poly::{
     polynomial::UVPolynomial, univariate::DensePolynomial, EvaluationDomain,
     GeneralEvaluationDomain,
@@ -29,7 +29,7 @@ use crate::prelude::Error;
 )]
 pub struct PI<F>
 where
-    F: PrimeField,
+    F: FftField,
 {
     // padded size of the circuit
     n: usize,
@@ -39,7 +39,7 @@ where
 
 impl<F> PI<F>
 where
-    F: PrimeField,
+    F: FftField,
 {
     /// Creates a new struct for [`PI`].
     pub fn new(n: usize) -> Self {
@@ -120,7 +120,7 @@ where
 
 impl<F> From<&PI<F>> for DensePolynomial<F>
 where
-    F: PrimeField,
+    F: FftField,
 {
     fn from(pi: &PI<F>) -> Self {
         let domain = GeneralEvaluationDomain::<F>::new(pi.n).unwrap();
