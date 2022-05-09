@@ -79,7 +79,6 @@ where
     //
     // Create a Verifier object
     let mut verifier = Verifier::new(b"demo");
-    // panic!("{:?}", verifier.cs.public_inputs);
 
     // Additionally key the transcript
     verifier.key_transcript(b"key", b"additional seed information");

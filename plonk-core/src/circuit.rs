@@ -405,9 +405,6 @@ mod test {
         // Compile the circuit
         let (pk, vk) = circuit.compile::<PC>(&pp)?;
 
-        //Add PI to the verifier data
-        // verifier_data.pi.insert()
-
         let (x, y) = P::AFFINE_GENERATOR_COEFFS;
         let generator: GroupAffine<P> = GroupAffine::new(x, y);
         let point_f_pi: GroupAffine<P> = AffineCurve::mul(
