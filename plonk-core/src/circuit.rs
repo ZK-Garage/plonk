@@ -10,7 +10,9 @@ use crate::{
     commitment::HomomorphicCommitment,
     error::{to_pc_error, Error},
     prelude::StandardComposer,
-    proof_system::{pi::PI, Proof, Prover, ProverKey, Verifier, VerifierKey},
+    proof_system::{
+        pi::PublicInputs, Proof, Prover, ProverKey, Verifier, VerifierKey,
+    },
 };
 use ark_ec::models::TEModelParameters;
 use ark_ff::PrimeField;
@@ -35,7 +37,7 @@ where
     /// Verifier Key
     pub key: VerifierKey<F, PC>,
     /// Public Input
-    pub pi: PI<F>,
+    pub pi: PublicInputs<F>,
 }
 
 impl<F, PC> VerifierData<F, PC>
@@ -45,7 +47,7 @@ where
 {
     /// Creates a new `VerifierData` from a [`VerifierKey`] and the public
     /// input positions of the circuit that it represents.
-    pub fn new(key: VerifierKey<F, PC>, pi: PI<F>) -> Self {
+    pub fn new(key: VerifierKey<F, PC>, pi: PublicInputs<F>) -> Self {
         Self { key, pi }
     }
 
@@ -55,7 +57,7 @@ where
     }
 
     /// Returns a reference to the contained Public Input .
-    pub fn pi(&self) -> &PI<F> {
+    pub fn pi(&self) -> &PublicInputs<F> {
         &self.pi
     }
 }
@@ -265,7 +267,7 @@ where
         u_params: &PC::UniversalParams,
         prover_key: ProverKey<F>,
         transcript_init: &'static [u8],
-    ) -> Result<(Proof<F, PC>, PI<F>), Error>
+    ) -> Result<(Proof<F, PC>, PublicInputs<F>), Error>
     where
         F: PrimeField,
         P: TEModelParameters<BaseField = F>,
@@ -296,7 +298,7 @@ pub fn verify_proof<F, P, PC>(
     u_params: &PC::UniversalParams,
     plonk_verifier_key: VerifierKey<F, PC>,
     proof: &Proof<F, PC>,
-    public_inputs: &PI<F>,
+    public_inputs: &PublicInputs<F>,
     transcript_init: &'static [u8],
 ) -> Result<(), Error>
 where

@@ -17,7 +17,7 @@
 use crate::{constraint_system::Variable, permutation::Permutation};
 
 use crate::lookup::LookupTable;
-use crate::proof_system::pi::PI;
+use crate::proof_system::pi::PublicInputs;
 use ark_ec::{models::TEModelParameters, ModelParameters};
 use ark_ff::PrimeField;
 use core::cmp::max;
@@ -88,7 +88,7 @@ where
 
     /// Sparse representation of the Public Inputs linking the positions of the
     /// non-zero ones to it's actual values.
-    pub(crate) public_inputs: PI<F>,
+    pub(crate) public_inputs: PublicInputs<F>,
 
     // Witness vectors
     /// Left wire witness vector.
@@ -135,7 +135,7 @@ where
     }
 
     /// Returns a reference to the [`PI`] stored in the [`StandardComposer`].
-    pub fn get_pi(&self) -> &PI<F> {
+    pub fn get_pi(&self) -> &PublicInputs<F> {
         &self.public_inputs
     }
 }
@@ -195,7 +195,7 @@ where
             q_fixed_group_add: Vec::with_capacity(expected_size),
             q_variable_group_add: Vec::with_capacity(expected_size),
             q_lookup: Vec::with_capacity(expected_size),
-            public_inputs: PI::new(expected_size.next_power_of_two()),
+            public_inputs: PublicInputs::new(expected_size.next_power_of_two()),
             w_l: Vec::with_capacity(expected_size),
             w_r: Vec::with_capacity(expected_size),
             w_o: Vec::with_capacity(expected_size),

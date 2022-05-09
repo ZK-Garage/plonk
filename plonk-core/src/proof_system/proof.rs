@@ -33,7 +33,7 @@ use ark_serialize::{
 };
 use merlin::Transcript;
 
-use super::pi::PI;
+use super::pi::PublicInputs;
 
 /// A [`Proof`] is a composition of `Commitment`s to the Witness, Permutation,
 /// Quotient, Shifted and Opening polynomials as well as the
@@ -113,7 +113,7 @@ where
         plonk_verifier_key: &PlonkVerifierKey<F, PC>,
         transcript: &mut Transcript,
         verifier_key: &PC::VerifierKey,
-        pub_inputs: &PI<F>,
+        pub_inputs: &PublicInputs<F>,
     ) -> Result<(), Error>
     where
         P: TEModelParameters<BaseField = F>,

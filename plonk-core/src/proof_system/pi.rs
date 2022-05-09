@@ -26,7 +26,7 @@ use crate::prelude::Error;
 ///  Public Inputs
 #[derive(CanonicalDeserialize, CanonicalSerialize, derivative::Derivative)]
 #[derivative(Clone, Debug, Default, Eq, Hash, PartialEq)]
-pub struct PI<F>
+pub struct PublicInputs<F>
 where
     F: FftField,
 {
@@ -36,7 +36,7 @@ where
     values: BTreeMap<usize, F>,
 }
 
-impl<F> PI<F>
+impl<F> PublicInputs<F>
 where
     F: FftField,
 {
@@ -117,11 +117,11 @@ where
     }
 }
 
-impl<F> From<&PI<F>> for DensePolynomial<F>
+impl<F> From<&PublicInputs<F>> for DensePolynomial<F>
 where
     F: FftField,
 {
-    fn from(pi: &PI<F>) -> Self {
+    fn from(pi: &PublicInputs<F>) -> Self {
         let domain = GeneralEvaluationDomain::<F>::new(pi.n).unwrap();
         let evals = pi.as_evals();
         DensePolynomial::from_coefficients_vec(domain.ifft(&evals))
@@ -141,13 +141,13 @@ mod test {
     where
         F: FftField,
     {
-        let mut pi_1 = PI::new(8);
+        let mut pi_1 = PublicInputs::new(8);
 
         pi_1.insert(2, F::from(2u64));
         pi_1.insert(5, F::from(5u64));
         pi_1.insert(6, F::from(6u64));
 
-        let mut pi_2 = PI::new(8);
+        let mut pi_2 = PublicInputs::new(8);
 
         pi_2.insert(6, F::from(6u64));
         pi_2.insert(5, F::from(5u64));
@@ -163,7 +163,7 @@ mod test {
     where
         F: FftField,
     {
-        let mut pi_1 = PI::new(8);
+        let mut pi_1 = PublicInputs::new(8);
 
         pi_1.insert(2, F::from(2u64));
         pi_1.insert(5, F::from(5u64));
