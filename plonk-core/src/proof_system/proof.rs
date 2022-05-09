@@ -35,15 +35,9 @@ use merlin::Transcript;
 
 use super::pi::PI;
 
-/// A Proof is a composition of `Commitment`s to the Witness, Permutation,
-/// Quotient, Shifted and Opening polynomials as well as the `ProofEvaluations`.
-///
-/// It's main goal is to allow the [`Verifier`](super::Verifier) to formally
-/// verify that the secret witnesses used to generate the [`Proof`] satisfy a
-/// circuit that both [`Prover`](super::Prover) and
-/// [`Verifier`](super::Verifier) have in common succintly and without any
-/// capabilities of adquiring any kind of knowledge about the witness used to
-/// construct the Proof.
+/// A [`Proof`] is a composition of `Commitment`s to the Witness, Permutation,
+/// Quotient, Shifted and Opening polynomials as well as the
+/// `ProofEvaluations`.
 #[derive(CanonicalDeserialize, CanonicalSerialize, derivative::Derivative)]
 #[derivative(
     Clone(bound = "PC::Commitment: Clone, PC::Proof: Clone"),
