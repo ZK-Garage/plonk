@@ -24,9 +24,8 @@ use ark_serialize::{
 use crate::prelude::Error;
 
 ///  Public Inputs
-#[derive(
-    CanonicalDeserialize, CanonicalSerialize, Clone, PartialEq, Debug, Hash,
-)]
+#[derive(CanonicalDeserialize, CanonicalSerialize, derivative::Derivative)]
+#[derivative(Clone, Debug, Default, Eq, Hash, PartialEq)]
 pub struct PI<F>
 where
     F: FftField,
