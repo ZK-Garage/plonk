@@ -95,18 +95,17 @@ where
         T: 't + ToConstraintField<F>,
         I: IntoIterator<Item = &'t T>,
     {
-        let mut result = 0;
-        for (pos1, item) in iter.into_iter().enumerate() {
-            let item_repr = &item
+        let mut count = 0;
+        for item in iter {
+            for elem in item
                 .to_field_elements()
-                .ok_or(Error::InvalidPublicInputValue)?;
-
-            for (pos2, elem) in item_repr.iter().enumerate() {
-                self.insert(init_pos + pos1 + pos2, *elem);
-                result += 1;
+                .ok_or(Error::InvalidPublicInputValue)?
+            {
+                self.insert(init_pos + count, elem);
+                count += 1;
             }
         }
-        Ok(result)
+        Ok(count)
     }
 
     /// Returns the public inputs as a vector of `n` evaluations.
