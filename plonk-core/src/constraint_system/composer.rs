@@ -134,7 +134,8 @@ where
         self.total_size().next_power_of_two()
     }
 
-    /// Returns a reference to the [`PI`] stored in the [`StandardComposer`].
+    /// Returns a reference to the [`PublicInputs`] stored in the
+    /// [`StandardComposer`].
     pub fn get_pi(&self) -> &PublicInputs<F> {
         &self.public_inputs
     }

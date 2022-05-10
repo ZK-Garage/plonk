@@ -7,9 +7,9 @@
 //! Public Inputs of the circuit. This values are available for the
 //! [`super::Prover`] and [`super::Verifier`].
 //!
-//! This module contains the implementation of the [`PI`] struct and all the
-//! basic manipulations such as inserting new values and getting the public
-//! inputs in evaluation or coefficient form.
+//! This module contains the implementation of the [`PublicInputs`] struct and
+//! all the basic manipulations such as inserting new values and getting the
+//! public inputs in evaluation or coefficient form.
 
 use alloc::collections::BTreeMap;
 use ark_ff::{FftField, ToConstraintField};
@@ -40,7 +40,7 @@ impl<F> PublicInputs<F>
 where
     F: FftField,
 {
-    /// Creates a new struct for [`PI`].
+    /// Creates a new struct for [`PublicInputs`].
     pub fn new(n: usize) -> Self {
         assert!(n.is_power_of_two());
         Self {
@@ -134,7 +134,7 @@ mod test {
     use ark_bls12_377::Fr as Bls12_377_scalar_field;
     use ark_bls12_381::Fr as Bls12_381_scalar_field;
 
-    // Checks PI representation is not affected by insertion order
+    // Checks PublicInputs representation is not affected by insertion order
     // or extra zeros.
     fn test_pi_unique_repr<F>()
     where
@@ -157,7 +157,7 @@ mod test {
         assert_eq!(pi_1, pi_2);
     }
 
-    // Checks PI does not allow to override already inserted values.
+    // Checks PublicInputs does not allow to override already inserted values.
     fn test_pi_dup_insertion<F>()
     where
         F: FftField,

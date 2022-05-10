@@ -261,7 +261,7 @@ where
 
     /// Generates a proof using the provided [`ProverKey`] and
     /// [`ark_poly_commit::PCUniversalParams`]. Returns a
-    /// [`crate::proof_system::Proof`] and the [`PI`].
+    /// [`crate::proof_system::Proof`] and the [`PublicInputs`].
     fn gen_proof<PC>(
         &mut self,
         u_params: &PC::UniversalParams,
