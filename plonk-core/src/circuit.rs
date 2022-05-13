@@ -10,56 +10,13 @@ use crate::{
     commitment::HomomorphicCommitment,
     error::{to_pc_error, Error},
     prelude::StandardComposer,
-    proof_system::{Proof, Prover, ProverKey, Verifier, VerifierKey},
+    proof_system::{
+        pi::PublicInputs, Proof, Prover, ProverKey, Verifier, VerifierKey,
+    },
 };
 use ark_ec::models::TEModelParameters;
-use ark_ff::{Field, PrimeField, ToConstraintField};
+use ark_ff::PrimeField;
 use ark_serialize::*;
-
-/// Public Input Builder
-#[derive(derivative::Derivative)]
-#[derivative(Default(bound = ""))]
-pub struct PublicInputBuilder<F>
-where
-    F: PrimeField,
-{
-    input: Vec<F>,
-}
-
-impl<F> PublicInputBuilder<F>
-where
-    F: PrimeField,
-{
-    /// Creates a new PublicInputBuilder
-    pub fn new() -> Self {
-        Self { input: vec![] }
-    }
-    /// Pushes a new input `item` into `self`, returning `None` if `item` could
-    /// not be converted into constraint field elements.
-    pub fn add_input<T>(self, item: &T) -> Option<Self>
-    where
-        T: ToConstraintField<F>,
-    {
-        self.extend([item])
-    }
-    /// Extends the input buffer by appending all the elements of `iter`
-    /// converted into constraint field elements, returning `None` if any of
-    /// the conversions failed.
-    pub fn extend<'t, T, I>(mut self, iter: I) -> Option<Self>
-    where
-        T: 't + ToConstraintField<F>,
-        I: IntoIterator<Item = &'t T>,
-    {
-        for item in iter {
-            self.input.append(&mut item.to_field_elements()?);
-        }
-        Some(self)
-    }
-    /// Returns the vector of input elements.
-    pub fn finish(self) -> Vec<F> {
-        self.input
-    }
-}
 
 /// Collection of structs/objects that the Verifier will use in order to
 /// de/serialize data needed for Circuit proof verification.
@@ -79,9 +36,8 @@ where
 {
     /// Verifier Key
     pub key: VerifierKey<F, PC>,
-
-    /// Public Input Positions
-    pub pi_pos: Vec<usize>,
+    /// Public Input
+    pub pi: PublicInputs<F>,
 }
 
 impl<F, PC> VerifierData<F, PC>
@@ -91,8 +47,8 @@ where
 {
     /// Creates a new `VerifierData` from a [`VerifierKey`] and the public
     /// input positions of the circuit that it represents.
-    pub fn new(key: VerifierKey<F, PC>, pi_pos: Vec<usize>) -> Self {
-        Self { key, pi_pos }
+    pub fn new(key: VerifierKey<F, PC>, pi: PublicInputs<F>) -> Self {
+        Self { key, pi }
     }
 
     /// Returns a reference to the contained [`VerifierKey`].
@@ -100,9 +56,9 @@ where
         &self.key
     }
 
-    /// Returns a reference to the contained Public Input positions.
-    pub fn pi_pos(&self) -> &[usize] {
-        &self.pi_pos
+    /// Returns a reference to the contained Public Input .
+    pub fn pi(&self) -> &PublicInputs<F> {
+        &self.pi
     }
 }
 
@@ -122,7 +78,7 @@ where
 ///     EdwardsProjective as JubJubProjective, Fr as JubJubScalar,
 /// };
 /// use ark_ff::{FftField, PrimeField, BigInteger, ToConstraintField};
-/// use plonk_core::circuit::{Circuit, verify_proof, PublicInputBuilder};
+/// use plonk_core::circuit::{Circuit, verify_proof};
 /// use plonk_core::constraint_system::StandardComposer;
 /// use plonk_core::error::{to_pc_error,Error};
 /// use ark_poly::polynomial::univariate::DensePolynomial;
@@ -207,7 +163,7 @@ where
 ///
 /// let mut circuit = TestCircuit::<BlsScalar, JubJubParameters>::default();
 /// // Compile the circuit
-/// let (pk_p, verifier_data) = circuit.compile::<PC>(&pp)?;
+/// let (pk_p, vk) = circuit.compile::<PC>(&pp)?;
 ///
 /// let (x, y) = JubJubParameters::AFFINE_GENERATOR_COEFFS;
 /// let generator: GroupAffine<JubJubParameters> = GroupAffine::new(x, y);
@@ -217,7 +173,7 @@ where
 /// )
 /// .into_affine();
 /// // Prover POV
-/// let proof = {
+/// let (proof, pi) = {
 ///     let mut circuit: TestCircuit<BlsScalar, JubJubParameters> = TestCircuit {
 ///         a: BlsScalar::from(20u64),
 ///         b: BlsScalar::from(5u64),
@@ -229,6 +185,7 @@ where
 ///     circuit.gen_proof::<PC>(&pp, pk_p, b"Test")
 /// }?;
 ///
+/// let verifier_data = VerifierData::new(vk, pi);
 /// // Test serialisation for verifier_data
 /// let mut verifier_data_bytes = Vec::new();
 /// verifier_data.serialize(&mut verifier_data_bytes).unwrap();
@@ -239,23 +196,11 @@ where
 /// assert!(deserialized_verifier_data == verifier_data);
 ///
 /// // Verifier POV
-/// let public_inputs = PublicInputBuilder::new()
-///     .add_input(&BlsScalar::from(25u64))
-///     .unwrap()
-///     .add_input(&BlsScalar::from(100u64))
-///     .unwrap()
-///     .add_input(&point_f_pi)
-///     .unwrap()
-///     .finish();
-///
-/// let VerifierData { key, pi_pos } = verifier_data;
-/// // TODO: non-ideal hack for a first functional version.
 /// verify_proof::<BlsScalar, JubJubParameters, PC>(
 ///     &pp,
-///     key,
+///     verifier_data.key,
 ///     &proof,
-///     &public_inputs,
-///     &pi_pos,
+///     &verifier_data.pi,
 ///     b"Test",
 /// )
 /// }
@@ -275,12 +220,12 @@ where
     ) -> Result<(), Error>;
 
     /// Compiles the circuit by using a function that returns a `Result`
-    /// with the `ProverKey`, `VerifierKey` and the circuit size.
+    /// with the [`ProverKey`], [`VerifierKey`] and the circuit size.
     #[allow(clippy::type_complexity)] // NOTE: Clippy is too harsh here.
     fn compile<PC>(
         &mut self,
         u_params: &PC::UniversalParams,
-    ) -> Result<(ProverKey<F>, VerifierData<F, PC>), Error>
+    ) -> Result<(ProverKey<F>, VerifierKey<F, PC>), Error>
     where
         F: PrimeField,
         PC: HomomorphicCommitment<F>,
@@ -293,34 +238,36 @@ where
         //Generate & save `ProverKey` with some random values.
         let mut prover = Prover::<F, P, PC>::new(b"CircuitCompilation");
         self.gadget(prover.mut_cs())?;
-        let pi_pos = prover.mut_cs().pi_positions();
+        prover.cs.public_inputs.update_size(prover.circuit_bound());
         prover.preprocess(&ck)?;
 
         // Generate & save `VerifierKey` with some random values.
         let mut verifier = Verifier::new(b"CircuitCompilation");
         self.gadget(verifier.mut_cs())?;
+        verifier
+            .cs
+            .public_inputs
+            .update_size(verifier.circuit_bound());
         verifier.preprocess(&ck)?;
         Ok((
             prover
                 .prover_key
                 .expect("Unexpected error. Missing ProverKey in compilation"),
-            VerifierData::new(
-                verifier.verifier_key.expect(
-                    "Unexpected error. Missing VerifierKey in compilation",
-                ),
-                pi_pos,
-            ),
+            verifier
+                .verifier_key
+                .expect("Unexpected error. Missing VerifierKey in compilation"),
         ))
     }
 
-    /// Generates a proof using the provided `CircuitInputs` & `ProverKey`
-    /// instances.
+    /// Generates a proof using the provided [`ProverKey`] and
+    /// [`ark_poly_commit::PCUniversalParams`]. Returns a
+    /// [`crate::proof_system::Proof`] and the [`PublicInputs`].
     fn gen_proof<PC>(
         &mut self,
         u_params: &PC::UniversalParams,
         prover_key: ProverKey<F>,
         transcript_init: &'static [u8],
-    ) -> Result<Proof<F, PC>, Error>
+    ) -> Result<(Proof<F, PC>, PublicInputs<F>), Error>
     where
         F: PrimeField,
         P: TEModelParameters<BaseField = F>,
@@ -333,9 +280,12 @@ where
         let mut prover = Prover::new(transcript_init);
         // Fill witnesses for Prover
         self.gadget(prover.mut_cs())?;
+        prover.cs.public_inputs.update_size(circuit_size);
         // Add ProverKey to Prover
         prover.prover_key = Some(prover_key);
-        prover.prove(&ck)
+        let pi = prover.cs.get_pi().clone();
+
+        Ok((prover.prove(&ck)?, pi))
     }
 
     /// Returns the Circuit size padded to the next power of two.
@@ -348,8 +298,7 @@ pub fn verify_proof<F, P, PC>(
     u_params: &PC::UniversalParams,
     plonk_verifier_key: VerifierKey<F, PC>,
     proof: &Proof<F, PC>,
-    pub_inputs_values: &[F],
-    pub_inputs_positions: &[usize],
+    public_inputs: &PublicInputs<F>,
     transcript_init: &'static [u8],
 ) -> Result<(), Error>
 where
@@ -363,31 +312,7 @@ where
     let (_, vk) = PC::trim(u_params, padded_circuit_size, 0, None)
         .map_err(to_pc_error::<F, PC>)?;
 
-    verifier.verify(
-        proof,
-        &vk,
-        build_pi(pub_inputs_values, pub_inputs_positions, padded_circuit_size)
-            .as_slice(),
-    )
-}
-
-/// Build PI vector for Proof verifications.
-fn build_pi<'a, F>(
-    pub_input_values: impl IntoIterator<Item = &'a F>,
-    pub_input_pos: &[usize],
-    trim_size: usize,
-) -> Vec<F>
-where
-    F: Field,
-{
-    let mut pi = vec![F::zero(); trim_size];
-    pub_input_values
-        .into_iter()
-        .zip(pub_input_pos.iter().copied())
-        .for_each(|(value, pos)| {
-            pi[pos] = -*value;
-        });
-    pi
+    verifier.verify(proof, &vk, public_inputs)
 }
 
 #[cfg(test)]
@@ -480,7 +405,7 @@ mod test {
         let mut circuit = TestCircuit::<F, P>::default();
 
         // Compile the circuit
-        let (pk_p, verifier_data) = circuit.compile::<PC>(&pp)?;
+        let (pk, vk) = circuit.compile::<PC>(&pp)?;
 
         let (x, y) = P::AFFINE_GENERATOR_COEFFS;
         let generator: GroupAffine<P> = GroupAffine::new(x, y);
@@ -491,7 +416,7 @@ mod test {
         .into_affine();
 
         // Prover POV
-        let proof = {
+        let (proof, pi) = {
             let mut circuit: TestCircuit<F, P> = TestCircuit {
                 a: F::from(20u64),
                 b: F::from(5u64),
@@ -501,8 +426,10 @@ mod test {
                 f: point_f_pi,
             };
 
-            circuit.gen_proof::<PC>(&pp, pk_p, b"Test")?
+            circuit.gen_proof::<PC>(&pp, pk, b"Test")?
         };
+
+        let verifier_data = VerifierData::new(vk, pi);
 
         // Test serialisation for verifier_data
         let mut verifier_data_bytes = Vec::new();
@@ -514,24 +441,13 @@ mod test {
         assert!(deserialized_verifier_data == verifier_data);
 
         // Verifier POV
-        let public_inputs = PublicInputBuilder::new()
-            .add_input(&F::from(25u64))
-            .unwrap()
-            .add_input(&F::from(100u64))
-            .unwrap()
-            .add_input(&point_f_pi)
-            .unwrap()
-            .finish();
-
-        let VerifierData { key, pi_pos } = verifier_data;
 
         // TODO: non-ideal hack for a first functional version.
         assert!(verify_proof::<F, P, PC>(
             &pp,
-            key,
+            verifier_data.key,
             &proof,
-            &public_inputs,
-            &pi_pos,
+            &verifier_data.pi,
             b"Test",
         )
         .is_ok());

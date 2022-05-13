@@ -15,9 +15,9 @@
 //! ECC op. gates, Range checks, Logical gates (Bitwise ops) etc.
 
 use crate::{constraint_system::Variable, permutation::Permutation};
-use alloc::collections::BTreeMap;
 
 use crate::lookup::LookupTable;
+use crate::proof_system::pi::PublicInputs;
 use ark_ec::{models::TEModelParameters, ModelParameters};
 use ark_ff::PrimeField;
 use core::cmp::max;
@@ -88,7 +88,7 @@ where
 
     /// Sparse representation of the Public Inputs linking the positions of the
     /// non-zero ones to it's actual values.
-    pub(crate) public_inputs_sparse_store: BTreeMap<usize, F>,
+    pub(crate) public_inputs: PublicInputs<F>,
 
     // Witness vectors
     /// Left wire witness vector.
@@ -124,34 +124,20 @@ where
     F: PrimeField,
     P: ModelParameters<BaseField = F>,
 {
-    /// Returns the length of the circuit that can accomodate the lookup table
+    /// Returns the length of the circuit that can accomodate the lookup table.
     fn total_size(&self) -> usize {
         max(self.n, self.lookup_table.size())
     }
 
-    /// Returns the smallest power of two needed for the curcuit
+    /// Returns the smallest power of two needed for the curcuit.
     pub fn circuit_bound(&self) -> usize {
         self.total_size().next_power_of_two()
     }
 
-    /// Constructs a dense vector of the Public Inputs from the positions and
-    /// the sparse vector that contains the values.
-    pub fn construct_dense_pi_vec(&self) -> Vec<F> {
-        let mut pi = vec![F::zero(); self.n];
-        self.public_inputs_sparse_store
-            .iter()
-            .for_each(|(pos, value)| {
-                pi[*pos] = *value;
-            });
-        pi
-    }
-
-    /// Returns the positions that the Public Inputs occupy in this Composer
-    /// instance.
-    pub fn pi_positions(&self) -> Vec<usize> {
-        // TODO: Find a more performant solution which can return a ref to a Vec
-        // or Iterator.
-        self.public_inputs_sparse_store.keys().copied().collect()
+    /// Returns a reference to the [`PublicInputs`] stored in the
+    /// [`StandardComposer`].
+    pub fn get_pi(&self) -> &PublicInputs<F> {
+        &self.public_inputs
     }
 }
 
@@ -210,7 +196,7 @@ where
             q_fixed_group_add: Vec::with_capacity(expected_size),
             q_variable_group_add: Vec::with_capacity(expected_size),
             q_lookup: Vec::with_capacity(expected_size),
-            public_inputs_sparse_store: BTreeMap::new(),
+            public_inputs: PublicInputs::new(expected_size.next_power_of_two()),
             w_l: Vec::with_capacity(expected_size),
             w_r: Vec::with_capacity(expected_size),
             w_o: Vec::with_capacity(expected_size),
@@ -294,10 +280,7 @@ where
         self.q_lookup.push(F::zero());
 
         if let Some(pi) = pi {
-            assert!(self
-                .public_inputs_sparse_store
-                .insert(self.n, pi)
-                .is_none());
+            self.public_inputs.insert(self.n, pi);
         }
 
         self.perm
@@ -683,7 +666,7 @@ where
             let f_3 = f - F::from(3u64);
             f * f_1 * f_2 * f_3
         };
-        let pi_vec = self.construct_dense_pi_vec();
+        let pi_vec = self.public_inputs.as_evals();
         let four = F::from(4u64);
         for i in 0..self.n {
             let qm = self.q_m[i];
@@ -965,7 +948,7 @@ mod test {
         // Preprocess circuit
         prover.preprocess(&ck).unwrap();
 
-        let public_inputs = prover.cs.construct_dense_pi_vec();
+        let public_inputs = prover.cs.get_pi().clone();
 
         let mut proofs = Vec::new();
 

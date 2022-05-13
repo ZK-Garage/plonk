@@ -9,22 +9,19 @@
 //! PLONK Example
 
 use ark_bls12_381::{Bls12_381, Fr as BlsScalar};
-use ark_ec::TEModelParameters;
-use ark_ff::PrimeField;
-use ark_poly::univariate::DensePolynomial;
-use ark_poly_commit::sonic_pc::SonicKZG10;
-use ark_poly_commit::PolynomialCommitment;
-use plonk::prelude::*;
-use rand_core::OsRng;
-
 use ark_ec::models::twisted_edwards_extended::GroupAffine;
-use ark_ec::{AffineCurve, ProjectiveCurve};
+use ark_ec::{AffineCurve, ProjectiveCurve, TEModelParameters};
 use ark_ed_on_bls12_381::{
     EdwardsParameters as JubJubParameters, Fr as JubJubScalar,
 };
-use plonk_core::circuit::{verify_proof, Circuit, PublicInputBuilder};
+use ark_ff::PrimeField;
+use ark_poly::polynomial::univariate::DensePolynomial;
+use ark_poly_commit::{sonic_pc::SonicKZG10, PolynomialCommitment};
+use plonk_core::circuit::{verify_proof, Circuit};
 use plonk_core::constraint_system::StandardComposer;
 use plonk_core::error::Error;
+use plonk_core::prelude::*;
+use rand_core::OsRng;
 
 fn main() -> Result<(), Error> {
     // Implements a circuit that checks:
@@ -95,15 +92,11 @@ fn main() -> Result<(), Error> {
 
     // Generate CRS
     type PC = SonicKZG10<Bls12_381, DensePolynomial<BlsScalar>>;
-    //type PC = KZG10::<Bls12_381>; //Use a different polynomial commitment
-    // scheme
-
-    let pp = PC::setup(1 << 12, None, &mut OsRng)
-        .expect("Unable to sample public parameters.");
+    let pp = PC::setup(1 << 10, None, &mut OsRng)?;
 
     let mut circuit = TestCircuit::<BlsScalar, JubJubParameters>::default();
     // Compile the circuit
-    let (pk_p, verifier_data) = circuit.compile::<PC>(&pp)?;
+    let (pk_p, vk) = circuit.compile::<PC>(&pp)?;
 
     let (x, y) = JubJubParameters::AFFINE_GENERATOR_COEFFS;
     let generator: GroupAffine<JubJubParameters> = GroupAffine::new(x, y);
@@ -111,7 +104,7 @@ fn main() -> Result<(), Error> {
         AffineCurve::mul(&generator, JubJubScalar::from(2u64).into_repr())
             .into_affine();
     // Prover POV
-    let proof = {
+    let (proof, pi) = {
         let mut circuit: TestCircuit<BlsScalar, JubJubParameters> =
             TestCircuit {
                 a: BlsScalar::from(20u64),
@@ -125,23 +118,12 @@ fn main() -> Result<(), Error> {
     }?;
 
     // Verifier POV
-    let public_inputs = PublicInputBuilder::new()
-        .add_input(&BlsScalar::from(25u64))
-        .unwrap()
-        .add_input(&BlsScalar::from(100u64))
-        .unwrap()
-        .add_input(&point_f_pi)
-        .unwrap()
-        .finish();
-
-    let VerifierData { key, pi_pos } = verifier_data;
-    // TODO: non-ideal hack for a first functional version.
+    let verifier_data = VerifierData::new(vk, pi);
     verify_proof::<BlsScalar, JubJubParameters, PC>(
         &pp,
-        key,
+        verifier_data.key,
         &proof,
-        &public_inputs,
-        &pi_pos,
+        &verifier_data.pi,
         b"Test",
     )
 }

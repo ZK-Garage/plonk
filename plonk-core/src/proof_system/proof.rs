@@ -4,11 +4,11 @@
 //
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
-//! A Proof stores the commitments to all of the elements that
-//! are needed to univocally identify a prove of some statement.
+//! A Proof stores the commitments to all of the elements that are needed to
+//! univocally identify a prove of some statement.
 //!
-//! This module contains the implementation of the `StandardComposer`s
-//! `Proof` structure and it's methods.
+//! This module contains the implementation of the `StandardComposer`s [`Proof`]
+//! structure and it's methods.
 
 use crate::{
     commitment::HomomorphicCommitment,
@@ -33,16 +33,11 @@ use ark_serialize::{
 };
 use merlin::Transcript;
 
-/// A Proof is a composition of `Commitment`s to the Witness, Permutation,
+use super::pi::PublicInputs;
+
+/// A [`Proof`] is a composition of `Commitment`s to the Witness, Permutation,
 /// Quotient, Shifted and Opening polynomials as well as the
 /// `ProofEvaluations`.
-///
-/// It's main goal is to allow the `Verifier` to
-/// formally verify that the secret witnesses used to generate the [`Proof`]
-/// satisfy a circuit that both [`Prover`](super::Prover) and
-/// [`Verifier`](super::Verifier) have in common succintly and without any
-/// capabilities of adquiring any kind of knowledge about the witness used to
-/// construct the Proof.
 #[derive(CanonicalDeserialize, CanonicalSerialize, derivative::Derivative)]
 #[derivative(
     Clone(bound = "PC::Commitment: Clone, PC::Proof: Clone"),
@@ -118,7 +113,7 @@ where
         plonk_verifier_key: &PlonkVerifierKey<F, PC>,
         transcript: &mut Transcript,
         verifier_key: &PC::VerifierKey,
-        pub_inputs: &[F],
+        pub_inputs: &PublicInputs<F>,
     ) -> Result<(), Error>
     where
         P: TEModelParameters<BaseField = F>,
@@ -128,6 +123,9 @@ where
                 log_size_of_group: plonk_verifier_key.n.trailing_zeros(),
                 adicity: <<F as FftField>::FftParams as ark_ff::FftParameters>::TWO_ADICITY,
             })?;
+
+        // Append Public Inputs to the transcript
+        transcript.append(b"pi", pub_inputs);
 
         // Subgroup checks are done when the proof is deserialised.
 
@@ -233,7 +231,7 @@ where
 
         let r0 = self.compute_r0(
             &domain,
-            pub_inputs,
+            &pub_inputs.as_evals(),
             alpha,
             beta,
             gamma,

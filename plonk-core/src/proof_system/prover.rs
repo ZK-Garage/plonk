@@ -80,7 +80,7 @@ where
         &mut self.cs
     }
 
-    /// Returns the smallest power of two needed for the curcuit
+    /// Returns the smallest power of two needed for the curcuit.
     pub fn circuit_bound(&self) -> usize {
         self.cs.circuit_bound()
     }
@@ -135,7 +135,7 @@ where
         self.cs = StandardComposer::new();
     }
 
-    /// Clears all data in the `Prover` instance.
+    /// Clears all data in the [`Prover`] instance.
     ///
     /// This function is used when the user wants to use the same `Prover` to
     /// make a [`Proof`] regarding a different circuit.
@@ -177,6 +177,9 @@ where
         // We assume that the Transcript has been seeded with the preprocessed
         // Commitments
         let mut transcript = self.preprocessed_transcript.clone();
+
+        // Append Public Inputs to the transcript
+        transcript.append(b"pi", self.cs.get_pi());
 
         // 1. Compute witness Polynomials
         //
@@ -386,9 +389,7 @@ where
                 .map_err(to_pc_error::<F, PC>)?;
 
         // 3. Compute public inputs polynomial.
-        let pi_poly = DensePolynomial::from_coefficients_vec(
-            domain.ifft(&self.cs.construct_dense_pi_vec()),
-        );
+        let pi_poly = self.cs.get_pi().into();
 
         // 4. Compute quotient polynomial
         //
