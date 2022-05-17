@@ -40,6 +40,11 @@ jobs:
         with:
           command: bench
           args: --verbose --workspace --all-features --no-run
+      - name: Check Examples
+        uses: actions-rs/cargo@v1
+        with:
+          command: run
+          args: --example simple_circuit --verbose --all-features
 
   build:
     if: github.event.pull_request.draft == false
