@@ -17,6 +17,7 @@ use ark_ed_on_bls12_381::{
 use ark_ff::PrimeField;
 use ark_poly::polynomial::univariate::DensePolynomial;
 use ark_poly_commit::{sonic_pc::SonicKZG10, PolynomialCommitment};
+use plonk::error::to_pc_error;
 use plonk_core::circuit::{verify_proof, Circuit};
 use plonk_core::constraint_system::StandardComposer;
 use plonk_core::error::Error;
@@ -86,13 +87,14 @@ fn main() -> Result<(), Error> {
         }
 
         fn padded_circuit_size(&self) -> usize {
-            1 << 11
+            1 << 9
         }
     }
 
     // Generate CRS
     type PC = SonicKZG10<Bls12_381, DensePolynomial<BlsScalar>>;
-    let pp = PC::setup(1 << 10, None, &mut OsRng)?;
+    let pp = PC::setup(1 << 10, None, &mut OsRng)
+        .map_err(to_pc_error::<BlsScalar, PC>)?;
 
     let mut circuit = TestCircuit::<BlsScalar, JubJubParameters>::default();
     // Compile the circuit
