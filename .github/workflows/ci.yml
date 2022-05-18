@@ -44,7 +44,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: run
-          args: --example simple_circuit --verbose --all-features
+          args: --example simple_circuit --verbose --release --all-features
 
   build:
     if: github.event.pull_request.draft == false
