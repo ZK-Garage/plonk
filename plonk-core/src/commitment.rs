@@ -1,8 +1,9 @@
 //! Useful commitment stuff
 use ark_ec::{msm::VariableBaseMSM, AffineCurve, PairingEngine};
 use ark_ff::{Field, PrimeField};
-use ark_poly::univariate::DensePolynomial;
+use ark_poly::{univariate::DensePolynomial, UVPolynomial};
 use ark_poly_commit::{sonic_pc::SonicKZG10, PolynomialCommitment};
+use crate::to_poly;
 
 /// A homomorphic polynomial commitment
 pub trait HomomorphicCommitment<F>:
@@ -127,3 +128,25 @@ pub fn aggregate_polynomials<F: Field>(
         .map(|(challenge, poly)| poly * challenge)
         .fold(Zero::zero(), Add::add)
 }
+
+/// Creates linear combination of polynomials with challenge powers as separation
+pub fn combine_polynomials<F: Field>(
+    polynomials: &[DensePolynomial<F>],
+    evals: &[F],
+    challenge: F,
+) -> DensePolynomial<F> {
+    use ark_ff::Zero as ArkZero;
+    assert_eq!(evals.len(), polynomials.len());
+    let powers = crate::util::powers_of(challenge)
+        .take(evals.len())
+        .collect::<Vec<_>>();
+
+    let mut combined_poly = DensePolynomial::<F>::zero();
+    for ((poly, &eval), &power) in polynomials.iter().zip(evals.iter()).zip(powers.iter()) {
+        let ith_poly = &(poly - &to_poly!(eval))*power;
+        combined_poly = combined_poly + ith_poly;
+    }
+
+    combined_poly
+}
+

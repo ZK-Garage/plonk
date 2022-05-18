@@ -12,10 +12,13 @@ use crate::{
     constraint_system::{StandardComposer, Variable},
     error::{to_pc_error, Error},
     label_polynomial,
+    label_commitment_as_poly,
     proof_system::{
         linearisation_poly, proof::Proof, quotient_poly, ProverKey,
     },
     transcript::TranscriptProtocol,
+    util::{commit_polynomial},
+    commitment::combine_polynomials
 };
 use ark_ec::{ModelParameters, TEModelParameters};
 use ark_ff::PrimeField;
@@ -26,6 +29,7 @@ use ark_poly::{
 use core::marker::PhantomData;
 use itertools::izip;
 use merlin::Transcript;
+use ark_poly_commit::QuerySet;
 
 /// Abstraction structure designed to construct a circuit and generate
 /// [`Proof`]s for it.
@@ -210,7 +214,7 @@ where
         ];
 
         // Commit to witness polynomials.
-        let (w_commits, w_rands) = PC::commit(commit_key, w_polys.iter(), None)
+        let (w_commits, _) = PC::commit(commit_key, w_polys.iter(), None)
             .map_err(to_pc_error::<F, PC>)?;
 
         // Add witness polynomial commitments to transcript.
@@ -562,57 +566,89 @@ where
         // challenge `z`
         let aw_challenge: F = transcript.challenge_scalar(b"aggregate_witness");
 
-        // XXX: The quotient polynmials is used here and then in the
-        // opening poly. It is being left in for now but it may not
-        // be necessary. Warrants further investigation.
-        // Ditto with the out_sigma poly.
-        let aw_polys = [
-            label_polynomial!(lin_poly),
-            label_polynomial!(prover_key.permutation.left_sigma.0.clone()),
-            label_polynomial!(prover_key.permutation.right_sigma.0.clone()),
-            label_polynomial!(prover_key.permutation.out_sigma.0.clone()),
-            label_polynomial!(f_poly),
-            label_polynomial!(h_2_poly),
-            label_polynomial!(table_poly),
-        ];
+        // combine polynomials 
+        let w = combine_polynomials(
+            &[
+                lin_poly, 
+                prover_key.permutation.left_sigma.0.clone(),
+                prover_key.permutation.right_sigma.0.clone(),
+                prover_key.permutation.out_sigma.0.clone(),
+                f_poly.clone(),
+                h_2_poly.clone(),
+                table_poly.clone(),
+                w_l_poly.clone(),
+                w_r_poly.clone(),
+                w_o_poly.clone(),
+                w_4_poly.clone()
+            ], 
+            &[
+                F::zero(), 
+                evaluations.perm_evals.left_sigma_eval,
+                evaluations.perm_evals.right_sigma_eval,
+                evaluations.perm_evals.out_sigma_eval,
+                evaluations.lookup_evals.f_eval,
+                evaluations.lookup_evals.h2_eval,
+                evaluations.lookup_evals.table_eval,
+                evaluations.wire_evals.a_eval,
+                evaluations.wire_evals.b_eval,
+                evaluations.wire_evals.c_eval,
+                evaluations.wire_evals.d_eval
+            ], 
+            aw_challenge
+        );
 
-        let (aw_commits, aw_rands) = PC::commit(commit_key, &aw_polys, None)
-            .map_err(to_pc_error::<F, PC>)?;
+        let saw_challenge: F = transcript.challenge_scalar(b"aggregate_witness");
+        let sw = combine_polynomials(
+            &[
+                z_poly.clone(), 
+                w_l_poly.clone(),
+                w_r_poly.clone(),
+                w_4_poly.clone(),
+                h_1_poly.clone(),
+                z_2_poly.clone(),
+                table_poly.clone()
+            ], 
+            &[
+                evaluations.perm_evals.permutation_eval,
+                evaluations.custom_evals.get("a_next_eval"),
+                evaluations.custom_evals.get("b_next_eval"),
+                evaluations.custom_evals.get("d_next_eval"),
+                evaluations.lookup_evals.h1_next_eval,
+                evaluations.lookup_evals.z2_next_eval,
+                evaluations.lookup_evals.table_next_eval,
+            ], 
+            saw_challenge
+        );
 
-        let aw_opening = PC::open(
+        let (w_commit, w_rand) = commit_polynomial::<F, PC>(commit_key, &w)?;
+        let (sw_commit, sw_rand) = commit_polynomial::<F, PC>(commit_key, &sw)?;
+
+        //label polys
+        let w_labeled = label_polynomial!(w);
+        let sw_labeled = label_polynomial!(sw);
+        let labeled_polys = [w_labeled.clone(), sw_labeled.clone()];
+
+        //label commitments
+        //note that commitments must have same label as polys for batch_open
+        let w_commit_labeled = label_commitment_as_poly!(w, w_commit);
+        let sw_commit_labeled = label_commitment_as_poly!(sw, sw_commit);
+        let labeled_commitments = [w_commit_labeled.clone(), sw_commit_labeled.clone()];
+
+
+        //construct query_set
+        let mut query_set = QuerySet::new();
+        query_set.insert((w_labeled.label().clone(), (String::from("z"), z_challenge)));
+        query_set.insert((sw_labeled.label().clone(), (String::from("omega_z"), z_challenge * domain.element(1))));
+
+        let u: F = transcript.challenge_scalar(b"u");
+
+        let batch_opening = PC::batch_open(
             commit_key,
-            aw_polys.iter().chain(w_polys.iter()),
-            aw_commits.iter().chain(w_commits.iter()),
-            &z_challenge,
-            aw_challenge,
-            aw_rands.iter().chain(w_rands.iter()),
-            None,
-        )
-        .map_err(to_pc_error::<F, PC>)?;
-
-        let saw_challenge: F =
-            transcript.challenge_scalar(b"aggregate_witness");
-
-        let saw_polys = [
-            label_polynomial!(z_poly),
-            label_polynomial!(w_l_poly),
-            label_polynomial!(w_r_poly),
-            label_polynomial!(w_4_poly),
-            label_polynomial!(h_1_poly),
-            label_polynomial!(z_2_poly),
-            label_polynomial!(table_poly),
-        ];
-
-        let (saw_commits, saw_rands) = PC::commit(commit_key, &saw_polys, None)
-            .map_err(to_pc_error::<F, PC>)?;
-
-        let saw_opening = PC::open(
-            commit_key,
-            &saw_polys,
-            &saw_commits,
-            &(z_challenge * domain.element(1)),
-            saw_challenge,
-            &saw_rands,
+            &labeled_polys,
+            &labeled_commitments,
+            &query_set,
+            u,
+            &[w_rand, sw_rand],
             None,
         )
         .map_err(to_pc_error::<F, PC>)?;
@@ -622,7 +658,7 @@ where
             b_comm: w_commits[1].commitment().clone(),
             c_comm: w_commits[2].commitment().clone(),
             d_comm: w_commits[3].commitment().clone(),
-            z_comm: saw_commits[0].commitment().clone(),
+            z_comm: z_poly_commit[0].commitment().clone(),
             f_comm: f_poly_commit[0].commitment().clone(),
             h_1_comm: h_1_poly_commit[0].commitment().clone(),
             h_2_comm: h_2_poly_commit[0].commitment().clone(),
@@ -631,9 +667,8 @@ where
             t_2_comm: t_commits[1].commitment().clone(),
             t_3_comm: t_commits[2].commitment().clone(),
             t_4_comm: t_commits[3].commitment().clone(),
-            aw_opening,
-            saw_opening,
             evaluations,
+            batch_opening,
         })
     }
 

@@ -13,7 +13,7 @@
 use crate::{
     commitment::HomomorphicCommitment,
     error::Error,
-    label_commitment,
+    label_commitment_named,
     proof_system::{
         ecc::{CurveAddition, FixedBaseScalarMul},
         linearisation_poly::ProofEvaluations,
@@ -22,7 +22,7 @@ use crate::{
         GateConstraint, VerifierKey as PlonkVerifierKey,
     },
     transcript::TranscriptProtocol,
-    util::EvaluationDomainExt,
+    util::{EvaluationDomainExt, lc},
 };
 use ark_ec::TEModelParameters;
 
@@ -32,21 +32,23 @@ use ark_serialize::{
     CanonicalDeserialize, CanonicalSerialize, Read, SerializationError, Write,
 };
 use merlin::Transcript;
+use ark_poly_commit::QuerySet;
 
 use super::pi::PublicInputs;
+use ark_std::test_rng;
 
 /// A [`Proof`] is a composition of `Commitment`s to the Witness, Permutation,
 /// Quotient, Shifted and Opening polynomials as well as the
 /// `ProofEvaluations`.
 #[derive(CanonicalDeserialize, CanonicalSerialize, derivative::Derivative)]
 #[derivative(
-    Clone(bound = "PC::Commitment: Clone, PC::Proof: Clone"),
+    Clone(bound = "PC::Commitment: Clone, PC::Proof: Clone, PC::BatchProof: Clone"),
     Debug(
-        bound = "PC::Commitment: core::fmt::Debug, PC::Proof: core::fmt::Debug"
+        bound = "PC::Commitment: core::fmt::Debug, PC::Proof: core::fmt::Debug, PC::BatchProof: core::fmt::Debug"
     ),
-    Default(bound = "PC::Commitment: Default, PC::Proof: Default"),
-    Eq(bound = "PC::Commitment: Eq, PC::Proof: Eq"),
-    PartialEq(bound = "PC::Commitment: PartialEq, PC::Proof: PartialEq")
+    Default(bound = "PC::Commitment: Default, PC::Proof: Default, PC::BatchProof: Default"),
+    Eq(bound = "PC::Commitment: Eq, PC::Proof: Eq, PC::BatchProof: Eq"),
+    PartialEq(bound = "PC::Commitment: PartialEq, PC::Proof: PartialEq, PC::BatchProof: PartialEq")
 )]
 pub struct Proof<F, PC>
 where
@@ -92,14 +94,12 @@ where
     /// Commitment to the quotient polynomial.
     pub(crate) t_4_comm: PC::Commitment,
 
-    /// Batch opening proof of the aggregated witnesses
-    pub aw_opening: PC::Proof,
-
-    /// Batch opening proof of the shifted aggregated witnesses
-    pub saw_opening: PC::Proof,
-
     /// Subset of all of the evaluations added to the proof.
     pub(crate) evaluations: ProofEvaluations<F>,
+
+    /// Batch opening proof of the aggregated witnesses
+    pub(crate) batch_opening: PC::BatchProof,
+
 }
 
 impl<F, PC> Proof<F, PC>
@@ -344,20 +344,6 @@ where
         // challenge `z`
         let aw_challenge: F = transcript.challenge_scalar(b"aggregate_witness");
 
-        let aw_commits = [
-            label_commitment!(lin_comm),
-            label_commitment!(plonk_verifier_key.permutation.left_sigma),
-            label_commitment!(plonk_verifier_key.permutation.right_sigma),
-            label_commitment!(plonk_verifier_key.permutation.out_sigma),
-            label_commitment!(self.f_comm),
-            label_commitment!(self.h_2_comm),
-            label_commitment!(table_comm),
-            label_commitment!(self.a_comm),
-            label_commitment!(self.b_comm),
-            label_commitment!(self.c_comm),
-            label_commitment!(self.d_comm),
-        ];
-
         let aw_evals = [
             -r0,
             self.evaluations.perm_evals.left_sigma_eval,
@@ -372,18 +358,13 @@ where
             self.evaluations.wire_evals.d_eval,
         ];
 
+        let mut aw_challenge_powers = vec![F::one(), aw_challenge];
+        for i in 2..aw_evals.len() {
+            aw_challenge_powers.push(aw_challenge * aw_challenge_powers[i - 1]);
+        }
+
         let saw_challenge: F =
             transcript.challenge_scalar(b"aggregate_witness");
-
-        let saw_commits = [
-            label_commitment!(self.z_comm),
-            label_commitment!(self.a_comm),
-            label_commitment!(self.b_comm),
-            label_commitment!(self.d_comm),
-            label_commitment!(self.h_1_comm),
-            label_commitment!(self.z_2_comm),
-            label_commitment!(table_comm),
-        ];
 
         let saw_evals = [
             self.evaluations.perm_evals.permutation_eval,
@@ -395,34 +376,71 @@ where
             self.evaluations.lookup_evals.table_next_eval,
         ];
 
-        match PC::check(
+        let mut saw_challenge_powers = vec![F::one(), saw_challenge];
+        for i in 2..saw_evals.len() {
+            saw_challenge_powers.push(saw_challenge * saw_challenge_powers[i - 1]);
+        }
+
+        let w_commit = PC::multi_scalar_mul(
+            &[
+                lin_comm, 
+                plonk_verifier_key.permutation.left_sigma.clone(), 
+                plonk_verifier_key.permutation.right_sigma.clone(),
+                plonk_verifier_key.permutation.out_sigma.clone(),
+                self.f_comm.clone(),
+                self.h_2_comm.clone(),
+                table_comm.clone(),
+                self.a_comm.clone(),
+                self.b_comm.clone(),
+                self.c_comm.clone(),
+                self.d_comm.clone()
+            ],
+            &aw_challenge_powers
+        );
+        let w_commit_labeled = label_commitment_named!(String::from("w"), w_commit);
+
+        let sw_commit = PC::multi_scalar_mul(
+            &[
+                self.z_comm.clone(),
+                self.a_comm.clone(),
+                self.b_comm.clone(),
+                self.d_comm.clone(),
+                self.h_1_comm.clone(),
+                self.z_2_comm.clone(),
+                table_comm.clone(),
+            ],
+            &saw_challenge_powers
+        );
+        let sw_commit_labeled = label_commitment_named!(String::from("sw"), sw_commit);
+
+        let shifted_challenge = domain.element(1) * z_challenge;
+        let mut query_set = QuerySet::new();
+        query_set.insert((String::from("w"), (String::from("z"), z_challenge)));
+        query_set.insert((String::from("sw"), (String::from("omega_z"), shifted_challenge)));
+
+        let w_evals = lc(&aw_evals, &aw_challenge);
+        let sw_evals = lc(&saw_evals, &saw_challenge);
+
+        // let w_shifted_eval = self.z_shifted_eval;
+        let mut evaluations = ark_poly_commit::Evaluations::new();
+        evaluations.insert((String::from("w"), z_challenge), w_evals);
+        evaluations.insert((String::from("sw"), shifted_challenge), sw_evals);
+
+        let mut rng = test_rng();
+        let u: F = transcript.challenge_scalar(b"u");
+        match PC::batch_check(
             verifier_key,
-            &aw_commits,
-            &z_challenge,
-            aw_evals,
-            &self.aw_opening,
-            aw_challenge,
-            None,
+            &[w_commit_labeled, sw_commit_labeled],
+            &query_set,
+            &evaluations,
+            &self.batch_opening,
+            u,
+            &mut rng,
         ) {
             Ok(true) => Ok(()),
             Ok(false) => Err(Error::ProofVerificationError),
             Err(e) => panic!("{:?}", e),
         }
-        .and_then(|_| {
-            match PC::check(
-                verifier_key,
-                &saw_commits,
-                &(z_challenge * domain.element(1)),
-                saw_evals,
-                &self.saw_opening,
-                saw_challenge,
-                None,
-            ) {
-                Ok(true) => Ok(()),
-                Ok(false) => Err(Error::ProofVerificationError),
-                Err(e) => panic!("{:?}", e),
-            }
-        })
     }
 
     fn compute_r0(
