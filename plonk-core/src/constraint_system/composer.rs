@@ -637,7 +637,7 @@ where
     /// the gates does not satisfy the equation or there are no more gates. If
     /// the cause is an unsatisfied gate equation, the function will panic.
     #[cfg(feature = "trace")]
-    pub fn check_circuit_satisfied(&self) {
+    pub fn check_circuit_satisfied(&mut self) {
         use ark_ff::BigInteger;
         let w_l: Vec<&F> = self
             .w_l
@@ -666,6 +666,7 @@ where
             let f_3 = f - F::from(3u64);
             f * f_1 * f_2 * f_3
         };
+        self.public_inputs.update_size(self.n);
         let pi_vec = self.public_inputs.as_evals();
         let four = F::from(4u64);
         for i in 0..self.n {
