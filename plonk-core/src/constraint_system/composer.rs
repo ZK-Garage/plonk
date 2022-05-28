@@ -666,7 +666,7 @@ where
             let f_3 = f - F::from(3u64);
             f * f_1 * f_2 * f_3
         };
-        self.public_inputs.update_size(self.n);
+        self.public_inputs.update_size(self.circuit_bound());
         let pi_vec = self.public_inputs.as_evals();
         let four = F::from(4u64);
         for i in 0..self.n {
