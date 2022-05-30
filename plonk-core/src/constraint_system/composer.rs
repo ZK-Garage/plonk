@@ -563,7 +563,7 @@ where
         let mut rand_var_1 = self.zero_var();
         let mut rand_var_2 = self.zero_var();
         // Blinding wires
-        for _ in 0..2 {
+        for _ in 0..3 {
             rand_var_1 = self.add_input(F::rand(rng));
             rand_var_2 = self.add_input(F::rand(rng));
             let rand_var_3 = self.add_input(F::rand(rng));
@@ -591,39 +591,38 @@ where
             self.perm.add_variables_to_map(
                 rand_var_1, rand_var_2, rand_var_3, rand_var_4, self.n,
             );
+
+            // Blinding Z
+            // We add 2 pairs of equal random points
+
+            self.w_l.push(rand_var_1);
+            self.w_r.push(rand_var_2);
+            self.w_o.push(self.zero_var());
+            self.w_4.push(self.zero_var());
+
+            // All selectors fixed to 0 so that the constraints are satisfied
+            self.q_m.push(F::zero());
+            self.q_l.push(F::zero());
+            self.q_r.push(F::zero());
+            self.q_o.push(F::zero());
+            self.q_c.push(F::zero());
+            self.q_4.push(F::zero());
+            self.q_arith.push(F::zero());
+            self.q_range.push(F::zero());
+            self.q_logic.push(F::zero());
+            self.q_fixed_group_add.push(F::zero());
+            self.q_variable_group_add.push(F::zero());
+            self.q_lookup.push(F::zero());
+
+            self.perm.add_variables_to_map(
+                rand_var_1,
+                rand_var_2,
+                self.zero_var(),
+                self.zero_var(),
+                self.n,
+            );
             self.n += 1;
         }
-
-        // Blinding Z
-        // We add 2 pairs of equal random points
-
-        self.w_l.push(rand_var_1);
-        self.w_r.push(rand_var_2);
-        self.w_o.push(self.zero_var());
-        self.w_4.push(self.zero_var());
-
-        // All selectors fixed to 0 so that the constraints are satisfied
-        self.q_m.push(F::zero());
-        self.q_l.push(F::zero());
-        self.q_r.push(F::zero());
-        self.q_o.push(F::zero());
-        self.q_c.push(F::zero());
-        self.q_4.push(F::zero());
-        self.q_arith.push(F::zero());
-        self.q_range.push(F::zero());
-        self.q_logic.push(F::zero());
-        self.q_fixed_group_add.push(F::zero());
-        self.q_variable_group_add.push(F::zero());
-        self.q_lookup.push(F::zero());
-
-        self.perm.add_variables_to_map(
-            rand_var_1,
-            rand_var_2,
-            self.zero_var(),
-            self.zero_var(),
-            self.n,
-        );
-        self.n += 1;
     }
     /// Utility function that checks on the "front-end"
     /// side of the PLONK implementation if the identity polynomial
