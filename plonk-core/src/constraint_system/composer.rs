@@ -679,9 +679,7 @@ where
             let qarith = self.q_arith[i];
             let qrange = self.q_range[i];
             let qlogic = self.q_logic[i];
-            #[cfg(all(feature = "trace-print", feature = "std"))]
             let qfixed = self.q_fixed_group_add[i];
-            #[cfg(all(feature = "trace-print", feature = "std"))]
             let qvar = self.q_variable_group_add[i];
             let pi = pi_vec[i];
 
@@ -693,7 +691,7 @@ where
             let d = w_4[i];
             let d_next = w_4[(i + 1) % self.n];
 
-            #[cfg(all(feature = "trace-print", feature = "std"))]
+            #[cfg(all(feature = "trace-print"))]
             std::println!(
                 "--------------------------------------------\n
             #Gate Index = {}
