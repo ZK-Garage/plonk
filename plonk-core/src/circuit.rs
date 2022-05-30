@@ -426,6 +426,15 @@ mod test {
                 f: point_f_pi,
             };
 
+            cfg_if::cfg_if! {
+                if #[cfg(feature = "trace")] {
+                    // Test trace
+                    let mut prover: Prover<F, P, PC> = Prover::new(b"Test");
+                    circuit.gadget(prover.mut_cs())?;
+                    prover.cs.check_circuit_satisfied();
+                }
+            }
+
             circuit.gen_proof::<PC>(&pp, pk, b"Test")?
         };
 
