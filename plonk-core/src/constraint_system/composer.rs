@@ -560,12 +560,10 @@ where
     where
         R: CryptoRng + RngCore + ?Sized,
     {
-        let mut rand_var_1 = self.zero_var();
-        let mut rand_var_2 = self.zero_var();
         // Blinding wires
         for _ in 0..3 {
-            rand_var_1 = self.add_input(F::rand(rng));
-            rand_var_2 = self.add_input(F::rand(rng));
+            let rand_var_1 = self.add_input(F::rand(rng));
+            let rand_var_2 = self.add_input(F::rand(rng));
             let rand_var_3 = self.add_input(F::rand(rng));
             let rand_var_4 = self.add_input(F::rand(rng));
 
@@ -592,8 +590,14 @@ where
                 rand_var_1, rand_var_2, rand_var_3, rand_var_4, self.n,
             );
 
+            self.n += 1;
+
             // Blinding Z
             // We add 2 pairs of equal random points
+            // When blinding Z we only need one random value in the rows. This
+            // is because Z is computed compressing the the wire columns. We need a
+            // second random value here, so we can later swap them creating a
+            // non trivial permutation.
 
             self.w_l.push(rand_var_1);
             self.w_r.push(rand_var_2);
