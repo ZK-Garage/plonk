@@ -637,7 +637,7 @@ where
     /// the gates does not satisfy the equation or there are no more gates. If
     /// the cause is an unsatisfied gate equation, the function will panic.
     #[cfg(feature = "trace")]
-    pub fn check_circuit_satisfied(&self) {
+    pub fn check_circuit_satisfied(&mut self) {
         use ark_ff::BigInteger;
         let w_l: Vec<&F> = self
             .w_l
@@ -666,6 +666,7 @@ where
             let f_3 = f - F::from(3u64);
             f * f_1 * f_2 * f_3
         };
+        self.public_inputs.update_size(self.circuit_bound());
         let pi_vec = self.public_inputs.as_evals();
         let four = F::from(4u64);
         for i in 0..self.n {
@@ -678,9 +679,7 @@ where
             let qarith = self.q_arith[i];
             let qrange = self.q_range[i];
             let qlogic = self.q_logic[i];
-            #[cfg(all(feature = "trace-print", feature = "std"))]
             let qfixed = self.q_fixed_group_add[i];
-            #[cfg(all(feature = "trace-print", feature = "std"))]
             let qvar = self.q_variable_group_add[i];
             let pi = pi_vec[i];
 
@@ -692,7 +691,7 @@ where
             let d = w_4[i];
             let d_next = w_4[(i + 1) % self.n];
 
-            #[cfg(all(feature = "trace-print", feature = "std"))]
+            #[cfg(all(feature = "trace-print"))]
             std::println!(
                 "--------------------------------------------\n
             #Gate Index = {}
