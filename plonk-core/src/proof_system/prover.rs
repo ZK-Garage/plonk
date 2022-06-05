@@ -41,7 +41,7 @@ where
 {
     /// Proving Key which is used to create proofs about a specific PLONK
     /// circuit.
-    pub prover_key: Option<ProverKey<F>>,
+    pub prover_key: Option<ProverKey<F, PC>>,
 
     /// Circuit Description
     pub(crate) cs: StandardComposer<F, P>,
@@ -167,7 +167,7 @@ where
     pub fn prove_with_preprocessed<D: Digest>(
         &self,
         commit_key: &PC::CommitterKey,
-        prover_key: &ProverKey<F>,
+        prover_key: &ProverKey<F, PC>,
         _data: PhantomData<PC>,
     ) -> Result<Proof<F, PC>, Error> {
         let domain =
@@ -248,6 +248,14 @@ where
         let table_poly = DensePolynomial::from_coefficients_vec(
             domain.ifft(&compressed_t_multiset.0),
         );
+
+        let (table_poly_commit, _) =
+        PC::commit(commit_key, &[label_polynomial!(table_poly)], None)
+            .map_err(to_pc_error::<F, PC>)?;
+
+        // TODO this should be added to transcript?
+        // fs_rng.absorb(&to_bytes![table_poly_commit].unwrap());
+        
 
         // Compute query table f
         // When q_lookup[i] is zero the wire value is replaced with a dummy
@@ -396,6 +404,10 @@ where
             PC::commit(commit_key, &[label_polynomial!(z_2_poly)], None)
                 .map_err(to_pc_error::<F, PC>)?;
 
+        // TODO this should be added to transcript?
+        // fs_rng.absorb(&to_bytes![z_2_poly_commit].unwrap());
+        
+
         // 3. Compute public inputs polynomial.
         let pi_poly = self.cs.get_pi().into();
 
@@ -421,7 +433,7 @@ where
         let lookup_sep_challenge = F::rand(&mut fs_rng);
         fs_rng.absorb(&to_bytes![lookup_sep_challenge].unwrap());
 
-        let t_poly = quotient_poly::compute::<F, P>(
+        let t_poly = quotient_poly::compute::<F, P, PC>(
             &domain,
             prover_key,
             &z_poly,
@@ -473,7 +485,7 @@ where
         let z_challenge = F::rand(&mut fs_rng);
         fs_rng.absorb(&to_bytes![z_challenge].unwrap());
 
-        let (lin_poly, evaluations) = linearisation_poly::compute::<F, P>(
+        let (lin_poly, evaluations) = linearisation_poly::compute::<F, P, PC>(
             &domain,
             prover_key,
             &alpha,
@@ -503,6 +515,15 @@ where
             &h_2_poly,
             &table_poly,
         )?;
+
+        let (lin_poly_commit, _) = PC::commit(
+            commit_key,
+            &[
+                label_polynomial!(lin_poly),
+            ],
+            None,
+        )
+        .map_err(to_pc_error::<F, PC>)?;
 
         // Add evaluations to transcript.
         // First wire evals
@@ -550,33 +571,14 @@ where
             w_4_poly.clone(),
         ];
 
-        // TODO: preprocess this commitments
-        // adding PC to ProverKey introduces many changes
-        // maybe there is a better place to store them or to introduce shared
-        // struct
-        let (tmp_commits, _) = PC::commit(
-            commit_key,
-            &[
-                label_polynomial!(lin_poly), /* this can't be
-                                              * preprocessed but can be
-                                              * computed with MSM */
-                label_polynomial!(prover_key.permutation.left_sigma.0),
-                label_polynomial!(prover_key.permutation.right_sigma.0),
-                label_polynomial!(prover_key.permutation.out_sigma.0),
-                label_polynomial!(table_poly),
-            ],
-            None,
-        )
-        .map_err(to_pc_error::<F, PC>)?;
-
         let w_commits = [
-            tmp_commits[0].commitment().clone(),
-            tmp_commits[1].commitment().clone(),
-            tmp_commits[2].commitment().clone(),
-            tmp_commits[3].commitment().clone(),
+            lin_poly_commit[0].commitment().clone(),
+            prover_key.permutation.left_sigma.2.clone(),
+            prover_key.permutation.right_sigma.2.clone(),
+            prover_key.permutation.out_sigma.2.clone(),
             f_poly_commit[0].commitment().clone(),
             h_2_poly_commit[0].commitment().clone(),
-            tmp_commits[4].commitment().clone(),
+            table_poly_commit[0].commitment().clone(),
             wire_commits[0].commitment().clone(),
             wire_commits[1].commitment().clone(),
             wire_commits[2].commitment().clone(),
@@ -620,7 +622,7 @@ where
             wire_commits[3].commitment().clone(),
             h_1_poly_commit[0].commitment().clone(),
             z_2_poly_commit[0].commitment().clone(),
-            tmp_commits[4].commitment().clone(),
+            table_poly_commit[0].commitment().clone(),
         ];
 
         let saw_polys = saw_polys

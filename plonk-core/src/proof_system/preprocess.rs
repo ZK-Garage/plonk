@@ -128,7 +128,7 @@ where
         commit_key: &PC::CommitterKey,
         transcript: &mut Transcript,
         _pc: PhantomData<PC>,
-    ) -> Result<ProverKey<F>, Error>
+    ) -> Result<ProverKey<F, PC>, Error>
     where
         PC: HomomorphicCommitment<F>,
     {
@@ -215,6 +215,27 @@ where
         let v_h_coset_4n =
             compute_vanishing_poly_over_coset(domain_4n, domain.size() as u64);
 
+
+        let (
+            left_sigma_poly,
+            right_sigma_poly,
+            out_sigma_poly,
+            fourth_sigma_poly,
+        ) = self.perm.compute_sigma_polynomials(self.n, &domain);
+
+        let (commitments, _) = PC::commit(
+            commit_key,
+            [
+                label_polynomial!(left_sigma_poly),
+                label_polynomial!(right_sigma_poly),
+                label_polynomial!(out_sigma_poly),
+                label_polynomial!(fourth_sigma_poly),
+            ]
+            .iter(),
+            None,
+        )
+        .map_err(to_pc_error::<F, PC>)?;
+
         Ok(ProverKey::from_polynomials_and_evals(
             domain.size(),
             (selectors.q_m, q_m_eval_4n),
@@ -229,10 +250,10 @@ where
             (selectors.q_lookup, q_lookup_eval_4n),
             (selectors.q_fixed_group_add, q_fixed_group_add_eval_4n),
             (selectors.q_variable_group_add, q_variable_group_add_eval_4n),
-            (selectors.left_sigma, left_sigma_eval_4n),
-            (selectors.right_sigma, right_sigma_eval_4n),
-            (selectors.out_sigma, out_sigma_eval_4n),
-            (selectors.fourth_sigma, fourth_sigma_eval_4n),
+            (selectors.left_sigma, left_sigma_eval_4n, commitments[0].commitment().clone()),
+            (selectors.right_sigma, right_sigma_eval_4n, commitments[1].commitment().clone()),
+            (selectors.out_sigma, out_sigma_eval_4n, commitments[2].commitment().clone()),
+            (selectors.fourth_sigma, fourth_sigma_eval_4n, commitments[3].commitment().clone()),
             linear_eval_4n,
             v_h_coset_4n,
             preprocessed_table.t[0].0.clone(),

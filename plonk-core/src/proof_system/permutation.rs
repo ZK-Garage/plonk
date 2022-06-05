@@ -23,25 +23,26 @@ use ark_serialize::*;
 #[derive(CanonicalDeserialize, CanonicalSerialize, derivative::Derivative)]
 #[derivative(
     Clone(bound = ""),
-    Debug(bound = ""),
-    Eq(bound = ""),
-    PartialEq(bound = "")
+    Debug(bound = "PCC: core::fmt::Debug"),
+    Eq(bound = "PCC: Eq"),
+    PartialEq(bound = "PCC: PartialEq")
 )]
-pub struct ProverKey<F>
+pub struct ProverKey<F, PCC>
 where
     F: FftField,
+    PCC: PCCommitment + Default
 {
     /// Left Permutation
-    pub left_sigma: (DensePolynomial<F>, Evaluations<F>),
+    pub left_sigma: (DensePolynomial<F>, Evaluations<F>, PCC),
 
     /// Right Permutation
-    pub right_sigma: (DensePolynomial<F>, Evaluations<F>),
+    pub right_sigma: (DensePolynomial<F>, Evaluations<F>, PCC),
 
     /// Output Permutation
-    pub out_sigma: (DensePolynomial<F>, Evaluations<F>),
+    pub out_sigma: (DensePolynomial<F>, Evaluations<F>, PCC),
 
     /// Fourth Permutation
-    pub fourth_sigma: (DensePolynomial<F>, Evaluations<F>),
+    pub fourth_sigma: (DensePolynomial<F>, Evaluations<F>, PCC),
 
     /// Linear Evaluations
     pub linear_evaluations: Evaluations<F>,
@@ -53,9 +54,10 @@ where
      * domain elements] */
 }
 
-impl<F> ProverKey<F>
+impl<F, PCC> ProverKey<F, PCC>
 where
     F: FftField,
+    PCC: PCCommitment + Default
 {
     /// Computes permutation term of the quotient polynomial at the `i`th domain
     /// point.
