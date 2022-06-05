@@ -551,7 +551,7 @@ where
         let separation_challenge = F::rand(&mut fs_rng);
 
         let w_polys = [
-            lin_poly.clone(),
+            lin_poly,
             prover_key.permutation.left_sigma.0.clone(),
             prover_key.permutation.right_sigma.0.clone(),
             prover_key.permutation.out_sigma.0.clone(),
