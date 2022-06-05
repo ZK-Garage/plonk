@@ -278,19 +278,35 @@ where
     }
 }
 
+// #[derive(CanonicalDeserialize, CanonicalSerialize, derivative::Derivative)]
+// #[derivative(
+//     Clone(bound = ""),
+//     Debug(
+//         bound = "arithmetic::VerifierKey<F,PC>: core::fmt::Debug,
+// PC::Commitment: core::fmt::Debug"     ),
+//     Eq(bound = "arithmetic::VerifierKey<F,PC>: Eq, PC::Commitment: Eq"),
+//     PartialEq(
+//         bound = "arithmetic::VerifierKey<F,PC>: PartialEq, PC::Commitment:
+// PartialEq"     )
+// )]
+
 /// PLONK circuit Proving Key.
 ///
 /// This structure is used by the Prover in order to construct a
 /// [`Proof`](crate::proof_system::Proof).
 #[derive(CanonicalDeserialize, CanonicalSerialize, derivative::Derivative)]
 #[derivative(
-    Clone(bound = "lookup::ProverKey<F>: Clone"),
-    Debug(
-        bound = "lookup::ProverKey<F>: std::fmt::Debug, PC::Commitment: core::fmt::Debug"
+    Clone(
+        bound = "lookup::ProverKey<F>: Clone, permutation::ProverKey<F, PC>: Clone"
     ),
-    Eq(bound = "lookup::ProverKey<F>: Eq, PC::Commitment: Eq"),
+    Debug(
+        bound = "lookup::ProverKey<F>: std::fmt::Debug, permutation::ProverKey<F, PC>: std::fmt::Debug, PC::Commitment: core::fmt::Debug"
+    ),
+    Eq(
+        bound = "lookup::ProverKey<F>: Eq, permutation::ProverKey<F, PC>: Eq, PC::Commitment: Eq"
+    ),
     PartialEq(
-        bound = "lookup::ProverKey<F>: PartialEq, PC::Commitment: PartialEq"
+        bound = "lookup::ProverKey<F>: PartialEq, permutation::ProverKey<F, PC>: PartialEq, PC::Commitment: PartialEq"
     )
 )]
 pub struct ProverKey<F, PC>
@@ -321,7 +337,7 @@ where
         (DensePolynomial<F>, Evaluations<F>),
 
     /// ProverKey for permutation checks
-    pub(crate) permutation: permutation::ProverKey<F, PC::Commitment>,
+    pub(crate) permutation: permutation::ProverKey<F, PC>,
 
     /// Pre-processes the 4n Evaluations for the vanishing polynomial, so
     /// they do not need to be computed at the proving stage.
@@ -406,142 +422,144 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::{batch_test, label_polynomial};
+    use crate::batch_test;
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
     use ark_ec::models::TEModelParameters;
-    use ark_poly::polynomial::univariate::DensePolynomial;
-    use ark_poly::{EvaluationDomain, GeneralEvaluationDomain, UVPolynomial};
-    use rand_core::OsRng;
+    // use ark_poly::polynomial::univariate::DensePolynomial;
+    // use ark_poly::{EvaluationDomain, GeneralEvaluationDomain, UVPolynomial};
+    // use rand_core::OsRng;
 
-    fn rand_poly_eval<F>(n: usize) -> (DensePolynomial<F>, Evaluations<F>)
-    where
-        F: PrimeField,
-    {
-        let polynomial = DensePolynomial::rand(n, &mut OsRng);
-        (polynomial, rand_evaluations(n))
-    }
+    // fn rand_poly_eval<F>(n: usize) -> (DensePolynomial<F>, Evaluations<F>)
+    // where
+    //     F: PrimeField,
+    // {
+    //     let polynomial = DensePolynomial::rand(n, &mut OsRng);
+    //     (polynomial, rand_evaluations(n))
+    // }
 
-    fn rand_evaluations<F>(n: usize) -> Evaluations<F>
-    where
-        F: PrimeField,
-    {
-        let domain = GeneralEvaluationDomain::new(4 * n).unwrap();
-        let values: Vec<_> = (0..8 * n).map(|_| F::rand(&mut OsRng)).collect();
-        Evaluations::from_vec_and_domain(values, domain)
-    }
+    // fn rand_evaluations<F>(n: usize) -> Evaluations<F>
+    // where
+    //     F: PrimeField,
+    // {
+    //     let domain = GeneralEvaluationDomain::new(4 * n).unwrap();
+    //     let values: Vec<_> = (0..8 * n).map(|_| F::rand(&mut
+    // OsRng)).collect();     Evaluations::from_vec_and_domain(values,
+    // domain) }
 
-    fn rand_multiset<F>(n: usize) -> MultiSet<F>
-    where
-        F: PrimeField,
-    {
-        let mut rng = OsRng;
-        core::iter::from_fn(|| Some(F::rand(&mut rng)))
-            .take(n)
-            .collect()
-    }
+    // fn rand_multiset<F>(n: usize) -> MultiSet<F>
+    // where
+    //     F: PrimeField,
+    // {
+    //     let mut rng = OsRng;
+    //     core::iter::from_fn(|| Some(F::rand(&mut rng)))
+    //         .take(n)
+    //         .collect()
+    // }
 
-    // #[test]
-    fn test_serialise_deserialise_prover_key<
-        F: PrimeField,
-        PC: HomomorphicCommitment<F>,
-    >(
-        commit_key: &PC::CommitterKey,
-    ) {
-        let n = 1 << 11;
+    // #[test] // TODO make test to call this
+    // fn test_serialise_deserialise_prover_key<
+    //     F: PrimeField,
+    //     PC: HomomorphicCommitment<F>,
+    // >(
+    //     commit_key: &PC::CommitterKey,
+    // ) {
+    //     let n = 1 << 11;
 
-        let q_m = rand_poly_eval(n);
-        let q_l = rand_poly_eval(n);
-        let q_r = rand_poly_eval(n);
-        let q_o = rand_poly_eval(n);
-        let q_4 = rand_poly_eval(n);
-        let q_c = rand_poly_eval(n);
-        let q_arith = rand_poly_eval(n);
-        let q_range = rand_poly_eval(n);
-        let q_logic = rand_poly_eval(n);
-        let q_lookup = rand_poly_eval(n);
-        let q_fixed_group_add = rand_poly_eval(n);
-        let q_variable_group_add = rand_poly_eval(n);
+    //     let q_m = rand_poly_eval(n);
+    //     let q_l = rand_poly_eval(n);
+    //     let q_r = rand_poly_eval(n);
+    //     let q_o = rand_poly_eval(n);
+    //     let q_4 = rand_poly_eval(n);
+    //     let q_c = rand_poly_eval(n);
+    //     let q_arith = rand_poly_eval(n);
+    //     let q_range = rand_poly_eval(n);
+    //     let q_logic = rand_poly_eval(n);
+    //     let q_lookup = rand_poly_eval(n);
+    //     let q_fixed_group_add = rand_poly_eval(n);
+    //     let q_variable_group_add = rand_poly_eval(n);
 
-        let left_sigma = rand_poly_eval(n);
-        let right_sigma = rand_poly_eval(n);
-        let out_sigma = rand_poly_eval(n);
-        let fourth_sigma = rand_poly_eval(n);
+    //     let left_sigma = rand_poly_eval(n);
+    //     let right_sigma = rand_poly_eval(n);
+    //     let out_sigma = rand_poly_eval(n);
+    //     let fourth_sigma = rand_poly_eval(n);
 
-        let linear_evaluations = rand_evaluations(n);
-        let v_h_coset_8n = rand_evaluations(n);
-        let table_1 = rand_multiset(n);
-        let table_2 = rand_multiset(n);
-        let table_3 = rand_multiset(n);
-        let table_4 = rand_multiset(n);
+    //     let linear_evaluations = rand_evaluations(n);
+    //     let v_h_coset_8n = rand_evaluations(n);
+    //     let table_1 = rand_multiset(n);
+    //     let table_2 = rand_multiset(n);
+    //     let table_3 = rand_multiset(n);
+    //     let table_4 = rand_multiset(n);
 
-        let (sigma_commitments, _) = PC::commit(
-            commit_key,
-            &[
-                label_polynomial!(left_sigma.0),
-                label_polynomial!(right_sigma.0),
-                label_polynomial!(out_sigma.0),
-                label_polynomial!(fourth_sigma.0),
-            ],
-            None,
-        )
-        .unwrap();
+    //     let (sigma_commitments, _) = PC::commit(
+    //         commit_key,
+    //         &[
+    //             label_polynomial!(left_sigma.0),
+    //             label_polynomial!(right_sigma.0),
+    //             label_polynomial!(out_sigma.0),
+    //             label_polynomial!(fourth_sigma.0),
+    //         ],
+    //         None,
+    //     )
+    //     .unwrap();
 
-        let prover_key: ProverKey<F, PC> =
-            ProverKey::from_polynomials_and_evals(
-                n,
-                q_m,
-                q_l,
-                q_r,
-                q_o,
-                q_4,
-                q_c,
-                q_arith,
-                q_range,
-                q_logic,
-                q_lookup,
-                q_fixed_group_add,
-                q_variable_group_add,
-                (
-                    left_sigma.0,
-                    left_sigma.1,
-                    sigma_commitments[0].commitment().clone(),
-                ),
-                (
-                    right_sigma.0,
-                    right_sigma.1,
-                    sigma_commitments[1].commitment().clone(),
-                ),
-                (
-                    out_sigma.0,
-                    out_sigma.1,
-                    sigma_commitments[2].commitment().clone(),
-                ),
-                (
-                    fourth_sigma.0,
-                    fourth_sigma.1,
-                    sigma_commitments[3].commitment().clone(),
-                ),
-                linear_evaluations,
-                v_h_coset_8n,
-                table_1,
-                table_2,
-                table_3,
-                table_4,
-            );
+    //     let prover_key: ProverKey<F, PC> =
+    //         ProverKey::from_polynomials_and_evals(
+    //             n,
+    //             q_m,
+    //             q_l,
+    //             q_r,
+    //             q_o,
+    //             q_4,
+    //             q_c,
+    //             q_arith,
+    //             q_range,
+    //             q_logic,
+    //             q_lookup,
+    //             q_fixed_group_add,
+    //             q_variable_group_add,
+    //             (
+    //                 left_sigma.0,
+    //                 left_sigma.1,
+    //                 sigma_commitments[0].commitment().clone(),
+    //             ),
+    //             (
+    //                 right_sigma.0,
+    //                 right_sigma.1,
+    //                 sigma_commitments[1].commitment().clone(),
+    //             ),
+    //             (
+    //                 out_sigma.0,
+    //                 out_sigma.1,
+    //                 sigma_commitments[2].commitment().clone(),
+    //             ),
+    //             (
+    //                 fourth_sigma.0,
+    //                 fourth_sigma.1,
+    //                 sigma_commitments[3].commitment().clone(),
+    //             ),
+    //             linear_evaluations,
+    //             v_h_coset_8n,
+    //             table_1,
+    //             table_2,
+    //             table_3,
+    //             table_4,
+    //         );
 
-        let mut prover_key_bytes = vec![];
-        prover_key
-            .serialize_unchecked(&mut prover_key_bytes)
-            .unwrap();
+    //     let mut prover_key_bytes = vec![];
+    //     prover_key
+    //         .serialize_unchecked(&mut prover_key_bytes)
+    //         .unwrap();
 
-        let obtained_pk: ProverKey<F, PC> =
-            ProverKey::deserialize_unchecked(prover_key_bytes.as_slice())
-                .unwrap();
+    //     let obtained_pk: ProverKey<F, PC> =
+    //         ProverKey::deserialize_unchecked(prover_key_bytes.as_slice())
+    //             .unwrap();
 
-        // TODO fix this
-        // assert_eq!(prover_key, obtained_pk);
-    }
+    // TODO fix this
+    // assert!(prover_key == obtained_pk);
+    // assert_eq!(prover_key, obtained_pk);
+
+    // }
 
     fn test_serialise_deserialise_verifier_key<F, P, PC>()
     where
@@ -609,6 +627,7 @@ mod test {
                 .unwrap();
 
         assert!(verifier_key == obtained_vk);
+        // assert_eq!(verifier_key.arithmetic, obtained_vk.arithmetic);
     }
 
     // Test for Bls12_381

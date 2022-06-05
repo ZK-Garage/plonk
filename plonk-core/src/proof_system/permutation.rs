@@ -16,33 +16,34 @@ use ark_poly::{
     polynomial::univariate::DensePolynomial, EvaluationDomain, Evaluations,
     GeneralEvaluationDomain,
 };
-use ark_poly_commit::PCCommitment;
+use ark_poly_commit::{PCCommitment, PolynomialCommitment};
 use ark_serialize::*;
 
+// Copy(bound = "PC::Commitment: Copy"),
 /// Permutation Prover Key
 #[derive(CanonicalDeserialize, CanonicalSerialize, derivative::Derivative)]
 #[derivative(
-    Clone(bound = ""),
-    Debug(bound = "PCC: core::fmt::Debug"),
-    Eq(bound = "PCC: Eq"),
-    PartialEq(bound = "PCC: PartialEq")
+    Clone,
+    Debug(bound = "PC::Commitment: core::fmt::Debug"),
+    Eq(bound = "PC::Commitment: Eq"),
+    PartialEq(bound = "PC::Commitment: PartialEq")
 )]
-pub struct ProverKey<F, PCC>
+pub struct ProverKey<F, PC>
 where
     F: FftField,
-    PCC: PCCommitment + Default,
+    PC: PolynomialCommitment<F, DensePolynomial<F>>,
 {
     /// Left Permutation
-    pub left_sigma: (DensePolynomial<F>, Evaluations<F>, PCC),
+    pub left_sigma: (DensePolynomial<F>, Evaluations<F>, PC::Commitment),
 
     /// Right Permutation
-    pub right_sigma: (DensePolynomial<F>, Evaluations<F>, PCC),
+    pub right_sigma: (DensePolynomial<F>, Evaluations<F>, PC::Commitment),
 
     /// Output Permutation
-    pub out_sigma: (DensePolynomial<F>, Evaluations<F>, PCC),
+    pub out_sigma: (DensePolynomial<F>, Evaluations<F>, PC::Commitment),
 
     /// Fourth Permutation
-    pub fourth_sigma: (DensePolynomial<F>, Evaluations<F>, PCC),
+    pub fourth_sigma: (DensePolynomial<F>, Evaluations<F>, PC::Commitment),
 
     /// Linear Evaluations
     pub linear_evaluations: Evaluations<F>,
@@ -54,10 +55,10 @@ where
      * domain elements] */
 }
 
-impl<F, PCC> ProverKey<F, PCC>
+impl<F, PC> ProverKey<F, PC>
 where
     F: FftField,
-    PCC: PCCommitment + Default,
+    PC: PolynomialCommitment<F, DensePolynomial<F>>,
 {
     /// Computes permutation term of the quotient polynomial at the `i`th domain
     /// point.
