@@ -9,10 +9,6 @@ use ark_ff::{BigInteger, FftField, Field, FpParameters, PrimeField};
 use ark_poly::{EvaluationDomain, GeneralEvaluationDomain};
 use core::ops::Mul;
 use std::ops::Add;
-use crate::error::{to_pc_error, Error};
-use crate::commitment::HomomorphicCommitment;
-use ark_poly::univariate::DensePolynomial;
-use crate::label_polynomial;
 
 /// Returns an iterator over increasing powers of the given `scalar` starting
 /// at `0`.
@@ -174,24 +170,6 @@ where
         .fold(kth_val, |acc, val| acc * *challenge + val.clone())
 }
 
-/// commits to a single polynomial
-pub fn commit_polynomial<F: PrimeField, PC: HomomorphicCommitment<F>>
-(
-    ck: &PC::CommitterKey,
-    poly: &DensePolynomial<F>
-) 
-    -> Result<(PC::Commitment, PC::Randomness), Error>
-{
-    let labeled_poly = label_polynomial!(poly);
-
-    let (poly_commit, randomness) =
-    PC::commit(ck, &[labeled_poly], None)
-        .map_err(to_pc_error::<F, PC>)?;
-
-    Ok((poly_commit[0].commitment().clone(), randomness[0].clone()))
-}
-
-
 /// Macro to quickly label polynomials
 #[macro_export]
 macro_rules! label_polynomial {
@@ -214,38 +192,6 @@ macro_rules! label_commitment {
             $comm.clone(),
             None,
         )
-    };
-}
-
-/// In order to work with batch proofs, ark_poly commit expects commitment to have same label as poly
-#[macro_export]
-macro_rules! label_commitment_as_poly {
-    ($poly:expr, $comm:expr) => {
-        ark_poly_commit::LabeledCommitment::new(
-            stringify!($poly).to_owned(),
-            $comm.clone(),
-            None,
-        )
-    };
-}
-
-/// Macro to quickly label commitment with specific name
-#[macro_export]
-macro_rules! label_commitment_named {
-    ($label:expr, $comm:expr) => {
-        ark_poly_commit::LabeledCommitment::new(
-            $label.clone(),
-            $comm.clone(),
-            None,
-        )
-    };
-}
-
-/// Macro to quickly convert single value to polynomial
-#[macro_export]
-macro_rules! to_poly {
-    ($value:expr) => {
-        DensePolynomial::from_coefficients_slice(&[$value])
     };
 }
 

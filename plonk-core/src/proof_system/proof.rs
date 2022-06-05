@@ -13,7 +13,6 @@
 use crate::{
     commitment::HomomorphicCommitment,
     error::Error,
-    label_commitment_named,
     proof_system::{
         ecc::{CurveAddition, FixedBaseScalarMul},
         linearisation_poly::ProofEvaluations,
@@ -21,21 +20,22 @@ use crate::{
         range::Range,
         GateConstraint, VerifierKey as PlonkVerifierKey,
     },
-    transcript::TranscriptProtocol,
-    util::{EvaluationDomainExt, lc},
+    util::EvaluationDomainExt,
 };
 use ark_ec::TEModelParameters;
 
-use ark_ff::{fields::batch_inversion, FftField, PrimeField};
+use ark_ff::{fields::batch_inversion, FftField, PrimeField, to_bytes};
 use ark_poly::{EvaluationDomain, GeneralEvaluationDomain};
 use ark_serialize::{
     CanonicalDeserialize, CanonicalSerialize, Read, SerializationError, Write,
 };
-use merlin::Transcript;
 use ark_poly_commit::QuerySet;
+use merlin::Transcript;
 
 use super::pi::PublicInputs;
-use ark_std::test_rng;
+
+use ark_marlin::rng::FiatShamirRng;
+use digest::Digest;
 
 /// A [`Proof`] is a composition of `Commitment`s to the Witness, Permutation,
 /// Quotient, Shifted and Opening polynomials as well as the
@@ -108,10 +108,10 @@ where
     PC: HomomorphicCommitment<F>,
 {
     /// Performs the verification of a [`Proof`] returning a boolean result.
-    pub(crate) fn verify<P>(
+    pub(crate) fn verify<P, D: Digest>(
         &self,
         plonk_verifier_key: &PlonkVerifierKey<F, PC>,
-        transcript: &mut Transcript,
+        _transcript: &mut Transcript,
         verifier_key: &PC::VerifierKey,
         pub_inputs: &PublicInputs<F>,
     ) -> Result<(), Error>
@@ -124,8 +124,17 @@ where
                 adicity: <<F as FftField>::FftParams as ark_ff::FftParameters>::TWO_ADICITY,
             })?;
 
-        // Append Public Inputs to the transcript
-        transcript.append(b"pi", pub_inputs);
+        pub const PROTOCOL_NAME: &'static [u8] = b"Plonk";
+        let mut fs_rng = FiatShamirRng::<D>::from_seed(
+            &to_bytes![
+                &PROTOCOL_NAME
+            ]
+            .unwrap(),
+        );
+
+        //Append Public Inputs to the transcript
+        // Add them in evaluations form since DensePolynomial doesn't implement to_bytes
+        fs_rng.absorb(&to_bytes![pub_inputs.as_evals()].unwrap());
 
         // Subgroup checks are done when the proof is deserialised.
 
@@ -137,39 +146,37 @@ where
         // same challenges
         //
         // Add commitment to witness polynomials to transcript
-        transcript.append(b"w_l", &self.a_comm);
-        transcript.append(b"w_r", &self.b_comm);
-        transcript.append(b"w_o", &self.c_comm);
-        transcript.append(b"w_4", &self.d_comm);
+
+        let w_commits = vec![self.a_comm.clone(), self.b_comm.clone(), self.c_comm.clone(), self.d_comm.clone()];
+        fs_rng.absorb(&to_bytes![w_commits].unwrap());
 
         // Compute table compression challenge `zeta`.
-        let zeta = transcript.challenge_scalar(b"zeta");
-        transcript.append(b"zeta", &zeta);
+        let zeta = F::rand(&mut fs_rng);
+        fs_rng.absorb(&to_bytes![zeta].unwrap());
 
         // Add f_poly commitment to transcript
-        transcript.append(b"f", &self.f_comm);
+        fs_rng.absorb(&to_bytes![self.f_comm].unwrap());
 
         // Add h polynomials to transcript
-        transcript.append(b"h1", &self.h_1_comm);
-        transcript.append(b"h2", &self.h_2_comm);
+        fs_rng.absorb(&to_bytes![self.h_1_comm, self.h_1_comm].unwrap());
 
         // Compute permutation challenges and add them to transcript
 
         // Compute permutation challenge `beta`.
-        let beta = transcript.challenge_scalar(b"beta");
-        transcript.append(b"beta", &beta);
+        let beta = F::rand(&mut fs_rng);
+        fs_rng.absorb(&to_bytes![beta].unwrap());
 
         // Compute permutation challenge `gamma`.
-        let gamma = transcript.challenge_scalar(b"gamma");
-        transcript.append(b"gamma", &gamma);
+        let gamma = F::rand(&mut fs_rng);
+        fs_rng.absorb(&to_bytes![gamma].unwrap());
 
         // Compute permutation challenge `delta`.
-        let delta = transcript.challenge_scalar(b"delta");
-        transcript.append(b"delta", &delta);
+        let delta = F::rand(&mut fs_rng);
+        fs_rng.absorb(&to_bytes![delta].unwrap());
 
-        // Compute permutation challenge `epsilon`.
-        let epsilon = transcript.challenge_scalar(b"epsilon");
-        transcript.append(b"epsilon", &epsilon);
+
+        let epsilon = F::rand(&mut fs_rng);
+        fs_rng.absorb(&to_bytes![epsilon].unwrap());
 
         // Challenges must be different
         assert!(beta != gamma, "challenges must be different");
@@ -180,47 +187,29 @@ where
         assert!(delta != epsilon, "challenges must be different");
 
         // Add commitment to permutation polynomial to transcript
-        transcript.append(b"z", &self.z_comm);
+        fs_rng.absorb(&to_bytes![self.z_comm].unwrap());
 
-        // Compute quotient challenge
-        let alpha = transcript.challenge_scalar(b"alpha");
-        transcript.append(b"alpha", &alpha);
-        let range_sep_challenge =
-            transcript.challenge_scalar(b"range separation challenge");
-        transcript.append(b"range seperation challenge", &range_sep_challenge);
+        let alpha = F::rand(&mut fs_rng);
+        fs_rng.absorb(&to_bytes![alpha].unwrap());
 
-        let logic_sep_challenge =
-            transcript.challenge_scalar(b"logic separation challenge");
-        transcript.append(b"logic seperation challenge", &logic_sep_challenge);
+        let range_sep_challenge = F::rand(&mut fs_rng);
+        fs_rng.absorb(&to_bytes![range_sep_challenge].unwrap());
 
-        let fixed_base_sep_challenge =
-            transcript.challenge_scalar(b"fixed base separation challenge");
-        transcript.append(
-            b"fixed base separation challenge",
-            &fixed_base_sep_challenge,
-        );
+        let logic_sep_challenge = F::rand(&mut fs_rng);
+        fs_rng.absorb(&to_bytes![logic_sep_challenge].unwrap());
 
-        let var_base_sep_challenge =
-            transcript.challenge_scalar(b"variable base separation challenge");
-        transcript.append(
-            b"variable base separation challenge",
-            &var_base_sep_challenge,
-        );
+        let fixed_base_sep_challenge = F::rand(&mut fs_rng);
+        fs_rng.absorb(&to_bytes![fixed_base_sep_challenge].unwrap());
 
-        let lookup_sep_challenge =
-            transcript.challenge_scalar(b"lookup separation challenge");
-        transcript
-            .append(b"lookup separation challenge", &lookup_sep_challenge);
+        let var_base_sep_challenge = F::rand(&mut fs_rng);
+        fs_rng.absorb(&to_bytes![var_base_sep_challenge].unwrap());
 
-        // Add commitment to quotient polynomial to transcript
-        transcript.append(b"t_1", &self.t_1_comm);
-        transcript.append(b"t_2", &self.t_2_comm);
-        transcript.append(b"t_3", &self.t_3_comm);
-        transcript.append(b"t_4", &self.t_4_comm);
+        let lookup_sep_challenge = F::rand(&mut fs_rng);
+        fs_rng.absorb(&to_bytes![lookup_sep_challenge].unwrap());
+        fs_rng.absorb(&to_bytes![self.t_1_comm, self.t_2_comm, self.t_3_comm, self.t_4_comm].unwrap());
 
-        // Compute evaluation point challenge
-        let z_challenge = transcript.challenge_scalar(b"z");
-        transcript.append(b"z", &z_challenge);
+        let z_challenge = F::rand(&mut fs_rng);
+        fs_rng.absorb(&to_bytes![z_challenge].unwrap());
 
         // Compute zero polynomial evaluated at `z_challenge`
         let z_h_eval = domain.evaluate_vanishing_polynomial(z_challenge);
@@ -246,52 +235,29 @@ where
             lookup_sep_challenge,
         );
 
-        // Add evaluations to transcript
-        transcript.append(b"a_eval", &self.evaluations.wire_evals.a_eval);
-        transcript.append(b"b_eval", &self.evaluations.wire_evals.b_eval);
-        transcript.append(b"c_eval", &self.evaluations.wire_evals.c_eval);
-        transcript.append(b"d_eval", &self.evaluations.wire_evals.d_eval);
-
-        transcript.append(
-            b"left_sig_eval",
-            &self.evaluations.perm_evals.left_sigma_eval,
-        );
-        transcript.append(
-            b"right_sig_eval",
-            &self.evaluations.perm_evals.right_sigma_eval,
-        );
-        transcript.append(
-            b"out_sig_eval",
-            &self.evaluations.perm_evals.out_sigma_eval,
-        );
-        transcript.append(
-            b"perm_eval",
-            &self.evaluations.perm_evals.permutation_eval,
-        );
-
-        transcript.append(b"f_eval", &self.evaluations.lookup_evals.f_eval);
-        transcript.append(
-            b"q_lookup_eval",
-            &self.evaluations.lookup_evals.q_lookup_eval,
-        );
-        transcript.append(
-            b"lookup_perm_eval",
-            &self.evaluations.lookup_evals.z2_next_eval,
-        );
-        transcript.append(b"h_1_eval", &self.evaluations.lookup_evals.h1_eval);
-        transcript.append(
-            b"h_1_next_eval",
-            &self.evaluations.lookup_evals.h1_next_eval,
-        );
-        transcript.append(b"h_2_eval", &self.evaluations.lookup_evals.h2_eval);
+        fs_rng.absorb(&to_bytes![
+            self.evaluations.wire_evals.a_eval,
+            self.evaluations.wire_evals.b_eval,
+            self.evaluations.wire_evals.c_eval,
+            self.evaluations.wire_evals.d_eval,
+            self.evaluations.perm_evals.left_sigma_eval,
+            self.evaluations.perm_evals.right_sigma_eval,
+            self.evaluations.perm_evals.out_sigma_eval,
+            self.evaluations.perm_evals.permutation_eval,
+            self.evaluations.lookup_evals.f_eval,
+            self.evaluations.lookup_evals.q_lookup_eval,
+            self.evaluations.lookup_evals.z2_next_eval,
+            self.evaluations.lookup_evals.h1_eval,
+            self.evaluations.lookup_evals.h1_next_eval,
+            self.evaluations.lookup_evals.h2_eval
+        ].unwrap());
 
         self.evaluations
             .custom_evals
             .vals
             .iter()
-            .for_each(|(label, eval)| {
-                let static_label = Box::leak(label.to_owned().into_boxed_str());
-                transcript.append(static_label.as_bytes(), eval);
+            .for_each(|(_, eval)| {
+                fs_rng.absorb(&to_bytes![eval].unwrap());
             });
 
         // Compute linearisation commitment
@@ -342,9 +308,54 @@ where
 
         // Compute aggregate witness to polynomials evaluated at the evaluation
         // challenge `z`
-        let aw_challenge: F = transcript.challenge_scalar(b"aggregate_witness");
 
-        let aw_evals = [
+        /*************************************************************** */
+        let separation_challenge = F::rand(&mut fs_rng);
+
+        let w_commits = [
+            lin_comm.clone(), 
+            plonk_verifier_key.permutation.left_sigma.clone(), 
+            plonk_verifier_key.permutation.right_sigma.clone(),
+            plonk_verifier_key.permutation.out_sigma.clone(),
+            self.f_comm.clone(),
+            self.h_2_comm.clone(),
+            table_comm.clone(),
+            self.a_comm.clone(),
+            self.b_comm.clone(),
+            self.c_comm.clone(),
+            self.d_comm.clone()
+        ];
+
+        let w_commits = w_commits.iter().enumerate().map(|(i, c)| {
+            ark_poly_commit::LabeledCommitment::new(format!("w_{}", i), c.clone(), None)
+        }).collect::<Vec<_>>();
+
+        let saw_commits = [
+            self.z_comm.clone(),
+            self.a_comm.clone(),
+            self.b_comm.clone(),
+            self.d_comm.clone(),
+            self.h_1_comm.clone(),
+            self.z_2_comm.clone(),
+            table_comm.clone(),
+        ];
+
+        let saw_commits = saw_commits.iter().enumerate().map(|(i, c)| {
+            ark_poly_commit::LabeledCommitment::new(format!("saw_{}", i), c.clone(), None)
+        }).collect::<Vec<_>>();
+
+        let mut query_set = QuerySet::new();
+        let z_label = String::from("z");
+        let omega_z_label = String::from("omega_z");
+
+        for c in &w_commits {
+            query_set.insert((c.label().clone(), (z_label.clone(), z_challenge)));
+        }
+        for c in &saw_commits {
+            query_set.insert((c.label().clone(), (omega_z_label.clone(), z_challenge * domain.element(1))));
+        }
+
+        let w_evals = [
             -r0,
             self.evaluations.perm_evals.left_sigma_eval,
             self.evaluations.perm_evals.right_sigma_eval,
@@ -358,14 +369,6 @@ where
             self.evaluations.wire_evals.d_eval,
         ];
 
-        let mut aw_challenge_powers = vec![F::one(), aw_challenge];
-        for i in 2..aw_evals.len() {
-            aw_challenge_powers.push(aw_challenge * aw_challenge_powers[i - 1]);
-        }
-
-        let saw_challenge: F =
-            transcript.challenge_scalar(b"aggregate_witness");
-
         let saw_evals = [
             self.evaluations.perm_evals.permutation_eval,
             self.evaluations.custom_evals.get("a_next_eval"),
@@ -376,66 +379,26 @@ where
             self.evaluations.lookup_evals.table_next_eval,
         ];
 
-        let mut saw_challenge_powers = vec![F::one(), saw_challenge];
-        for i in 2..saw_evals.len() {
-            saw_challenge_powers.push(saw_challenge * saw_challenge_powers[i - 1]);
+        let mut evaluations = ark_poly_commit::Evaluations::new();
+
+        for (c, &eval) in w_commits.iter().zip(w_evals.iter()) {
+            evaluations.insert((c.label().clone(), z_challenge), eval);
         }
 
-        let w_commit = PC::multi_scalar_mul(
-            &[
-                lin_comm, 
-                plonk_verifier_key.permutation.left_sigma.clone(), 
-                plonk_verifier_key.permutation.right_sigma.clone(),
-                plonk_verifier_key.permutation.out_sigma.clone(),
-                self.f_comm.clone(),
-                self.h_2_comm.clone(),
-                table_comm.clone(),
-                self.a_comm.clone(),
-                self.b_comm.clone(),
-                self.c_comm.clone(),
-                self.d_comm.clone()
-            ],
-            &aw_challenge_powers
-        );
-        let w_commit_labeled = label_commitment_named!(String::from("w"), w_commit);
+        for (c, &eval) in saw_commits.iter().zip(saw_evals.iter()) {
+            evaluations.insert((c.label().clone(), z_challenge * domain.element(1)), eval);
+        }
 
-        let sw_commit = PC::multi_scalar_mul(
-            &[
-                self.z_comm.clone(),
-                self.a_comm.clone(),
-                self.b_comm.clone(),
-                self.d_comm.clone(),
-                self.h_1_comm.clone(),
-                self.z_2_comm.clone(),
-                table_comm.clone(),
-            ],
-            &saw_challenge_powers
-        );
-        let sw_commit_labeled = label_commitment_named!(String::from("sw"), sw_commit);
+        let commitments = w_commits.iter().chain(saw_commits.iter());
 
-        let shifted_challenge = domain.element(1) * z_challenge;
-        let mut query_set = QuerySet::new();
-        query_set.insert((String::from("w"), (String::from("z"), z_challenge)));
-        query_set.insert((String::from("sw"), (String::from("omega_z"), shifted_challenge)));
-
-        let w_evals = lc(&aw_evals, &aw_challenge);
-        let sw_evals = lc(&saw_evals, &saw_challenge);
-
-        // let w_shifted_eval = self.z_shifted_eval;
-        let mut evaluations = ark_poly_commit::Evaluations::new();
-        evaluations.insert((String::from("w"), z_challenge), w_evals);
-        evaluations.insert((String::from("sw"), shifted_challenge), sw_evals);
-
-        let mut rng = test_rng();
-        let u: F = transcript.challenge_scalar(b"u");
         match PC::batch_check(
             verifier_key,
-            &[w_commit_labeled, sw_commit_labeled],
+            commitments,
             &query_set,
             &evaluations,
             &self.batch_opening,
-            u,
-            &mut rng,
+            separation_challenge,
+            &mut fs_rng,
         ) {
             Ok(true) => Ok(()),
             Ok(false) => Err(Error::ProofVerificationError),

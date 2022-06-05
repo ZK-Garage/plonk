@@ -291,7 +291,7 @@ where
 )]
 pub struct ProverKey<F>
 where
-    F: PrimeField,
+    F: PrimeField
 {
     /// Circuit size
     pub(crate) n: usize,
