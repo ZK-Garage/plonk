@@ -24,9 +24,6 @@ use ark_serialize::*;
 #[derive(CanonicalDeserialize, CanonicalSerialize, derivative::Derivative)]
 #[derivative(
     Clone,
-    Copy(
-        bound = "Evaluations<F>: Copy, (DensePolynomial<F>, Evaluations<F>, PC::Commitment): Copy"
-    ),
     Debug(bound = "PC::Commitment: std::fmt::Debug"),
     Eq(bound = "PC::Commitment: Eq"),
     PartialEq(bound = "PC::Commitment: PartialEq")

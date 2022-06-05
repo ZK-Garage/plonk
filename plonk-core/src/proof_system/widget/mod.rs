@@ -296,9 +296,7 @@ where
 /// [`Proof`](crate::proof_system::Proof).
 #[derive(CanonicalDeserialize, CanonicalSerialize, derivative::Derivative)]
 #[derivative(
-    Clone(
-        bound = "permutation::ProverKey<F, PC>: Clone, PC::Commitment: Copy"
-    ),
+    Clone(bound = ""),
     Debug(
         bound = "permutation::ProverKey<F, PC>: std::fmt::Debug, PC::Commitment: std::fmt::Debug"
     ),
