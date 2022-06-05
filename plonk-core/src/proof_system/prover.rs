@@ -17,19 +17,19 @@ use crate::{
     },
 };
 use ark_ec::{ModelParameters, TEModelParameters};
-use ark_ff::{PrimeField, to_bytes};
+use ark_ff::{to_bytes, PrimeField};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, GeneralEvaluationDomain,
     UVPolynomial,
 };
+use ark_poly_commit::{PCRandomness, QuerySet};
 use core::marker::PhantomData;
 use itertools::izip;
-use ark_poly_commit::{QuerySet, PCRandomness};
 use merlin::Transcript;
 
 use ark_marlin::rng::FiatShamirRng;
-use digest::Digest;
 use blake2::Blake2s;
+use digest::Digest;
 
 /// Abstraction structure designed to construct a circuit and generate
 /// [`Proof`]s for it.
@@ -164,8 +164,7 @@ where
     /// after calling this method, the user should then call
     /// [`Prover::clear_witness`].
     /// This is automatically done when [`Prover::prove`] is called.
-    pub fn prove_with_preprocessed
-    <D: Digest>(
+    pub fn prove_with_preprocessed<D: Digest>(
         &self,
         commit_key: &PC::CommitterKey,
         prover_key: &ProverKey<F>,
@@ -184,18 +183,14 @@ where
         // let mut transcript = self.preprocessed_transcript.clone();
 
         pub const PROTOCOL_NAME: &[u8] = b"Plonk";
-        let mut fs_rng = FiatShamirRng::<D>::from_seed(
-            &to_bytes![
-                &PROTOCOL_NAME
-            ]
-            .unwrap(),
-        );
+        let mut fs_rng =
+            FiatShamirRng::<D>::from_seed(&to_bytes![&PROTOCOL_NAME].unwrap());
 
         // Append Public Inputs to the transcript
-        // Add them in evaluations form since DensePolynomial doesn't implement to_bytes
+        // Add them in evaluations form since DensePolynomial doesn't implement
+        // to_bytes
         let pub_inputs = self.cs.get_pi().as_evals();
         fs_rng.absorb(&to_bytes![pub_inputs].unwrap());
-
 
         // 1. Compute witness Polynomials
         //
@@ -306,7 +301,6 @@ where
         // Add f_poly commitment to transcript
         fs_rng.absorb(&to_bytes![f_poly_commit].unwrap());
 
-
         // Compute s, as the sorted and concatenated version of f and t
         let (h_1, h_2) = compressed_t_multiset
             .combine_split(&compressed_f_multiset)
@@ -332,7 +326,6 @@ where
 
         // Add h polynomials to transcript
         fs_rng.absorb(&to_bytes![h_1_poly_commit, h_2_poly_commit].unwrap());
-
 
         // 3. Compute permutation polynomial
         //
@@ -379,7 +372,6 @@ where
 
         // Add permutation polynomial commitment to transcript.
         fs_rng.absorb(&to_bytes![z_poly_commit].unwrap());
-
 
         // Compute mega permutation polynomial.
         // Compute lookup permutation poly
@@ -515,32 +507,30 @@ where
         // Add evaluations to transcript.
         // First wire evals
 
-        fs_rng.absorb(&to_bytes![
-            evaluations.wire_evals.a_eval, 
-            evaluations.wire_evals.b_eval,
-            evaluations.wire_evals.c_eval,
-            evaluations.wire_evals.d_eval,
-            evaluations.perm_evals.left_sigma_eval,
-            evaluations.perm_evals.right_sigma_eval,
-            evaluations.perm_evals.out_sigma_eval,
-            evaluations.perm_evals.permutation_eval,
-            evaluations.lookup_evals.f_eval,
-            evaluations.lookup_evals.q_lookup_eval,
-            evaluations.lookup_evals.z2_next_eval,
-            evaluations.lookup_evals.h1_eval,
-            evaluations.lookup_evals.h1_next_eval,
-            evaluations.lookup_evals.h2_eval
-        ].unwrap());
+        fs_rng.absorb(
+            &to_bytes![
+                evaluations.wire_evals.a_eval,
+                evaluations.wire_evals.b_eval,
+                evaluations.wire_evals.c_eval,
+                evaluations.wire_evals.d_eval,
+                evaluations.perm_evals.left_sigma_eval,
+                evaluations.perm_evals.right_sigma_eval,
+                evaluations.perm_evals.out_sigma_eval,
+                evaluations.perm_evals.permutation_eval,
+                evaluations.lookup_evals.f_eval,
+                evaluations.lookup_evals.q_lookup_eval,
+                evaluations.lookup_evals.z2_next_eval,
+                evaluations.lookup_evals.h1_eval,
+                evaluations.lookup_evals.h1_next_eval,
+                evaluations.lookup_evals.h2_eval
+            ]
+            .unwrap(),
+        );
 
         // Third, all evals needed for custom gates
-        evaluations
-            .custom_evals
-            .vals
-            .iter()
-            .for_each(|(_, eval)| {
-                fs_rng.absorb(&to_bytes![eval].unwrap());
-            });
-
+        evaluations.custom_evals.vals.iter().for_each(|(_, eval)| {
+            fs_rng.absorb(&to_bytes![eval].unwrap());
+        });
 
         // 5. Compute Openings
         //
@@ -557,25 +547,28 @@ where
             w_l_poly.clone(),
             w_r_poly.clone(),
             w_o_poly,
-            w_4_poly.clone()
+            w_4_poly.clone(),
         ];
 
         // TODO: preprocess this commitments
         // adding PC to ProverKey introduces many changes
-        // maybe there is a better place to store them or to introduce shared struct
-        let (tmp_commits, _) = PC::commit(
-            commit_key,
-            &[
-                label_polynomial!(lin_poly), // this can't be preprocessed but can be computed with MSM
-                label_polynomial!(prover_key.permutation.left_sigma.0), 
-                label_polynomial!(prover_key.permutation.right_sigma.0),
-                label_polynomial!(prover_key.permutation.out_sigma.0),
-                label_polynomial!(table_poly)
-
-            ],
-            None,
-        )
-        .map_err(to_pc_error::<F, PC>)?;
+        // maybe there is a better place to store them or to introduce shared
+        // struct
+        let (tmp_commits, _) =
+            PC::commit(
+                commit_key,
+                &[
+                    label_polynomial!(lin_poly), /* this can't be
+                                                  * preprocessed but can be
+                                                  * computed with MSM */
+                    label_polynomial!(prover_key.permutation.left_sigma.0),
+                    label_polynomial!(prover_key.permutation.right_sigma.0),
+                    label_polynomial!(prover_key.permutation.out_sigma.0),
+                    label_polynomial!(table_poly),
+                ],
+                None,
+            )
+            .map_err(to_pc_error::<F, PC>)?;
 
         let w_commits = [
             tmp_commits[0].commitment().clone(),
@@ -588,44 +581,73 @@ where
             wire_commits[0].commitment().clone(),
             wire_commits[1].commitment().clone(),
             wire_commits[2].commitment().clone(),
-            wire_commits[3].commitment().clone()
+            wire_commits[3].commitment().clone(),
         ];
 
-        let w_polys = w_polys.iter().enumerate().map(|(i, p)| {
-            ark_poly_commit::LabeledPolynomial::new(format!("w_{}", i), p.clone(), None, None)
-        }).collect::<Vec<ark_poly_commit::LabeledPolynomial<_, _>>>();
+        let w_polys = w_polys
+            .iter()
+            .enumerate()
+            .map(|(i, p)| {
+                ark_poly_commit::LabeledPolynomial::new(
+                    format!("w_{}", i),
+                    p.clone(),
+                    None,
+                    None,
+                )
+            })
+            .collect::<Vec<ark_poly_commit::LabeledPolynomial<_, _>>>();
 
-        let w_commits = w_commits.iter().enumerate().map(|(i, c)| {
-            ark_poly_commit::LabeledCommitment::new(format!("w_{}", i), c.clone(), None)
-        }).collect::<Vec<_>>();
+        let w_commits = w_commits
+            .iter()
+            .enumerate()
+            .map(|(i, c)| {
+                ark_poly_commit::LabeledCommitment::new(
+                    format!("w_{}", i),
+                    c.clone(),
+                    None,
+                )
+            })
+            .collect::<Vec<_>>();
 
         let saw_polys = [
-            z_poly, 
-            w_l_poly,
-            w_r_poly,
-            w_4_poly,
-            h_1_poly,
-            z_2_poly,
-            table_poly
+            z_poly, w_l_poly, w_r_poly, w_4_poly, h_1_poly, z_2_poly,
+            table_poly,
         ];
 
         let saw_commits = [
-            z_poly_commit[0].commitment().clone(), 
+            z_poly_commit[0].commitment().clone(),
             wire_commits[0].commitment().clone(),
             wire_commits[1].commitment().clone(),
             wire_commits[3].commitment().clone(),
             h_1_poly_commit[0].commitment().clone(),
             z_2_poly_commit[0].commitment().clone(),
-            tmp_commits[4].commitment().clone()
+            tmp_commits[4].commitment().clone(),
         ];
 
-        let saw_polys = saw_polys.iter().enumerate().map(|(i, p)| {
-            ark_poly_commit::LabeledPolynomial::new(format!("saw_{}", i), p.clone(), None, None)
-        }).collect::<Vec<_>>();
+        let saw_polys = saw_polys
+            .iter()
+            .enumerate()
+            .map(|(i, p)| {
+                ark_poly_commit::LabeledPolynomial::new(
+                    format!("saw_{}", i),
+                    p.clone(),
+                    None,
+                    None,
+                )
+            })
+            .collect::<Vec<_>>();
 
-        let saw_commits = saw_commits.iter().enumerate().map(|(i, c)| {
-            ark_poly_commit::LabeledCommitment::new(format!("saw_{}", i), c.clone(), None)
-        }).collect::<Vec<_>>();
+        let saw_commits = saw_commits
+            .iter()
+            .enumerate()
+            .map(|(i, c)| {
+                ark_poly_commit::LabeledCommitment::new(
+                    format!("saw_{}", i),
+                    c.clone(),
+                    None,
+                )
+            })
+            .collect::<Vec<_>>();
 
         let mut query_set = QuerySet::new();
         let z_label = String::from("z");
@@ -633,13 +655,18 @@ where
         let omega_z_challenge = z_challenge * domain.element(1);
 
         for poly in &w_polys {
-            query_set.insert((poly.label().clone(), (z_label.clone(), z_challenge)));
+            query_set
+                .insert((poly.label().clone(), (z_label.clone(), z_challenge)));
         }
         for poly in &saw_polys {
-            query_set.insert((poly.label().clone(), (omega_z_label.clone(), omega_z_challenge)));
+            query_set.insert((
+                poly.label().clone(),
+                (omega_z_label.clone(), omega_z_challenge),
+            ));
         }
 
-        let rands = vec![PC::Randomness::empty(); w_commits.len() + saw_commits.len()];
+        let rands =
+            vec![PC::Randomness::empty(); w_commits.len() + saw_commits.len()];
         let batch_opening = PC::batch_open(
             commit_key,
             w_polys.iter().chain(saw_polys.iter()),
@@ -667,7 +694,7 @@ where
             t_3_comm: t_commits[2].commitment().clone(),
             t_4_comm: t_commits[3].commitment().clone(),
             evaluations,
-            batch_opening
+            batch_opening,
         })
     }
 
