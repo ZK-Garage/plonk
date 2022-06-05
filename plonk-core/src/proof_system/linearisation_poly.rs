@@ -5,6 +5,7 @@
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
 use crate::{
+    commitment::HomomorphicCommitment,
     error::Error,
     label_eval,
     proof_system::{
@@ -15,7 +16,6 @@ use crate::{
         widget::GateConstraint,
         CustomValues, ProverKey, WitnessValues,
     },
-    commitment::HomomorphicCommitment,
     util::EvaluationDomainExt,
 };
 use ark_ec::TEModelParameters;

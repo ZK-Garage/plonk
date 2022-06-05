@@ -30,7 +30,7 @@ use ark_serialize::*;
 pub struct ProverKey<F, PCC>
 where
     F: FftField,
-    PCC: PCCommitment + Default
+    PCC: PCCommitment + Default,
 {
     /// Left Permutation
     pub left_sigma: (DensePolynomial<F>, Evaluations<F>, PCC),
@@ -57,7 +57,7 @@ where
 impl<F, PCC> ProverKey<F, PCC>
 where
     F: FftField,
-    PCC: PCCommitment + Default
+    PCC: PCCommitment + Default,
 {
     /// Computes permutation term of the quotient polynomial at the `i`th domain
     /// point.

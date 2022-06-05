@@ -5,6 +5,7 @@
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
 use crate::{
+    commitment::HomomorphicCommitment,
     error::Error,
     proof_system::{
         ecc::{CurveAddition, FixedBaseScalarMul},
@@ -13,7 +14,6 @@ use crate::{
         widget::GateConstraint,
         ProverKey,
     },
-    commitment::HomomorphicCommitment
 };
 use ark_ec::TEModelParameters;
 use ark_ff::{FftField, PrimeField};

@@ -215,7 +215,6 @@ where
         let v_h_coset_4n =
             compute_vanishing_poly_over_coset(domain_4n, domain.size() as u64);
 
-
         let (
             left_sigma_poly,
             right_sigma_poly,
@@ -250,10 +249,26 @@ where
             (selectors.q_lookup, q_lookup_eval_4n),
             (selectors.q_fixed_group_add, q_fixed_group_add_eval_4n),
             (selectors.q_variable_group_add, q_variable_group_add_eval_4n),
-            (selectors.left_sigma, left_sigma_eval_4n, commitments[0].commitment().clone()),
-            (selectors.right_sigma, right_sigma_eval_4n, commitments[1].commitment().clone()),
-            (selectors.out_sigma, out_sigma_eval_4n, commitments[2].commitment().clone()),
-            (selectors.fourth_sigma, fourth_sigma_eval_4n, commitments[3].commitment().clone()),
+            (
+                selectors.left_sigma,
+                left_sigma_eval_4n,
+                commitments[0].commitment().clone(),
+            ),
+            (
+                selectors.right_sigma,
+                right_sigma_eval_4n,
+                commitments[1].commitment().clone(),
+            ),
+            (
+                selectors.out_sigma,
+                out_sigma_eval_4n,
+                commitments[2].commitment().clone(),
+            ),
+            (
+                selectors.fourth_sigma,
+                fourth_sigma_eval_4n,
+                commitments[3].commitment().clone(),
+            ),
             linear_eval_4n,
             v_h_coset_4n,
             preprocessed_table.t[0].0.clone(),

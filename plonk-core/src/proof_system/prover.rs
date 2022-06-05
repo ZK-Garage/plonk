@@ -250,12 +250,11 @@ where
         );
 
         let (table_poly_commit, _) =
-        PC::commit(commit_key, &[label_polynomial!(table_poly)], None)
-            .map_err(to_pc_error::<F, PC>)?;
+            PC::commit(commit_key, &[label_polynomial!(table_poly)], None)
+                .map_err(to_pc_error::<F, PC>)?;
 
         // TODO this should be added to transcript?
         // fs_rng.absorb(&to_bytes![table_poly_commit].unwrap());
-        
 
         // Compute query table f
         // When q_lookup[i] is zero the wire value is replaced with a dummy
@@ -406,7 +405,6 @@ where
 
         // TODO this should be added to transcript?
         // fs_rng.absorb(&to_bytes![z_2_poly_commit].unwrap());
-        
 
         // 3. Compute public inputs polynomial.
         let pi_poly = self.cs.get_pi().into();
@@ -516,14 +514,9 @@ where
             &table_poly,
         )?;
 
-        let (lin_poly_commit, _) = PC::commit(
-            commit_key,
-            &[
-                label_polynomial!(lin_poly),
-            ],
-            None,
-        )
-        .map_err(to_pc_error::<F, PC>)?;
+        let (lin_poly_commit, _) =
+            PC::commit(commit_key, &[label_polynomial!(lin_poly)], None)
+                .map_err(to_pc_error::<F, PC>)?;
 
         // Add evaluations to transcript.
         // First wire evals
