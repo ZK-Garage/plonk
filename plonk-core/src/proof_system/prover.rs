@@ -183,7 +183,7 @@ where
         // Commitments
         // let mut transcript = self.preprocessed_transcript.clone();
 
-        pub const PROTOCOL_NAME: &'static [u8] = b"Plonk";
+        pub const PROTOCOL_NAME: &[u8] = b"Plonk";
         let mut fs_rng = FiatShamirRng::<D>::from_seed(
             &to_bytes![
                 &PROTOCOL_NAME
@@ -551,12 +551,12 @@ where
             prover_key.permutation.left_sigma.0.clone(),
             prover_key.permutation.right_sigma.0.clone(),
             prover_key.permutation.out_sigma.0.clone(),
-            f_poly.clone(),
-            h_2_poly.clone(),
+            f_poly,
+            h_2_poly,
             table_poly.clone(),
             w_l_poly.clone(),
             w_r_poly.clone(),
-            w_o_poly.clone(),
+            w_o_poly,
             w_4_poly.clone()
         ];
 
@@ -566,11 +566,11 @@ where
         let (tmp_commits, _) = PC::commit(
             commit_key,
             &[
-                label_polynomial!(lin_poly.clone()), // this can't be preprocessed but can be computed with MSM
+                label_polynomial!(lin_poly), // this can't be preprocessed but can be computed with MSM
                 label_polynomial!(prover_key.permutation.left_sigma.0), 
                 label_polynomial!(prover_key.permutation.right_sigma.0),
                 label_polynomial!(prover_key.permutation.out_sigma.0),
-                label_polynomial!(table_poly.clone())
+                label_polynomial!(table_poly)
 
             ],
             None,
@@ -600,13 +600,13 @@ where
         }).collect::<Vec<_>>();
 
         let saw_polys = [
-            z_poly.clone(), 
-            w_l_poly.clone(),
-            w_r_poly.clone(),
-            w_4_poly.clone(),
-            h_1_poly.clone(),
-            z_2_poly.clone(),
-            table_poly.clone()
+            z_poly, 
+            w_l_poly,
+            w_r_poly,
+            w_4_poly,
+            h_1_poly,
+            z_2_poly,
+            table_poly
         ];
 
         let saw_commits = [

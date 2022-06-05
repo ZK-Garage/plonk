@@ -24,7 +24,7 @@ use crate::{
 };
 use ark_ec::TEModelParameters;
 
-use ark_ff::{fields::batch_inversion, FftField, PrimeField, to_bytes};
+use ark_ff::{fields::batch_inversion, to_bytes, FftField, PrimeField};
 use ark_poly::{EvaluationDomain, GeneralEvaluationDomain};
 use ark_serialize::{
     CanonicalDeserialize, CanonicalSerialize, Read, SerializationError, Write,
@@ -42,13 +42,16 @@ use digest::Digest;
 /// `ProofEvaluations`.
 #[derive(CanonicalDeserialize, CanonicalSerialize, derivative::Derivative)]
 #[derivative(
-    Clone(bound = "PC::Commitment: Clone, PC::Proof: Clone, PC::BatchProof: Clone"),
+    Clone(bound = "PC::Commitment: Clone, PC::Proof: Clone, PC::BatchProof: Clone"
+    ),
     Debug(
         bound = "PC::Commitment: core::fmt::Debug, PC::Proof: core::fmt::Debug, PC::BatchProof: core::fmt::Debug"
     ),
-    Default(bound = "PC::Commitment: Default, PC::Proof: Default, PC::BatchProof: Default"),
+    Default(bound = "PC::Commitment: Default, PC::Proof: Default, PC::BatchProof: Default"
+    ),
     Eq(bound = "PC::Commitment: Eq, PC::Proof: Eq, PC::BatchProof: Eq"),
-    PartialEq(bound = "PC::Commitment: PartialEq, PC::Proof: PartialEq, PC::BatchProof: PartialEq")
+    PartialEq(bound = "PC::Commitment: PartialEq, PC::Proof: PartialEq, PC::BatchProof: PartialEq"
+    )
 )]
 pub struct Proof<F, PC>
 where
@@ -99,7 +102,6 @@ where
 
     /// Batch opening proof of the aggregated witnesses
     pub(crate) batch_opening: PC::BatchProof,
-
 }
 
 impl<F, PC> Proof<F, PC>
@@ -124,7 +126,7 @@ where
                 adicity: <<F as FftField>::FftParams as ark_ff::FftParameters>::TWO_ADICITY,
             })?;
 
-        pub const PROTOCOL_NAME: &'static [u8] = b"Plonk";
+        pub const PROTOCOL_NAME: & [u8] = b"Plonk";
         let mut fs_rng = FiatShamirRng::<D>::from_seed(
             &to_bytes![
                 &PROTOCOL_NAME
@@ -313,7 +315,7 @@ where
         let separation_challenge = F::rand(&mut fs_rng);
 
         let w_commits = [
-            lin_comm.clone(), 
+            lin_comm, 
             plonk_verifier_key.permutation.left_sigma.clone(), 
             plonk_verifier_key.permutation.right_sigma.clone(),
             plonk_verifier_key.permutation.out_sigma.clone(),
@@ -337,7 +339,7 @@ where
             self.d_comm.clone(),
             self.h_1_comm.clone(),
             self.z_2_comm.clone(),
-            table_comm.clone(),
+            table_comm,
         ];
 
         let saw_commits = saw_commits.iter().enumerate().map(|(i, c)| {
