@@ -554,21 +554,20 @@ where
         // adding PC to ProverKey introduces many changes
         // maybe there is a better place to store them or to introduce shared
         // struct
-        let (tmp_commits, _) =
-            PC::commit(
-                commit_key,
-                &[
-                    label_polynomial!(lin_poly), /* this can't be
-                                                  * preprocessed but can be
-                                                  * computed with MSM */
-                    label_polynomial!(prover_key.permutation.left_sigma.0),
-                    label_polynomial!(prover_key.permutation.right_sigma.0),
-                    label_polynomial!(prover_key.permutation.out_sigma.0),
-                    label_polynomial!(table_poly),
-                ],
-                None,
-            )
-            .map_err(to_pc_error::<F, PC>)?;
+        let (tmp_commits, _) = PC::commit(
+            commit_key,
+            &[
+                label_polynomial!(lin_poly), /* this can't be
+                                              * preprocessed but can be
+                                              * computed with MSM */
+                label_polynomial!(prover_key.permutation.left_sigma.0),
+                label_polynomial!(prover_key.permutation.right_sigma.0),
+                label_polynomial!(prover_key.permutation.out_sigma.0),
+                label_polynomial!(table_poly),
+            ],
+            None,
+        )
+        .map_err(to_pc_error::<F, PC>)?;
 
         let w_commits = [
             tmp_commits[0].commitment().clone(),
