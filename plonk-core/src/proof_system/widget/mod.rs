@@ -14,7 +14,6 @@ pub mod range;
 
 use crate::{
     commitment::HomomorphicCommitment,
-    label_polynomial,
     lookup::MultiSet,
     proof_system::{
         linearisation_poly::CustomEvaluations,
