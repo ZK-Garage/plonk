@@ -280,7 +280,7 @@ where
         let mut prover = Prover::new(transcript_init);
         // Fill witnesses for Prover
         self.gadget(prover.mut_cs())?;
-        prover.cs.public_inputs.update_size(circuit_size);
+        prover.cs.public_inputs.update_size(prover.circuit_bound());
         // Add ProverKey to Prover
         prover.prover_key = Some(prover_key);
         let pi = prover.cs.get_pi().clone();
