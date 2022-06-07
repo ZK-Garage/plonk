@@ -133,7 +133,7 @@ where
         let mut fs_rng =
             FiatShamirRng::<D>::from_seed(&to_bytes![&PROTOCOL_NAME].unwrap());
 
-        //Append Public Inputs to the transcript
+        // Append Public Inputs to the transcript
         // Add them in evaluations form since DensePolynomial doesn't implement
         // to_bytes
         fs_rng.absorb(&to_bytes![pub_inputs.as_evals()].unwrap());
