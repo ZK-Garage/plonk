@@ -815,9 +815,7 @@ where
     /// passed `var` was created by this composer before
     #[inline]
     pub fn value_of_var(&self, var: Variable) -> Option<F> {
-        self.variables
-            .get(&var)
-            .cloned()
+        self.variables.get(&var).cloned()
     }
 }
 
