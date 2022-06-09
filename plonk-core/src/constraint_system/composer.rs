@@ -810,6 +810,15 @@ where
             assert_eq!(k, F::zero(), "Check failed at gate {}", i,);
         }
     }
+
+    /// Get value of a variable. Should be safe to `.unwrap()` as long as
+    /// passed `var` was created by this composer before
+    #[inline]
+    pub fn value_of_var(&self, var: Variable) -> Option<F> {
+        self.variables
+            .get(&var)
+            .cloned()
+    }
 }
 
 #[cfg(test)]
