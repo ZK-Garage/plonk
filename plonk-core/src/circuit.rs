@@ -238,16 +238,11 @@ where
         //Generate & save `ProverKey` with some random values.
         let mut prover = Prover::<F, P, PC>::new(b"CircuitCompilation");
         self.gadget(prover.mut_cs())?;
-        prover.cs.public_inputs.update_size(prover.circuit_bound());
         prover.preprocess(&ck)?;
 
         // Generate & save `VerifierKey` with some random values.
         let mut verifier = Verifier::new(b"CircuitCompilation");
         self.gadget(verifier.mut_cs())?;
-        verifier
-            .cs
-            .public_inputs
-            .update_size(verifier.circuit_bound());
         verifier.preprocess(&ck)?;
         Ok((
             prover
@@ -280,7 +275,6 @@ where
         let mut prover = Prover::new(transcript_init);
         // Fill witnesses for Prover
         self.gadget(prover.mut_cs())?;
-        prover.cs.public_inputs.update_size(prover.circuit_bound());
         // Add ProverKey to Prover
         prover.prover_key = Some(prover_key);
         let pi = prover.cs.get_pi().clone();

@@ -58,7 +58,6 @@ where
 
         // Add gadgets
         gadget(prover.mut_cs());
-        prover.cs.public_inputs.update_size(prover.circuit_bound());
 
         // Commit Key
         let (ck, _) =
@@ -85,10 +84,6 @@ where
 
     // Add gadgets
     gadget(verifier.mut_cs());
-    verifier
-        .cs
-        .public_inputs
-        .update_size(verifier.circuit_bound());
 
     // Compute Commit and Verifier Key
     let (ck, vk) =
