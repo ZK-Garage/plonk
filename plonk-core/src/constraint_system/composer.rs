@@ -196,7 +196,7 @@ where
             q_fixed_group_add: Vec::with_capacity(expected_size),
             q_variable_group_add: Vec::with_capacity(expected_size),
             q_lookup: Vec::with_capacity(expected_size),
-            public_inputs: PublicInputs::new(expected_size.next_power_of_two()),
+            public_inputs: PublicInputs::new(),
             w_l: Vec::with_capacity(expected_size),
             w_r: Vec::with_capacity(expected_size),
             w_o: Vec::with_capacity(expected_size),
@@ -666,8 +666,7 @@ where
             let f_3 = f - F::from(3u64);
             f * f_1 * f_2 * f_3
         };
-        self.public_inputs.update_size(self.circuit_bound());
-        let pi_vec = self.public_inputs.as_evals();
+        let pi_vec = self.public_inputs.as_evals(self.circuit_bound());
         let four = F::from(4u64);
         for i in 0..self.n {
             let qm = self.q_m[i];

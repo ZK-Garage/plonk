@@ -14,8 +14,8 @@
 use alloc::collections::BTreeMap;
 use ark_ff::{FftField, ToConstraintField};
 use ark_poly::{
-    polynomial::UVPolynomial, univariate::DensePolynomial, EvaluationDomain,
-    GeneralEvaluationDomain,
+    univariate::DensePolynomial, EvaluationDomain, GeneralEvaluationDomain,
+    UVPolynomial,
 };
 use ark_serialize::{
     CanonicalDeserialize, CanonicalSerialize, Read, SerializationError, Write,
@@ -30,8 +30,6 @@ pub struct PublicInputs<F>
 where
     F: FftField,
 {
-    // padded size of the circuit
-    n: usize,
     // non-zero values of the public input
     values: BTreeMap<usize, F>,
 }
@@ -41,18 +39,10 @@ where
     F: FftField,
 {
     /// Creates a new struct for [`PublicInputs`].
-    pub fn new(n: usize) -> Self {
-        assert!(n.is_power_of_two());
+    pub fn new() -> Self {
         Self {
-            n,
             values: BTreeMap::new(),
         }
-    }
-
-    /// Updates the size of the circuit.
-    pub fn update_size(&mut self, n: usize) {
-        assert!(n.is_power_of_two());
-        self.n = n;
     }
 
     /// Inserts a new public input value at a given position.
@@ -109,20 +99,19 @@ where
     }
 
     /// Returns the public inputs as a vector of `n` evaluations.
-    pub fn as_evals(&self) -> Vec<F> {
-        let mut pi = vec![F::zero(); self.n];
+    /// The provided `n` must be a power of 2.
+    pub fn as_evals(&self, n: usize) -> Vec<F> {
+        assert!(n.is_power_of_two());
+        let mut pi = vec![F::zero(); n];
         self.values.iter().for_each(|(pos, eval)| pi[*pos] = *eval);
         pi
     }
-}
 
-impl<F> From<&PublicInputs<F>> for DensePolynomial<F>
-where
-    F: FftField,
-{
-    fn from(pi: &PublicInputs<F>) -> Self {
-        let domain = GeneralEvaluationDomain::<F>::new(pi.n).unwrap();
-        let evals = pi.as_evals();
+    /// Returns the public inputs as a vector of `n` evaluations.
+    /// The provided `n` must be a power of 2.
+    pub fn into_dense_poly(&self, n: usize) -> DensePolynomial<F> {
+        let domain = GeneralEvaluationDomain::<F>::new(n).unwrap();
+        let evals = self.as_evals(n);
         DensePolynomial::from_coefficients_vec(domain.ifft(&evals))
     }
 }
@@ -140,13 +129,13 @@ mod test {
     where
         F: FftField,
     {
-        let mut pi_1 = PublicInputs::new(8);
+        let mut pi_1 = PublicInputs::new();
 
         pi_1.insert(2, F::from(2u64));
         pi_1.insert(5, F::from(5u64));
         pi_1.insert(6, F::from(6u64));
 
-        let mut pi_2 = PublicInputs::new(8);
+        let mut pi_2 = PublicInputs::new();
 
         pi_2.insert(6, F::from(6u64));
         pi_2.insert(5, F::from(5u64));
@@ -162,7 +151,7 @@ mod test {
     where
         F: FftField,
     {
-        let mut pi_1 = PublicInputs::new(8);
+        let mut pi_1 = PublicInputs::new();
 
         pi_1.insert(2, F::from(2u64));
         pi_1.insert(5, F::from(5u64));

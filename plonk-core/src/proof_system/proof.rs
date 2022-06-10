@@ -231,7 +231,7 @@ where
 
         let r0 = self.compute_r0(
             &domain,
-            &pub_inputs.as_evals(),
+            &pub_inputs.as_evals(domain.size()),
             alpha,
             beta,
             gamma,

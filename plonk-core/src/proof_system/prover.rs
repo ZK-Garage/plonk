@@ -389,7 +389,7 @@ where
                 .map_err(to_pc_error::<F, PC>)?;
 
         // 3. Compute public inputs polynomial.
-        let pi_poly = self.cs.get_pi().into();
+        let pi_poly = self.cs.get_pi().into_dense_poly(n);
 
         // 4. Compute quotient polynomial
         //
