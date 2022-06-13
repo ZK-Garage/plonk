@@ -811,11 +811,17 @@ where
         }
     }
 
-    /// Get value of a variable. Should be safe to `.unwrap()` as long as
-    /// passed `var` was created by this composer before
+    /// Get value of a variable that was previously created with
+    /// [`add_input`](StandardComposer::add_input),
+    /// [`conditional_select`](StandardComposer::conditional_select),
+    /// [`is_eq_with_output`](StandardComposer::is_eq_with_output)
+    /// or other similar method that returns a `Variable`.
     #[inline]
-    pub fn value_of_var(&self, var: Variable) -> Option<F> {
-        self.variables.get(&var).cloned()
+    pub fn value_of_var(&self, var: Variable) -> F {
+        self.variables
+            .get(&var)
+            .copied()
+            .expect("the variable does not exist")
     }
 }
 
