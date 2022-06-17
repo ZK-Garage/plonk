@@ -25,6 +25,7 @@ use core::marker::PhantomData;
 use hashbrown::HashMap;
 use rand_core::{CryptoRng, RngCore};
 
+// TODO Rewrite this comment
 /// The StandardComposer is the circuit-builder tool that the `plonk` repository
 /// provides to create, stored and transformed circuit descriptions
 /// into a [`Proof`](crate::proof_system::Proof) at some point.
@@ -57,7 +58,7 @@ where
     F: PrimeField,
     P: ModelParameters<BaseField = F>,
 {
-    /// Number of arithmetic gates in the circuit
+    /// Number of arithmetic gates the circuit
     pub(crate) n: usize,
 
     // Selector vectors
@@ -100,6 +101,7 @@ where
     /// Fourth wire witness vector.
     pub(crate) w_4: Vec<Variable>,
 
+    /// TODO: Integrate this as just another gate
     /// Public lookup table
     pub(crate) lookup_table: LookupTable<F>,
 
@@ -112,6 +114,7 @@ where
     /// These are the actual variable values.
     pub(crate) variables: HashMap<Variable, F>,
 
+    /// TODO: Integrate this as just another gate
     /// Permutation argument.
     pub(crate) perm: Permutation,
 
