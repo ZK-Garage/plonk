@@ -31,6 +31,9 @@ mod test {
 
     use super::*;
 
+    /// Check if `cts` generate valid cosets of the roots of
+    /// unity subgroup (of `domain_size`) of the field F.
+    /// https://hackmd.io/CfFCbA0TTJ6X08vHg0-9_g
     fn check_constants<F>(cts: &[F], domain_size: u64) -> bool
     where
         F: FftField,
