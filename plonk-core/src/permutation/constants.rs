@@ -49,7 +49,9 @@ mod test {
         if domain.evaluate_vanishing_polynomial(cts[0]).is_zero() {
             return false;
         }
-        let prev_cts = vec![cts[0]];
+
+        let mut prev_cts = Vec::with_capacity(cts.len());
+        prev_cts.push(cts[0]);
 
         // Rest of the constants
         for k_last in cts.iter().skip(1) {
@@ -65,6 +67,7 @@ mod test {
             }) {
                 return false;
             }
+            prev_cts.push(*k_last);
         }
 
         true
