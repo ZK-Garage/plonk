@@ -19,6 +19,7 @@ pub(crate) mod helper;
 pub(crate) mod variable;
 
 pub mod ecc;
+pub mod lt;
 
 pub(crate) use variable::WireData;
 
