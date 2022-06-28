@@ -6,16 +6,23 @@
 
 //! Variable-base Scalar Multiplication Gate
 
-use crate::constraint_system::{
-    ecc::Point, variable::Variable, StandardComposer,
+use crate::{
+    constraint_system::{ecc::Point, variable::Variable, StandardComposer},
+    parameters::{CircuitParameters, EmbeddedCurve},
+    proof_system::ecc::TEEmbeddedCurve,
 };
 use ark_ec::TEModelParameters;
 use ark_ff::{BigInteger, FpParameters, PrimeField};
 
-impl<F, P> StandardComposer<F, P>
+impl<P, EmbeddedBaseField, EmbeddedCurveParameters> StandardComposer<P>
 where
-    F: PrimeField,
-    P: TEModelParameters<BaseField = F>,
+    EmbeddedBaseField: PrimeField,
+    EmbeddedCurveParameters: TEModelParameters<BaseField = EmbeddedBaseField>,
+    P: CircuitParameters<
+        ScalarField = EmbeddedBaseField,
+        EmbeddedCurve = TEEmbeddedCurve<P>,
+        EmbeddedCurveParameters = EmbeddedCurveParameters,
+    >,
 {
     /// Adds a variable-base scalar multiplication to the circuit description.
     ///
@@ -27,8 +34,8 @@ where
     pub fn variable_base_scalar_mul(
         &mut self,
         curve_var: Variable,
-        point: Point<P>,
-    ) -> Point<P> {
+        point: Point,
+    ) -> Point {
         // Turn scalar into bits
         let raw_scalar = *self
             .variables
@@ -41,7 +48,7 @@ where
             .expect("Variable in existance without referenced scalar");
         let scalar_bits_var = self.scalar_decomposition(curve_var, raw_scalar);
 
-        let identity = Point::identity(self);
+        let identity = P::EmbeddedCurve::identity(self);
         let mut result = identity;
 
         for bit in scalar_bits_var.into_iter().rev() {
@@ -56,7 +63,7 @@ where
     fn scalar_decomposition(
         &mut self,
         witness_var: Variable,
-        witness_scalar: F,
+        witness_scalar: P::ScalarField,
     ) -> Vec<Variable> {
         // Decompose the bits
         let scalar_bits_iter = witness_scalar.into_repr().to_bits_le();
@@ -64,30 +71,31 @@ where
         // Add all the bits into the composer
         let scalar_bits_var: Vec<Variable> = scalar_bits_iter
             .iter()
-            .map(|bit| self.add_input(F::from(*bit as u64)))
+            .map(|bit| self.add_input(P::ScalarField::from(*bit as u64)))
             .collect();
 
         // Take the first 252 bits
         let scalar_bits_var = scalar_bits_var
-            [..<F as PrimeField>::Params::MODULUS_BITS as usize]
+            [..<P::ScalarField as PrimeField>::Params::MODULUS_BITS as usize]
             .to_vec();
 
         // Now ensure that the bits correctly accumulate to the witness given
         let mut accumulator_var = self.zero_var;
-        let mut accumulator_scalar = F::zero();
+        let mut accumulator_scalar = P::ScalarField::zero();
 
         for (power, bit) in scalar_bits_var.iter().enumerate() {
             self.boolean_gate(*bit);
 
-            let two_pow = F::from(2u64).pow([power as u64, 0, 0, 0]);
+            let two_pow =
+                P::ScalarField::from(2u64).pow([power as u64, 0, 0, 0]);
 
             accumulator_var = self.arithmetic_gate(|gate| {
                 gate.witness(*bit, accumulator_var, None)
-                    .add(two_pow, F::one())
+                    .add(two_pow, P::ScalarField::one())
             });
 
             accumulator_scalar +=
-                two_pow * F::from(scalar_bits_iter[power] as u64);
+                two_pow * P::ScalarField::from(scalar_bits_iter[power] as u64);
         }
         self.assert_equal(accumulator_var, witness_var);
 
@@ -99,25 +107,28 @@ where
 mod test {
     use super::*;
     use crate::{
-        batch_test, commitment::HomomorphicCommitment,
-        constraint_system::helper::*, util,
+        batch_test_embedded, constraint_system::helper::*, parameters::test::*,
+        util,
     };
-    use ark_bls12_377::Bls12_377;
-    use ark_bls12_381::Bls12_381;
     use ark_ec::{
         twisted_edwards_extended::GroupAffine as TEGroupAffine, AffineCurve,
         TEModelParameters,
     };
 
-    fn test_var_base_scalar_mul<F, P, PC>()
+    fn test_var_base_scalar_mul<P, EmbeddedBaseField, EmbeddedCurveParameters>()
     where
-        F: PrimeField,
-        P: TEModelParameters<BaseField = F>,
-        PC: HomomorphicCommitment<F>,
+        EmbeddedBaseField: PrimeField,
+        EmbeddedCurveParameters:
+            TEModelParameters<BaseField = EmbeddedBaseField>,
+        P: CircuitParameters<
+            ScalarField = EmbeddedBaseField,
+            EmbeddedCurve = TEEmbeddedCurve<P>,
+            EmbeddedCurveParameters = EmbeddedCurveParameters,
+        >,
     {
-        let res = gadget_tester::<F, P, PC>(
-            |composer: &mut StandardComposer<F, P>| {
-                let scalar = F::from_le_bytes_mod_order(&[
+        let res = gadget_tester::<P>(
+            |composer: &mut StandardComposer<P>| {
+                let scalar = P::ScalarField::from_le_bytes_mod_order(&[
                     182, 44, 247, 214, 94, 14, 151, 208, 130, 16, 200, 204,
                     147, 32, 104, 166, 0, 59, 52, 1, 1, 59, 103, 6, 169, 175,
                     51, 101, 234, 180, 125, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -126,14 +137,18 @@ mod test {
                 ]);
                 let secret_scalar = composer.add_input(scalar);
 
-                let (x, y) = P::AFFINE_GENERATOR_COEFFS;
+                let (x, y) = EmbeddedCurveParameters::AFFINE_GENERATOR_COEFFS;
                 let generator = TEGroupAffine::new(x, y);
 
-                let expected_point: TEGroupAffine<P> = AffineCurve::mul(
-                    &generator,
-                    util::to_embedded_curve_scalar::<F, P>(scalar),
-                )
-                .into();
+                let expected_point: TEGroupAffine<EmbeddedCurveParameters> =
+                    AffineCurve::mul(
+                        &generator,
+                        util::to_embedded_curve_scalar::<
+                            P::ScalarField,
+                            EmbeddedCurveParameters,
+                        >(scalar),
+                    )
+                    .into();
 
                 let point = composer.add_affine(generator);
 
@@ -149,20 +164,10 @@ mod test {
     }
 
     // Tests for Bls12_381
-    batch_test!(
+    batch_test_embedded!(
         [test_var_base_scalar_mul],
-        [] => (
-            Bls12_381,
-            ark_ed_on_bls12_381::EdwardsParameters
-        )
-    );
-
-    // Tests for Bls12_377
-    batch_test!(
-        [test_var_base_scalar_mul],
-        [] => (
-            Bls12_377,
-            ark_ed_on_bls12_377::EdwardsParameters
-        )
+        [] => [
+            Bls12_381_KZG, Bls12_381_IPA, Bls12_377_KZG, Bls12_377_IPA
+        ]
     );
 }

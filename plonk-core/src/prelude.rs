@@ -13,6 +13,7 @@ pub use crate::{
     circuit::{self, verify_proof, Circuit, VerifierData},
     constraint_system::{ecc::Point, StandardComposer, Variable},
     error::Error,
-    proof_system::{Proof, ProverKey, VerifierKey},
+    parameters::CircuitParameters,
+    proof_system::{ecc::TEEmbeddedCurve, Proof, ProverKey, VerifierKey},
     util::from_embedded_curve_scalar,
 };

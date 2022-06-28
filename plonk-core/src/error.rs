@@ -6,6 +6,8 @@
 
 //! A collection of all possible errors encountered in PLONK.
 
+use crate::parameters::CircuitParameters;
+
 /// Defines all possible errors that can be encountered in PLONK.
 #[derive(Debug)]
 pub enum Error {
@@ -93,13 +95,14 @@ impl From<ark_poly_commit::error::Error> for Error {
 }
 
 /// Convert an ark_poly_commit error
-pub fn to_pc_error<F, PC>(error: PC::Error) -> Error
+pub fn to_pc_error<P>(
+    error: <P::PolynomialCommitment as ark_poly_commit::PolynomialCommitment<
+        P::ScalarField,
+        ark_poly::univariate::DensePolynomial<P::ScalarField>,
+    >>::Error,
+) -> Error
 where
-    F: ark_ff::Field,
-    PC: ark_poly_commit::PolynomialCommitment<
-        F,
-        ark_poly::univariate::DensePolynomial<F>,
-    >,
+    P: CircuitParameters,
 {
     Error::PCError {
         error: format!("Polynomial Commitment Error: {:?}", error),

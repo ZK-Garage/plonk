@@ -14,20 +14,18 @@ use crate::{
     commitment::HomomorphicCommitment,
     error::Error,
     label_commitment,
+    parameters::{CircuitParameters, EmbeddedCurve},
     proof_system::{
-        ecc::{CurveAddition, FixedBaseScalarMul},
-        linearisation_poly::ProofEvaluations,
-        logic::Logic,
-        range::Range,
+        linearisation_poly::ProofEvaluations, logic::Logic, range::Range,
         GateConstraint, VerifierKey as PlonkVerifierKey,
     },
     transcript::TranscriptProtocol,
     util::EvaluationDomainExt,
 };
-use ark_ec::TEModelParameters;
 
-use ark_ff::{fields::batch_inversion, FftField, PrimeField};
+use ark_ff::{fields::batch_inversion, FftField, Field, One, PrimeField};
 use ark_poly::{EvaluationDomain, GeneralEvaluationDomain};
+use ark_poly_commit::PolynomialCommitment;
 use ark_serialize::{
     CanonicalDeserialize, CanonicalSerialize, Read, SerializationError, Write,
 };
@@ -40,88 +38,83 @@ use super::pi::PublicInputs;
 /// `ProofEvaluations`.
 #[derive(CanonicalDeserialize, CanonicalSerialize, derivative::Derivative)]
 #[derivative(
-    Clone(bound = "PC::Commitment: Clone, PC::Proof: Clone"),
+    Clone(bound = "P::Commitment: Clone, P::Proof: Clone"),
     Debug(
-        bound = "PC::Commitment: core::fmt::Debug, PC::Proof: core::fmt::Debug"
+        bound = "P::Commitment: core::fmt::Debug, P::Proof: core::fmt::Debug"
     ),
-    Default(bound = "PC::Commitment: Default, PC::Proof: Default"),
-    Eq(bound = "PC::Commitment: Eq, PC::Proof: Eq"),
-    PartialEq(bound = "PC::Commitment: PartialEq, PC::Proof: PartialEq")
+    Default(bound = "P::Commitment: Default, P::Proof: Default"),
+    Eq(bound = "P::Commitment: Eq, P::Proof: Eq"),
+    PartialEq(bound = "P::Commitment: PartialEq, P::Proof: PartialEq")
 )]
-pub struct Proof<F, PC>
+pub struct Proof<P>
 where
-    F: PrimeField,
-    PC: HomomorphicCommitment<F>,
+    P: CircuitParameters,
 {
     /// Commitment to the witness polynomial for the left wires.
-    pub(crate) a_comm: PC::Commitment,
+    pub(crate) a_comm: P::Commitment,
 
     /// Commitment to the witness polynomial for the right wires.
-    pub(crate) b_comm: PC::Commitment,
+    pub(crate) b_comm: P::Commitment,
 
     /// Commitment to the witness polynomial for the output wires.
-    pub(crate) c_comm: PC::Commitment,
+    pub(crate) c_comm: P::Commitment,
 
     /// Commitment to the witness polynomial for the fourth wires.
-    pub(crate) d_comm: PC::Commitment,
+    pub(crate) d_comm: P::Commitment,
 
     /// Commitment to the permutation polynomial.
-    pub(crate) z_comm: PC::Commitment,
+    pub(crate) z_comm: P::Commitment,
 
     /// Commitment to the lookup query polynomial.
-    pub(crate) f_comm: PC::Commitment,
+    pub(crate) f_comm: P::Commitment,
 
     /// Commitment to first half of sorted polynomial
-    pub(crate) h_1_comm: PC::Commitment,
+    pub(crate) h_1_comm: P::Commitment,
 
     /// Commitment to second half of sorted polynomial
-    pub(crate) h_2_comm: PC::Commitment,
+    pub(crate) h_2_comm: P::Commitment,
 
     /// Commitment to the lookup permutation polynomial.
-    pub(crate) z_2_comm: PC::Commitment,
+    pub(crate) z_2_comm: P::Commitment,
 
     /// Commitment to the quotient polynomial.
-    pub(crate) t_1_comm: PC::Commitment,
+    pub(crate) t_1_comm: P::Commitment,
 
     /// Commitment to the quotient polynomial.
-    pub(crate) t_2_comm: PC::Commitment,
+    pub(crate) t_2_comm: P::Commitment,
 
     /// Commitment to the quotient polynomial.
-    pub(crate) t_3_comm: PC::Commitment,
+    pub(crate) t_3_comm: P::Commitment,
 
     /// Commitment to the quotient polynomial.
-    pub(crate) t_4_comm: PC::Commitment,
+    pub(crate) t_4_comm: P::Commitment,
 
     /// Batch opening proof of the aggregated witnesses
-    pub aw_opening: PC::Proof,
+    pub aw_opening: P::Proof,
 
     /// Batch opening proof of the shifted aggregated witnesses
-    pub saw_opening: PC::Proof,
+    pub saw_opening: P::Proof,
 
     /// Subset of all of the evaluations added to the proof.
-    pub(crate) evaluations: ProofEvaluations<F>,
+    pub(crate) evaluations: ProofEvaluations<P::ScalarField>,
 }
 
-impl<F, PC> Proof<F, PC>
+impl<P> Proof<P>
 where
-    F: PrimeField,
-    PC: HomomorphicCommitment<F>,
+    P: CircuitParameters,
 {
     /// Performs the verification of a [`Proof`] returning a boolean result.
-    pub(crate) fn verify<P>(
+    pub(crate) fn verify(
         &self,
-        plonk_verifier_key: &PlonkVerifierKey<F, PC>,
+        plonk_verifier_key: &PlonkVerifierKey<P>,
         transcript: &mut Transcript,
-        verifier_key: &PC::VerifierKey,
-        pub_inputs: &PublicInputs<F>,
-    ) -> Result<(), Error>
-    where
-        P: TEModelParameters<BaseField = F>,
-    {
+        verifier_key: &P::VerifierKey,
+        pub_inputs: &PublicInputs<P::ScalarField>,
+    ) -> Result<(), Error> {
         let domain =
-            GeneralEvaluationDomain::<F>::new(plonk_verifier_key.n).ok_or(Error::InvalidEvalDomainSize {
+            GeneralEvaluationDomain::<P::ScalarField>::new(plonk_verifier_key.n).ok_or(Error::InvalidEvalDomainSize {
                 log_size_of_group: plonk_verifier_key.n.trailing_zeros(),
-                adicity: <<F as FftField>::FftParams as ark_ff::FftParameters>::TWO_ADICITY,
+                adicity: <<P::ScalarField as FftField>::FftParams as ark_ff::FftParameters>::TWO_ADICITY,
             })?;
 
         // Append Public Inputs to the transcript
@@ -295,7 +288,7 @@ where
             });
 
         // Compute linearisation commitment
-        let lin_comm = self.compute_linearisation_commitment::<P>(
+        let lin_comm = self.compute_linearisation_commitment(
             &domain,
             alpha,
             beta,
@@ -314,14 +307,14 @@ where
         );
 
         let zeta_sq = zeta.square();
-        let table_comm = PC::multi_scalar_mul(
+        let table_comm = P::PolynomialCommitment::multi_scalar_mul(
             &[
                 plonk_verifier_key.lookup.table_1.clone(),
                 plonk_verifier_key.lookup.table_2.clone(),
                 plonk_verifier_key.lookup.table_3.clone(),
                 plonk_verifier_key.lookup.table_4.clone(),
             ],
-            &[F::one(), zeta, zeta_sq, zeta_sq * zeta],
+            &[P::ScalarField::one(), zeta, zeta_sq, zeta_sq * zeta],
         );
 
         // Commitment Scheme
@@ -342,7 +335,8 @@ where
 
         // Compute aggregate witness to polynomials evaluated at the evaluation
         // challenge `z`
-        let aw_challenge: F = transcript.challenge_scalar(b"aggregate_witness");
+        let aw_challenge: P::ScalarField =
+            transcript.challenge_scalar(b"aggregate_witness");
 
         let aw_commits = [
             label_commitment!(lin_comm),
@@ -372,7 +366,7 @@ where
             self.evaluations.wire_evals.d_eval,
         ];
 
-        let saw_challenge: F =
+        let saw_challenge: P::ScalarField =
             transcript.challenge_scalar(b"aggregate_witness");
 
         let saw_commits = [
@@ -395,7 +389,7 @@ where
             self.evaluations.lookup_evals.table_next_eval,
         ];
 
-        match PC::check(
+        match P::PolynomialCommitment::check(
             verifier_key,
             &aw_commits,
             &z_challenge,
@@ -409,7 +403,7 @@ where
             Err(e) => panic!("{:?}", e),
         }
         .and_then(|_| {
-            match PC::check(
+            match P::PolynomialCommitment::check(
                 verifier_key,
                 &saw_commits,
                 &(z_challenge * domain.element(1)),
@@ -427,21 +421,21 @@ where
 
     fn compute_r0(
         &self,
-        domain: &GeneralEvaluationDomain<F>,
-        pub_inputs: &[F],
-        alpha: F,
-        beta: F,
-        gamma: F,
-        delta: F,
-        epsilon: F,
-        z_challenge: F,
-        l1_eval: F,
-        z_hat_eval: F,
-        z2_next_eval: F,
-        h1_next_eval: F,
-        h2_eval: F,
-        lookup_sep_challenge: F,
-    ) -> F {
+        domain: &GeneralEvaluationDomain<P::ScalarField>,
+        pub_inputs: &[P::ScalarField],
+        alpha: P::ScalarField,
+        beta: P::ScalarField,
+        gamma: P::ScalarField,
+        delta: P::ScalarField,
+        epsilon: P::ScalarField,
+        z_challenge: P::ScalarField,
+        l1_eval: P::ScalarField,
+        z_hat_eval: P::ScalarField,
+        z2_next_eval: P::ScalarField,
+        h1_next_eval: P::ScalarField,
+        h2_eval: P::ScalarField,
+        lookup_sep_challenge: P::ScalarField,
+    ) -> P::ScalarField {
         // Compute the public input polynomial evaluated at `z_challenge`
         let pi_eval = compute_barycentric_eval(pub_inputs, z_challenge, domain);
 
@@ -472,7 +466,7 @@ where
         // l_1(z) * alpha^2
         let c = l1_eval * alpha_sq;
 
-        let epsilon_one_plus_delta = epsilon * (F::one() + delta);
+        let epsilon_one_plus_delta = epsilon * (P::ScalarField::one() + delta);
 
         let d_0 = lookup_sep_challenge_sq * z2_next_eval;
         let d_1 = epsilon_one_plus_delta + delta * h2_eval;
@@ -486,27 +480,24 @@ where
     }
 
     /// Computes the commitment to `[r]_1`.
-    fn compute_linearisation_commitment<P>(
+    fn compute_linearisation_commitment(
         &self,
-        domain: &GeneralEvaluationDomain<F>,
-        alpha: F,
-        beta: F,
-        gamma: F,
-        delta: F,
-        epsilon: F,
-        zeta: F,
-        range_sep_challenge: F,
-        logic_sep_challenge: F,
-        fixed_base_sep_challenge: F,
-        var_base_sep_challenge: F,
-        lookup_sep_challenge: F,
-        z_challenge: F,
-        l1_eval: F,
-        plonk_verifier_key: &PlonkVerifierKey<F, PC>,
-    ) -> PC::Commitment
-    where
-        P: TEModelParameters<BaseField = F>,
-    {
+        domain: &GeneralEvaluationDomain<P::ScalarField>,
+        alpha: P::ScalarField,
+        beta: P::ScalarField,
+        gamma: P::ScalarField,
+        delta: P::ScalarField,
+        epsilon: P::ScalarField,
+        zeta: P::ScalarField,
+        range_sep_challenge: P::ScalarField,
+        logic_sep_challenge: P::ScalarField,
+        fixed_base_sep_challenge: P::ScalarField,
+        var_base_sep_challenge: P::ScalarField,
+        lookup_sep_challenge: P::ScalarField,
+        z_challenge: P::ScalarField,
+        l1_eval: P::ScalarField,
+        plonk_verifier_key: &PlonkVerifierKey<P>,
+    ) -> P::Commitment {
         //    6 for arithmetic
         // +  1 for range
         // +  1 for logic
@@ -527,7 +518,7 @@ where
                 &mut points,
                 &self.evaluations,
             );
-        Range::extend_linearisation_commitment::<PC>(
+        Range::extend_linearisation_commitment::<P::PolynomialCommitment>(
             &plonk_verifier_key.range_selector_commitment,
             range_sep_challenge,
             &self.evaluations,
@@ -535,7 +526,7 @@ where
             &mut points,
         );
 
-        Logic::extend_linearisation_commitment::<PC>(
+        Logic::extend_linearisation_commitment::<P::PolynomialCommitment>(
             &plonk_verifier_key.logic_selector_commitment,
             logic_sep_challenge,
             &self.evaluations,
@@ -543,14 +534,18 @@ where
             &mut points,
         );
 
-        FixedBaseScalarMul::<_, P>::extend_linearisation_commitment::<PC>(
+        P::FixedBaseScalarMul::extend_linearisation_commitment::<
+            P::PolynomialCommitment,
+        >(
             &plonk_verifier_key.fixed_group_add_selector_commitment,
             fixed_base_sep_challenge,
             &self.evaluations,
             &mut scalars,
             &mut points,
         );
-        CurveAddition::<_, P>::extend_linearisation_commitment::<PC>(
+        P::CurveAddition::extend_linearisation_commitment::<
+            P::PolynomialCommitment,
+        >(
             &plonk_verifier_key.variable_group_add_selector_commitment,
             var_base_sep_challenge,
             &self.evaluations,
@@ -583,7 +578,7 @@ where
         let vanishing_poly_eval =
             domain.evaluate_vanishing_polynomial(z_challenge);
         // z_challenge ^ n
-        let z_challenge_to_n = vanishing_poly_eval + F::one();
+        let z_challenge_to_n = vanishing_poly_eval + P::ScalarField::one();
 
         let t_1_scalar = -vanishing_poly_eval;
         let t_2_scalar = t_1_scalar * z_challenge_to_n;
@@ -599,7 +594,7 @@ where
             self.t_4_comm.clone(),
         ]);
 
-        PC::multi_scalar_mul(&points, &scalars)
+        P::PolynomialCommitment::multi_scalar_mul(&points, &scalars)
     }
 }
 
@@ -679,45 +674,37 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::batch_test_kzg;
-    use ark_bls12_377::Bls12_377;
-    use ark_bls12_381::Bls12_381;
+    use crate::{
+        batch_test,
+        parameters::{test::*, CircuitParameters},
+    };
 
-    fn test_serde_proof<F, P, PC>()
+    fn test_serde_proof<P>()
     where
-        F: PrimeField,
-        P: TEModelParameters<BaseField = F>,
-        PC: HomomorphicCommitment<F>,
-        Proof<F, PC>: std::fmt::Debug + PartialEq,
+        P: CircuitParameters,
+        Proof<P>: std::fmt::Debug + PartialEq,
     {
-        let proof =
-            crate::constraint_system::helper::gadget_tester::<F, P, PC>(
-                |_: &mut crate::constraint_system::StandardComposer<F, P>| {},
-                200,
-            )
-            .expect("Empty circuit failed");
+        let proof = crate::constraint_system::helper::gadget_tester::<P>(
+            |_: &mut crate::constraint_system::StandardComposer<P>| {},
+            200,
+        )
+        .expect("Empty circuit failed");
 
         let mut proof_bytes = vec![];
         proof.serialize(&mut proof_bytes).unwrap();
 
         let obtained_proof =
-            Proof::<F, PC>::deserialize(proof_bytes.as_slice()).unwrap();
+            Proof::<P>::deserialize(proof_bytes.as_slice()).unwrap();
 
         assert_eq!(proof, obtained_proof);
     }
 
     // Bls12-381 tests
-    batch_test_kzg!(
+    batch_test!(
         [test_serde_proof],
-        [] => (
-            Bls12_381, ark_ed_on_bls12_381::EdwardsParameters
-        )
+        [] => [
+            Bls12_381_KZG, Bls12_377_KZG
+        ]
     );
     // Bls12-377 tests
-    batch_test_kzg!(
-        [test_serde_proof],
-        [] => (
-            Bls12_377, ark_ed_on_bls12_377::EdwardsParameters
-        )
-    );
 }

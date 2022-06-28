@@ -5,14 +5,15 @@
 // Copyright (c) ZK-Garage. All rights reserved.
 //! Lookup gates
 
-use crate::error::Error;
-use crate::lookup::multiset::MultiSet;
-use crate::proof_system::linearisation_poly::ProofEvaluations;
-use crate::util::lc;
-use ark_ff::{FftField, PrimeField};
-use ark_poly::polynomial::univariate::DensePolynomial;
-use ark_poly::{EvaluationDomain, Evaluations, GeneralEvaluationDomain};
-use ark_poly_commit::PolynomialCommitment;
+use crate::{
+    error::Error, lookup::multiset::MultiSet, parameters::CircuitParameters,
+    proof_system::linearisation_poly::ProofEvaluations, util::lc,
+};
+use ark_ff::{FftField, Field, One, PrimeField};
+use ark_poly::{
+    polynomial::univariate::DensePolynomial, EvaluationDomain, Evaluations,
+    GeneralEvaluationDomain,
+};
 use ark_serialize::*;
 
 /// Lookup Gates Prover Key
@@ -207,46 +208,48 @@ where
 #[derive(CanonicalDeserialize, CanonicalSerialize, derivative::Derivative)]
 #[derivative(
     Clone,
-    Copy(bound = "PC::Commitment: Copy"),
-    Debug(bound = "PC::Commitment: core::fmt::Debug"),
-    Eq(bound = "PC::Commitment: Eq"),
-    PartialEq(bound = "PC::Commitment: PartialEq")
+    Copy(bound = "P::Commitment: Copy"),
+    Debug(bound = "P::Commitment: core::fmt::Debug"),
+    Eq(bound = "P::Commitment: Eq"),
+    PartialEq(bound = "P::Commitment: PartialEq")
 )]
-pub struct VerifierKey<F, PC>
+pub struct VerifierKey<P>
 where
-    F: PrimeField,
-    PC: PolynomialCommitment<F, DensePolynomial<F>>,
+    P: CircuitParameters,
 {
     /// Lookup Selector Commitment
-    pub q_lookup: PC::Commitment,
+    pub q_lookup: P::Commitment,
     /// Commitment to first table column
-    pub table_1: PC::Commitment,
+    pub table_1: P::Commitment,
     /// Commitment to second table column
-    pub table_2: PC::Commitment,
+    pub table_2: P::Commitment,
     /// Commitment to third table column
-    pub table_3: PC::Commitment,
+    pub table_3: P::Commitment,
     /// Commitment to fourth table column
-    pub table_4: PC::Commitment,
+    pub table_4: P::Commitment,
 }
 
-impl<F, PC> VerifierKey<F, PC>
+impl<P> VerifierKey<P>
 where
-    F: PrimeField,
-    PC: PolynomialCommitment<F, DensePolynomial<F>>,
+    P: CircuitParameters,
 {
     /// Computes the linearisation commitments.
     pub fn compute_linearisation_commitment(
         &self,
-        scalars: &mut Vec<F>,
-        points: &mut Vec<PC::Commitment>,
-        evaluations: &ProofEvaluations<F>,
-        (delta, epsilon, zeta): (F, F, F),
-        lookup_sep: F,
-        l1_eval: F,
-        z2_comm: PC::Commitment,
-        h1_comm: PC::Commitment,
+        scalars: &mut Vec<P::ScalarField>,
+        points: &mut Vec<P::Commitment>,
+        evaluations: &ProofEvaluations<P::ScalarField>,
+        (delta, epsilon, zeta): (
+            P::ScalarField,
+            P::ScalarField,
+            P::ScalarField,
+        ),
+        lookup_sep: P::ScalarField,
+        l1_eval: P::ScalarField,
+        z2_comm: P::Commitment,
+        h1_comm: P::Commitment,
     ) {
-        let one_plus_delta = F::one() + delta;
+        let one_plus_delta = P::ScalarField::one() + delta;
         let epsilon_one_plus_delta = epsilon * one_plus_delta;
         let lookup_sep_sq = lookup_sep.square();
         let lookup_sep_cu = lookup_sep_sq * lookup_sep;

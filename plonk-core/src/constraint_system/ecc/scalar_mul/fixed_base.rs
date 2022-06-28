@@ -6,13 +6,20 @@
 
 //! Fixed-base Scalar Multiplication Gate
 
-use crate::constraint_system::{
-    ecc::Point, variable::Variable, StandardComposer,
+use crate::{
+    constraint_system::{ecc::Point, variable::Variable, StandardComposer},
+    parameters::CircuitParameters,
+    proof_system::ecc::TEEmbeddedCurve,
 };
-use ark_ec::models::twisted_edwards_extended::{
-    GroupAffine as TEGroupAffine, GroupProjective as TEGroupProjective,
+use ark_ec::{
+    models::{
+        twisted_edwards_extended::{
+            GroupAffine as TEGroupAffine, GroupProjective as TEGroupProjective,
+        },
+        TEModelParameters,
+    },
+    ProjectiveCurve,
 };
-use ark_ec::{models::TEModelParameters, ProjectiveCurve};
 use ark_ff::{BigInteger, FpParameters, PrimeField};
 use num_traits::Zero;
 
@@ -35,10 +42,15 @@ where
     ProjectiveCurve::batch_normalization_into_affine(&multiples)
 }
 
-impl<F, P> StandardComposer<F, P>
+impl<P, EmbeddedBaseField, EmbeddedCurveParameters> StandardComposer<P>
 where
-    F: PrimeField,
-    P: TEModelParameters<BaseField = F>,
+    EmbeddedBaseField: PrimeField,
+    EmbeddedCurveParameters: TEModelParameters<BaseField = EmbeddedBaseField>,
+    P: CircuitParameters<
+        ScalarField = EmbeddedBaseField,
+        EmbeddedCurve = TEEmbeddedCurve<P>,
+        EmbeddedCurveParameters = EmbeddedCurveParameters,
+    >,
 {
     /// Adds an elliptic curve scalar multiplication gate to the circuit
     /// description.
@@ -51,9 +63,9 @@ where
     pub fn fixed_base_scalar_mul(
         &mut self,
         scalar: Variable,
-        base_point: TEGroupAffine<P>,
-    ) -> Point<P> {
-        let num_bits = <F as PrimeField>::Params::MODULUS_BITS as usize;
+        base_point: TEGroupAffine<EmbeddedCurveParameters>,
+    ) -> Point {
+        let num_bits = EmbeddedBaseField::Params::MODULUS_BITS as usize;
         // compute 2^iG
         let mut point_multiples =
             compute_wnaf_point_multiples(base_point.into());
@@ -69,17 +81,20 @@ where
 
         // Initialise the accumulators
         let mut scalar_acc = Vec::with_capacity(num_bits);
-        scalar_acc.push(F::zero());
+        scalar_acc.push(EmbeddedBaseField::zero());
         let mut point_acc = Vec::with_capacity(num_bits);
-        point_acc.push(TEGroupAffine::<P>::zero());
+        point_acc.push(TEGroupAffine::<EmbeddedCurveParameters>::zero());
 
         // Auxillary point to help with checks on the backend
         let mut xy_alphas = Vec::with_capacity(num_bits);
 
         let n_trailing_zeros = num_bits - wnaf_entries.len();
-        scalar_acc.extend(vec![F::zero(); n_trailing_zeros]);
-        point_acc.extend(vec![TEGroupAffine::<P>::zero(); n_trailing_zeros]);
-        xy_alphas.extend(vec![F::zero(); n_trailing_zeros]);
+        scalar_acc.extend(vec![EmbeddedBaseField::zero(); n_trailing_zeros]);
+        point_acc.extend(vec![
+            TEGroupAffine::<EmbeddedCurveParameters>::zero();
+            n_trailing_zeros
+        ]);
+        xy_alphas.extend(vec![EmbeddedBaseField::zero(); n_trailing_zeros]);
 
         // Load values into accumulators based on wnaf entries
         for (i, entry) in wnaf_entries.iter().rev().enumerate() {
@@ -88,14 +103,15 @@ where
             // Based on the WNAF, we decide what scalar and point to add
             let (scalar_to_add, point_to_add) =
                 match entry {
-                    0 => { (F::zero(), TEGroupAffine::<P>::zero())},
-                    -1 => {(-F::one(), -point_multiples[index])},
-                    1 => {(F::one(), point_multiples[index])},
+                    0 => { (EmbeddedBaseField::zero(), TEGroupAffine::<EmbeddedCurveParameters>::zero())},
+                    -1 => {(-EmbeddedBaseField::one(), -point_multiples[index])},
+                    1 => {(EmbeddedBaseField::one(), point_multiples[index])},
                     _ => unreachable!("Currently WNAF_2(k) is supported.
                         The possible values are 1, -1 and 0. Current entry is {}", entry),
                 };
 
-            let prev_accumulator = F::from(2u64) * scalar_acc[index];
+            let prev_accumulator =
+                EmbeddedBaseField::from(2u64) * scalar_acc[index];
             scalar_acc.push(prev_accumulator + scalar_to_add);
             point_acc.push(point_acc[index] + point_to_add);
 
@@ -114,9 +130,21 @@ where
             // We constrain the point accumulator to start from the Identity
             // point and the Scalar accumulator to start from zero
             if i == 0 {
-                self.constrain_to_constant(acc_x, F::zero(), None);
-                self.constrain_to_constant(acc_y, F::one(), None);
-                self.constrain_to_constant(accumulated_bit, F::zero(), None);
+                self.constrain_to_constant(
+                    acc_x,
+                    EmbeddedBaseField::zero(),
+                    None,
+                );
+                self.constrain_to_constant(
+                    acc_y,
+                    EmbeddedBaseField::one(),
+                    None,
+                );
+                self.constrain_to_constant(
+                    accumulated_bit,
+                    EmbeddedBaseField::zero(),
+                    None,
+                );
             }
 
             let x_beta = point_multiples[i].x;
@@ -126,7 +154,7 @@ where
 
             let xy_beta = x_beta * y_beta;
 
-            let wnaf_round = StandardComposer::<F, P>::new_wnaf(
+            let wnaf_round = StandardComposer::<P>::new_wnaf(
                 acc_x,
                 acc_y,
                 accumulated_bit,
@@ -148,8 +176,8 @@ where
 
         self.arithmetic_gate(|gate| {
             gate.witness(acc_x, acc_y, Some(xy_alpha))
-                .fan_in_3(F::zero(), last_accumulated_bit)
-                .out(F::zero())
+                .fan_in_3(EmbeddedBaseField::zero(), last_accumulated_bit)
+                .out(EmbeddedBaseField::zero())
         });
 
         // Constrain the last element in the accumulator to be equal to the
@@ -164,22 +192,25 @@ where
 mod tests {
     use super::*;
     use crate::{
-        batch_test, commitment::HomomorphicCommitment,
-        constraint_system::helper::*, util,
+        batch_test_embedded, constraint_system::helper::*, parameters::test::*,
+        util,
     };
-    use ark_bls12_377::Bls12_377;
-    use ark_bls12_381::Bls12_381;
     use ark_ec::{group::Group, AffineCurve};
 
-    fn test_ecc_constraint<F, P, PC>()
+    fn test_ecc_constraint<P, EmbeddedBaseField, EmbeddedCurveParameters>()
     where
-        F: PrimeField,
-        P: TEModelParameters<BaseField = F>,
-        PC: HomomorphicCommitment<F>,
+        EmbeddedBaseField: PrimeField,
+        EmbeddedCurveParameters:
+            TEModelParameters<BaseField = EmbeddedBaseField>,
+        P: CircuitParameters<
+            ScalarField = EmbeddedBaseField,
+            EmbeddedCurve = TEEmbeddedCurve<P>,
+            EmbeddedCurveParameters = EmbeddedCurveParameters,
+        >,
     {
-        let res = gadget_tester::<F, P, PC>(
-            |composer: &mut StandardComposer<F, P>| {
-                let scalar = F::from_le_bytes_mod_order(&[
+        let res = gadget_tester::<P>(
+            |composer: &mut StandardComposer<P>| {
+                let scalar = EmbeddedBaseField::from_le_bytes_mod_order(&[
                     182, 44, 247, 214, 94, 14, 151, 208, 130, 16, 200, 204,
                     147, 32, 104, 166, 0, 59, 52, 1, 1, 59, 103, 6, 169, 175,
                     51, 101, 234, 180, 125, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -188,13 +219,17 @@ mod tests {
                 ]);
                 let secret_scalar = composer.add_input(scalar);
 
-                let (x, y) = P::AFFINE_GENERATOR_COEFFS;
+                let (x, y) = EmbeddedCurveParameters::AFFINE_GENERATOR_COEFFS;
                 let generator = TEGroupAffine::new(x, y);
-                let expected_point: TEGroupAffine<P> = AffineCurve::mul(
-                    &generator,
-                    util::to_embedded_curve_scalar::<F, P>(scalar),
-                )
-                .into();
+                let expected_point: TEGroupAffine<EmbeddedCurveParameters> =
+                    AffineCurve::mul(
+                        &generator,
+                        util::to_embedded_curve_scalar::<
+                            P::ScalarField,
+                            EmbeddedCurveParameters,
+                        >(scalar),
+                    )
+                    .into();
 
                 let point_scalar =
                     composer.fixed_base_scalar_mul(secret_scalar, generator);
@@ -207,22 +242,30 @@ mod tests {
         assert!(res.is_ok());
     }
 
-    fn test_ecc_constraint_zero<F, P, PC>()
+    fn test_ecc_constraint_zero<P, EmbeddedBaseField, EmbeddedCurveParameters>()
     where
-        F: PrimeField,
-        P: TEModelParameters<BaseField = F>,
-        PC: HomomorphicCommitment<F>,
+        EmbeddedBaseField: PrimeField,
+        EmbeddedCurveParameters:
+            TEModelParameters<BaseField = EmbeddedBaseField>,
+        P: CircuitParameters<
+            ScalarField = EmbeddedBaseField,
+            EmbeddedCurve = TEEmbeddedCurve<P>,
+            EmbeddedCurveParameters = EmbeddedCurveParameters,
+        >,
     {
-        let res = gadget_tester::<F, P, PC>(
-            |composer: &mut StandardComposer<F, P>| {
-                let scalar = F::zero();
+        let res = gadget_tester::<P>(
+            |composer: &mut StandardComposer<P>| {
+                let scalar = EmbeddedBaseField::zero();
                 let secret_scalar = composer.add_input(scalar);
 
-                let (x, y) = P::AFFINE_GENERATOR_COEFFS;
+                let (x, y) = EmbeddedCurveParameters::AFFINE_GENERATOR_COEFFS;
                 let generator = TEGroupAffine::new(x, y);
                 let expected_point = AffineCurve::mul(
                     &generator,
-                    util::to_embedded_curve_scalar::<F, P>(scalar),
+                    util::to_embedded_curve_scalar::<
+                        P::ScalarField,
+                        EmbeddedCurveParameters,
+                    >(scalar),
                 )
                 .into();
 
@@ -237,27 +280,40 @@ mod tests {
         assert!(res.is_ok());
     }
 
-    fn test_ecc_constraint_should_fail<F, P, PC>()
+    fn test_ecc_constraint_should_fail<
+        P,
+        EmbeddedBaseField,
+        EmbeddedCurveParameters,
+    >()
     where
-        F: PrimeField,
-        P: TEModelParameters<BaseField = F>,
-        PC: HomomorphicCommitment<F>,
+        EmbeddedBaseField: PrimeField,
+        EmbeddedCurveParameters:
+            TEModelParameters<BaseField = EmbeddedBaseField>,
+        P: CircuitParameters<
+            ScalarField = EmbeddedBaseField,
+            EmbeddedCurve = TEEmbeddedCurve<P>,
+            EmbeddedCurveParameters = EmbeddedCurveParameters,
+        >,
     {
-        let res = gadget_tester::<F, P, PC>(
-            |composer: &mut StandardComposer<F, P>| {
-                let scalar = F::from(100u64);
+        let res = gadget_tester::<P>(
+            |composer: &mut StandardComposer<P>| {
+                let scalar = EmbeddedBaseField::from(100u64);
                 let secret_scalar = composer.add_input(scalar);
                 // Fails because we are not multiplying by the GENERATOR, it is
                 // double
-                let (x, y) = P::AFFINE_GENERATOR_COEFFS;
+                let (x, y) = EmbeddedCurveParameters::AFFINE_GENERATOR_COEFFS;
                 let generator = TEGroupAffine::new(x, y);
                 let double_gen = generator.double();
 
-                let expected_point: TEGroupAffine<P> = AffineCurve::mul(
-                    &double_gen,
-                    util::to_embedded_curve_scalar::<F, P>(scalar),
-                )
-                .into();
+                let expected_point: TEGroupAffine<EmbeddedCurveParameters> =
+                    AffineCurve::mul(
+                        &double_gen,
+                        util::to_embedded_curve_scalar::<
+                            P::ScalarField,
+                            EmbeddedCurveParameters,
+                        >(scalar),
+                    )
+                    .into();
 
                 let point_scalar =
                     composer.fixed_base_scalar_mul(secret_scalar, generator);
@@ -271,15 +327,20 @@ mod tests {
         assert!(res.is_err());
     }
 
-    fn test_point_addition<F, P, PC>()
+    fn test_point_addition<P, EmbeddedBaseField, EmbeddedCurveParameters>()
     where
-        F: PrimeField,
-        P: TEModelParameters<BaseField = F>,
-        PC: HomomorphicCommitment<F>,
+        EmbeddedBaseField: PrimeField,
+        EmbeddedCurveParameters:
+            TEModelParameters<BaseField = EmbeddedBaseField>,
+        P: CircuitParameters<
+            ScalarField = EmbeddedBaseField,
+            EmbeddedCurve = TEEmbeddedCurve<P>,
+            EmbeddedCurveParameters = EmbeddedCurveParameters,
+        >,
     {
-        let res = gadget_tester::<F, P, PC>(
-            |composer: &mut StandardComposer<F, P>| {
-                let (x, y) = P::AFFINE_GENERATOR_COEFFS;
+        let res = gadget_tester::<P>(
+            |composer: &mut StandardComposer<P>| {
+                let (x, y) = EmbeddedCurveParameters::AFFINE_GENERATOR_COEFFS;
                 let generator = TEGroupAffine::new(x, y);
 
                 let point_a = generator;
@@ -292,10 +353,10 @@ mod tests {
 
                 let var_point_a_x = composer.add_input(affine_point_a.x);
                 let var_point_a_y = composer.add_input(affine_point_a.y);
-                let point_a = Point::<P>::new(var_point_a_x, var_point_a_y);
+                let point_a = Point::new(var_point_a_x, var_point_a_y);
                 let var_point_b_x = composer.add_input(affine_point_b.x);
                 let var_point_b_y = composer.add_input(affine_point_b.y);
-                let point_b = Point::<P>::new(var_point_b_x, var_point_b_y);
+                let point_b = Point::new(var_point_b_x, var_point_b_y);
                 let new_point = composer.point_addition_gate(point_a, point_b);
 
                 composer.assert_equal_public_point(
@@ -309,43 +370,64 @@ mod tests {
         assert!(res.is_ok());
     }
 
-    fn test_pedersen_hash<F, P, PC>()
+    fn test_pedersen_hash<P, EmbeddedBaseField, EmbeddedCurveParameters>()
     where
-        F: PrimeField,
-        P: TEModelParameters<BaseField = F>,
-        PC: HomomorphicCommitment<F>,
+        EmbeddedBaseField: PrimeField,
+        EmbeddedCurveParameters:
+            TEModelParameters<BaseField = EmbeddedBaseField>,
+        P: CircuitParameters<
+            ScalarField = EmbeddedBaseField,
+            EmbeddedCurve = TEEmbeddedCurve<P>,
+            EmbeddedCurveParameters = EmbeddedCurveParameters,
+        >,
     {
-        let res = gadget_tester::<F, P, PC>(
-            |composer: &mut StandardComposer<F, P>| {
-                let (x, y) = P::AFFINE_GENERATOR_COEFFS;
+        let res = gadget_tester::<P>(
+            |composer: &mut StandardComposer<P>| {
+                let (x, y) = EmbeddedCurveParameters::AFFINE_GENERATOR_COEFFS;
                 let generator = TEGroupAffine::new(x, y);
                 // First component
-                let scalar_a = F::from(112233u64);
+                let scalar_a = EmbeddedBaseField::from(112233u64);
                 let secret_scalar_a = composer.add_input(scalar_a);
                 let point_a = generator;
-                let expected_component_a: TEGroupAffine<P> = AffineCurve::mul(
+                let expected_component_a: TEGroupAffine<
+                    EmbeddedCurveParameters,
+                > = AffineCurve::mul(
                     &point_a,
-                    util::to_embedded_curve_scalar::<F, P>(scalar_a),
+                    util::to_embedded_curve_scalar::<
+                        P::ScalarField,
+                        EmbeddedCurveParameters,
+                    >(scalar_a),
                 )
                 .into();
 
                 // Second component
-                let scalar_b = F::from(445566u64);
+                let scalar_b = EmbeddedBaseField::from(445566u64);
                 let secret_scalar_b = composer.add_input(scalar_b);
                 let point_b = point_a.double() + point_a;
-                let expected_component_b: TEGroupAffine<P> = AffineCurve::mul(
+                let expected_component_b: TEGroupAffine<
+                    EmbeddedCurveParameters,
+                > = AffineCurve::mul(
                     &point_b,
-                    util::to_embedded_curve_scalar::<F, P>(scalar_b),
+                    util::to_embedded_curve_scalar::<
+                        P::ScalarField,
+                        EmbeddedCurveParameters,
+                    >(scalar_b),
                 )
                 .into();
 
                 // Expected pedersen hash
                 let expected_point = (AffineCurve::mul(
                     &point_a,
-                    util::to_embedded_curve_scalar::<F, P>(scalar_a),
+                    util::to_embedded_curve_scalar::<
+                        P::ScalarField,
+                        EmbeddedCurveParameters,
+                    >(scalar_a),
                 ) + AffineCurve::mul(
                     &point_b,
-                    util::to_embedded_curve_scalar::<F, P>(scalar_b),
+                    util::to_embedded_curve_scalar::<
+                        P::ScalarField,
+                        EmbeddedCurveParameters,
+                    >(scalar_b),
                 ))
                 .into();
 
@@ -384,43 +466,56 @@ mod tests {
         assert!(res.is_ok());
     }
 
-    fn test_pedersen_balance<F, P, PC>()
+    fn test_pedersen_balance<P, EmbeddedBaseField, EmbeddedCurveParameters>()
     where
-        F: PrimeField,
-        P: TEModelParameters<BaseField = F>,
-        PC: HomomorphicCommitment<F>,
+        EmbeddedBaseField: PrimeField,
+        EmbeddedCurveParameters:
+            TEModelParameters<BaseField = EmbeddedBaseField>,
+        P: CircuitParameters<
+            ScalarField = EmbeddedBaseField,
+            EmbeddedCurve = TEEmbeddedCurve<P>,
+            EmbeddedCurveParameters = EmbeddedCurveParameters,
+        >,
     {
-        let res = gadget_tester::<F, P, PC>(
-            |composer: &mut StandardComposer<F, P>| {
-                let (x, y) = P::AFFINE_GENERATOR_COEFFS;
+        let res = gadget_tester::<P>(
+            |composer: &mut StandardComposer<P>| {
+                let (x, y) = EmbeddedCurveParameters::AFFINE_GENERATOR_COEFFS;
                 let generator = TEGroupAffine::new(x, y);
 
                 // First component
-                let scalar_a = F::from(25u64);
+                let scalar_a = EmbeddedBaseField::from(25u64);
                 let secret_scalar_a = composer.add_input(scalar_a);
                 // Second component
-                let scalar_b = F::from(30u64);
+                let scalar_b = EmbeddedBaseField::from(30u64);
                 let secret_scalar_b = composer.add_input(scalar_b);
                 // Third component
-                let scalar_c = F::from(10u64);
+                let scalar_c = EmbeddedBaseField::from(10u64);
                 let secret_scalar_c = composer.add_input(scalar_c);
                 // Fourth component
-                let scalar_d = F::from(45u64);
+                let scalar_d = EmbeddedBaseField::from(45u64);
                 let secret_scalar_d = composer.add_input(scalar_d);
 
-                let (x, y) = P::AFFINE_GENERATOR_COEFFS;
-                let gen = TEGroupAffine::<P>::new(x, y);
+                let (x, y) = EmbeddedCurveParameters::AFFINE_GENERATOR_COEFFS;
+                let gen = TEGroupAffine::<EmbeddedCurveParameters>::new(x, y);
 
-                let expected_lhs: TEGroupAffine<P> = AffineCurve::mul(
-                    &gen,
-                    util::to_embedded_curve_scalar::<F, P>(scalar_a + scalar_b),
-                )
-                .into();
-                let expected_rhs: TEGroupAffine<P> = AffineCurve::mul(
-                    &gen,
-                    util::to_embedded_curve_scalar::<F, P>(scalar_c + scalar_d),
-                )
-                .into();
+                let expected_lhs: TEGroupAffine<EmbeddedCurveParameters> =
+                    AffineCurve::mul(
+                        &gen,
+                        util::to_embedded_curve_scalar::<
+                            P::ScalarField,
+                            EmbeddedCurveParameters,
+                        >(scalar_a + scalar_b),
+                    )
+                    .into();
+                let expected_rhs: TEGroupAffine<EmbeddedCurveParameters> =
+                    AffineCurve::mul(
+                        &gen,
+                        util::to_embedded_curve_scalar::<
+                            P::ScalarField,
+                            EmbeddedCurveParameters,
+                        >(scalar_c + scalar_d),
+                    )
+                    .into();
 
                 let point_a =
                     composer.fixed_base_scalar_mul(secret_scalar_a, generator);
@@ -449,7 +544,7 @@ mod tests {
     }
 
     // Bls12-381 tests
-    batch_test!(
+    batch_test_embedded!(
         [
             test_ecc_constraint,
             test_ecc_constraint_zero,
@@ -458,25 +553,8 @@ mod tests {
             test_pedersen_hash,
             test_pedersen_balance
         ],
-        [] => (
-            Bls12_381,
-            ark_ed_on_bls12_381::EdwardsParameters
-        )
-    );
-
-    // Bls12-377 tests
-    batch_test!(
-        [
-            test_ecc_constraint,
-            test_ecc_constraint_zero,
-            test_ecc_constraint_should_fail,
-            test_point_addition,
-            test_pedersen_hash,
-            test_pedersen_balance
-        ],
-        [] => (
-            Bls12_377,
-            ark_ed_on_bls12_377::EdwardsParameters
-        )
+        [] => [
+            Bls12_381_KZG, Bls12_381_IPA, Bls12_377_KZG, Bls12_377_IPA
+        ]
     );
 }

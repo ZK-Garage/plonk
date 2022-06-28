@@ -7,31 +7,25 @@
 //! Verifier-side of the PLONK Proving System
 
 //use crate::circuit::EmbeddedCurve;
+use super::pi::PublicInputs;
 use crate::{
-    commitment::HomomorphicCommitment,
     constraint_system::StandardComposer,
     error::Error,
+    parameters::CircuitParameters,
     proof_system::{widget::VerifierKey as PlonkVerifierKey, Proof},
 };
-use ark_ec::TEModelParameters;
-use ark_ff::PrimeField;
-use core::marker::PhantomData;
 use merlin::Transcript;
 
-use super::pi::PublicInputs;
-
 /// Abstraction structure designed verify [`Proof`]s.
-pub struct Verifier<F, P, PC>
+pub struct Verifier<P>
 where
-    F: PrimeField,
-    P: TEModelParameters<BaseField = F>,
-    PC: HomomorphicCommitment<F>,
+    P: CircuitParameters,
 {
     /// VerificationKey which is used to verify a specific PLONK circuit
-    pub verifier_key: Option<PlonkVerifierKey<F, PC>>,
+    pub verifier_key: Option<PlonkVerifierKey<P>>,
 
     /// Circuit Description
-    pub(crate) cs: StandardComposer<F, P>,
+    pub(crate) cs: StandardComposer<P>,
 
     /// Store the messages exchanged during the preprocessing stage.
     ///
@@ -42,11 +36,9 @@ where
     pub preprocessed_transcript: Transcript,
 }
 
-impl<F, P, PC> Verifier<F, P, PC>
+impl<P> Verifier<P>
 where
-    F: PrimeField,
-    P: TEModelParameters<BaseField = F>,
-    PC: HomomorphicCommitment<F>,
+    P: CircuitParameters,
 {
     /// Creates a new `Verifier` instance.
     pub fn new(label: &'static [u8]) -> Self {
@@ -72,7 +64,7 @@ where
     }
 
     /// Returns a mutable copy of the underlying composer.
-    pub fn mut_cs(&mut self) -> &mut StandardComposer<F, P> {
+    pub fn mut_cs(&mut self) -> &mut StandardComposer<P> {
         &mut self.cs
     }
 
@@ -81,12 +73,11 @@ where
     /// [`Proof`]s for this circuit descriptor instance.
     pub fn preprocess(
         &mut self,
-        commit_key: &PC::CommitterKey,
+        commit_key: &P::CommitterKey,
     ) -> Result<(), Error> {
         let vk = self.cs.preprocess_verifier(
             commit_key,
             &mut self.preprocessed_transcript,
-            PhantomData::<PC>,
         )?;
 
         self.verifier_key = Some(vk);
@@ -105,11 +96,11 @@ where
     /// Verifies a [`Proof`] using `pc_verifier_key` and `public_inputs`.
     pub fn verify(
         &self,
-        proof: &Proof<F, PC>,
-        pc_verifier_key: &PC::VerifierKey,
-        public_inputs: &PublicInputs<F>,
+        proof: &Proof<P>,
+        pc_verifier_key: &P::VerifierKey,
+        public_inputs: &PublicInputs<P::ScalarField>,
     ) -> Result<(), Error> {
-        proof.verify::<P>(
+        proof.verify(
             self.verifier_key.as_ref().unwrap(),
             &mut self.preprocessed_transcript.clone(),
             pc_verifier_key,
@@ -118,14 +109,12 @@ where
     }
 }
 
-impl<F, P, PC> Default for Verifier<F, P, PC>
+impl<P> Default for Verifier<P>
 where
-    F: PrimeField,
-    P: TEModelParameters<BaseField = F>,
-    PC: HomomorphicCommitment<F>,
+    P: CircuitParameters,
 {
     #[inline]
-    fn default() -> Verifier<F, P, PC> {
+    fn default() -> Verifier<P> {
         Verifier::new(b"plonk")
     }
 }

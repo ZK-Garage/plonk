@@ -6,12 +6,16 @@
 
 //! Elliptic Curve Point Addition Gate
 
-use crate::proof_system::{
-    linearisation_poly::CustomEvaluations,
-    widget::{GateConstraint, WitnessValues},
-    CustomValues,
+use crate::{
+    parameters::{EmbeddedCurve, CircuitParameters},
+    proof_system::{
+        ecc::{SWEmbeddedCurve, TEEmbeddedCurve},
+        linearisation_poly::CustomEvaluations,
+        widget::{GateConstraint, WitnessValues},
+        CustomValues,
+    },
 };
-use ark_ec::{ModelParameters, TEModelParameters};
+use ark_ec::{SWModelParameters, TEModelParameters};
 use ark_ff::PrimeField;
 use core::marker::PhantomData;
 
@@ -47,23 +51,29 @@ where
 /// Curve Addition Gate
 #[derive(derivative::Derivative)]
 #[derivative(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
-pub struct CurveAddition<F, P>(PhantomData<(F, P)>)
+pub struct CurveAddition<P, EC>(PhantomData<(P,EC)>)
 where
-    F: PrimeField,
-    P: ModelParameters<BaseField = F>;
+    P: CircuitParameters,
+    EC: EmbeddedCurve<P>;
 
-impl<F, P> GateConstraint<F> for CurveAddition<F, P>
+impl<P, EmbeddedBaseField, EmbeddedCurveParameters>
+    GateConstraint<P::ScalarField> for CurveAddition<P, TEEmbeddedCurve<P>>
 where
-    F: PrimeField,
-    P: TEModelParameters<BaseField = F>,
+    EmbeddedBaseField: PrimeField,
+    EmbeddedCurveParameters: TEModelParameters<BaseField = EmbeddedBaseField>,
+    P: CircuitParameters<
+        ScalarField = EmbeddedBaseField,
+        EmbeddedCurve = TEEmbeddedCurve<P>,
+        EmbeddedCurveParameters = EmbeddedCurveParameters,
+    >,
 {
-    type CustomVals = CAVals<F>;
+    type CustomVals = CAVals<P::ScalarField>;
     #[inline]
     fn constraints(
-        separation_challenge: F,
-        wit_vals: WitnessValues<F>,
+        separation_challenge: P::ScalarField,
+        wit_vals: WitnessValues<P::ScalarField>,
         custom_vals: Self::CustomVals,
-    ) -> F {
+    ) -> P::ScalarField {
         let x_1 = wit_vals.a_val;
         let x_3 = custom_vals.a_next_val;
         let y_1 = wit_vals.b_val;
@@ -83,15 +93,59 @@ where
 
         // Check that `x_3` is correct
         let x3_lhs = x1_y2 + y1_x2;
-        let x3_rhs = x_3 + (x_3 * P::COEFF_D * x1_y2 * y1_x2);
+        let x3_rhs =
+            x_3 + (x_3 * EmbeddedCurveParameters::COEFF_D * x1_y2 * y1_x2);
         let x3_consistency = (x3_lhs - x3_rhs) * kappa;
 
         // Check that `y_3` is correct
         let y3_lhs = y1_y2 + x1_x2;
-        let y3_rhs = y_3 - y_3 * P::COEFF_D * x1_y2 * y1_x2;
+        let y3_rhs =
+            y_3 - y_3 * EmbeddedCurveParameters::COEFF_D * x1_y2 * y1_x2;
         let y3_consistency = (y3_lhs - y3_rhs) * kappa.square();
 
         (xy_consistency + x3_consistency + y3_consistency)
+            * separation_challenge
+    }
+}
+
+
+impl<P, EmbeddedBaseField, EmbeddedCurveParameters>
+    GateConstraint<P::ScalarField> for CurveAddition<P, SWEmbeddedCurve<P>>
+where
+    EmbeddedBaseField: PrimeField,
+    EmbeddedCurveParameters: SWModelParameters<BaseField = EmbeddedBaseField>,
+    P: CircuitParameters<
+        ScalarField = EmbeddedBaseField,
+        EmbeddedCurve = SWEmbeddedCurve<P>,
+        EmbeddedCurveParameters = EmbeddedCurveParameters,
+    >,
+{
+    type CustomVals = CAVals<P::ScalarField>;
+    #[inline]
+    fn constraints(
+        separation_challenge: P::ScalarField,
+        wit_vals: WitnessValues<P::ScalarField>,
+        custom_vals: Self::CustomVals,
+    ) -> P::ScalarField {
+        let x_1 = wit_vals.a_val;
+        let x_3 = custom_vals.a_next_val;
+        let y_1 = wit_vals.b_val;
+        let y_3 = custom_vals.b_next_val;
+        let x_2 = wit_vals.c_val;
+        let y_2 = wit_vals.d_val;
+        //let x1_y2 = custom_vals.d_next_val;
+
+        let kappa = separation_challenge.square();
+
+        let x1_x2 = x_1-x_2;
+        let x2_x3 = x_2-x_3;
+        let y1_y2 = y_1-y_2;
+        let y2_y3 = y_2+y_3;
+
+        let constraint_1 = (x_1 + x_2 + x_3)* x1_x2*x1_x2 - y1_y2*y1_y2;
+        let constraint_2 = x1_x2*y2_y3 - x2_x3*y1_y2;
+
+        (constraint_1 + constraint_2*kappa)
             * separation_challenge
     }
 }

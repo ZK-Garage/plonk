@@ -6,11 +6,12 @@
 
 //! Arithmetic Gates
 
-use crate::proof_system::linearisation_poly::ProofEvaluations;
-use crate::proof_system::WitnessValues;
+use crate::{
+    parameters::CircuitParameters,
+    proof_system::{linearisation_poly::ProofEvaluations, WitnessValues},
+};
 use ark_ff::{FftField, PrimeField};
 use ark_poly::{polynomial::univariate::DensePolynomial, Evaluations};
-use ark_poly_commit::PolynomialCommitment;
 use ark_serialize::*;
 
 /// Arithmetic Gates Prover Key
@@ -86,50 +87,48 @@ where
 #[derive(CanonicalDeserialize, CanonicalSerialize, derivative::Derivative)]
 #[derivative(
     Clone,
-    Copy(bound = "PC::Commitment: Copy"),
-    Debug(bound = "PC::Commitment: std::fmt::Debug"),
-    Eq(bound = "PC::Commitment: Eq"),
-    PartialEq(bound = "PC::Commitment: PartialEq")
+    Copy(bound = "P::Commitment: Copy"),
+    Debug(bound = "P::Commitment: std::fmt::Debug"),
+    Eq(bound = "P::Commitment: Eq"),
+    PartialEq(bound = "P::Commitment: PartialEq")
 )]
-pub struct VerifierKey<F, PC>
+pub struct VerifierKey<P>
 where
-    F: PrimeField,
-    PC: PolynomialCommitment<F, DensePolynomial<F>>,
+    P: CircuitParameters,
 {
     /// Multiplication Selector Commitment
-    pub q_m: PC::Commitment,
+    pub q_m: P::Commitment,
 
     /// Left Selector Commitment
-    pub q_l: PC::Commitment,
+    pub q_l: P::Commitment,
 
     /// Right Selector Commitment
-    pub q_r: PC::Commitment,
+    pub q_r: P::Commitment,
 
     /// Output Selector Commitment
-    pub q_o: PC::Commitment,
+    pub q_o: P::Commitment,
 
     /// Fourth Selector Commitment
-    pub q_4: PC::Commitment,
+    pub q_4: P::Commitment,
 
     /// Constant Selector Commitment
-    pub q_c: PC::Commitment,
+    pub q_c: P::Commitment,
 
     /// Arithmetic Selector Commitment
-    pub q_arith: PC::Commitment,
+    pub q_arith: P::Commitment,
 }
 
-impl<F, PC> VerifierKey<F, PC>
+impl<P> VerifierKey<P>
 where
-    F: PrimeField,
-    PC: PolynomialCommitment<F, DensePolynomial<F>>,
+    P: CircuitParameters,
 {
     /// Computes arithmetic gate contribution to the linearisation polynomial
     /// commitment.
     pub fn compute_linearisation_commitment(
         &self,
-        scalars: &mut Vec<F>,
-        points: &mut Vec<PC::Commitment>,
-        evaluations: &ProofEvaluations<F>,
+        scalars: &mut Vec<P::ScalarField>,
+        points: &mut Vec<P::Commitment>,
+        evaluations: &ProofEvaluations<P::ScalarField>,
     ) {
         let q_arith_eval = evaluations.custom_evals.get("q_arith_eval");
 

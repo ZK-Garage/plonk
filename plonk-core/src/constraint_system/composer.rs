@@ -14,12 +14,13 @@
 //! It allows us not only to build Add and Mul constraints but also to build
 //! ECC op. gates, Range checks, Logical gates (Bitwise ops) etc.
 
-use crate::{constraint_system::Variable, permutation::Permutation};
+use crate::{
+    constraint_system::Variable, lookup::LookupTable,
+    parameters::CircuitParameters, permutation::Permutation,
+    proof_system::pi::PublicInputs,
+};
 
-use crate::lookup::LookupTable;
-use crate::proof_system::pi::PublicInputs;
-use ark_ec::{models::TEModelParameters, ModelParameters};
-use ark_ff::PrimeField;
+use ark_ff::{Field, One, UniformRand, Zero};
 use core::cmp::max;
 use core::marker::PhantomData;
 use hashbrown::HashMap;
@@ -52,43 +53,42 @@ use rand_core::{CryptoRng, RngCore};
 /// the StandardComposer as a builder.
 #[derive(derivative::Derivative)]
 #[derivative(Debug)]
-pub struct StandardComposer<F, P>
+pub struct StandardComposer<P>
 where
-    F: PrimeField,
-    P: ModelParameters<BaseField = F>,
+    P: CircuitParameters,
 {
     /// Number of arithmetic gates in the circuit
     pub(crate) n: usize,
 
     // Selector vectors
     /// Multiplier selector
-    pub(crate) q_m: Vec<F>,
+    pub(crate) q_m: Vec<P::ScalarField>,
     /// Left wire selector
-    pub(crate) q_l: Vec<F>,
+    pub(crate) q_l: Vec<P::ScalarField>,
     /// Right wire selector
-    pub(crate) q_r: Vec<F>,
+    pub(crate) q_r: Vec<P::ScalarField>,
     /// Output wire selector
-    pub(crate) q_o: Vec<F>,
+    pub(crate) q_o: Vec<P::ScalarField>,
     /// Fourth wire selector
-    pub(crate) q_4: Vec<F>,
+    pub(crate) q_4: Vec<P::ScalarField>,
     /// Constant wire selector
-    pub(crate) q_c: Vec<F>,
+    pub(crate) q_c: Vec<P::ScalarField>,
     /// Arithmetic wire selector
-    pub(crate) q_arith: Vec<F>,
+    pub(crate) q_arith: Vec<P::ScalarField>,
     /// Range selector
-    pub(crate) q_range: Vec<F>,
+    pub(crate) q_range: Vec<P::ScalarField>,
     /// Logic selector
-    pub(crate) q_logic: Vec<F>,
+    pub(crate) q_logic: Vec<P::ScalarField>,
     /// Fixed base group addition selector
-    pub(crate) q_fixed_group_add: Vec<F>,
+    pub(crate) q_fixed_group_add: Vec<P::ScalarField>,
     /// Variable base group addition selector
-    pub(crate) q_variable_group_add: Vec<F>,
+    pub(crate) q_variable_group_add: Vec<P::ScalarField>,
     /// Lookup gate selector
-    pub(crate) q_lookup: Vec<F>,
+    pub(crate) q_lookup: Vec<P::ScalarField>,
 
     /// Sparse representation of the Public Inputs linking the positions of the
     /// non-zero ones to it's actual values.
-    pub(crate) public_inputs: PublicInputs<F>,
+    pub(crate) public_inputs: PublicInputs<P::ScalarField>,
 
     // Witness vectors
     /// Left wire witness vector.
@@ -101,7 +101,7 @@ where
     pub(crate) w_4: Vec<Variable>,
 
     /// Public lookup table
-    pub(crate) lookup_table: LookupTable<F>,
+    pub(crate) lookup_table: LookupTable<P::ScalarField>,
 
     /// A zero Variable that is a part of the circuit description.
     /// We reserve a variable to be zero in the system
@@ -110,7 +110,7 @@ where
     pub(crate) zero_var: Variable,
 
     /// These are the actual variable values.
-    pub(crate) variables: HashMap<Variable, F>,
+    pub(crate) variables: HashMap<Variable, P::ScalarField>,
 
     /// Permutation argument.
     pub(crate) perm: Permutation,
@@ -119,10 +119,9 @@ where
     __: PhantomData<P>,
 }
 
-impl<F, P> StandardComposer<F, P>
+impl<P> StandardComposer<P>
 where
-    F: PrimeField,
-    P: ModelParameters<BaseField = F>,
+    P: CircuitParameters,
 {
     /// Returns the length of the circuit that can accomodate the lookup table.
     fn total_size(&self) -> usize {
@@ -136,15 +135,14 @@ where
 
     /// Returns a reference to the [`PublicInputs`] stored in the
     /// [`StandardComposer`].
-    pub fn get_pi(&self) -> &PublicInputs<F> {
+    pub fn get_pi(&self) -> &PublicInputs<P::ScalarField> {
         &self.public_inputs
     }
 }
 
-impl<F, P> Default for StandardComposer<F, P>
+impl<P> Default for StandardComposer<P>
 where
-    F: PrimeField,
-    P: TEModelParameters<BaseField = F>,
+    P: CircuitParameters,
 {
     #[inline]
     fn default() -> Self {
@@ -152,10 +150,9 @@ where
     }
 }
 
-impl<F, P> StandardComposer<F, P>
+impl<P> StandardComposer<P>
 where
-    F: PrimeField,
-    P: TEModelParameters<BaseField = F>,
+    P: CircuitParameters,
 {
     /// Generates a new empty `StandardComposer` with all of it's fields
     /// set to hold an initial capacity of 0.
@@ -171,7 +168,10 @@ where
 
     /// Fixes a [`Variable`] in the witness to be a part of the circuit
     /// description.
-    pub fn add_witness_to_circuit_description(&mut self, value: F) -> Variable {
+    pub fn add_witness_to_circuit_description(
+        &mut self,
+        value: P::ScalarField,
+    ) -> Variable {
         let var = self.add_input(value);
         self.constrain_to_constant(var, value, None);
         var
@@ -210,7 +210,7 @@ where
 
         // Reserve the first variable to be zero
         composer.zero_var =
-            composer.add_witness_to_circuit_description(F::zero());
+            composer.add_witness_to_circuit_description(P::ScalarField::zero());
 
         // Add dummy constraints
         composer.add_blinding_factors(&mut rand_core::OsRng);
@@ -228,7 +228,7 @@ where
     ///
     /// The Composer then links the variable to the [`PrimeField`]
     /// and returns it for its use in the system.
-    pub fn add_input(&mut self, s: F) -> Variable {
+    pub fn add_input(&mut self, s: P::ScalarField) -> Variable {
         // Get a new Variable from the permutation
         let var = self.perm.new_variable();
         // The composer now links the Variable returned from
@@ -252,12 +252,12 @@ where
         a: Variable,
         b: Variable,
         c: Variable,
-        q_m: F,
-        q_l: F,
-        q_r: F,
-        q_o: F,
-        q_c: F,
-        pi: Option<F>,
+        q_m: P::ScalarField,
+        q_l: P::ScalarField,
+        q_r: P::ScalarField,
+        q_o: P::ScalarField,
+        q_c: P::ScalarField,
+        pi: Option<P::ScalarField>,
     ) -> (Variable, Variable, Variable) {
         self.w_l.push(a);
         self.w_r.push(b);
@@ -270,14 +270,14 @@ where
         self.q_m.push(q_m);
         self.q_o.push(q_o);
         self.q_c.push(q_c);
-        self.q_4.push(F::zero());
-        self.q_arith.push(F::one());
+        self.q_4.push(P::ScalarField::zero());
+        self.q_arith.push(P::ScalarField::one());
 
-        self.q_range.push(F::zero());
-        self.q_logic.push(F::zero());
-        self.q_fixed_group_add.push(F::zero());
-        self.q_variable_group_add.push(F::zero());
-        self.q_lookup.push(F::zero());
+        self.q_range.push(P::ScalarField::zero());
+        self.q_logic.push(P::ScalarField::zero());
+        self.q_fixed_group_add.push(P::ScalarField::zero());
+        self.q_variable_group_add.push(P::ScalarField::zero());
+        self.q_lookup.push(P::ScalarField::zero());
 
         if let Some(pi) = pi {
             self.public_inputs.insert(self.n, pi);
@@ -297,17 +297,17 @@ where
     pub fn constrain_to_constant(
         &mut self,
         a: Variable,
-        constant: F,
-        pi: Option<F>,
+        constant: P::ScalarField,
+        pi: Option<P::ScalarField>,
     ) {
         self.poly_gate(
             a,
             a,
             a,
-            F::zero(),
-            F::one(),
-            F::zero(),
-            F::zero(),
+            P::ScalarField::zero(),
+            P::ScalarField::one(),
+            P::ScalarField::zero(),
+            P::ScalarField::zero(),
             -constant,
             pi,
         );
@@ -320,11 +320,11 @@ where
             a,
             b,
             self.zero_var,
-            F::zero(),
-            F::one(),
-            -F::one(),
-            F::zero(),
-            F::zero(),
+            P::ScalarField::zero(),
+            P::ScalarField::one(),
+            -P::ScalarField::one(),
+            P::ScalarField::zero(),
+            P::ScalarField::zero(),
             None,
         );
     }
@@ -334,10 +334,10 @@ where
     pub fn is_zero_with_output(&mut self, a: Variable) -> Variable {
         // Get relevant field values
         let a_value = self.variables.get(&a).unwrap();
-        let y_value = a_value.inverse().unwrap_or_else(F::one);
+        let y_value = a_value.inverse().unwrap_or_else(P::ScalarField::one);
 
         // This has value 1 if input value is zero, value 0 otherwise
-        let b_value = F::one() - *a_value * y_value;
+        let b_value = P::ScalarField::one() - *a_value * y_value;
 
         let y = self.add_input(y_value);
         let b = self.add_input(b_value);
@@ -348,14 +348,14 @@ where
         // a * b = 0
         // where y is auxiliary and b is the boolean (a == 0).
         let _a_times_b = self.arithmetic_gate(|gate| {
-            gate.witness(a, b, Some(zero)).mul(F::one())
+            gate.witness(a, b, Some(zero)).mul(P::ScalarField::one())
         });
 
         let _first_constraint = self.arithmetic_gate(|gate| {
             gate.witness(a, y, Some(zero))
-                .mul(F::one())
-                .fan_in_3(F::one(), b)
-                .constant(-F::one())
+                .mul(P::ScalarField::one())
+                .fan_in_3(P::ScalarField::one(), b)
+                .constant(-P::ScalarField::one())
         });
 
         b
@@ -365,7 +365,8 @@ where
     /// two input variables have equal values and whose value is 0 otherwise.
     pub fn is_eq_with_output(&mut self, a: Variable, b: Variable) -> Variable {
         let difference = self.arithmetic_gate(|gate| {
-            gate.witness(a, b, None).add(F::one(), -F::one())
+            gate.witness(a, b, None)
+                .add(P::ScalarField::one(), -P::ScalarField::one())
         });
         self.is_zero_with_output(difference)
     }
@@ -389,25 +390,26 @@ where
         let zero = self.zero_var;
         // bit * choice_a
         let bit_times_a = self.arithmetic_gate(|gate| {
-            gate.witness(bit, choice_a, None).mul(F::one())
+            gate.witness(bit, choice_a, None).mul(P::ScalarField::one())
         });
 
         // 1 - bit
         let one_min_bit = self.arithmetic_gate(|gate| {
             gate.witness(bit, zero, None)
-                .add(-F::one(), F::zero())
-                .constant(F::one())
+                .add(-P::ScalarField::one(), P::ScalarField::zero())
+                .constant(P::ScalarField::one())
         });
 
         // (1 - bit) * b
         let one_min_bit_choice_b = self.arithmetic_gate(|gate| {
-            gate.witness(one_min_bit, choice_b, None).mul(F::one())
+            gate.witness(one_min_bit, choice_b, None)
+                .mul(P::ScalarField::one())
         });
 
         // [ (1 - bit) * b ] + [ bit * a ]
         self.arithmetic_gate(|gate| {
             gate.witness(one_min_bit_choice_b, bit_times_a, None)
-                .add(F::one(), F::one())
+                .add(P::ScalarField::one(), P::ScalarField::one())
         })
     }
 
@@ -427,7 +429,7 @@ where
     ) -> Variable {
         // returns bit * value
         self.arithmetic_gate(|gate| {
-            gate.witness(bit, value, None).mul(F::one())
+            gate.witness(bit, value, None).mul(P::ScalarField::one())
         })
     }
 
@@ -448,18 +450,19 @@ where
         let value_scalar = self.variables.get(&value).unwrap();
         let bit_scalar = self.variables.get(&bit).unwrap();
 
-        let f_x_scalar = F::one() - bit_scalar + (*bit_scalar * value_scalar);
+        let f_x_scalar =
+            P::ScalarField::one() - bit_scalar + (*bit_scalar * value_scalar);
         let f_x = self.add_input(f_x_scalar);
 
         self.poly_gate(
             bit,
             value,
             f_x,
-            F::one(),
-            -F::one(),
-            F::zero(),
-            -F::one(),
-            F::one(),
+            P::ScalarField::one(),
+            -P::ScalarField::one(),
+            P::ScalarField::zero(),
+            -P::ScalarField::one(),
+            P::ScalarField::one(),
             None,
         );
 
@@ -470,23 +473,23 @@ where
     /// description which are guaranteed to always satisfy the gate equation.
     /// This function is only used in benchmarking
     pub fn add_dummy_constraints(&mut self) {
-        let var_six = self.add_input(F::from(6u64));
-        let var_one = self.add_input(F::one());
-        let var_seven = self.add_input(F::from(7u64));
-        let var_min_twenty = self.add_input(-F::from(20u64));
+        let var_six = self.add_input(P::ScalarField::from(6u64));
+        let var_one = self.add_input(P::ScalarField::one());
+        let var_seven = self.add_input(P::ScalarField::from(7u64));
+        let var_min_twenty = self.add_input(-P::ScalarField::from(20u64));
 
-        self.q_m.push(F::from(1u64));
-        self.q_l.push(F::from(2u64));
-        self.q_r.push(F::from(3u64));
-        self.q_o.push(F::from(4u64));
-        self.q_c.push(F::from(4u64));
-        self.q_4.push(F::one());
-        self.q_arith.push(F::one());
-        self.q_range.push(F::zero());
-        self.q_logic.push(F::zero());
-        self.q_fixed_group_add.push(F::zero());
-        self.q_variable_group_add.push(F::zero());
-        self.q_lookup.push(F::one());
+        self.q_m.push(P::ScalarField::from(1u64));
+        self.q_l.push(P::ScalarField::from(2u64));
+        self.q_r.push(P::ScalarField::from(3u64));
+        self.q_o.push(P::ScalarField::from(4u64));
+        self.q_c.push(P::ScalarField::from(4u64));
+        self.q_4.push(P::ScalarField::one());
+        self.q_arith.push(P::ScalarField::one());
+        self.q_range.push(P::ScalarField::zero());
+        self.q_logic.push(P::ScalarField::zero());
+        self.q_fixed_group_add.push(P::ScalarField::zero());
+        self.q_variable_group_add.push(P::ScalarField::zero());
+        self.q_lookup.push(P::ScalarField::one());
         self.w_l.push(var_six);
         self.w_r.push(var_seven);
         self.w_o.push(var_min_twenty);
@@ -500,18 +503,18 @@ where
         );
         self.n += 1;
 
-        self.q_m.push(F::one());
-        self.q_l.push(F::one());
-        self.q_r.push(F::one());
-        self.q_o.push(F::one());
-        self.q_c.push(F::from(127u64));
-        self.q_4.push(F::zero());
-        self.q_arith.push(F::one());
-        self.q_range.push(F::zero());
-        self.q_logic.push(F::zero());
-        self.q_fixed_group_add.push(F::zero());
-        self.q_variable_group_add.push(F::zero());
-        self.q_lookup.push(F::one());
+        self.q_m.push(P::ScalarField::one());
+        self.q_l.push(P::ScalarField::one());
+        self.q_r.push(P::ScalarField::one());
+        self.q_o.push(P::ScalarField::one());
+        self.q_c.push(P::ScalarField::from(127u64));
+        self.q_4.push(P::ScalarField::zero());
+        self.q_arith.push(P::ScalarField::one());
+        self.q_range.push(P::ScalarField::zero());
+        self.q_logic.push(P::ScalarField::zero());
+        self.q_fixed_group_add.push(P::ScalarField::zero());
+        self.q_variable_group_add.push(P::ScalarField::zero());
+        self.q_lookup.push(P::ScalarField::one());
         self.w_l.push(var_min_twenty);
         self.w_r.push(var_six);
         self.w_o.push(var_seven);
@@ -531,24 +534,24 @@ where
     /// This function is only used for benchmarking
     pub fn add_dummy_lookup_table(&mut self) {
         self.lookup_table.insert_row(
-            F::from(6u64),
-            F::from(7u64),
-            -F::from(20u64),
-            F::one(),
+            P::ScalarField::from(6u64),
+            P::ScalarField::from(7u64),
+            -P::ScalarField::from(20u64),
+            P::ScalarField::one(),
         );
 
         self.lookup_table.insert_row(
-            -F::from(20u64),
-            F::from(6u64),
-            F::from(7u64),
-            F::zero(),
+            -P::ScalarField::from(20u64),
+            P::ScalarField::from(6u64),
+            P::ScalarField::from(7u64),
+            P::ScalarField::zero(),
         );
 
         self.lookup_table.insert_row(
-            F::from(3u64),
-            F::one(),
-            F::from(4u64),
-            F::from(9u64),
+            P::ScalarField::from(3u64),
+            P::ScalarField::one(),
+            P::ScalarField::from(4u64),
+            P::ScalarField::from(9u64),
         );
     }
 
@@ -564,10 +567,10 @@ where
         let mut rand_var_2 = self.zero_var();
         // Blinding wires
         for _ in 0..2 {
-            rand_var_1 = self.add_input(F::rand(rng));
-            rand_var_2 = self.add_input(F::rand(rng));
-            let rand_var_3 = self.add_input(F::rand(rng));
-            let rand_var_4 = self.add_input(F::rand(rng));
+            rand_var_1 = self.add_input(P::ScalarField::rand(rng));
+            rand_var_2 = self.add_input(P::ScalarField::rand(rng));
+            let rand_var_3 = self.add_input(P::ScalarField::rand(rng));
+            let rand_var_4 = self.add_input(P::ScalarField::rand(rng));
 
             self.w_l.push(rand_var_1);
             self.w_r.push(rand_var_2);
@@ -575,18 +578,18 @@ where
             self.w_4.push(rand_var_4);
 
             // All selectors fixed to 0 so that the constraints are satisfied
-            self.q_m.push(F::zero());
-            self.q_l.push(F::zero());
-            self.q_r.push(F::zero());
-            self.q_o.push(F::zero());
-            self.q_c.push(F::zero());
-            self.q_4.push(F::zero());
-            self.q_arith.push(F::zero());
-            self.q_range.push(F::zero());
-            self.q_logic.push(F::zero());
-            self.q_fixed_group_add.push(F::zero());
-            self.q_variable_group_add.push(F::zero());
-            self.q_lookup.push(F::zero());
+            self.q_m.push(P::ScalarField::zero());
+            self.q_l.push(P::ScalarField::zero());
+            self.q_r.push(P::ScalarField::zero());
+            self.q_o.push(P::ScalarField::zero());
+            self.q_c.push(P::ScalarField::zero());
+            self.q_4.push(P::ScalarField::zero());
+            self.q_arith.push(P::ScalarField::zero());
+            self.q_range.push(P::ScalarField::zero());
+            self.q_logic.push(P::ScalarField::zero());
+            self.q_fixed_group_add.push(P::ScalarField::zero());
+            self.q_variable_group_add.push(P::ScalarField::zero());
+            self.q_lookup.push(P::ScalarField::zero());
 
             self.perm.add_variables_to_map(
                 rand_var_1, rand_var_2, rand_var_3, rand_var_4, self.n,
@@ -603,18 +606,18 @@ where
         self.w_4.push(self.zero_var());
 
         // All selectors fixed to 0 so that the constraints are satisfied
-        self.q_m.push(F::zero());
-        self.q_l.push(F::zero());
-        self.q_r.push(F::zero());
-        self.q_o.push(F::zero());
-        self.q_c.push(F::zero());
-        self.q_4.push(F::zero());
-        self.q_arith.push(F::zero());
-        self.q_range.push(F::zero());
-        self.q_logic.push(F::zero());
-        self.q_fixed_group_add.push(F::zero());
-        self.q_variable_group_add.push(F::zero());
-        self.q_lookup.push(F::zero());
+        self.q_m.push(P::ScalarField::zero());
+        self.q_l.push(P::ScalarField::zero());
+        self.q_r.push(P::ScalarField::zero());
+        self.q_o.push(P::ScalarField::zero());
+        self.q_c.push(P::ScalarField::zero());
+        self.q_4.push(P::ScalarField::zero());
+        self.q_arith.push(P::ScalarField::zero());
+        self.q_range.push(P::ScalarField::zero());
+        self.q_logic.push(P::ScalarField::zero());
+        self.q_fixed_group_add.push(P::ScalarField::zero());
+        self.q_variable_group_add.push(P::ScalarField::zero());
+        self.q_lookup.push(P::ScalarField::zero());
 
         self.perm.add_variables_to_map(
             rand_var_1,
@@ -661,13 +664,13 @@ where
             .collect();
         // Computes f(f-1)(f-2)(f-3)
         let delta = |f: F| -> F {
-            let f_1 = f - F::one();
-            let f_2 = f - F::from(2u64);
-            let f_3 = f - F::from(3u64);
+            let f_1 = f - P::ScalarField::one();
+            let f_2 = f - P::ScalarField::from(2u64);
+            let f_3 = f - P::ScalarField::from(3u64);
             f * f_1 * f_2 * f_3
         };
         let pi_vec = self.public_inputs.as_evals(self.circuit_bound());
-        let four = F::from(4u64);
+        let four = P::ScalarField::from(4u64);
         for i in 0..self.n {
             let qm = self.q_m[i];
             let ql = self.q_l[i];
@@ -744,7 +747,10 @@ where
                         + delta(*a_next - four * a)
                         + delta(*b_next - four * b)
                         + delta(*d_next - four * d)
-                        + match (qlogic == F::one(), qlogic == -F::one()) {
+                        + match (
+                            qlogic == P::ScalarField::one(),
+                            qlogic == -P::ScalarField::one(),
+                        ) {
                             (true, false) => {
                                 let a_bits = a.into_repr().to_bits_le();
                                 let b_bits = b.into_repr().to_bits_le();
@@ -754,7 +760,7 @@ where
                                     .map(|(a_bit, b_bit)| a_bit & b_bit)
                                     .collect::<Vec<bool>>();
 
-                                F::from_repr(
+                                P::ScalarField::from_repr(
                                     <F as PrimeField>::BigInt::from_bits_le(
                                         &a_and_b,
                                     ),
@@ -771,7 +777,7 @@ where
                                     .map(|(a_bit, b_bit)| a_bit ^ b_bit)
                                     .collect::<Vec<bool>>();
 
-                                F::from_repr(
+                                P::ScalarField::from_repr(
                                     <F as PrimeField>::BigInt::from_bits_le(
                                         &a_xor_b,
                                     ),
@@ -779,7 +785,7 @@ where
                                 .unwrap()
                                     - *d
                             }
-                            (false, false) => F::zero(),
+                            (false, false) => P::ScalarField::zero(),
                             _ => unreachable!(),
                         })
                 + qrange
@@ -788,7 +794,7 @@ where
                         + delta(*a - four * b)
                         + delta(*d_next - four * a));
 
-            assert_eq!(k, F::zero(), "Check failed at gate {}", i,);
+            assert_eq!(k, P::ScalarField::zero(), "Check failed at gate {}", i,);
         }
     }
 
@@ -798,7 +804,7 @@ where
     /// [`is_eq_with_output`](StandardComposer::is_eq_with_output)
     /// or other similar method that returns a `Variable`.
     #[inline]
-    pub fn value_of_var(&self, var: Variable) -> F {
+    pub fn value_of_var(&self, var: Variable) -> P::ScalarField {
         self.variables
             .get(&var)
             .copied()
@@ -810,20 +816,18 @@ where
 mod test {
     use super::*;
     use crate::{
-        batch_test, batch_test_field_params,
-        commitment::HomomorphicCommitment,
+        batch_test,
         constraint_system::helper::*,
+        parameters::test::*,
         proof_system::{Prover, Verifier},
     };
-    use ark_bls12_377::Bls12_377;
-    use ark_bls12_381::Bls12_381;
+    use ark_poly_commit::PolynomialCommitment;
     use rand_core::OsRng;
 
     /// Tests that a circuit initially has 3 gates.
-    fn test_initial_circuit_size<F, P>()
+    fn test_initial_circuit_size<P>()
     where
-        F: PrimeField,
-        P: TEModelParameters<BaseField = F>,
+        P: CircuitParameters,
     {
         // NOTE: Circuit size is n+4 because
         // - We have an extra gate which forces the first witness to be zero.
@@ -831,32 +835,27 @@ mod test {
         // - We have two gates which add random values to blind the wires.
         // - Another gate which adds 2 pairs of equal points to blind the
         //   permutation polynomial
-        assert_eq!(4, StandardComposer::<F, P>::new().n)
+        assert_eq!(4, StandardComposer::<P>::new().n)
     }
 
     /// Tests that an empty circuit proof passes.
-    fn test_prove_verify<F, P, PC>()
+    fn test_prove_verify<P>()
     where
-        F: PrimeField,
-        P: TEModelParameters<BaseField = F>,
-        PC: HomomorphicCommitment<F>,
+        P: CircuitParameters,
     {
         // NOTE: Does nothing except add the dummy constraints.
-        let res =
-            gadget_tester::<F, P, PC>(|_: &mut StandardComposer<F, P>| {}, 200);
+        let res = gadget_tester::<P>(|_: &mut StandardComposer<P>| {}, 200);
         assert!(res.is_ok());
     }
 
-    fn test_correct_is_zero_with_output<F, P, PC>()
+    fn test_correct_is_zero_with_output<P>()
     where
-        F: PrimeField,
-        P: TEModelParameters<BaseField = F>,
-        PC: HomomorphicCommitment<F>,
+        P: CircuitParameters,
     {
         // Check that it gives true on zero input:
-        let res = gadget_tester::<F, P, PC>(
-            |composer: &mut StandardComposer<F, P>| {
-                let one = composer.add_input(F::one());
+        let res = gadget_tester::<P>(
+            |composer: &mut StandardComposer<P>| {
+                let one = composer.add_input(P::ScalarField::one());
                 let is_zero = composer.is_zero_with_output(composer.zero_var());
                 composer.assert_equal(is_zero, one);
             },
@@ -864,9 +863,9 @@ mod test {
         );
 
         // Check that it gives false on non-zero input:
-        let res2 = gadget_tester::<F, P, PC>(
-            |composer: &mut StandardComposer<F, P>| {
-                let one = composer.add_input(F::one());
+        let res2 = gadget_tester::<P>(
+            |composer: &mut StandardComposer<P>| {
+                let one = composer.add_input(P::ScalarField::one());
                 let is_zero = composer.is_zero_with_output(one);
                 composer.assert_equal(is_zero, composer.zero_var());
             },
@@ -876,18 +875,16 @@ mod test {
         assert!(res.is_ok() && res2.is_ok())
     }
 
-    fn test_correct_is_eq_with_output<F, P, PC>()
+    fn test_correct_is_eq_with_output<P>()
     where
-        F: PrimeField,
-        P: TEModelParameters<BaseField = F>,
-        PC: HomomorphicCommitment<F>,
+        P: CircuitParameters,
     {
         // Check that it gives true on equal inputs:
-        let res = gadget_tester::<F, P, PC>(
-            |composer: &mut StandardComposer<F, P>| {
-                let one = composer.add_input(F::one());
+        let res = gadget_tester::<P>(
+            |composer: &mut StandardComposer<P>| {
+                let one = composer.add_input(P::ScalarField::one());
 
-                let field_element = F::one().double();
+                let field_element = P::ScalarField::one().double();
                 let a = composer.add_input(field_element);
                 let b = composer.add_input(field_element);
                 let is_eq = composer.is_eq_with_output(a, b);
@@ -897,9 +894,9 @@ mod test {
         );
 
         // Check that it gives false on non-equal inputs:
-        let res2 = gadget_tester::<F, P, PC>(
-            |composer: &mut StandardComposer<F, P>| {
-                let field_element = F::one().double();
+        let res2 = gadget_tester::<P>(
+            |composer: &mut StandardComposer<P>| {
+                let field_element = P::ScalarField::one().double();
                 let a = composer.add_input(field_element);
                 let b = composer.add_input(field_element.double());
                 let is_eq = composer.is_eq_with_output(a, b);
@@ -911,19 +908,17 @@ mod test {
         assert!(res.is_ok() && res2.is_ok())
     }
 
-    fn test_conditional_select<F, P, PC>()
+    fn test_conditional_select<P>()
     where
-        F: PrimeField,
-        P: TEModelParameters<BaseField = F>,
-        PC: HomomorphicCommitment<F>,
+        P: CircuitParameters,
     {
-        let res = gadget_tester::<F, P, PC>(
-            |composer: &mut StandardComposer<F, P>| {
-                let bit_1 = composer.add_input(F::one());
+        let res = gadget_tester::<P>(
+            |composer: &mut StandardComposer<P>| {
+                let bit_1 = composer.add_input(P::ScalarField::one());
                 let bit_0 = composer.zero_var();
 
-                let choice_a = composer.add_input(F::from(10u64));
-                let choice_b = composer.add_input(F::from(20u64));
+                let choice_a = composer.add_input(P::ScalarField::from(10u64));
+                let choice_b = composer.add_input(P::ScalarField::from(20u64));
 
                 let choice =
                     composer.conditional_select(bit_1, choice_a, choice_b);
@@ -939,22 +934,22 @@ mod test {
     }
 
     // FIXME: Move this to integration tests
-    fn test_multiple_proofs<F, P, PC>()
+    fn test_multiple_proofs<P>()
     where
-        F: PrimeField,
-        P: TEModelParameters<BaseField = F>,
-        PC: HomomorphicCommitment<F>,
+        P: CircuitParameters,
     {
-        let u_params = PC::setup(2 * 30, None, &mut OsRng).unwrap();
+        let u_params =
+            P::PolynomialCommitment::setup(2 * 30, None, &mut OsRng).unwrap();
 
         // Create a prover struct
-        let mut prover: Prover<F, P, PC> = Prover::new(b"demo");
+        let mut prover: Prover<P> = Prover::new(b"demo");
 
         // Add gadgets
         dummy_gadget(10, prover.mut_cs());
 
         // Commit Key
-        let (ck, vk) = PC::trim(&u_params, 2 * 20, 0, None).unwrap();
+        let (ck, vk) =
+            P::PolynomialCommitment::trim(&u_params, 2 * 20, 0, None).unwrap();
 
         // Preprocess circuit
         prover.preprocess(&ck).unwrap();
@@ -973,7 +968,7 @@ mod test {
 
         // Verifier
         //
-        let mut verifier = Verifier::<F, P, PC>::new(b"demo");
+        let mut verifier = Verifier::<P>::new(b"demo");
 
         // Add gadgets
         dummy_gadget(10, verifier.mut_cs());
@@ -987,26 +982,13 @@ mod test {
     }
 
     // Tests for Bls12_381
-    batch_test_field_params!(
+    batch_test!(
         [
             test_initial_circuit_size
         ],
-        [] => (
-            Bls12_381,
-            ark_ed_on_bls12_381::EdwardsParameters
-
-        )
-    );
-
-    // Tests for Bls12_377
-    batch_test_field_params!(
-        [
-            test_initial_circuit_size
-        ],
-        [] => (
-            Bls12_377,
-            ark_ed_on_bls12_377::EdwardsParameters
-        )
+        [] => [
+            Bls12_381_KZG,  Bls12_377_KZG
+        ]
     );
 
     // Tests for Bls12_381
@@ -1018,24 +1000,8 @@ mod test {
             test_conditional_select,
             test_multiple_proofs
         ],
-        [] => (
-            Bls12_381,
-            ark_ed_on_bls12_381::EdwardsParameters
-        )
-    );
-
-    // Tests for Bls12_377
-    batch_test!(
-        [
-            test_prove_verify,
-            test_correct_is_zero_with_output,
-            test_correct_is_eq_with_output,
-            test_conditional_select,
-            test_multiple_proofs
-        ],
-        [] => (
-            Bls12_377,
-            ark_ed_on_bls12_377::EdwardsParameters
-        )
+        [] => [
+            Bls12_381_KZG, Bls12_381_IPA, Bls12_377_KZG, Bls12_377_IPA
+        ]
     );
 }

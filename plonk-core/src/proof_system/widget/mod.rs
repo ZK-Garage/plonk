@@ -15,6 +15,7 @@ pub mod range;
 use crate::{
     commitment::HomomorphicCommitment,
     lookup::MultiSet,
+    parameters::CircuitParameters,
     proof_system::{
         linearisation_poly::CustomEvaluations,
         linearisation_poly::ProofEvaluations, permutation,
@@ -138,73 +139,71 @@ where
 #[derivative(
     Clone(bound = ""),
     Debug(
-        bound = "arithmetic::VerifierKey<F,PC>: core::fmt::Debug, PC::Commitment: core::fmt::Debug"
+        bound = "arithmetic::VerifierKey<P>: core::fmt::Debug, P::Commitment: core::fmt::Debug"
     ),
-    Eq(bound = "arithmetic::VerifierKey<F,PC>: Eq, PC::Commitment: Eq"),
+    Eq(bound = "arithmetic::VerifierKey<P>: Eq, P::Commitment: Eq"),
     PartialEq(
-        bound = "arithmetic::VerifierKey<F,PC>: PartialEq, PC::Commitment: PartialEq"
+        bound = "arithmetic::VerifierKey<P>: PartialEq, P::Commitment: PartialEq"
     )
 )]
-pub struct VerifierKey<F, PC>
+pub struct VerifierKey<P>
 where
-    F: PrimeField,
-    PC: HomomorphicCommitment<F>,
+    P: CircuitParameters,
 {
     /// Circuit size (not padded to a power of two).
     pub(crate) n: usize,
 
     /// Arithmetic Verifier Key
-    pub(crate) arithmetic: arithmetic::VerifierKey<F, PC>,
+    pub(crate) arithmetic: arithmetic::VerifierKey<P>,
 
     /// Range Gate Selector Commitment
-    pub(crate) range_selector_commitment: PC::Commitment,
+    pub(crate) range_selector_commitment: P::Commitment,
 
     /// Logic Gate Selector Commitment
-    pub(crate) logic_selector_commitment: PC::Commitment,
+    pub(crate) logic_selector_commitment: P::Commitment,
 
     /// Fixed Group Addition Selector Commitment
-    pub(crate) fixed_group_add_selector_commitment: PC::Commitment,
+    pub(crate) fixed_group_add_selector_commitment: P::Commitment,
 
     /// Variable Group Addition Selector Commitment
-    pub(crate) variable_group_add_selector_commitment: PC::Commitment,
+    pub(crate) variable_group_add_selector_commitment: P::Commitment,
 
     /// VerifierKey for permutation checks
-    pub(crate) permutation: permutation::VerifierKey<PC::Commitment>,
+    pub(crate) permutation: permutation::VerifierKey<P::Commitment>,
 
     /// VerifierKey for Lookup Gate
-    pub(crate) lookup: lookup::VerifierKey<F, PC>,
+    pub(crate) lookup: lookup::VerifierKey<P>,
 }
 
-impl<F, PC> VerifierKey<F, PC>
+impl<P> VerifierKey<P>
 where
-    F: PrimeField,
-    PC: HomomorphicCommitment<F>,
+    P: CircuitParameters,
 {
     /// Constructs a [`VerifierKey`] from the widget VerifierKey's that are
     /// constructed based on the selector polynomial commitments and the
     /// sigma polynomial commitments.
     pub(crate) fn from_polynomial_commitments(
         n: usize,
-        q_m: PC::Commitment,
-        q_l: PC::Commitment,
-        q_r: PC::Commitment,
-        q_o: PC::Commitment,
-        q_4: PC::Commitment,
-        q_c: PC::Commitment,
-        q_arith: PC::Commitment,
-        q_range: PC::Commitment,
-        q_logic: PC::Commitment,
-        q_lookup: PC::Commitment,
-        q_fixed_group_add: PC::Commitment,
-        q_variable_group_add: PC::Commitment,
-        left_sigma: PC::Commitment,
-        right_sigma: PC::Commitment,
-        out_sigma: PC::Commitment,
-        fourth_sigma: PC::Commitment,
-        table_1: PC::Commitment,
-        table_2: PC::Commitment,
-        table_3: PC::Commitment,
-        table_4: PC::Commitment,
+        q_m: P::Commitment,
+        q_l: P::Commitment,
+        q_r: P::Commitment,
+        q_o: P::Commitment,
+        q_4: P::Commitment,
+        q_c: P::Commitment,
+        q_arith: P::Commitment,
+        q_range: P::Commitment,
+        q_logic: P::Commitment,
+        q_lookup: P::Commitment,
+        q_fixed_group_add: P::Commitment,
+        q_variable_group_add: P::Commitment,
+        left_sigma: P::Commitment,
+        right_sigma: P::Commitment,
+        out_sigma: P::Commitment,
+        fourth_sigma: P::Commitment,
+        table_1: P::Commitment,
+        table_2: P::Commitment,
+        table_3: P::Commitment,
+        table_4: P::Commitment,
     ) -> Self {
         Self {
             n,
@@ -243,10 +242,9 @@ where
     }
 }
 
-impl<F, PC> VerifierKey<F, PC>
+impl<P> VerifierKey<P>
 where
-    F: PrimeField,
-    PC: HomomorphicCommitment<F>,
+    P: CircuitParameters,
 {
     /// Adds the circuit description to the transcript.
     pub(crate) fn seed_transcript<T>(&self, transcript: &mut T)
@@ -401,11 +399,11 @@ where
 mod test {
     use super::*;
     use crate::batch_test;
-    use ark_bls12_377::Bls12_377;
-    use ark_bls12_381::Bls12_381;
-    use ark_ec::models::TEModelParameters;
-    use ark_poly::polynomial::univariate::DensePolynomial;
-    use ark_poly::{EvaluationDomain, GeneralEvaluationDomain, UVPolynomial};
+    use crate::parameters::test::*;
+    use ark_poly::{
+        polynomial::univariate::DensePolynomial, EvaluationDomain,
+        GeneralEvaluationDomain, UVPolynomial,
+    };
     use rand_core::OsRng;
 
     fn rand_poly_eval<F>(n: usize) -> (DensePolynomial<F>, Evaluations<F>)
@@ -503,39 +501,37 @@ mod test {
         assert_eq!(prover_key, obtained_pk);
     }
 
-    fn test_serialise_deserialise_verifier_key<F, P, PC>()
+    fn test_serialise_deserialise_verifier_key<P>()
     where
-        F: PrimeField,
-        P: TEModelParameters<BaseField = F>,
-        PC: HomomorphicCommitment<F>,
-        VerifierKey<F, PC>: PartialEq,
+        P: CircuitParameters,
+        VerifierKey<P>: PartialEq,
     {
         let n = 2usize.pow(5);
 
-        let q_m = PC::Commitment::default();
-        let q_l = PC::Commitment::default();
-        let q_r = PC::Commitment::default();
-        let q_o = PC::Commitment::default();
-        let q_4 = PC::Commitment::default();
-        let q_c = PC::Commitment::default();
-        let q_arith = PC::Commitment::default();
-        let q_range = PC::Commitment::default();
-        let q_logic = PC::Commitment::default();
-        let q_lookup = PC::Commitment::default();
-        let q_fixed_group_add = PC::Commitment::default();
-        let q_variable_group_add = PC::Commitment::default();
+        let q_m = P::Commitment::default();
+        let q_l = P::Commitment::default();
+        let q_r = P::Commitment::default();
+        let q_o = P::Commitment::default();
+        let q_4 = P::Commitment::default();
+        let q_c = P::Commitment::default();
+        let q_arith = P::Commitment::default();
+        let q_range = P::Commitment::default();
+        let q_logic = P::Commitment::default();
+        let q_lookup = P::Commitment::default();
+        let q_fixed_group_add = P::Commitment::default();
+        let q_variable_group_add = P::Commitment::default();
 
-        let left_sigma = PC::Commitment::default();
-        let right_sigma = PC::Commitment::default();
-        let out_sigma = PC::Commitment::default();
-        let fourth_sigma = PC::Commitment::default();
+        let left_sigma = P::Commitment::default();
+        let right_sigma = P::Commitment::default();
+        let out_sigma = P::Commitment::default();
+        let fourth_sigma = P::Commitment::default();
 
-        let table_1 = PC::Commitment::default();
-        let table_2 = PC::Commitment::default();
-        let table_3 = PC::Commitment::default();
-        let table_4 = PC::Commitment::default();
+        let table_1 = P::Commitment::default();
+        let table_2 = P::Commitment::default();
+        let table_3 = P::Commitment::default();
+        let table_4 = P::Commitment::default();
 
-        let verifier_key = VerifierKey::<F, PC>::from_polynomial_commitments(
+        let verifier_key = VerifierKey::<P>::from_polynomial_commitments(
             n,
             q_m,
             q_l,
@@ -564,7 +560,7 @@ mod test {
             .serialize_unchecked(&mut verifier_key_bytes)
             .unwrap();
 
-        let obtained_vk: VerifierKey<F, PC> =
+        let obtained_vk: VerifierKey<P> =
             VerifierKey::deserialize_unchecked(verifier_key_bytes.as_slice())
                 .unwrap();
 
@@ -574,14 +570,7 @@ mod test {
     // Test for Bls12_381
     batch_test!(
         [test_serialise_deserialise_verifier_key],
-        [] => (
-            Bls12_381, ark_ed_on_bls12_381::EdwardsParameters      )
-    );
-
-    // Test for Bls12_377
-    batch_test!(
-        [test_serialise_deserialise_verifier_key],
-        [] => (
-            Bls12_377, ark_ed_on_bls12_377::EdwardsParameters       )
+        [] =>
+            [Bls12_381_KZG, Bls12_381_IPA, Bls12_377_KZG, Bls12_377_IPA]
     );
 }

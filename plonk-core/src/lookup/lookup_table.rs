@@ -4,8 +4,7 @@
 //
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
-use crate::error::Error;
-use crate::lookup::MultiSet;
+use crate::{error::Error, lookup::MultiSet};
 use ark_ff::Field;
 
 /// This struct is a table, contaning a vector, of arity 4 where each of the
