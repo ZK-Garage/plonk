@@ -18,12 +18,16 @@
 //! Bits are accumulated in base2. So we use d(Xw) - 2d(X) to extract the
 //! base2 bit.
 
-use crate::proof_system::{
-    linearisation_poly::CustomEvaluations,
-    widget::{GateConstraint, WitnessValues},
-    CustomValues,
+use crate::{
+    parameters::{CircuitParameters, EmbeddedCurve},
+    proof_system::{
+        ecc::{SWEmbeddedCurve, TEEmbeddedCurve},
+        linearisation_poly::CustomEvaluations,
+        widget::{GateConstraint, WitnessValues},
+        CustomValues,
+    },
 };
-use ark_ec::{ModelParameters, TEModelParameters};
+use ark_ec::{SWModelParameters, TEModelParameters};
 use ark_ff::PrimeField;
 use core::marker::PhantomData;
 
@@ -72,24 +76,30 @@ where
 /// Fixed-Base Scalar Multiplication Gate
 #[derive(derivative::Derivative)]
 #[derivative(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
-pub struct FixedBaseScalarMul<F, P>(PhantomData<(F, P)>)
+pub struct FixedBaseScalarMul<P, EC>(PhantomData<(P, EC)>)
 where
-    F: PrimeField,
-    P: ModelParameters<BaseField = F>;
+    P: CircuitParameters,
+    EC: EmbeddedCurve<P>;
 
-impl<F, P> GateConstraint<F> for FixedBaseScalarMul<F, P>
+impl<P, EmbeddedBaseField, EmbeddedCurveParameters>
+    GateConstraint<P::ScalarField> for FixedBaseScalarMul<P, TEEmbeddedCurve<P>>
 where
-    F: PrimeField,
-    P: TEModelParameters<BaseField = F>,
+    EmbeddedBaseField: PrimeField,
+    EmbeddedCurveParameters: TEModelParameters<BaseField = EmbeddedBaseField>,
+    P: CircuitParameters<
+        ScalarField = EmbeddedBaseField,
+        EmbeddedCurve = TEEmbeddedCurve<P>,
+        EmbeddedCurveParameters = EmbeddedCurveParameters,
+    >,
 {
-    type CustomVals = FBSMVals<F>;
+    type CustomVals = FBSMVals<P::ScalarField>;
 
     #[inline]
     fn constraints(
-        separation_challenge: F,
-        wit_vals: WitnessValues<F>,
+        separation_challenge: P::ScalarField,
+        wit_vals: WitnessValues<P::ScalarField>,
         custom_vals: Self::CustomVals,
-    ) -> F {
+    ) -> P::ScalarField {
         let kappa = separation_challenge.square();
         let kappa_sq = kappa.square();
         let kappa_cu = kappa_sq * kappa;
@@ -111,7 +121,8 @@ where
         // Check bit consistency
         let bit_consistency = check_bit_consistency(bit);
 
-        let y_alpha = bit.square() * (y_beta_eval - F::one()) + F::one();
+        let y_alpha = bit.square() * (y_beta_eval - P::ScalarField::one())
+            + P::ScalarField::one();
         let x_alpha = x_beta_eval * bit;
 
         // xy_alpha consistency check
@@ -119,13 +130,23 @@ where
 
         // x accumulator consistency check
         let x_3 = acc_x_next;
-        let lhs = x_3 + (x_3 * xy_alpha * acc_x * acc_y * P::COEFF_D);
+        let lhs = x_3
+            + (x_3
+                * xy_alpha
+                * acc_x
+                * acc_y
+                * EmbeddedCurveParameters::COEFF_D);
         let rhs = (x_alpha * acc_y) + (y_alpha * acc_x);
         let x_acc_consistency = (lhs - rhs) * kappa_sq;
 
         // y accumulator consistency check
         let y_3 = acc_y_next;
-        let lhs = y_3 - (y_3 * xy_alpha * acc_x * acc_y * P::COEFF_D);
+        let lhs = y_3
+            - (y_3
+                * xy_alpha
+                * acc_x
+                * acc_y
+                * EmbeddedCurveParameters::COEFF_D);
         let rhs = (x_alpha * acc_x) + (y_alpha * acc_y);
         let y_acc_consistency = (lhs - rhs) * kappa_cu;
 
@@ -135,6 +156,29 @@ where
             + xy_consistency;
 
         checks * separation_challenge
+    }
+}
+
+impl<P, EmbeddedBaseField, EmbeddedCurveParameters>
+    GateConstraint<P::ScalarField> for FixedBaseScalarMul<P, SWEmbeddedCurve<P>>
+where
+    EmbeddedBaseField: PrimeField,
+    EmbeddedCurveParameters: SWModelParameters<BaseField = EmbeddedBaseField>,
+    P: CircuitParameters<
+        ScalarField = EmbeddedBaseField,
+        EmbeddedCurve = SWEmbeddedCurve<P>,
+        EmbeddedCurveParameters = EmbeddedCurveParameters,
+    >,
+{
+    type CustomVals = FBSMVals<P::ScalarField>;
+
+    #[inline]
+    fn constraints(
+        separation_challenge: P::ScalarField,
+        wit_vals: WitnessValues<P::ScalarField>,
+        custom_vals: Self::CustomVals,
+    ) -> P::ScalarField {
+        separation_challenge
     }
 }
 

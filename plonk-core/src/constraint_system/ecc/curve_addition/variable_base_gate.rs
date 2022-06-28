@@ -6,16 +6,25 @@
 
 //! Variable-base Curve Addition Gate
 
-use crate::constraint_system::{ecc::Point, StandardComposer};
+use crate::{
+    constraint_system::{ecc::Point, StandardComposer},
+    parameters::CircuitParameters,
+    proof_system::ecc::TEEmbeddedCurve,
+};
 use ark_ec::models::{
     twisted_edwards_extended::GroupAffine as TEGroupAffine, TEModelParameters,
 };
 use ark_ff::PrimeField;
 
-impl<F, P> StandardComposer<F, P>
+impl<P, EmbeddedBaseField, EmbeddedCurveParameters> StandardComposer<P>
 where
-    F: PrimeField,
-    P: TEModelParameters<BaseField = F>,
+    EmbeddedBaseField: PrimeField,
+    EmbeddedCurveParameters: TEModelParameters<BaseField = EmbeddedBaseField>,
+    P: CircuitParameters<
+        ScalarField = EmbeddedBaseField,
+        EmbeddedCurve = TEEmbeddedCurve<P>,
+        EmbeddedCurveParameters = EmbeddedCurveParameters,
+    >,
 {
     /// Adds two curve points together using a curve addition gate
     /// Note that since the points are not fixed the generator is not a part of
@@ -23,9 +32,9 @@ where
     /// width of 4.
     pub fn point_addition_gate(
         &mut self,
-        point_a: Point<P>,
-        point_b: Point<P>,
-    ) -> Point<P> {
+        point_a: Point,
+        point_b: Point,
+    ) -> Point {
         // In order to verify that two points were correctly added
         // without going over a degree 4 polynomial, we will need
         // x_1, y_1, x_2, y_2
@@ -42,8 +51,14 @@ where
         let x_2_scalar = self.variables.get(&x_2).unwrap();
         let y_2_scalar = self.variables.get(&y_2).unwrap();
 
-        let p1 = TEGroupAffine::<P>::new(*x_1_scalar, *y_1_scalar);
-        let p2 = TEGroupAffine::<P>::new(*x_2_scalar, *y_2_scalar);
+        let p1 = TEGroupAffine::<EmbeddedCurveParameters>::new(
+            *x_1_scalar,
+            *y_1_scalar,
+        );
+        let p2 = TEGroupAffine::<EmbeddedCurveParameters>::new(
+            *x_2_scalar,
+            *y_2_scalar,
+        );
 
         let point = p1 + p2;
         let x_3_scalar = point.x;
@@ -60,7 +75,7 @@ where
         self.w_r.extend(&[y_1, y_3]);
         self.w_o.extend(&[x_2, self.zero_var]);
         self.w_4.extend(&[y_2, x_1_y_2]);
-        let zeros = [F::zero(), F::zero()];
+        let zeros = [P::ScalarField::zero(), P::ScalarField::zero()];
 
         self.q_l.extend(&zeros);
         self.q_r.extend(&zeros);
@@ -74,8 +89,8 @@ where
         self.q_fixed_group_add.extend(&zeros);
         self.q_lookup.extend(&zeros);
 
-        self.q_variable_group_add.push(F::one());
-        self.q_variable_group_add.push(F::zero());
+        self.q_variable_group_add.push(P::ScalarField::one());
+        self.q_variable_group_add.push(P::ScalarField::zero());
 
         self.perm.add_variables_to_map(x_1, y_1, x_2, y_2, self.n);
         self.n += 1;
@@ -89,30 +104,40 @@ where
         );
         self.n += 1;
 
-        Point::<P>::new(x_3, y_3)
+        Point::new(x_3, y_3)
     }
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::{batch_test, constraint_system::helper::*};
-    use ark_bls12_377::Bls12_377;
-    use ark_bls12_381::Bls12_381;
-
-    use crate::commitment::HomomorphicCommitment;
+    use crate::parameters::test::*;
+    use crate::{
+        batch_test_embedded, constraint_system::helper::*,
+        parameters::CircuitParameters, proof_system::ecc::TEEmbeddedCurve,
+    };
 
     /// Adds two curve points together using the classical point addition
     /// algorithm. This method is slower than WNAF and is just meant to be the
     /// source of truth to test the WNAF method.
-    pub fn classical_point_addition<F, P>(
-        composer: &mut StandardComposer<P::BaseField, P>,
-        point_a: Point<P>,
-        point_b: Point<P>,
-    ) -> Point<P>
+    pub fn classical_point_addition<
+        CircuitParams,
+        EmbeddedBaseField,
+        EmbeddedCurveParameters,
+    >(
+        composer: &mut StandardComposer<CircuitParams>,
+        point_a: Point,
+        point_b: Point,
+    ) -> Point
     where
-        F: PrimeField,
-        P: TEModelParameters<BaseField = F>,
+        EmbeddedBaseField: PrimeField,
+        EmbeddedCurveParameters:
+            TEModelParameters<BaseField = EmbeddedBaseField>,
+        CircuitParams: CircuitParameters<
+            ScalarField = EmbeddedBaseField,
+            EmbeddedCurve = TEEmbeddedCurve<CircuitParams>,
+            EmbeddedCurveParameters = EmbeddedCurveParameters,
+        >,
     {
         let zero = composer.zero_var;
         let x1 = point_a.x;
@@ -122,37 +147,55 @@ mod test {
         let y2 = point_b.y;
 
         // x1 * y2
-        let x1_y2 = composer
-            .arithmetic_gate(|gate| gate.mul(F::one()).witness(x1, y2, None));
+        let x1_y2 = composer.arithmetic_gate(|gate| {
+            gate.mul(CircuitParams::ScalarField::one())
+                .witness(x1, y2, None)
+        });
         // y1 * x2
-        let y1_x2 = composer
-            .arithmetic_gate(|gate| gate.mul(F::one()).witness(y1, x2, None));
+        let y1_x2 = composer.arithmetic_gate(|gate| {
+            gate.mul(CircuitParams::ScalarField::one())
+                .witness(y1, x2, None)
+        });
         // y1 * y2
-        let y1_y2 = composer
-            .arithmetic_gate(|gate| gate.mul(F::one()).witness(y1, y2, None));
+        let y1_y2 = composer.arithmetic_gate(|gate| {
+            gate.mul(CircuitParams::ScalarField::one())
+                .witness(y1, y2, None)
+        });
         // x1 * x2
-        let x1_x2 = composer
-            .arithmetic_gate(|gate| gate.mul(F::one()).witness(x1, x2, None));
+        let x1_x2 = composer.arithmetic_gate(|gate| {
+            gate.mul(CircuitParams::ScalarField::one())
+                .witness(x1, x2, None)
+        });
         // d x1x2 * y1y2
         let d_x1_x2_y1_y2 = composer.arithmetic_gate(|gate| {
-            gate.mul(P::COEFF_D).witness(x1_x2, y1_y2, None)
+            gate.mul(EmbeddedCurveParameters::COEFF_D)
+                .witness(x1_x2, y1_y2, None)
         });
 
         // x1y2 + y1x2
         let x_numerator = composer.arithmetic_gate(|gate| {
-            gate.witness(x1_y2, y1_x2, None).add(F::one(), F::one())
+            gate.witness(x1_y2, y1_x2, None).add(
+                CircuitParams::ScalarField::one(),
+                CircuitParams::ScalarField::one(),
+            )
         });
 
         // y1y2 - a * x1x2
         let y_numerator = composer.arithmetic_gate(|gate| {
-            gate.witness(y1_y2, x1_x2, None).add(F::one(), -P::COEFF_A)
+            gate.witness(y1_y2, x1_x2, None).add(
+                CircuitParams::ScalarField::one(),
+                -EmbeddedCurveParameters::COEFF_A,
+            )
         });
 
         // 1 + dx1x2y1y2
         let x_denominator = composer.arithmetic_gate(|gate| {
             gate.witness(d_x1_x2_y1_y2, zero, None)
-                .add(F::one(), F::zero())
-                .constant(F::one())
+                .add(
+                    CircuitParams::ScalarField::one(),
+                    CircuitParams::ScalarField::zero(),
+                )
+                .constant(CircuitParams::ScalarField::one())
         });
 
         // Compute the inverse
@@ -168,15 +211,18 @@ mod test {
         // inv_x * x = 1
         composer.arithmetic_gate(|gate| {
             gate.witness(x_denominator, inv_x_denom, Some(zero))
-                .mul(F::one())
-                .constant(-F::one())
+                .mul(CircuitParams::ScalarField::one())
+                .constant(-CircuitParams::ScalarField::one())
         });
 
         // 1 - dx1x2y1y2
         let y_denominator = composer.arithmetic_gate(|gate| {
             gate.witness(d_x1_x2_y1_y2, zero, None)
-                .add(-F::one(), F::zero())
-                .constant(F::one())
+                .add(
+                    -CircuitParams::ScalarField::one(),
+                    CircuitParams::ScalarField::zero(),
+                )
+                .constant(CircuitParams::ScalarField::one())
         });
 
         let inv_y_denom = composer
@@ -190,34 +236,52 @@ mod test {
         // Assert that we actually have the inverse
         // inv_y * y = 1
         composer.arithmetic_gate(|gate| {
-            gate.mul(F::one())
+            gate.mul(CircuitParams::ScalarField::one())
                 .witness(y_denominator, inv_y_denom, Some(zero))
-                .constant(-F::one())
+                .constant(-CircuitParams::ScalarField::one())
         });
 
         // We can now use the inverses
 
         let x_3 = composer.arithmetic_gate(|gate| {
-            gate.mul(F::one()).witness(inv_x_denom, x_numerator, None)
+            gate.mul(CircuitParams::ScalarField::one()).witness(
+                inv_x_denom,
+                x_numerator,
+                None,
+            )
         });
 
         let y_3 = composer.arithmetic_gate(|gate| {
-            gate.mul(F::one()).witness(inv_y_denom, y_numerator, None)
+            gate.mul(CircuitParams::ScalarField::one()).witness(
+                inv_y_denom,
+                y_numerator,
+                None,
+            )
         });
 
         Point::new(x_3, y_3)
     }
 
-    fn test_curve_addition<F, P, PC>()
+    fn test_curve_addition<
+        CircuitParams,
+        EmbeddedBaseField,
+        EmbeddedCurveParameters,
+    >()
     where
-        F: PrimeField,
-        P: TEModelParameters<BaseField = F>,
-        PC: HomomorphicCommitment<F>,
+        EmbeddedBaseField: PrimeField,
+        EmbeddedCurveParameters:
+            TEModelParameters<BaseField = EmbeddedBaseField>,
+        CircuitParams: CircuitParameters<
+            ScalarField = EmbeddedBaseField,
+            EmbeddedCurve = TEEmbeddedCurve<CircuitParams>,
+            EmbeddedCurveParameters = EmbeddedCurveParameters,
+        >,
     {
-        let res = gadget_tester::<F, P, PC>(
-            |composer: &mut StandardComposer<F, P>| {
-                let (x, y) = P::AFFINE_GENERATOR_COEFFS;
-                let generator = TEGroupAffine::<P>::new(x, y);
+        let res = gadget_tester::<CircuitParams>(
+            |composer: &mut StandardComposer<CircuitParams>| {
+                let (x, y) = EmbeddedCurveParameters::AFFINE_GENERATOR_COEFFS;
+                let generator =
+                    TEGroupAffine::<EmbeddedCurveParameters>::new(x, y);
                 let x_var = composer.add_input(x);
                 let y_var = composer.add_input(y);
                 let expected_point = generator + generator;
@@ -237,20 +301,10 @@ mod test {
         assert!(res.is_ok());
     }
 
-    batch_test!(
+    batch_test_embedded!(
         [test_curve_addition],
         []
-        => (
-            Bls12_381,
-            ark_ed_on_bls12_381::EdwardsParameters
-        )
-    );
-
-    batch_test!(
-        [test_curve_addition],
-        [] => (
-            Bls12_377,
-            ark_ed_on_bls12_377::EdwardsParameters
-        )
+        => [
+            Bls12_381_KZG, Bls12_381_IPA, Bls12_377_KZG, Bls12_377_IPA ]
     );
 }

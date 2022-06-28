@@ -35,83 +35,63 @@ macro_rules! batch_test_field {
 }
 
 #[macro_export]
-macro_rules! batch_test_field_params {
-    ( [$($test_set:ident),*], [$($test_panic_set:ident),*] => ($engine:ty, $params:ty) ) => {
-        paste::item! {
-            $(
-                #[test]
-                #[allow(non_snake_case)]
-                fn [< $test_set _on_ $engine>]() {
-                    $test_set::<<$engine as ark_ec::PairingEngine>::Fr, $params>()
-                }
-            )*
-            $(
-                #[test]
-                #[should_panic]
-                #[allow(non_snake_case)]
-                fn [< $test_panic_set _on_ $engine>]() {
-                    $test_panic_set::<<$engine as ark_ec::PairingEngine>::Fr, $params>()
-                }
-            )*
-        }
-    }
-}
+macro_rules! batch_test_embedded {
 
-#[macro_export]
-macro_rules! batch_test_kzg {
-    ( [$($test_set:ident),*], [$($test_panic_set:ident),*] => ($engine:ty, $params:ty) ) => {
+    ([$($test_set:ident),*], [$($test_panic_set:ident),*] => [$param:ty, $($params:ty),+]) => {
+        batch_test_embedded! { [$($test_set),*], [$($test_panic_set),*] => [$param] }
+        batch_test_embedded! { [$($test_set),*], [$($test_panic_set),*] => [$($params),+] }
+    };
+
+     ([$($test_set:ident),*], [$($test_panic_set:ident),*] => [$params:ty])  => {
         paste::item! {
             $(
                 #[test]
                 #[allow(non_snake_case)]
-                fn [< $test_set _on_ $engine>]() {
-                    $test_set::<<$engine as ark_ec::PairingEngine>::Fr, $params, crate::commitment::KZG10<$engine>>()
+                fn [< $test_set _on_ $params >]() {
+
+                    $test_set::<$params, _, _>()
                 }
             )*
             $(
                 #[test]
                 #[should_panic]
                 #[allow(non_snake_case)]
-                fn [< $test_panic_set _on_ $engine>]() {
-                    $test_panic_set::<<$engine as ark_ec::PairingEngine>::Fr, $params, crate::commitment::KZG10<$engine>>()
+                fn [< $test_panic_set _on_ $params >]() {
+                    $test_panic_set::<$params, _, _>()
                 }
             )*
         }
-    }
+    };
 }
 
 #[macro_export]
 macro_rules! batch_test {
-    ( [$($test_set:ident),*], [$($test_panic_set:ident),*] => ($engine:ty, $params:ty) ) => {
+
+    ([$($test_set:ident),*], [$($test_panic_set:ident),*] => [$param:ty, $($params:ty),+]) => {
+        batch_test! { [$($test_set),*], [$($test_panic_set),*] => [$param] }
+        batch_test! { [$($test_set),*], [$($test_panic_set),*] => [$($params),+] }
+    };
+
+     ([$($test_set:ident),*], [$($test_panic_set:ident),*] => [$params:ty])  => {
         paste::item! {
             $(
                 #[test]
                 #[allow(non_snake_case)]
-                fn [< $test_set _on_ $engine _kzg>]() {
-                    $test_set::<<$engine as ark_ec::PairingEngine>::Fr, $params, crate::commitment::KZG10<$engine>>()
-                }
-                #[test]
-                #[allow(non_snake_case)]
-                fn [< $test_set _on_ $engine _ipa>]() {
-                    $test_set::<<$engine as ark_ec::PairingEngine>::Fr, $params, ark_poly_commit::ipa_pc::InnerProductArgPC<<$engine as ark_ec::PairingEngine>::G1Affine, blake2::Blake2s, ark_poly::univariate::DensePolynomial<<$engine as ark_ec::PairingEngine>::Fr>>>()
+                fn [< $test_set _on_ $params >]() {
+
+                    $test_set::<$params>()
                 }
             )*
             $(
                 #[test]
                 #[should_panic]
                 #[allow(non_snake_case)]
-                fn [< $test_panic_set _on_ $engine _kzg>]() {
-                    $test_panic_set::<<$engine as ark_ec::PairingEngine>::Fr, $params, crate::commitment::KZG10<$engine>>()
-                }
-                #[test]
-                #[should_panic]
-                #[allow(non_snake_case)]
-                fn [< $test_panic_set _on_ $engine _ipa>]() {
-                    $test_panic_set::<<$engine as ark_ec::PairingEngine>::Fr, $params, ark_poly_commit::ipa_pc::InnerProductArgPC<<$engine as ark_ec::PairingEngine>::G1Affine, blake2::Blake2s, ark_poly::univariate::DensePolynomial<<$engine as ark_ec::PairingEngine>::Fr>>>()
+                fn [< $test_panic_set _on_ $params >]() {
+                    $test_panic_set::<$params>()
                 }
             )*
         }
-    }
+    };
 }
 
 #[macro_export]

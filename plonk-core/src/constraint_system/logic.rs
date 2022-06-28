@@ -9,14 +9,15 @@
 //! This module includes a generic logic gate that can either be an `XOR` or an
 //! `AND` gate.
 
-use crate::constraint_system::{StandardComposer, Variable, WireData};
-use ark_ec::TEModelParameters;
-use ark_ff::{BigInteger, PrimeField};
+use crate::{
+    constraint_system::{StandardComposer, Variable, WireData},
+    parameters::CircuitParameters,
+};
+use ark_ff::{BigInteger, One, PrimeField, Zero};
 
-impl<F, P> StandardComposer<F, P>
+impl<P> StandardComposer<P>
 where
-    F: PrimeField,
-    P: TEModelParameters<BaseField = F>,
+    P: CircuitParameters,
 {
     /// Performs a logical AND or XOR op between the inputs provided for the
     /// specified number of bits.
@@ -47,9 +48,9 @@ where
         // representing both numbers.
         let num_quads = num_bits >> 1;
         // Allocate accumulators for gate construction.
-        let mut left_accumulator = F::zero();
-        let mut right_accumulator = F::zero();
-        let mut out_accumulator = F::zero();
+        let mut left_accumulator = P::ScalarField::zero();
+        let mut right_accumulator = P::ScalarField::zero();
+        let mut out_accumulator = P::ScalarField::zero();
         let mut left_quad: u8;
         let mut right_quad: u8;
         // Get vars as bits and reverse them to get the Little Endian repr.
@@ -121,21 +122,22 @@ where
                 let idx = i << 1;
                 ((b_bits[idx] as u8) << 1) + (b_bits[idx + 1] as u8)
             };
-            let left_quad_fr = F::from(left_quad as u64);
-            let right_quad_fr = F::from(right_quad as u64);
+            let left_quad_fr = P::ScalarField::from(left_quad as u64);
+            let right_quad_fr = P::ScalarField::from(right_quad as u64);
             // The `out_quad` is the result of the bitwise ops `&` or `^`
             // between the left and right quads. The op is decided
             // with a boolean flag set as input of the function.
             let out_quad_fr = match is_xor_gate {
-                true => F::from((left_quad ^ right_quad) as u64),
-                false => F::from((left_quad & right_quad) as u64),
+                true => P::ScalarField::from((left_quad ^ right_quad) as u64),
+                false => P::ScalarField::from((left_quad & right_quad) as u64),
             };
             // We also need to allocate a helper item which is the result
             // of the product between the left and right quads.
             // This param is identified as `w` in the program memory and
             // is needed to prevent the degree of our quotient polynomial from
             // blowing up
-            let prod_quad_fr = F::from((left_quad * right_quad) as u64);
+            let prod_quad_fr =
+                P::ScalarField::from((left_quad * right_quad) as u64);
 
             // Now that we've computed this round results, we need to apply the
             // logic transition constraint that will check the following:
@@ -173,24 +175,26 @@ where
             //   i     ===   (bits/2 - j)
             //        j = 0
             //
-            left_accumulator *= F::from(4u64);
+            left_accumulator *= P::ScalarField::from(4u64);
             left_accumulator += left_quad_fr;
-            right_accumulator *= F::from(4u64);
+            right_accumulator *= P::ScalarField::from(4u64);
             right_accumulator += right_quad_fr;
-            out_accumulator *= F::from(4u64);
+            out_accumulator *= P::ScalarField::from(4u64);
             out_accumulator += out_quad_fr;
             // Apply logic transition constraints.
             assert!(
-                left_accumulator - (prev_left_accum * F::from(4u64))
-                    < F::from(4u64)
+                left_accumulator
+                    - (prev_left_accum * P::ScalarField::from(4u64))
+                    < P::ScalarField::from(4u64)
             );
             assert!(
-                right_accumulator - (prev_right_accum * F::from(4u64))
-                    < F::from(4u64)
+                right_accumulator
+                    - (prev_right_accum * P::ScalarField::from(4u64))
+                    < P::ScalarField::from(4u64)
             );
             assert!(
-                out_accumulator - (prev_out_accum * F::from(4u64))
-                    < F::from(4u64)
+                out_accumulator - (prev_out_accum * P::ScalarField::from(4u64))
+                    < P::ScalarField::from(4u64)
             );
 
             // Get variables pointing to the previous accumulated values.
@@ -239,40 +243,40 @@ where
         // Now we just need to extend the selector polynomials with the
         // appropriate coefficients to form complete logic gates.
         for _ in 0..num_quads {
-            self.q_m.push(F::zero());
-            self.q_l.push(F::zero());
-            self.q_r.push(F::zero());
-            self.q_arith.push(F::zero());
-            self.q_o.push(F::zero());
-            self.q_4.push(F::zero());
-            self.q_range.push(F::zero());
-            self.q_fixed_group_add.push(F::zero());
-            self.q_variable_group_add.push(F::zero());
-            self.q_lookup.push(F::zero());
+            self.q_m.push(P::ScalarField::zero());
+            self.q_l.push(P::ScalarField::zero());
+            self.q_r.push(P::ScalarField::zero());
+            self.q_arith.push(P::ScalarField::zero());
+            self.q_o.push(P::ScalarField::zero());
+            self.q_4.push(P::ScalarField::zero());
+            self.q_range.push(P::ScalarField::zero());
+            self.q_fixed_group_add.push(P::ScalarField::zero());
+            self.q_variable_group_add.push(P::ScalarField::zero());
+            self.q_lookup.push(P::ScalarField::zero());
             match is_xor_gate {
                 true => {
-                    self.q_c.push(-F::one());
-                    self.q_logic.push(-F::one());
+                    self.q_c.push(-P::ScalarField::one());
+                    self.q_logic.push(-P::ScalarField::one());
                 }
                 false => {
-                    self.q_c.push(F::one());
-                    self.q_logic.push(F::one());
+                    self.q_c.push(P::ScalarField::one());
+                    self.q_logic.push(P::ScalarField::one());
                 }
             };
         }
         // For the last gate, `q_c` and `q_logic` we use no-op values (Zero).
-        self.q_m.push(F::zero());
-        self.q_l.push(F::zero());
-        self.q_r.push(F::zero());
-        self.q_arith.push(F::zero());
-        self.q_o.push(F::zero());
-        self.q_4.push(F::zero());
-        self.q_range.push(F::zero());
-        self.q_fixed_group_add.push(F::zero());
-        self.q_variable_group_add.push(F::zero());
-        self.q_lookup.push(F::zero());
-        self.q_c.push(F::zero());
-        self.q_logic.push(F::zero());
+        self.q_m.push(P::ScalarField::zero());
+        self.q_l.push(P::ScalarField::zero());
+        self.q_r.push(P::ScalarField::zero());
+        self.q_arith.push(P::ScalarField::zero());
+        self.q_o.push(P::ScalarField::zero());
+        self.q_4.push(P::ScalarField::zero());
+        self.q_range.push(P::ScalarField::zero());
+        self.q_fixed_group_add.push(P::ScalarField::zero());
+        self.q_variable_group_add.push(P::ScalarField::zero());
+        self.q_lookup.push(P::ScalarField::zero());
+        self.q_c.push(P::ScalarField::zero());
+        self.q_logic.push(P::ScalarField::zero());
 
         // Now we need to assert that the sum of accumulated values
         // matches the original values provided to the fn.
@@ -294,15 +298,17 @@ where
 
         // assert_eq!(
         //     self.variables[&a].into_repr()
-        //         & (F::from(2u64).pow(&[(num_bits) as u64, 0, 0, 0])
-        //             - F::one())
+        //         & (P::ScalarField::from(2u64).pow(&[(num_bits) as u64, 0, 0,
+        // 0])
+        //             - P::ScalarField::one())
         //         .into_repr(),
         //     self.variables[&self.w_l[self.n - 1]]
         // );
         // assert_eq!(
         //     self.variables[&b]
-        //         & (F::from(2u64).pow(&[(num_bits) as u64, 0, 0, 0])
-        //             - F::one()),
+        //         & (P::ScalarField::from(2u64).pow(&[(num_bits) as u64, 0, 0,
+        // 0])
+        //             - P::ScalarField::one()),
         //     self.variables[&self.w_r[self.n - 1]]
         // );
 
@@ -348,29 +354,26 @@ where
 #[cfg(test)]
 mod test {
     use crate::{
-        batch_test, commitment::HomomorphicCommitment,
-        constraint_system::helper::*, constraint_system::StandardComposer,
+        batch_test, constraint_system::helper::*,
+        constraint_system::StandardComposer, parameters::test::*,
+        parameters::CircuitParameters,
     };
-    use ark_bls12_377::Bls12_377;
-    use ark_bls12_381::Bls12_381;
-    use ark_ec::TEModelParameters;
-    use ark_ff::PrimeField;
-    fn test_logic_xor_and_constraint<F, P, PC>()
+    fn test_logic_xor_and_constraint<P>()
     where
-        F: PrimeField,
-        P: TEModelParameters<BaseField = F>,
-        PC: HomomorphicCommitment<F>,
+        P: CircuitParameters,
     {
         // Should pass since the XOR result is correct and the bit-num is even.
-        let res = gadget_tester::<F, P, PC>(
-            |composer: &mut StandardComposer<F, P>| {
-                let witness_a = composer.add_input(F::from(500u64));
-                let witness_b = composer.add_input(F::from(357u64));
+        let res = gadget_tester::<P>(
+            |composer: &mut StandardComposer<P>| {
+                let witness_a =
+                    composer.add_input(P::ScalarField::from(500u64));
+                let witness_b =
+                    composer.add_input(P::ScalarField::from(357u64));
                 let xor_res = composer.xor_gate(witness_a, witness_b, 10);
                 // Check that the XOR result is indeed what we are expecting.
                 composer.constrain_to_constant(
                     xor_res,
-                    F::from(500u64 ^ 357u64),
+                    P::ScalarField::from(500u64 ^ 357u64),
                     None,
                 );
             },
@@ -379,15 +382,17 @@ mod test {
         assert!(res.is_ok());
 
         // Should pass since the AND result is correct even the bit-num is even.
-        let res = gadget_tester::<F, P, PC>(
-            |composer: &mut StandardComposer<F, P>| {
-                let witness_a = composer.add_input(F::from(469u64));
-                let witness_b = composer.add_input(F::from(321u64));
+        let res = gadget_tester::<P>(
+            |composer: &mut StandardComposer<P>| {
+                let witness_a =
+                    composer.add_input(P::ScalarField::from(469u64));
+                let witness_b =
+                    composer.add_input(P::ScalarField::from(321u64));
                 let xor_res = composer.and_gate(witness_a, witness_b, 10);
                 // Check that the AND result is indeed what we are expecting.
                 composer.constrain_to_constant(
                     xor_res,
-                    F::from(469u64 & 321u64),
+                    P::ScalarField::from(469u64 & 321u64),
                     None,
                 );
             },
@@ -397,15 +402,16 @@ mod test {
 
         // Should not pass since the XOR result is not correct even the bit-num
         // is even.
-        let res = gadget_tester::<F, P, PC>(
-            |composer: &mut StandardComposer<F, P>| {
-                let witness_a = composer.add_input(F::from(139u64));
-                let witness_b = composer.add_input(F::from(33u64));
+        let res = gadget_tester::<P>(
+            |composer: &mut StandardComposer<P>| {
+                let witness_a =
+                    composer.add_input(P::ScalarField::from(139u64));
+                let witness_b = composer.add_input(P::ScalarField::from(33u64));
                 let xor_res = composer.xor_gate(witness_a, witness_b, 10);
                 // Check that the XOR result is indeed what we are expecting.
                 composer.constrain_to_constant(
                     xor_res,
-                    F::from(139u64 & 33u64),
+                    P::ScalarField::from(139u64 & 33u64),
                     None,
                 );
             },
@@ -414,15 +420,17 @@ mod test {
         assert!(res.is_err());
 
         // Should pass even the bitnum is less than the number bit-size
-        let res = gadget_tester::<F, P, PC>(
-            |composer: &mut StandardComposer<F, P>| {
-                let witness_a = composer.add_input(F::from(256u64));
-                let witness_b = composer.add_input(F::from(235u64));
+        let res = gadget_tester::<P>(
+            |composer: &mut StandardComposer<P>| {
+                let witness_a =
+                    composer.add_input(P::ScalarField::from(256u64));
+                let witness_b =
+                    composer.add_input(P::ScalarField::from(235u64));
                 let xor_res = composer.xor_gate(witness_a, witness_b, 2);
                 // Check that the XOR result is indeed what we are expecting.
                 composer.constrain_to_constant(
                     xor_res,
-                    F::from(256u64 ^ 235u64),
+                    P::ScalarField::from(256u64 ^ 235u64),
                     None,
                 );
             },
@@ -431,20 +439,24 @@ mod test {
         assert!(res.is_err());
     }
 
-    fn test_logical_gate_odd_bit_num<F, P, PC>()
+    fn test_logical_gate_odd_bit_num<P>()
     where
-        F: PrimeField,
-        P: TEModelParameters<BaseField = F>,
-        PC: HomomorphicCommitment<F>,
+        P: CircuitParameters,
     {
         // Should fail since the bit-num is odd.
-        let _ = gadget_tester::<F, P, PC>(
-            |composer: &mut StandardComposer<F, P>| {
-                let witness_a = composer.add_input(F::from(500u64));
-                let witness_b = composer.add_input(F::from(499u64));
+        let _ = gadget_tester::<P>(
+            |composer: &mut StandardComposer<P>| {
+                let witness_a =
+                    composer.add_input(P::ScalarField::from(500u64));
+                let witness_b =
+                    composer.add_input(P::ScalarField::from(499u64));
                 let xor_res = composer.xor_gate(witness_a, witness_b, 9);
                 // Check that the XOR result is indeed what we are expecting.
-                composer.constrain_to_constant(xor_res, F::from(7u64), None);
+                composer.constrain_to_constant(
+                    xor_res,
+                    P::ScalarField::from(7u64),
+                    None,
+                );
             },
             200,
         );
@@ -454,15 +466,8 @@ mod test {
     batch_test!(
         [test_logic_xor_and_constraint],
         [test_logical_gate_odd_bit_num]
-        => (
-            Bls12_381, ark_ed_on_bls12_381::EdwardsParameters      )
-    );
-
-    // Test for Bls12_377
-    batch_test!(
-        [test_logic_xor_and_constraint],
-        [test_logical_gate_odd_bit_num]
-        => (
-            Bls12_377, ark_ed_on_bls12_377::EdwardsParameters       )
+         => [
+            Bls12_381_KZG, Bls12_381_IPA, Bls12_377_KZG, Bls12_377_IPA
+        ]
     );
 }

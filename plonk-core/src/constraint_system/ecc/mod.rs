@@ -9,36 +9,30 @@
 pub mod curve_addition;
 pub mod scalar_mul;
 
-use crate::constraint_system::{variable::Variable, StandardComposer};
+use crate::{
+    constraint_system::{variable::Variable, StandardComposer},
+    parameters::CircuitParameters,
+    proof_system::ecc::{SWEmbeddedCurve, TEEmbeddedCurve},
+};
 use ark_ec::{
-    twisted_edwards_extended::GroupAffine as TEGroupAffine, ModelParameters,
+    short_weierstrass_jacobian::GroupAffine as SWGroupAffine,
+    twisted_edwards_extended::GroupAffine as TEGroupAffine, SWModelParameters,
     TEModelParameters,
 };
-use ark_ff::PrimeField;
-use core::marker::PhantomData;
+use ark_ff::{One, PrimeField, Zero};
 
 /// Represents a point of the embeded curve in the circuit
 #[derive(derivative::Derivative)]
 #[derivative(Clone, Copy, Debug)]
-pub struct Point<P>
-where
-    P: ModelParameters,
-{
+pub struct Point {
     /// `X`-coordinate
     x: Variable,
 
     /// `Y`-coordinate
     y: Variable,
-
-    /// Type Parameter Marker
-    __: PhantomData<P>,
 }
 
-impl<F, P> Point<P>
-where
-    F: PrimeField,
-    P: TEModelParameters<BaseField = F>,
-{
+impl Point {
     /// Builds a new [`Point`] from `X` and `Y` coordinates.
     ///
     /// # Safety
@@ -50,15 +44,8 @@ where
         Self {
             x,
             y,
-            __: PhantomData,
+            //__: PhantomData,
         }
-    }
-
-    /// Returns an identity point.
-    pub fn identity(composer: &mut StandardComposer<P::BaseField, P>) -> Self {
-        let one =
-            composer.add_witness_to_circuit_description(P::BaseField::one());
-        Self::new(composer.zero_var, one)
     }
 
     /// Returns the `X`-coordinate of `self`.
@@ -72,23 +59,42 @@ where
     }
 }
 
-impl<F, P> StandardComposer<F, P>
+impl<P, EmbeddedBaseField, EmbeddedCurveParameters> StandardComposer<P>
 where
-    F: PrimeField,
-    P: TEModelParameters<BaseField = F>,
+    EmbeddedBaseField: PrimeField,
+    EmbeddedCurveParameters: TEModelParameters<BaseField = EmbeddedBaseField>,
+    P: CircuitParameters<
+        ScalarField = EmbeddedBaseField,
+        EmbeddedCurve = TEEmbeddedCurve<P>,
+        EmbeddedCurveParameters = EmbeddedCurveParameters,
+    >,
 {
     /// Converts an embeded curve point into a constraint system Point
     /// without constraining the values
-    pub fn add_affine(&mut self, affine: TEGroupAffine<P>) -> Point<P> {
+    pub fn add_affine(
+        &mut self,
+        affine: TEGroupAffine<EmbeddedCurveParameters>,
+    ) -> Point {
         Point::new(self.add_input(affine.x), self.add_input(affine.y))
     }
 
     /// Converts an embeded curve point into a constraint system Point
     /// without constraining the values
-    pub fn add_public_affine(&mut self, affine: TEGroupAffine<P>) -> Point<P> {
+    pub fn add_public_affine(
+        &mut self,
+        affine: TEGroupAffine<EmbeddedCurveParameters>,
+    ) -> Point {
         let point = self.add_affine(affine);
-        self.constrain_to_constant(point.x, F::zero(), Some(-affine.x));
-        self.constrain_to_constant(point.y, F::zero(), Some(-affine.y));
+        self.constrain_to_constant(
+            point.x,
+            P::ScalarField::zero(),
+            Some(-affine.x),
+        );
+        self.constrain_to_constant(
+            point.y,
+            P::ScalarField::zero(),
+            Some(-affine.y),
+        );
         point
     }
 
@@ -96,8 +102,8 @@ where
     /// constrained witness value
     pub fn add_affine_to_circuit_description(
         &mut self,
-        affine: TEGroupAffine<P>,
-    ) -> Point<P> {
+        affine: TEGroupAffine<EmbeddedCurveParameters>,
+    ) -> Point {
         // NOTE: Not using individual gates because one of these may be zero.
         Point::new(
             self.add_witness_to_circuit_description(affine.x),
@@ -109,22 +115,101 @@ where
     /// point.
     pub fn assert_equal_public_point(
         &mut self,
-        point: Point<P>,
-        public_point: TEGroupAffine<P>,
+        point: Point,
+        public_point: TEGroupAffine<EmbeddedCurveParameters>,
     ) {
-        self.constrain_to_constant(point.x, F::zero(), Some(-public_point.x));
-        self.constrain_to_constant(point.y, F::zero(), Some(-public_point.y));
+        self.constrain_to_constant(
+            point.x,
+            P::ScalarField::zero(),
+            Some(-public_point.x),
+        );
+        self.constrain_to_constant(
+            point.y,
+            P::ScalarField::zero(),
+            Some(-public_point.y),
+        );
     }
 }
 
-impl<F, P> StandardComposer<F, P>
+impl<P, EmbeddedBaseField, EmbeddedCurveParameters> StandardComposer<P>
 where
-    F: PrimeField,
-    P: TEModelParameters<BaseField = F>,
+    EmbeddedBaseField: PrimeField,
+    EmbeddedCurveParameters: SWModelParameters<BaseField = EmbeddedBaseField>,
+    P: CircuitParameters<
+        ScalarField = EmbeddedBaseField,
+        EmbeddedCurve = SWEmbeddedCurve<P>,
+        EmbeddedCurveParameters = EmbeddedCurveParameters,
+    >,
+{
+    /// Converts an embeded curve point into a constraint system Point
+    /// without constraining the values
+    pub fn add_affine_sw(
+        &mut self,
+        affine: SWGroupAffine<EmbeddedCurveParameters>,
+    ) -> Point {
+        Point::new(self.add_input(affine.x), self.add_input(affine.y))
+    }
+
+    /// Converts an embeded curve point into a constraint system Point
+    /// without constraining the values
+    pub fn add_public_affine_sw(
+        &mut self,
+        affine: SWGroupAffine<EmbeddedCurveParameters>,
+    ) -> Point {
+        let point = self.add_affine_sw(affine);
+        self.constrain_to_constant(
+            point.x,
+            P::ScalarField::zero(),
+            Some(-affine.x),
+        );
+        self.constrain_to_constant(
+            point.y,
+            P::ScalarField::zero(),
+            Some(-affine.y),
+        );
+        point
+    }
+
+    /// Add the provided affine point as a circuit description and return its
+    /// constrained witness value
+    pub fn add_affine_to_circuit_description_sw(
+        &mut self,
+        affine: SWGroupAffine<EmbeddedCurveParameters>,
+    ) -> Point {
+        // NOTE: Not using individual gates because one of these may be zero.
+        Point::new(
+            self.add_witness_to_circuit_description(affine.x),
+            self.add_witness_to_circuit_description(affine.y),
+        )
+    }
+
+    /// Asserts that a [`Point`] in the circuit is equal to a known public
+    /// point.
+    pub fn assert_equal_public_point_sw(
+        &mut self,
+        point: Point,
+        public_point: SWGroupAffine<EmbeddedCurveParameters>,
+    ) {
+        self.constrain_to_constant(
+            point.x,
+            P::ScalarField::zero(),
+            Some(-public_point.x),
+        );
+        self.constrain_to_constant(
+            point.y,
+            P::ScalarField::zero(),
+            Some(-public_point.y),
+        );
+    }
+}
+
+impl<P> StandardComposer<P>
+where
+    P: CircuitParameters,
 {
     /// Asserts that a point in the circuit is equal to another point in the
     /// circuit.
-    pub fn assert_equal_point(&mut self, lhs: Point<P>, rhs: Point<P>) {
+    pub fn assert_equal_point(&mut self, lhs: Point, rhs: Point) {
         self.assert_equal(lhs.x, rhs.x);
         self.assert_equal(lhs.y, rhs.y);
     }
@@ -144,10 +229,10 @@ where
     /// See: [`StandardComposer::boolean_gate`].
     pub fn conditional_point_select(
         &mut self,
-        point_1: Point<P>,
-        point_0: Point<P>,
+        point_1: Point,
+        point_0: Point,
         bit: Variable,
-    ) -> Point<P> {
+    ) -> Point {
         Point::new(
             self.conditional_select(bit, point_1.x, point_0.x),
             self.conditional_select(bit, point_1.y, point_0.y),
@@ -165,15 +250,16 @@ where
     pub fn conditional_point_neg(
         &mut self,
         bit: Variable,
-        point_b: Point<P>,
-    ) -> Point<P> {
+        point_b: Point,
+    ) -> Point {
         let zero = self.zero_var;
         let x = point_b.x;
         let y = point_b.y;
 
         // negation of point (x, y) is (-x, y)
         let x_neg = self.arithmetic_gate(|gate| {
-            gate.witness(x, zero, None).add(-F::one(), F::zero())
+            gate.witness(x, zero, None)
+                .add(-P::ScalarField::one(), P::ScalarField::zero())
         });
 
         let x_updated = self.conditional_select(bit, x_neg, x);
@@ -197,8 +283,8 @@ where
     fn conditional_select_identity(
         &mut self,
         bit: Variable,
-        point: Point<P>,
-    ) -> Point<P> {
+        point: Point,
+    ) -> Point {
         Point::new(
             self.conditional_select_zero(bit, point.x),
             self.conditional_select_one(bit, point.y),
@@ -210,27 +296,24 @@ where
 mod test {
     use super::*;
     use crate::{
-        batch_test, commitment::HomomorphicCommitment,
-        constraint_system::helper::*,
+        batch_test, batch_test_embedded, constraint_system::helper::*,
+        parameters::test::*, parameters::EmbeddedCurve,
     };
-    use ark_bls12_377::Bls12_377;
-    use ark_bls12_381::Bls12_381;
+    use ark_ff::One;
 
-    fn test_conditional_select_point<F, P, PC>()
+    fn test_conditional_select_point<P>()
     where
-        F: PrimeField,
-        P: TEModelParameters<BaseField = F>,
-        PC: HomomorphicCommitment<F>,
+        P: CircuitParameters,
     {
-        let res = gadget_tester::<F, P, PC>(
-            |composer: &mut StandardComposer<F, P>| {
-                let bit_1 = composer.add_input(F::one());
+        let res = gadget_tester::<P>(
+            |composer: &mut StandardComposer<P>| {
+                let bit_1 = composer.add_input(P::ScalarField::one());
                 let bit_0 = composer.zero_var();
 
-                let point_a = Point::<P>::identity(composer);
+                let point_a = P::EmbeddedCurve::identity(composer);
                 let point_b = Point::new(
-                    composer.add_input(F::from(10u64)),
-                    composer.add_input(F::from(20u64)),
+                    composer.add_input(P::ScalarField::from(10u64)),
+                    composer.add_input(P::ScalarField::from(20u64)),
                 );
 
                 let choice =
@@ -247,19 +330,30 @@ mod test {
         assert!(res.is_ok());
     }
 
-    fn test_conditional_point_neg<F, P, PC>()
+    fn test_conditional_point_neg<
+        P,
+        EmbeddedBaseField,
+        EmbeddedCurveParameters,
+    >()
     where
-        F: PrimeField,
-        P: TEModelParameters<BaseField = F>,
-        PC: HomomorphicCommitment<F>,
+        EmbeddedBaseField: PrimeField,
+        EmbeddedCurveParameters:
+            TEModelParameters<BaseField = EmbeddedBaseField>,
+        P: CircuitParameters<
+            ScalarField = EmbeddedBaseField,
+            EmbeddedCurve = TEEmbeddedCurve<P>,
+            EmbeddedCurveParameters = EmbeddedCurveParameters,
+        >,
     {
-        gadget_tester::<F, P, PC>(
-            |composer: &mut StandardComposer<F, P>| {
-                let bit_1 = composer.add_input(F::one());
+        gadget_tester::<P>(
+            |composer: &mut StandardComposer<P>| {
+                let bit_1 = composer.add_input(P::ScalarField::one());
                 let bit_0 = composer.zero_var();
 
-                let point =
-                    TEGroupAffine::<P>::new(F::from(10u64), F::from(20u64));
+                let point = TEGroupAffine::<EmbeddedCurveParameters>::new(
+                    P::ScalarField::from(10u64),
+                    P::ScalarField::from(20u64),
+                );
                 let point_var = Point::new(
                     composer.add_input(point.x),
                     composer.add_input(point.y),
@@ -281,24 +375,20 @@ mod test {
     // Bls12-381 tests
     batch_test!(
         [
-            test_conditional_select_point,
-            test_conditional_point_neg
+            test_conditional_select_point
+
         ],
-        [] => (
-            Bls12_381,
-            ark_ed_on_bls12_381::EdwardsParameters
-        )
+        [] => [
+            Bls12_381_KZG, Bls12_381_IPA, Bls12_377_KZG, Bls12_377_IPA
+        ]
     );
 
-    // Bls12-377 tests
-    batch_test!(
+    batch_test_embedded!(
         [
-            test_conditional_select_point,
             test_conditional_point_neg
         ],
-        [] => (
-            Bls12_377,
-            ark_ed_on_bls12_377::EdwardsParameters
-        )
+        [] => [
+            Bls12_381_KZG, Bls12_381_IPA, Bls12_377_KZG, Bls12_377_IPA
+        ]
     );
 }

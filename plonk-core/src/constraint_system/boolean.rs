@@ -6,14 +6,15 @@
 
 //! Boolean Gates
 
-use crate::constraint_system::{StandardComposer, Variable};
-use ark_ec::ModelParameters;
-use ark_ff::PrimeField;
+use crate::{
+    constraint_system::{StandardComposer, Variable},
+    parameters::CircuitParameters,
+};
+use ark_ff::{One, Zero};
 
-impl<F, P> StandardComposer<F, P>
+impl<P> StandardComposer<P>
 where
-    F: PrimeField,
-    P: ModelParameters<BaseField = F>,
+    P: CircuitParameters,
 {
     /// Adds a boolean constraint (also known as binary constraint) where
     /// the gate eq. will enforce that the [`Variable`] received is either `0`
@@ -28,19 +29,19 @@ where
         self.w_o.push(a);
         self.w_4.push(self.zero_var);
 
-        self.q_m.push(F::one());
-        self.q_l.push(F::zero());
-        self.q_r.push(F::zero());
-        self.q_o.push(-F::one());
-        self.q_c.push(F::zero());
-        self.q_4.push(F::zero());
-        self.q_arith.push(F::one());
+        self.q_m.push(P::ScalarField::one());
+        self.q_l.push(P::ScalarField::zero());
+        self.q_r.push(P::ScalarField::zero());
+        self.q_o.push(-P::ScalarField::one());
+        self.q_c.push(P::ScalarField::zero());
+        self.q_4.push(P::ScalarField::zero());
+        self.q_arith.push(P::ScalarField::one());
 
-        self.q_range.push(F::zero());
-        self.q_logic.push(F::zero());
-        self.q_fixed_group_add.push(F::zero());
-        self.q_variable_group_add.push(F::zero());
-        self.q_lookup.push(F::zero());
+        self.q_range.push(P::ScalarField::zero());
+        self.q_logic.push(P::ScalarField::zero());
+        self.q_fixed_group_add.push(P::ScalarField::zero());
+        self.q_variable_group_add.push(P::ScalarField::zero());
+        self.q_lookup.push(P::ScalarField::zero());
 
         self.perm
             .add_variables_to_map(a, a, a, self.zero_var, self.n);
@@ -55,23 +56,17 @@ where
 mod test {
     use super::*;
     use crate::{
-        batch_test, commitment::HomomorphicCommitment,
-        constraint_system::helper::*,
+        batch_test, constraint_system::helper::*, parameters::test::*,
     };
-    use ark_bls12_377::Bls12_377;
-    use ark_bls12_381::Bls12_381;
-    use ark_ec::TEModelParameters;
 
-    fn test_correct_bool_gate<F, P, PC>()
+    fn test_correct_bool_gate<P>()
     where
-        F: PrimeField,
-        P: TEModelParameters<BaseField = F>,
-        PC: HomomorphicCommitment<F>,
+        P: CircuitParameters,
     {
-        let res = gadget_tester::<F, P, PC>(
-            |composer: &mut StandardComposer<F, P>| {
+        let res = gadget_tester::<P>(
+            |composer: &mut StandardComposer<P>| {
                 let zero = composer.zero_var();
-                let one = composer.add_input(F::one());
+                let one = composer.add_input(P::ScalarField::one());
                 composer.boolean_gate(zero);
                 composer.boolean_gate(one);
             },
@@ -80,16 +75,14 @@ mod test {
         assert!(res.is_ok())
     }
 
-    fn test_incorrect_bool_gate<F, P, PC>()
+    fn test_incorrect_bool_gate<P>()
     where
-        F: PrimeField,
-        P: TEModelParameters<BaseField = F>,
-        PC: HomomorphicCommitment<F>,
+        P: CircuitParameters,
     {
-        let res = gadget_tester::<F, P, PC>(
-            |composer: &mut StandardComposer<F, P>| {
-                let zero = composer.add_input(F::from(5u64));
-                let one = composer.add_input(F::one());
+        let res = gadget_tester::<P>(
+            |composer: &mut StandardComposer<P>| {
+                let zero = composer.add_input(P::ScalarField::from(5u64));
+                let one = composer.add_input(P::ScalarField::one());
                 composer.boolean_gate(zero);
                 composer.boolean_gate(one);
             },
@@ -104,18 +97,8 @@ mod test {
             test_correct_bool_gate,
             test_incorrect_bool_gate
         ],
-        [] => (
-            Bls12_381, ark_ed_on_bls12_381::EdwardsParameters
-        )
-    );
-
-    // Test for Bls12_377
-    batch_test!(
-        [
-            test_correct_bool_gate,
-            test_incorrect_bool_gate
-        ],
-        [] => (
-            Bls12_377, ark_ed_on_bls12_377::EdwardsParameters        )
+        [] => [
+            Bls12_381_KZG, Bls12_381_IPA, Bls12_377_KZG, Bls12_377_IPA
+        ]
     );
 }

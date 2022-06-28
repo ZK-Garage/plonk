@@ -6,9 +6,11 @@
 
 //! Simple Arithmetic Gates
 
-use crate::constraint_system::{StandardComposer, Variable};
-use ark_ec::TEModelParameters;
-use ark_ff::PrimeField;
+use crate::{
+    constraint_system::{StandardComposer, Variable},
+    parameters::CircuitParameters,
+};
+use ark_ff::{One, PrimeField, Zero};
 
 #[derive(Debug, Clone, Copy)]
 pub struct ArithmeticGate<F>
@@ -94,18 +96,19 @@ where
     }
 }
 
-impl<F, P> StandardComposer<F, P>
+impl<P> StandardComposer<P>
 where
-    F: PrimeField,
-    P: TEModelParameters<BaseField = F>,
+    P: CircuitParameters,
 {
     /// Function used to generate any arithmetic gate with fan-in-2 or fan-in-3.
     pub fn arithmetic_gate<Fn>(&mut self, func: Fn) -> Variable
     where
-        Fn: FnOnce(&mut ArithmeticGate<F>) -> &mut ArithmeticGate<F>,
+        Fn: FnOnce(
+            &mut ArithmeticGate<P::ScalarField>,
+        ) -> &mut ArithmeticGate<P::ScalarField>,
     {
         let gate = {
-            let mut gate = ArithmeticGate::<F>::new();
+            let mut gate = ArithmeticGate::<P::ScalarField>::new();
             func(&mut gate).build()
         };
 
@@ -113,7 +116,9 @@ where
             panic!("Missing left and right wire witnesses")
         }
 
-        let (q4, w4) = gate.fan_in_3.unwrap_or((F::zero(), self.zero_var));
+        let (q4, w4) = gate
+            .fan_in_3
+            .unwrap_or((P::ScalarField::zero(), self.zero_var));
         self.w_4.push(w4);
         self.q_4.push(q4);
 
@@ -128,12 +133,12 @@ where
         self.q_o.push(gate.out_selector);
         self.q_c.push(gate.const_selector);
 
-        self.q_arith.push(F::one());
-        self.q_range.push(F::zero());
-        self.q_logic.push(F::zero());
-        self.q_fixed_group_add.push(F::zero());
-        self.q_variable_group_add.push(F::zero());
-        self.q_lookup.push(F::zero());
+        self.q_arith.push(P::ScalarField::one());
+        self.q_range.push(P::ScalarField::zero());
+        self.q_logic.push(P::ScalarField::zero());
+        self.q_fixed_group_add.push(P::ScalarField::zero());
+        self.q_variable_group_add.push(P::ScalarField::zero());
+        self.q_lookup.push(P::ScalarField::zero());
 
         if let Some(pi) = gate.pi {
             self.public_inputs.insert(self.n, pi);
@@ -170,43 +175,39 @@ where
 mod test {
     use super::*;
     use crate::{
-        batch_test, commitment::HomomorphicCommitment,
-        constraint_system::helper::*,
+        batch_test, constraint_system::helper::*, parameters::test::*,
     };
-    use ark_bls12_377::Bls12_377;
-    use ark_bls12_381::Bls12_381;
+    use ark_ff::One;
 
-    fn test_public_inputs<F, P, PC>()
+    fn test_public_inputs<P>()
     where
-        F: PrimeField,
-        P: TEModelParameters<BaseField = F>,
-        PC: HomomorphicCommitment<F>,
+        P: CircuitParameters,
     {
-        let res = gadget_tester::<F, P, PC>(
-            |composer: &mut StandardComposer<F, P>| {
-                let var_one = composer.add_input(F::one());
+        let res = gadget_tester::<P>(
+            |composer: &mut StandardComposer<P>| {
+                let var_one = composer.add_input(P::ScalarField::one());
 
                 let should_be_three = composer.arithmetic_gate(|gate| {
                     gate.witness(var_one, var_one, None)
-                        .add(F::one(), F::one())
-                        .pi(F::one())
+                        .add(P::ScalarField::one(), P::ScalarField::one())
+                        .pi(P::ScalarField::one())
                 });
 
                 composer.constrain_to_constant(
                     should_be_three,
-                    F::from(3u64),
+                    P::ScalarField::from(3u64),
                     None,
                 );
 
                 let should_be_four = composer.arithmetic_gate(|gate| {
                     gate.witness(var_one, var_one, None)
-                        .add(F::one(), F::one())
-                        .pi(F::from(2u64))
+                        .add(P::ScalarField::one(), P::ScalarField::one())
+                        .pi(P::ScalarField::from(2u64))
                 });
 
                 composer.constrain_to_constant(
                     should_be_four,
-                    F::from(4u64),
+                    P::ScalarField::from(4u64),
                     None,
                 );
             },
@@ -215,30 +216,28 @@ mod test {
         assert!(res.is_ok(), "{:?}", res.err().unwrap());
     }
 
-    fn test_correct_add_mul_gate<F, P, PC>()
+    fn test_correct_add_mul_gate<P>()
     where
-        F: PrimeField,
-        P: TEModelParameters<BaseField = F>,
-        PC: HomomorphicCommitment<F>,
+        P: CircuitParameters,
     {
-        let res = gadget_tester::<F, P, PC>(
-            |composer: &mut StandardComposer<F, P>| {
+        let res = gadget_tester::<P>(
+            |composer: &mut StandardComposer<P>| {
                 // Verify that (4+5+5) * (6+7+7) = 280
-                let four = composer.add_input(F::from(4u64));
-                let five = composer.add_input(F::from(5u64));
-                let six = composer.add_input(F::from(6u64));
-                let seven = composer.add_input(F::from(7u64));
+                let four = composer.add_input(P::ScalarField::from(4u64));
+                let five = composer.add_input(P::ScalarField::from(5u64));
+                let six = composer.add_input(P::ScalarField::from(6u64));
+                let seven = composer.add_input(P::ScalarField::from(7u64));
 
                 let fourteen = composer.arithmetic_gate(|gate| {
                     gate.witness(four, five, None)
-                        .add(F::one(), F::one())
-                        .pi(F::from(5u64))
+                        .add(P::ScalarField::one(), P::ScalarField::one())
+                        .pi(P::ScalarField::from(5u64))
                 });
 
                 let twenty = composer.arithmetic_gate(|gate| {
                     gate.witness(six, seven, None)
-                        .add(F::one(), F::one())
-                        .fan_in_3(F::one(), seven)
+                        .add(P::ScalarField::one(), P::ScalarField::one())
+                        .fan_in_3(P::ScalarField::one(), seven)
                 });
 
                 // There are quite a few ways to check the equation is correct,
@@ -249,97 +248,104 @@ mod test {
                 // is public, we can also constrain the output wire of the mul
                 // gate to it. This is what this test does
                 let output = composer.arithmetic_gate(|gate| {
-                    gate.witness(fourteen, twenty, None).mul(F::one())
+                    gate.witness(fourteen, twenty, None)
+                        .mul(P::ScalarField::one())
                 });
 
-                composer.constrain_to_constant(output, F::from(280u64), None);
+                composer.constrain_to_constant(
+                    output,
+                    P::ScalarField::from(280u64),
+                    None,
+                );
             },
             200,
         );
         assert!(res.is_ok(), "{:?}", res.err().unwrap());
     }
 
-    fn test_correct_add_gate<F, P, PC>()
+    fn test_correct_add_gate<P>()
     where
-        F: PrimeField,
-        P: TEModelParameters<BaseField = F>,
-        PC: HomomorphicCommitment<F>,
+        P: CircuitParameters,
     {
-        let res = gadget_tester::<F, P, PC>(
-            |composer: &mut StandardComposer<F, P>| {
+        let res = gadget_tester::<P>(
+            |composer: &mut StandardComposer<P>| {
                 let zero = composer.zero_var();
-                let one = composer.add_input(F::one());
+                let one = composer.add_input(P::ScalarField::one());
 
                 let c = composer.arithmetic_gate(|gate| {
                     gate.witness(one, zero, None)
-                        .add(F::one(), F::one())
-                        .constant(F::from(2u64))
+                        .add(P::ScalarField::one(), P::ScalarField::one())
+                        .constant(P::ScalarField::from(2u64))
                 });
 
-                composer.constrain_to_constant(c, F::from(3u64), None);
+                composer.constrain_to_constant(
+                    c,
+                    P::ScalarField::from(3u64),
+                    None,
+                );
             },
             32,
         );
         assert!(res.is_ok(), "{:?}", res.err().unwrap());
     }
 
-    fn test_correct_big_add_mul_gate<F, P, PC>()
+    fn test_correct_big_add_mul_gate<P>()
     where
-        F: PrimeField,
-        P: TEModelParameters<BaseField = F>,
-        PC: HomomorphicCommitment<F>,
+        P: CircuitParameters,
     {
-        let res = gadget_tester::<F, P, PC>(
-            |composer: &mut StandardComposer<F, P>| {
+        let res = gadget_tester::<P>(
+            |composer: &mut StandardComposer<P>| {
                 // Verify that (4+5+5) * (6+7+7) + (8*9) = 352
-                let four = composer.add_input(F::from(4u64));
-                let five = composer.add_input(F::from(5u64));
-                let six = composer.add_input(F::from(6u64));
-                let seven = composer.add_input(F::from(7u64));
-                let nine = composer.add_input(F::from(9u64));
+                let four = composer.add_input(P::ScalarField::from(4u64));
+                let five = composer.add_input(P::ScalarField::from(5u64));
+                let six = composer.add_input(P::ScalarField::from(6u64));
+                let seven = composer.add_input(P::ScalarField::from(7u64));
+                let nine = composer.add_input(P::ScalarField::from(9u64));
 
                 let fourteen = composer.arithmetic_gate(|gate| {
                     gate.witness(four, five, None)
-                        .add(F::one(), F::one())
-                        .fan_in_3(F::one(), five)
+                        .add(P::ScalarField::one(), P::ScalarField::one())
+                        .fan_in_3(P::ScalarField::one(), five)
                 });
 
                 let twenty = composer.arithmetic_gate(|gate| {
                     gate.witness(six, seven, None)
-                        .add(F::one(), F::one())
-                        .fan_in_3(F::one(), seven)
+                        .add(P::ScalarField::one(), P::ScalarField::one())
+                        .fan_in_3(P::ScalarField::one(), seven)
                 });
 
                 let output = composer.arithmetic_gate(|gate| {
                     gate.witness(fourteen, twenty, None)
-                        .mul(F::one())
-                        .fan_in_3(F::from(8u64), nine)
+                        .mul(P::ScalarField::one())
+                        .fan_in_3(P::ScalarField::from(8u64), nine)
                 });
 
-                composer.constrain_to_constant(output, F::from(352u64), None);
+                composer.constrain_to_constant(
+                    output,
+                    P::ScalarField::from(352u64),
+                    None,
+                );
             },
             200,
         );
         assert!(res.is_ok());
     }
 
-    fn test_correct_big_arith_gate<F, P, PC>()
+    fn test_correct_big_arith_gate<P>()
     where
-        F: PrimeField,
-        P: TEModelParameters<BaseField = F>,
-        PC: HomomorphicCommitment<F>,
+        P: CircuitParameters,
     {
-        let res = gadget_tester::<F, P, PC>(
-            |composer: &mut StandardComposer<F, P>| {
+        let res = gadget_tester::<P>(
+            |composer: &mut StandardComposer<P>| {
                 // Verify that (4*5)*6 + 4*7 + 5*8 + 9*10 + 11 = 289
-                let a = composer.add_input(F::from(4u64));
-                let b = composer.add_input(F::from(5u64));
-                let q_m = F::from(6u64);
-                let q_l = F::from(7u64);
-                let q_r = F::from(8u64);
-                let d = composer.add_input(F::from(9u64));
-                let q_4 = F::from(10u64);
-                let q_c = F::from(11u64);
+                let a = composer.add_input(P::ScalarField::from(4u64));
+                let b = composer.add_input(P::ScalarField::from(5u64));
+                let q_m = P::ScalarField::from(6u64);
+                let q_l = P::ScalarField::from(7u64);
+                let q_r = P::ScalarField::from(8u64);
+                let d = composer.add_input(P::ScalarField::from(9u64));
+                let q_4 = P::ScalarField::from(10u64);
+                let q_c = P::ScalarField::from(11u64);
 
                 let output = composer.arithmetic_gate(|gate| {
                     gate.witness(a, b, None)
@@ -349,30 +355,32 @@ mod test {
                         .constant(q_c)
                 });
 
-                composer.constrain_to_constant(output, F::from(289u64), None);
+                composer.constrain_to_constant(
+                    output,
+                    P::ScalarField::from(289u64),
+                    None,
+                );
             },
             200,
         );
         assert!(res.is_ok());
     }
 
-    fn test_incorrect_big_arith_gate<F, P, PC>()
+    fn test_incorrect_big_arith_gate<P>()
     where
-        F: PrimeField,
-        P: TEModelParameters<BaseField = F>,
-        PC: HomomorphicCommitment<F>,
+        P: CircuitParameters,
     {
-        let res = gadget_tester::<F, P, PC>(
-            |composer: &mut StandardComposer<F, P>| {
+        let res = gadget_tester::<P>(
+            |composer: &mut StandardComposer<P>| {
                 // Verify that (4*5)*6 + 4*7 + 5*8 + 9*12 + 11 != 289
-                let a = composer.add_input(F::from(4u64));
-                let b = composer.add_input(F::from(5u64));
-                let q_m = F::from(6u64);
-                let q_l = F::from(7u64);
-                let q_r = F::from(8u64);
-                let d = composer.add_input(F::from(9u64));
-                let q_4 = F::from(12u64);
-                let q_c = F::from(11u64);
+                let a = composer.add_input(P::ScalarField::from(4u64));
+                let b = composer.add_input(P::ScalarField::from(5u64));
+                let q_m = P::ScalarField::from(6u64);
+                let q_l = P::ScalarField::from(7u64);
+                let q_r = P::ScalarField::from(8u64);
+                let d = composer.add_input(P::ScalarField::from(9u64));
+                let q_4 = P::ScalarField::from(12u64);
+                let q_c = P::ScalarField::from(11u64);
 
                 let output = composer.arithmetic_gate(|gate| {
                     gate.witness(a, b, None)
@@ -382,40 +390,48 @@ mod test {
                         .constant(q_c)
                 });
 
-                composer.constrain_to_constant(output, F::from(289u64), None);
+                composer.constrain_to_constant(
+                    output,
+                    P::ScalarField::from(289u64),
+                    None,
+                );
             },
             200,
         );
         assert!(res.is_err());
     }
 
-    fn test_incorrect_add_mul_gate<F, P, PC>()
+    fn test_incorrect_add_mul_gate<P>()
     where
-        F: PrimeField,
-        P: TEModelParameters<BaseField = F>,
-        PC: HomomorphicCommitment<F>,
+        P: CircuitParameters,
     {
-        let res = gadget_tester::<F, P, PC>(
-            |composer: &mut StandardComposer<F, P>| {
+        let res = gadget_tester::<P>(
+            |composer: &mut StandardComposer<P>| {
                 // Verify that (5+5) * (6+7) != 117
-                let five = composer.add_input(F::from(5u64));
-                let six = composer.add_input(F::from(6u64));
-                let seven = composer.add_input(F::from(7u64));
+                let five = composer.add_input(P::ScalarField::from(5u64));
+                let six = composer.add_input(P::ScalarField::from(6u64));
+                let seven = composer.add_input(P::ScalarField::from(7u64));
 
                 let five_plus_five = composer.arithmetic_gate(|gate| {
-                    gate.witness(five, five, None).add(F::one(), F::one())
+                    gate.witness(five, five, None)
+                        .add(P::ScalarField::one(), P::ScalarField::one())
                 });
 
                 let six_plus_seven = composer.arithmetic_gate(|gate| {
-                    gate.witness(six, seven, None).add(F::one(), F::one())
+                    gate.witness(six, seven, None)
+                        .add(P::ScalarField::one(), P::ScalarField::one())
                 });
 
                 let output = composer.arithmetic_gate(|gate| {
                     gate.witness(five_plus_five, six_plus_seven, None)
-                        .add(F::one(), F::one())
+                        .add(P::ScalarField::one(), P::ScalarField::one())
                 });
 
-                composer.constrain_to_constant(output, F::from(117u64), None);
+                composer.constrain_to_constant(
+                    output,
+                    P::ScalarField::from(117u64),
+                    None,
+                );
             },
             200,
         );
@@ -433,24 +449,8 @@ mod test {
             test_incorrect_add_mul_gate,
             test_incorrect_big_arith_gate
         ],
-        [] => (
-            Bls12_381, ark_ed_on_bls12_381::EdwardsParameters
-        )
-    );
-
-    // Bls12-377 tests
-    batch_test!(
-        [
-            test_public_inputs,
-            test_correct_add_mul_gate,
-            test_correct_add_gate,
-            test_correct_big_add_mul_gate,
-            test_correct_big_arith_gate,
-            test_incorrect_add_mul_gate,
-            test_incorrect_big_arith_gate
-        ],
-        [] => (
-            Bls12_377, ark_ed_on_bls12_377::EdwardsParameters
-        )
+        [] => [
+            Bls12_381_KZG, Bls12_381_IPA, Bls12_377_KZG, Bls12_377_IPA
+        ]
     );
 }

@@ -4,8 +4,10 @@
 //
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
-use crate::error::Error;
-use crate::lookup::{LookupTable, MultiSet};
+use crate::{
+    error::Error,
+    lookup::{LookupTable, MultiSet},
+};
 use ark_ff::Field;
 
 /// This witness table contains queries to a lookup table for lookup gates.

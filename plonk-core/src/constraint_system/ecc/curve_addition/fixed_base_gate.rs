@@ -6,17 +6,18 @@
 
 //! Fixed-Base Curve Addition Gate
 
-use crate::constraint_system::{StandardComposer, Variable};
-use ark_ec::models::TEModelParameters;
-use ark_ff::PrimeField;
-
+use crate::{
+    constraint_system::{StandardComposer, Variable},
+    parameters::CircuitParameters,
+};
+use ark_ff::{One, PrimeField, Zero};
 /// Contains all of the components needed to verify that a bit scalar
 /// multiplication was computed correctly.
 #[derive(derivative::Derivative)]
 #[derivative(Clone, Copy, Debug)]
-pub struct WnafRound<P>
+pub struct WnafRound<F>
 where
-    P: TEModelParameters,
+    F: PrimeField,
 {
     /// This is the accumulated x coordinate point that we wish to add (so
     /// far, it depends on where you are in the scalar mul) it is linked to
@@ -37,20 +38,19 @@ where
 
     /// This is the possible x co-ordinate of the wnaf point we are going to
     /// add Actual x-co-ordinate = b_i * x_\beta
-    pub x_beta: P::BaseField,
+    pub x_beta: F,
 
     /// This is the possible y co-ordinate of the wnaf point we are going to
     /// add Actual y coordinate = (b_i)^2 [y_\beta -1] + 1
-    pub y_beta: P::BaseField,
+    pub y_beta: F,
 
     /// This is the multiplication of x_\beta * y_\beta
-    pub xy_beta: P::BaseField,
+    pub xy_beta: F,
 }
 
-impl<F, P> StandardComposer<F, P>
+impl<P> StandardComposer<P>
 where
-    F: PrimeField,
-    P: TEModelParameters<BaseField = F>,
+    P: CircuitParameters,
 {
     /// Generates a new structure for preparing a [`WnafRound`] ROUND.
     pub(crate) fn new_wnaf(
@@ -58,10 +58,10 @@ where
         acc_y: Variable,
         accumulated_bit: Variable,
         xy_alpha: Variable,
-        x_beta: F,
-        y_beta: F,
-        xy_beta: F,
-    ) -> WnafRound<P> {
+        x_beta: P::ScalarField,
+        y_beta: P::ScalarField,
+        xy_beta: P::ScalarField,
+    ) -> WnafRound<P::ScalarField> {
         WnafRound {
             acc_x,
             acc_y,
@@ -74,7 +74,10 @@ where
     }
 
     /// Fixed group addition of a point.
-    pub(crate) fn fixed_group_add(&mut self, wnaf_round: WnafRound<P>) {
+    pub(crate) fn fixed_group_add(
+        &mut self,
+        wnaf_round: WnafRound<P::ScalarField>,
+    ) {
         self.w_l.push(wnaf_round.acc_x);
         self.w_r.push(wnaf_round.acc_y);
         self.w_o.push(wnaf_round.xy_alpha);
@@ -84,16 +87,16 @@ where
         self.q_r.push(wnaf_round.y_beta);
 
         self.q_c.push(wnaf_round.xy_beta);
-        self.q_o.push(F::zero());
-        self.q_fixed_group_add.push(F::one());
-        self.q_variable_group_add.push(F::zero());
+        self.q_o.push(P::ScalarField::zero());
+        self.q_fixed_group_add.push(P::ScalarField::one());
+        self.q_variable_group_add.push(P::ScalarField::zero());
 
-        self.q_m.push(F::zero());
-        self.q_4.push(F::zero());
-        self.q_arith.push(F::zero());
-        self.q_range.push(F::zero());
-        self.q_logic.push(F::zero());
-        self.q_lookup.push(F::zero());
+        self.q_m.push(P::ScalarField::zero());
+        self.q_4.push(P::ScalarField::zero());
+        self.q_arith.push(P::ScalarField::zero());
+        self.q_range.push(P::ScalarField::zero());
+        self.q_logic.push(P::ScalarField::zero());
+        self.q_lookup.push(P::ScalarField::zero());
 
         self.perm.add_variables_to_map(
             wnaf_round.acc_x,

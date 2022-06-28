@@ -825,34 +825,33 @@ impl Permutation {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::{batch_test_field, batch_test_field_params};
     use crate::{
-        constraint_system::StandardComposer, util::EvaluationDomainExt,
+        batch_test, batch_test_field,
+        constraint_system::StandardComposer,
+        parameters::{test::*, CircuitParameters},
+        util::EvaluationDomainExt,
     };
     use ark_bls12_377::Bls12_377;
     use ark_bls12_381::Bls12_381;
-    use ark_ec::TEModelParameters;
-    use ark_ff::{Field, PrimeField};
-    use ark_poly::univariate::DensePolynomial;
-    use ark_poly::Polynomial;
+    use ark_ff::{Field, One, UniformRand, Zero};
+    use ark_poly::{univariate::DensePolynomial, Polynomial};
     use rand_core::OsRng;
 
-    fn test_multizip_permutation_poly<F, P>()
+    fn test_multizip_permutation_poly<P>()
     where
-        F: PrimeField,
-        P: TEModelParameters<BaseField = F>,
+        P: CircuitParameters,
     {
-        let mut cs: StandardComposer<F, P> =
-            StandardComposer::<F, P>::with_expected_size(4);
+        let mut cs: StandardComposer<P> =
+            StandardComposer::<P>::with_expected_size(4);
 
-        let zero = F::zero();
-        let one = F::one();
+        let zero = P::ScalarField::zero();
+        let one = P::ScalarField::one();
         let two = one + one;
 
-        let x1 = cs.add_input(F::from(4u64));
-        let x2 = cs.add_input(F::from(12u64));
-        let x3 = cs.add_input(F::from(8u64));
-        let x4 = cs.add_input(F::from(3u64));
+        let x1 = cs.add_input(P::ScalarField::from(4u64));
+        let x2 = cs.add_input(P::ScalarField::from(12u64));
+        let x3 = cs.add_input(P::ScalarField::from(8u64));
+        let x4 = cs.add_input(P::ScalarField::from(3u64));
 
         // x1 * x4 = x2
         cs.poly_gate(x1, x4, x2, one, zero, zero, -one, zero, None);
@@ -867,16 +866,17 @@ mod test {
         cs.poly_gate(x3, x4, x2, one, zero, zero, -two, zero, None);
 
         let domain =
-            GeneralEvaluationDomain::<F>::new(cs.circuit_bound()).unwrap();
+            GeneralEvaluationDomain::<P::ScalarField>::new(cs.circuit_bound())
+                .unwrap();
 
-        let pad = vec![F::zero(); domain.size() - cs.w_l.len()];
-        let mut w_l_scalar: Vec<F> =
+        let pad = vec![P::ScalarField::zero(); domain.size() - cs.w_l.len()];
+        let mut w_l_scalar: Vec<P::ScalarField> =
             cs.w_l.iter().map(|v| cs.variables[v]).collect();
-        let mut w_r_scalar: Vec<F> =
+        let mut w_r_scalar: Vec<P::ScalarField> =
             cs.w_r.iter().map(|v| cs.variables[v]).collect();
-        let mut w_o_scalar: Vec<F> =
+        let mut w_o_scalar: Vec<P::ScalarField> =
             cs.w_o.iter().map(|v| cs.variables[v]).collect();
-        let mut w_4_scalar: Vec<F> =
+        let mut w_4_scalar: Vec<P::ScalarField> =
             cs.w_4.iter().map(|v| cs.variables[v]).collect();
 
         w_l_scalar.extend(&pad);
@@ -884,17 +884,17 @@ mod test {
         w_o_scalar.extend(&pad);
         w_4_scalar.extend(&pad);
 
-        let sigmas: Vec<Vec<F>> = cs
+        let sigmas: Vec<Vec<P::ScalarField>> = cs
             .perm
             .compute_sigma_permutations(cs.circuit_bound())
             .iter()
             .map(|wd| cs.perm.compute_permutation_lagrange(wd, &domain))
             .collect();
 
-        let beta = F::rand(&mut OsRng);
-        let gamma = F::rand(&mut OsRng);
+        let beta = P::ScalarField::rand(&mut OsRng);
+        let gamma = P::ScalarField::rand(&mut OsRng);
 
-        let sigma_polys: Vec<DensePolynomial<F>> = sigmas
+        let sigma_polys: Vec<DensePolynomial<P::ScalarField>> = sigmas
             .iter()
             .map(|v| DensePolynomial::from_coefficients_vec(domain.ifft(v)))
             .collect();
@@ -1404,24 +1404,11 @@ mod test {
     );
 
     // Test on Bls12-381
-    batch_test_field_params!(
+    batch_test!(
         [test_multizip_permutation_poly
         ],
-        []
-        => (
-            Bls12_381,
-            ark_ed_on_bls12_381::EdwardsParameters
-        )
-    );
-
-    // Test on Bls12-377
-    batch_test_field_params!(
-        [test_multizip_permutation_poly
-        ],
-        []
-        => (
-            Bls12_377,
-            ark_ed_on_bls12_377::EdwardsParameters
-        )
+        [] => [
+            Bls12_381_KZG, Bls12_377_KZG
+        ]
     );
 }

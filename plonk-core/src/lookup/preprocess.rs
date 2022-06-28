@@ -4,34 +4,39 @@
 //
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
-use crate::commitment::HomomorphicCommitment;
-use crate::error::{to_pc_error, Error};
-use crate::lookup::{LookupTable, MultiSet};
-use ark_ff::PrimeField;
-use ark_poly::domain::EvaluationDomain;
-use ark_poly::polynomial::univariate::DensePolynomial;
+use crate::{
+    error::{to_pc_error, Error},
+    lookup::{LookupTable, MultiSet},
+    parameters::CircuitParameters,
+};
+use ark_poly::{
+    domain::EvaluationDomain, polynomial::univariate::DensePolynomial,
+};
+use ark_poly_commit::PolynomialCommitment;
 
 /// This table will be the preprocessed version of the precomputed table,
 /// T, with arity 4. This structure is passed to the proof alongside the
 /// table of witness values.
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct PreprocessedLookupTable<F, PC>
+pub struct PreprocessedLookupTable<P>
 where
-    F: PrimeField,
-    PC: HomomorphicCommitment<F>,
+    P: CircuitParameters,
 {
     /// This is the circuit size
     pub n: u32,
 
     /// Vector of columns in the preprocessed table containing a
     /// `MultiSet`, `Commitment` and `DensePolynomial`.
-    pub(crate) t: Vec<(MultiSet<F>, PC::Commitment, DensePolynomial<F>)>,
+    pub(crate) t: Vec<(
+        MultiSet<P::ScalarField>,
+        P::Commitment,
+        DensePolynomial<P::ScalarField>,
+    )>,
 }
 
-impl<F, PC> PreprocessedLookupTable<F, PC>
+impl<P> PreprocessedLookupTable<P>
 where
-    F: PrimeField,
-    PC: HomomorphicCommitment<F>,
+    P: CircuitParameters,
 {
     /// This function takes in a precomputed look up table and
     /// pads it to the length of the circuit entries, as a power
@@ -40,8 +45,8 @@ where
     /// outputted struct will be used in the proof alongside our
     /// circuit witness table.
     pub fn preprocess(
-        table: &LookupTable<F>,
-        commit_key: &PC::CommitterKey,
+        table: &LookupTable<P::ScalarField>,
+        commit_key: &P::CommitterKey,
         n: u32,
     ) -> Result<Self, Error> {
         assert!(n.is_power_of_two());
@@ -60,8 +65,12 @@ where
                     None,
                     None,
                 );
-                let commitment = PC::commit(commit_key, &[labeled_poly], None)
-                    .map_err(to_pc_error::<F, PC>)?;
+                let commitment = P::PolynomialCommitment::commit(
+                    commit_key,
+                    &[labeled_poly],
+                    None,
+                )
+                .map_err(to_pc_error::<P>)?;
                 Ok((column, commitment.0[0].commitment().clone(), poly))
             })
             .collect::<Result<_, Error>>()?;
@@ -72,35 +81,33 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::batch_test;
-    use crate::commitment::HomomorphicCommitment;
-    use crate::lookup::{LookupTable, PreprocessedLookupTable};
-    use ark_bls12_377::Bls12_377;
-    use ark_bls12_381::Bls12_381;
-    use ark_ec::TEModelParameters;
+    use crate::{
+        batch_test,
+        lookup::{LookupTable, PreprocessedLookupTable},
+        parameters::test::*,
+    };
     use rand_core::OsRng;
 
     /// This function creates a table and preprocesses it. Then it checks that
     /// all table columns are the same length.
-    fn test_table_preprocessing<F, P, PC>()
+    fn test_table_preprocessing<P>()
     where
-        F: PrimeField,
-        P: TEModelParameters<BaseField = F>,
-        PC: HomomorphicCommitment<F>,
+        P: CircuitParameters,
     {
-        let pp = PC::setup(32, None, &mut OsRng)
-            .map_err(to_pc_error::<F, PC>)
+        let pp = P::PolynomialCommitment::setup(32, None, &mut OsRng)
+            .map_err(to_pc_error::<P>)
             .unwrap();
-        let (_committer_key, _) = PC::trim(&pp, 32, 0, None)
-            .map_err(to_pc_error::<F, PC>)
-            .unwrap();
+        let (_committer_key, _) =
+            P::PolynomialCommitment::trim(&pp, 32, 0, None)
+                .map_err(to_pc_error::<P>)
+                .unwrap();
 
         // Commit Key
-        let (ck, _) = PC::trim(&pp, 32, 0, None)
-            .map_err(to_pc_error::<F, PC>)
+        let (ck, _) = P::PolynomialCommitment::trim(&pp, 32, 0, None)
+            .map_err(to_pc_error::<P>)
             .unwrap();
 
-        let mut table: LookupTable<F> = LookupTable::new();
+        let mut table: LookupTable<P::ScalarField> = LookupTable::new();
 
         (0..11).for_each(|_a| {
             table.insert_xor_row(19u64, 6u64, 64u64);
@@ -108,8 +115,7 @@ mod test {
         });
 
         let preprocessed_table =
-            PreprocessedLookupTable::<F, PC>::preprocess(&table, &ck, 32)
-                .unwrap();
+            PreprocessedLookupTable::<P>::preprocess(&table, &ck, 32).unwrap();
 
         preprocessed_table.t.iter().for_each(|column| {
             assert!(preprocessed_table.n as usize == column.0.len());
@@ -121,20 +127,8 @@ mod test {
         [
             test_table_preprocessing
         ],
-        [] => (
-            Bls12_381,
-            ark_ed_on_bls12_381::EdwardsParameters
-        )
-    );
-
-    // Bls12-377 tests
-    batch_test!(
-        [
-            test_table_preprocessing
-        ],
-        [] => (
-            Bls12_377,
-            ark_ed_on_bls12_377::EdwardsParameters
-        )
+        [] => [
+            Bls12_381_KZG, Bls12_381_IPA, Bls12_377_KZG, Bls12_377_IPA
+        ]
     );
 }

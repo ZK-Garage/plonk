@@ -8,3 +8,4 @@
 
 mod fixed_base_gate;
 mod variable_base_gate;
+mod variable_base_gate_sw;

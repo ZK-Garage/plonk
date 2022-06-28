@@ -6,28 +6,26 @@
 
 use super::StandardComposer;
 use crate::{
-    commitment::HomomorphicCommitment,
     error::{to_pc_error, Error},
+    parameters::CircuitParameters,
     proof_system::{Prover, Verifier},
 };
-use ark_ec::TEModelParameters;
-use ark_ff::PrimeField;
+use ark_ff::One;
+use ark_poly_commit::PolynomialCommitment;
 use rand_core::OsRng;
 
 /// Adds dummy constraints using arithmetic gates.
 #[allow(dead_code)]
-pub(crate) fn dummy_gadget<F, P>(
-    n: usize,
-    composer: &mut StandardComposer<F, P>,
-) where
-    F: PrimeField,
-    P: TEModelParameters<BaseField = F>,
+pub(crate) fn dummy_gadget<P>(n: usize, composer: &mut StandardComposer<P>)
+where
+    P: CircuitParameters,
 {
-    let one = F::one();
+    let one = P::ScalarField::one();
     let var_one = composer.add_input(one);
     for _ in 0..n {
         composer.arithmetic_gate(|gate| {
-            gate.witness(var_one, var_one, None).add(F::one(), F::one())
+            gate.witness(var_one, var_one, None)
+                .add(P::ScalarField::one(), P::ScalarField::one())
         });
     }
 }
@@ -35,23 +33,22 @@ pub(crate) fn dummy_gadget<F, P>(
 /// Takes a generic gadget function with no auxillary input and tests whether it
 /// passes an end-to-end test.
 #[allow(dead_code)]
-pub(crate) fn gadget_tester<F, P, PC>(
-    gadget: fn(&mut StandardComposer<F, P>),
+pub(crate) fn gadget_tester<P>(
+    gadget: fn(&mut StandardComposer<P>),
     n: usize,
-) -> Result<crate::proof_system::Proof<F, PC>, Error>
+) -> Result<crate::proof_system::Proof<P>, Error>
 where
-    F: PrimeField,
-    P: TEModelParameters<BaseField = F>,
-    PC: HomomorphicCommitment<F>,
+    P: CircuitParameters,
 {
     // Common View
     let universal_params =
-        PC::setup(2 * n, None, &mut OsRng).map_err(to_pc_error::<F, PC>)?;
+        P::PolynomialCommitment::setup(2 * n, None, &mut OsRng)
+            .map_err(to_pc_error::<P>)?;
 
     // Provers View
     let (proof, public_inputs) = {
         // Create a prover struct
-        let mut prover = Prover::<F, P, PC>::new(b"demo");
+        let mut prover = Prover::<P>::new(b"demo");
 
         // Additionally key the transcript
         prover.key_transcript(b"key", b"additional seed information");
@@ -60,9 +57,13 @@ where
         gadget(prover.mut_cs());
 
         // Commit Key
-        let (ck, _) =
-            PC::trim(&universal_params, prover.circuit_bound(), 0, None)
-                .map_err(to_pc_error::<F, PC>)?;
+        let (ck, _) = P::PolynomialCommitment::trim(
+            &universal_params,
+            prover.circuit_bound(),
+            0,
+            None,
+        )
+        .map_err(to_pc_error::<P>)?;
 
         // Preprocess circuit
         prover.preprocess(&ck)?;
@@ -86,9 +87,13 @@ where
     gadget(verifier.mut_cs());
 
     // Compute Commit and Verifier Key
-    let (ck, vk) =
-        PC::trim(&universal_params, verifier.circuit_bound(), 0, None)
-            .map_err(to_pc_error::<F, PC>)?;
+    let (ck, vk) = P::PolynomialCommitment::trim(
+        &universal_params,
+        verifier.circuit_bound(),
+        0,
+        None,
+    )
+    .map_err(to_pc_error::<P>)?;
 
     // Preprocess circuit
     verifier.preprocess(&ck)?;

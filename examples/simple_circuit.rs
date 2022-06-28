@@ -9,19 +9,23 @@
 //! PLONK Example
 
 use ark_bls12_381::{Bls12_381, Fr as BlsScalar};
-use ark_ec::models::twisted_edwards_extended::GroupAffine;
-use ark_ec::{AffineCurve, ProjectiveCurve, TEModelParameters};
+use ark_ec::{
+    models::twisted_edwards_extended::GroupAffine, AffineCurve,
+    ProjectiveCurve, TEModelParameters,
+};
 use ark_ed_on_bls12_381::{
     EdwardsParameters as JubJubParameters, Fr as JubJubScalar,
 };
-use ark_ff::PrimeField;
+use ark_ff::{FftField, PrimeField};
 use ark_poly::polynomial::univariate::DensePolynomial;
 use ark_poly_commit::{sonic_pc::SonicKZG10, PolynomialCommitment};
 use plonk::error::to_pc_error;
-use plonk_core::circuit::{verify_proof, Circuit};
-use plonk_core::constraint_system::StandardComposer;
-use plonk_core::error::Error;
-use plonk_core::prelude::*;
+use plonk_core::{
+    circuit::{verify_proof, Circuit},
+    constraint_system::StandardComposer,
+    error::Error,
+    prelude::*,
+};
 use rand_core::OsRng;
 
 fn main() -> Result<(), Error> {
@@ -33,11 +37,10 @@ fn main() -> Result<(), Error> {
     // 5) JubJub::GENERATOR * e(JubJubScalar) = f where F is a PI
     #[derive(derivative::Derivative)]
     #[derivative(Debug(bound = ""), Default(bound = ""))]
-    pub struct TestCircuit<F, P>
-    where
-        F: PrimeField,
+    pub struct TestCircuit<
+        F: FftField + PrimeField,
         P: TEModelParameters<BaseField = F>,
-    {
+    > {
         a: F,
         b: F,
         c: F,
@@ -46,16 +49,23 @@ fn main() -> Result<(), Error> {
         f: GroupAffine<P>,
     }
 
-    impl<F, P> Circuit<F, P> for TestCircuit<F, P>
+    impl<P, EmbeddedBaseField, EmbeddedCurveParameters> Circuit<P>
+        for TestCircuit<EmbeddedBaseField, EmbeddedCurveParameters>
     where
-        F: PrimeField,
-        P: TEModelParameters<BaseField = F>,
+        EmbeddedBaseField: PrimeField,
+        EmbeddedCurveParameters:
+            TEModelParameters<BaseField = EmbeddedBaseField>,
+        P: CircuitParameters<
+            ScalarField = EmbeddedBaseField,
+            EmbeddedCurve = TEEmbeddedCurve<P>,
+            EmbeddedCurveParameters = EmbeddedCurveParameters,
+        >,
     {
         const CIRCUIT_ID: [u8; 32] = [0xff; 32];
 
         fn gadget(
             &mut self,
-            composer: &mut StandardComposer<F, P>,
+            composer: &mut StandardComposer<P>,
         ) -> Result<(), Error> {
             let a = composer.add_input(self.a);
             let b = composer.add_input(self.b);
@@ -64,7 +74,7 @@ fn main() -> Result<(), Error> {
             // Make first constraint a + b = c (as public input)
             composer.arithmetic_gate(|gate| {
                 gate.witness(a, b, Some(zero))
-                    .add(F::one(), F::one())
+                    .add(EmbeddedBaseField::one(), EmbeddedBaseField::one())
                     .pi(-self.c)
             });
 
@@ -73,11 +83,15 @@ fn main() -> Result<(), Error> {
             composer.range_gate(b, 1 << 5);
             // Make second constraint a * b = d
             composer.arithmetic_gate(|gate| {
-                gate.witness(a, b, Some(zero)).mul(F::one()).pi(-self.d)
+                gate.witness(a, b, Some(zero))
+                    .mul(EmbeddedBaseField::one())
+                    .pi(-self.d)
             });
-            let e =
-                composer.add_input(from_embedded_curve_scalar::<F, P>(self.e));
-            let (x, y) = P::AFFINE_GENERATOR_COEFFS;
+            let e = composer.add_input(from_embedded_curve_scalar::<
+                EmbeddedBaseField,
+                EmbeddedCurveParameters,
+            >(self.e));
+            let (x, y) = EmbeddedCurveParameters::AFFINE_GENERATOR_COEFFS;
             let generator = GroupAffine::new(x, y);
             let scalar_mul_result =
                 composer.fixed_base_scalar_mul(e, generator);
@@ -93,12 +107,12 @@ fn main() -> Result<(), Error> {
 
     // Generate CRS
     type PC = SonicKZG10<Bls12_381, DensePolynomial<BlsScalar>>;
-    let pp = PC::setup(1 << 10, None, &mut OsRng)
-        .map_err(to_pc_error::<BlsScalar, PC>)?;
+    type P = plonk_core::parameters::test::Bls12_381_KZG;
+    let pp = PC::setup(1 << 10, None, &mut OsRng).map_err(to_pc_error::<P>)?;
 
     let mut circuit = TestCircuit::<BlsScalar, JubJubParameters>::default();
     // Compile the circuit
-    let (pk_p, vk) = circuit.compile::<PC>(&pp)?;
+    let (pk_p, vk) = circuit.compile(&pp)?;
 
     let (x, y) = JubJubParameters::AFFINE_GENERATOR_COEFFS;
     let generator: GroupAffine<JubJubParameters> = GroupAffine::new(x, y);
@@ -116,12 +130,12 @@ fn main() -> Result<(), Error> {
                 e: JubJubScalar::from(2u64),
                 f: point_f_pi,
             };
-        circuit.gen_proof::<PC>(&pp, pk_p, b"Test")
+        circuit.gen_proof(&pp, pk_p, b"Test")
     }?;
 
     // Verifier POV
     let verifier_data = VerifierData::new(vk, pi);
-    verify_proof::<BlsScalar, JubJubParameters, PC>(
+    verify_proof::<P>(
         &pp,
         verifier_data.key,
         &proof,

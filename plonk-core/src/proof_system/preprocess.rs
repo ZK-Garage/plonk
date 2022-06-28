@@ -7,20 +7,19 @@
 //! Methods to preprocess the constraint system for use in a proof.
 
 use crate::{
-    commitment::HomomorphicCommitment,
     constraint_system::StandardComposer,
     error::{to_pc_error, Error},
     label_polynomial,
     lookup::PreprocessedLookupTable,
+    parameters::CircuitParameters,
     proof_system::{widget, ProverKey},
 };
-use ark_ec::TEModelParameters;
-use ark_ff::{FftField, PrimeField};
+use ark_ff::{FftField, One, Zero};
 use ark_poly::{
     polynomial::univariate::DensePolynomial, EvaluationDomain, Evaluations,
     GeneralEvaluationDomain, UVPolynomial,
 };
-use core::marker::PhantomData;
+use ark_poly_commit::PolynomialCommitment;
 use merlin::Transcript;
 
 /// Struct that contains all of the selector and permutation [`Polynomial`]s in
@@ -49,10 +48,9 @@ where
     fourth_sigma: DensePolynomial<F>,
 }
 
-impl<F, P> StandardComposer<F, P>
+impl<P> StandardComposer<P>
 where
-    F: PrimeField,
-    P: TEModelParameters<BaseField = F>,
+    P: CircuitParameters,
 {
     /// Pads the circuit to the next power of two.
     ///
@@ -60,7 +58,7 @@ where
     /// `diff` is the difference between circuit size and next power of two.
     fn pad(&mut self, diff: usize) {
         // Add a zero variable to circuit
-        let zero_scalar = F::zero();
+        let zero_scalar = P::ScalarField::zero();
         let zero_var = self.zero_var();
 
         let zeroes_scalar = vec![zero_scalar; diff];
@@ -113,33 +111,24 @@ where
             Err(Error::MismatchedPolyLen)
         }
     }
-}
-impl<F, P> StandardComposer<F, P>
-where
-    F: PrimeField,
-    P: TEModelParameters<BaseField = F>,
-{
+
     /// These are the parts of preprocessing that the prover must compute
     /// Although the prover does not need the verification key, he must compute
     /// the commitments in order to seed the transcript, allowing both the
     /// prover and verifier to have the same view
-    pub fn preprocess_prover<PC>(
+    pub fn preprocess_prover(
         &mut self,
-        commit_key: &PC::CommitterKey,
+        commit_key: &P::CommitterKey,
         transcript: &mut Transcript,
-        _pc: PhantomData<PC>,
-    ) -> Result<ProverKey<F>, Error>
-    where
-        PC: HomomorphicCommitment<F>,
-    {
+    ) -> Result<ProverKey<P::ScalarField>, Error> {
         let (_, selectors, domain, preprocessed_table) =
-            self.preprocess_shared(commit_key, transcript, _pc)?;
+            self.preprocess_shared(commit_key, transcript)?;
 
         let domain_4n =
             GeneralEvaluationDomain::new(4 * domain.size()).ok_or(Error::InvalidEvalDomainSize {
                 log_size_of_group: (4 * domain.size()).trailing_zeros(),
                 adicity:
-                    <<F as FftField>::FftParams as ark_ff::FftParameters>::TWO_ADICITY,
+                    <<P::ScalarField as FftField>::FftParams as ark_ff::FftParameters>::TWO_ADICITY,
             })?;
         let q_m_eval_4n = Evaluations::from_vec_and_domain(
             domain_4n.coset_fft(&selectors.q_m),
@@ -207,7 +196,8 @@ where
         );
         // XXX: Remove this and compute it on the fly
         let linear_eval_4n = Evaluations::from_vec_and_domain(
-            domain_4n.coset_fft(&[F::zero(), F::one()]),
+            domain_4n
+                .coset_fft(&[P::ScalarField::zero(), P::ScalarField::one()]),
             domain_4n,
         );
 
@@ -245,17 +235,13 @@ where
     /// The verifier only requires the commitments in order to verify a
     /// [`Proof`](super::Proof) We can therefore speed up preprocessing for the
     /// verifier by skipping the FFTs needed to compute the 4n evaluations.
-    pub fn preprocess_verifier<PC>(
+    pub fn preprocess_verifier(
         &mut self,
-        commit_key: &PC::CommitterKey,
+        commit_key: &P::CommitterKey,
         transcript: &mut Transcript,
-        _pc: PhantomData<PC>,
-    ) -> Result<widget::VerifierKey<F, PC>, Error>
-    where
-        PC: HomomorphicCommitment<F>,
-    {
+    ) -> Result<widget::VerifierKey<P>, Error> {
         let (verifier_key, _, _, _) =
-            self.preprocess_shared(commit_key, transcript, _pc)?;
+            self.preprocess_shared(commit_key, transcript)?;
         Ok(verifier_key)
     }
 
@@ -264,30 +250,26 @@ where
     /// polynomials in order to commit to them and have the same transcript
     /// view.
     #[allow(clippy::type_complexity)] // FIXME: Add struct for prover side (last two tuple items).
-    fn preprocess_shared<PC>(
+    fn preprocess_shared(
         &mut self,
-        commit_key: &PC::CommitterKey,
+        commit_key: &P::CommitterKey,
         transcript: &mut Transcript,
-        _pc: PhantomData<PC>,
     ) -> Result<
         (
-            widget::VerifierKey<F, PC>,
-            SelectorPolynomials<F>,
-            GeneralEvaluationDomain<F>,
-            PreprocessedLookupTable<F, PC>,
+            widget::VerifierKey<P>,
+            SelectorPolynomials<P::ScalarField>,
+            GeneralEvaluationDomain<P::ScalarField>,
+            PreprocessedLookupTable<P>,
         ),
         Error,
-    >
-    where
-        PC: HomomorphicCommitment<F>,
-    {
+    > {
         let domain = GeneralEvaluationDomain::new(self.circuit_bound()).ok_or(Error::InvalidEvalDomainSize {
             log_size_of_group: (self.circuit_bound()).trailing_zeros(),
             adicity:
-                <<F as FftField>::FftParams as ark_ff::FftParameters>::TWO_ADICITY,
+                <<P::ScalarField as FftField>::FftParams as ark_ff::FftParameters>::TWO_ADICITY,
         })?;
 
-        let preprocessed_table = PreprocessedLookupTable::<F, PC>::preprocess(
+        let preprocessed_table = PreprocessedLookupTable::<P>::preprocess(
             &self.lookup_table,
             commit_key,
             domain.size() as u32,
@@ -300,42 +282,42 @@ where
         // 1. Pad circuit to a power of two
         self.pad(domain.size() as usize - self.n);
 
-        let q_m_poly: DensePolynomial<F> =
+        let q_m_poly: DensePolynomial<P::ScalarField> =
             DensePolynomial::from_coefficients_vec(domain.ifft(&self.q_m));
 
-        let q_r_poly: DensePolynomial<F> =
+        let q_r_poly: DensePolynomial<P::ScalarField> =
             DensePolynomial::from_coefficients_vec(domain.ifft(&self.q_r));
 
-        let q_l_poly: DensePolynomial<F> =
+        let q_l_poly: DensePolynomial<P::ScalarField> =
             DensePolynomial::from_coefficients_vec(domain.ifft(&self.q_l));
 
-        let q_o_poly: DensePolynomial<F> =
+        let q_o_poly: DensePolynomial<P::ScalarField> =
             DensePolynomial::from_coefficients_vec(domain.ifft(&self.q_o));
 
-        let q_c_poly: DensePolynomial<F> =
+        let q_c_poly: DensePolynomial<P::ScalarField> =
             DensePolynomial::from_coefficients_vec(domain.ifft(&self.q_c));
 
-        let q_4_poly: DensePolynomial<F> =
+        let q_4_poly: DensePolynomial<P::ScalarField> =
             DensePolynomial::from_coefficients_vec(domain.ifft(&self.q_4));
 
-        let q_arith_poly: DensePolynomial<F> =
+        let q_arith_poly: DensePolynomial<P::ScalarField> =
             DensePolynomial::from_coefficients_vec(domain.ifft(&self.q_arith));
 
-        let q_range_poly: DensePolynomial<F> =
+        let q_range_poly: DensePolynomial<P::ScalarField> =
             DensePolynomial::from_coefficients_vec(domain.ifft(&self.q_range));
 
-        let q_logic_poly: DensePolynomial<F> =
+        let q_logic_poly: DensePolynomial<P::ScalarField> =
             DensePolynomial::from_coefficients_vec(domain.ifft(&self.q_logic));
 
-        let q_lookup_poly: DensePolynomial<F> =
+        let q_lookup_poly: DensePolynomial<P::ScalarField> =
             DensePolynomial::from_coefficients_vec(domain.ifft(&self.q_lookup));
 
-        let q_fixed_group_add_poly: DensePolynomial<F> =
+        let q_fixed_group_add_poly: DensePolynomial<P::ScalarField> =
             DensePolynomial::from_coefficients_vec(
                 domain.ifft(&self.q_fixed_group_add),
             );
 
-        let q_variable_group_add_poly: DensePolynomial<F> =
+        let q_variable_group_add_poly: DensePolynomial<P::ScalarField> =
             DensePolynomial::from_coefficients_vec(
                 domain.ifft(&self.q_variable_group_add),
             );
@@ -348,7 +330,7 @@ where
             fourth_sigma_poly,
         ) = self.perm.compute_sigma_polynomials(self.n, &domain);
 
-        let (commitments, _) = PC::commit(
+        let (commitments, _) = P::PolynomialCommitment::commit(
             commit_key,
             [
                 label_polynomial!(q_m_poly),
@@ -371,7 +353,7 @@ where
             .iter(),
             None,
         )
-        .map_err(to_pc_error::<F, PC>)?;
+        .map_err(to_pc_error::<P>)?;
 
         let verifier_key = widget::VerifierKey::from_polynomial_commitments(
             self.n,
@@ -454,18 +436,17 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::{batch_test_field_params, constraint_system::helper::*};
-    use ark_bls12_377::Bls12_377;
-    use ark_bls12_381::Bls12_381;
+    use crate::{
+        batch_test, constraint_system::helper::*, parameters::test::*,
+    };
 
     /// Tests that the circuit gets padded to the correct length.
     // FIXME: We can do this test without dummy_gadget method.
-    fn test_pad<F, P>()
+    fn test_pad<P>()
     where
-        F: PrimeField,
-        P: TEModelParameters<BaseField = F>,
+        P: CircuitParameters,
     {
-        let mut composer: StandardComposer<F, P> = StandardComposer::new();
+        let mut composer: StandardComposer<P> = StandardComposer::new();
         dummy_gadget(100, &mut composer);
 
         // Pad the circuit to next power of two
@@ -491,20 +472,12 @@ mod test {
     }
 
     // Bls12-381 tests
-    batch_test_field_params!(
+    batch_test!(
         [test_pad],
-        [] => (
-            Bls12_381,
-            ark_ed_on_bls12_381::EdwardsParameters
-        )
+        [] => [
+            Bls12_381_KZG ,Bls12_377_KZG
+        ]
     );
 
     // Bls12-377 tests
-    batch_test_field_params!(
-        [test_pad],
-        [] => (
-            Bls12_377,
-            ark_ed_on_bls12_377::EdwardsParameters
-        )
-    );
 }

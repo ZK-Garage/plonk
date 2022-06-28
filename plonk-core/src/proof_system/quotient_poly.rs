@@ -6,69 +6,62 @@
 
 use crate::{
     error::Error,
+    parameters::CircuitParameters,
     proof_system::{
-        ecc::{CurveAddition, FixedBaseScalarMul},
-        logic::Logic,
-        range::Range,
-        widget::GateConstraint,
-        ProverKey,
+        logic::Logic, range::Range, widget::GateConstraint, ProverKey,
     },
 };
-use ark_ec::TEModelParameters;
-use ark_ff::{FftField, PrimeField};
+use ark_ff::{FftField, Field, One, PrimeField};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, GeneralEvaluationDomain,
     UVPolynomial,
 };
 
 use super::{
-    ecc::{CAVals, FBSMVals},
-    linearisation_poly::CustomEvaluations,
-    logic::LogicVals,
-    range::RangeVals,
+    linearisation_poly::CustomEvaluations, logic::LogicVals, range::RangeVals,
     CustomValues, WitnessValues,
 };
 
 /// Computes the Quotient [`DensePolynomial`] given the [`EvaluationDomain`], a
 /// [`ProverKey`], and some other info.
-pub fn compute<F, P>(
-    domain: &GeneralEvaluationDomain<F>,
-    prover_key: &ProverKey<F>,
-    z_poly: &DensePolynomial<F>,
-    z2_poly: &DensePolynomial<F>,
-    w_l_poly: &DensePolynomial<F>,
-    w_r_poly: &DensePolynomial<F>,
-    w_o_poly: &DensePolynomial<F>,
-    w_4_poly: &DensePolynomial<F>,
-    public_inputs_poly: &DensePolynomial<F>,
-    f_poly: &DensePolynomial<F>,
-    table_poly: &DensePolynomial<F>,
-    h1_poly: &DensePolynomial<F>,
-    h2_poly: &DensePolynomial<F>,
-    alpha: &F,
-    beta: &F,
-    gamma: &F,
-    delta: &F,
-    epsilon: &F,
-    zeta: &F,
-    range_challenge: &F,
-    logic_challenge: &F,
-    fixed_base_challenge: &F,
-    var_base_challenge: &F,
-    lookup_challenge: &F,
-) -> Result<DensePolynomial<F>, Error>
+pub fn compute<P>(
+    domain: &GeneralEvaluationDomain<P::ScalarField>,
+    prover_key: &ProverKey<P::ScalarField>,
+    z_poly: &DensePolynomial<P::ScalarField>,
+    z2_poly: &DensePolynomial<P::ScalarField>,
+    w_l_poly: &DensePolynomial<P::ScalarField>,
+    w_r_poly: &DensePolynomial<P::ScalarField>,
+    w_o_poly: &DensePolynomial<P::ScalarField>,
+    w_4_poly: &DensePolynomial<P::ScalarField>,
+    public_inputs_poly: &DensePolynomial<P::ScalarField>,
+    f_poly: &DensePolynomial<P::ScalarField>,
+    table_poly: &DensePolynomial<P::ScalarField>,
+    h1_poly: &DensePolynomial<P::ScalarField>,
+    h2_poly: &DensePolynomial<P::ScalarField>,
+    alpha: &P::ScalarField,
+    beta: &P::ScalarField,
+    gamma: &P::ScalarField,
+    delta: &P::ScalarField,
+    epsilon: &P::ScalarField,
+    zeta: &P::ScalarField,
+    range_challenge: &P::ScalarField,
+    logic_challenge: &P::ScalarField,
+    fixed_base_challenge: &P::ScalarField,
+    var_base_challenge: &P::ScalarField,
+    lookup_challenge: &P::ScalarField,
+) -> Result<DensePolynomial<P::ScalarField>, Error>
 where
-    F: PrimeField,
-    P: TEModelParameters<BaseField = F>,
+    P: CircuitParameters,
 {
-    let domain_4n = GeneralEvaluationDomain::<F>::new(4 * domain.size())
+    let domain_4n = GeneralEvaluationDomain::<P::ScalarField>::new(4 * domain.size())
         .ok_or(Error::InvalidEvalDomainSize {
         log_size_of_group: (4 * domain.size()).trailing_zeros(),
         adicity:
-            <<F as FftField>::FftParams as ark_ff::FftParameters>::TWO_ADICITY,
+            <<P::ScalarField as FftField>::FftParams as ark_ff::FftParameters>::TWO_ADICITY,
     })?;
 
-    let l1_poly = compute_first_lagrange_poly_scaled(domain, F::one());
+    let l1_poly =
+        compute_first_lagrange_poly_scaled(domain, P::ScalarField::one());
     let l1_eval_4n = domain_4n.coset_fft(&l1_poly);
 
     let mut z_eval_4n = domain_4n.coset_fft(z_poly);
@@ -119,7 +112,7 @@ where
 
     let h2_eval_4n = domain_4n.coset_fft(h2_poly);
 
-    let gate_constraints = compute_gate_constraint_satisfiability::<F, P>(
+    let gate_constraints = compute_gate_constraint_satisfiability::<P>(
         domain,
         *range_challenge,
         *logic_challenge,
@@ -133,7 +126,7 @@ where
         public_inputs_poly,
     )?;
 
-    let permutation = compute_permutation_checks::<F>(
+    let permutation = compute_permutation_checks::<P::ScalarField>(
         domain,
         prover_key,
         &wl_eval_4n,
@@ -179,28 +172,27 @@ where
 
 /// Computes contribution to the quotient polynomial that ensures
 /// the gate constraints are satisfied.
-fn compute_gate_constraint_satisfiability<F, P>(
-    domain: &GeneralEvaluationDomain<F>,
-    range_challenge: F,
-    logic_challenge: F,
-    fixed_base_challenge: F,
-    var_base_challenge: F,
-    prover_key: &ProverKey<F>,
-    wl_eval_4n: &[F],
-    wr_eval_4n: &[F],
-    wo_eval_4n: &[F],
-    w4_eval_4n: &[F],
-    pi_poly: &DensePolynomial<F>,
-) -> Result<Vec<F>, Error>
+fn compute_gate_constraint_satisfiability<P>(
+    domain: &GeneralEvaluationDomain<P::ScalarField>,
+    range_challenge: P::ScalarField,
+    logic_challenge: P::ScalarField,
+    fixed_base_challenge: P::ScalarField,
+    var_base_challenge: P::ScalarField,
+    prover_key: &ProverKey<P::ScalarField>,
+    wl_eval_4n: &[P::ScalarField],
+    wr_eval_4n: &[P::ScalarField],
+    wo_eval_4n: &[P::ScalarField],
+    w4_eval_4n: &[P::ScalarField],
+    pi_poly: &DensePolynomial<P::ScalarField>,
+) -> Result<Vec<P::ScalarField>, Error>
 where
-    F: PrimeField,
-    P: TEModelParameters<BaseField = F>,
+    P: CircuitParameters,
 {
-    let domain_4n = GeneralEvaluationDomain::<F>::new(4 * domain.size())
+    let domain_4n = GeneralEvaluationDomain::<P::ScalarField>::new(4 * domain.size())
         .ok_or(Error::InvalidEvalDomainSize {
         log_size_of_group: (4 * domain.size()).trailing_zeros(),
         adicity:
-            <<F as FftField>::FftParams as ark_ff::FftParameters>::TWO_ADICITY,
+            <<P::ScalarField as FftField>::FftParams as ark_ff::FftParameters>::TWO_ADICITY,
     })?;
     let pi_eval_4n = domain_4n.coset_fft(pi_poly);
 
@@ -243,18 +235,18 @@ where
             );
 
             let fixed_base_scalar_mul =
-                FixedBaseScalarMul::<_, P>::quotient_term(
+                P::FixedBaseScalarMul::quotient_term(
                     prover_key.fixed_group_add_selector.1[i],
                     fixed_base_challenge,
                     wit_vals,
-                    FBSMVals::from_evaluations(&custom_vals),
+                    <<P as CircuitParameters>::FixedBaseScalarMul as GateConstraint<P::ScalarField>>::CustomVals::from_evaluations(&custom_vals),
                 );
 
-            let curve_addition = CurveAddition::<_, P>::quotient_term(
+            let curve_addition = P::CurveAddition::quotient_term(
                 prover_key.variable_group_add_selector.1[i],
                 var_base_challenge,
                 wit_vals,
-                CAVals::from_evaluations(&custom_vals),
+                <<P as CircuitParameters>::CurveAddition as GateConstraint<P::ScalarField>>::CustomVals::from_evaluations(&custom_vals),
             );
 
             (arithmetic + pi_eval_4n[i])

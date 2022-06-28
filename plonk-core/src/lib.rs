@@ -44,6 +44,7 @@ pub mod commitment;
 pub mod constraint_system;
 pub mod error;
 pub mod lookup;
+pub mod parameters;
 pub mod prelude;
 pub mod proof_system;
 

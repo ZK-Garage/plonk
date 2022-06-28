@@ -7,8 +7,8 @@
 use crate::{
     error::Error,
     label_eval,
+    parameters::CircuitParameters,
     proof_system::{
-        ecc::{CAVals, CurveAddition, FBSMVals, FixedBaseScalarMul},
         logic::{Logic, LogicVals},
         proof,
         range::{Range, RangeVals},
@@ -17,8 +17,7 @@ use crate::{
     },
     util::EvaluationDomainExt,
 };
-use ark_ec::TEModelParameters;
-use ark_ff::{Field, PrimeField};
+use ark_ff::{Field, One};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, GeneralEvaluationDomain,
     Polynomial,
@@ -161,39 +160,44 @@ where
 }
 
 /// Compute the linearisation polynomial.
-pub fn compute<F, P>(
-    domain: &GeneralEvaluationDomain<F>,
-    prover_key: &ProverKey<F>,
-    alpha: &F,
-    beta: &F,
-    gamma: &F,
-    delta: &F,
-    epsilon: &F,
-    zeta: &F,
-    range_separation_challenge: &F,
-    logic_separation_challenge: &F,
-    fixed_base_separation_challenge: &F,
-    var_base_separation_challenge: &F,
-    lookup_separation_challenge: &F,
-    z_challenge: &F,
-    w_l_poly: &DensePolynomial<F>,
-    w_r_poly: &DensePolynomial<F>,
-    w_o_poly: &DensePolynomial<F>,
-    w_4_poly: &DensePolynomial<F>,
-    t_1_poly: &DensePolynomial<F>,
-    t_2_poly: &DensePolynomial<F>,
-    t_3_poly: &DensePolynomial<F>,
-    t_4_poly: &DensePolynomial<F>,
-    z_poly: &DensePolynomial<F>,
-    z2_poly: &DensePolynomial<F>,
-    f_poly: &DensePolynomial<F>,
-    h1_poly: &DensePolynomial<F>,
-    h2_poly: &DensePolynomial<F>,
-    table_poly: &DensePolynomial<F>,
-) -> Result<(DensePolynomial<F>, ProofEvaluations<F>), Error>
+pub fn compute<P>(
+    domain: &GeneralEvaluationDomain<P::ScalarField>,
+    prover_key: &ProverKey<P::ScalarField>,
+    alpha: &P::ScalarField,
+    beta: &P::ScalarField,
+    gamma: &P::ScalarField,
+    delta: &P::ScalarField,
+    epsilon: &P::ScalarField,
+    zeta: &P::ScalarField,
+    range_separation_challenge: &P::ScalarField,
+    logic_separation_challenge: &P::ScalarField,
+    fixed_base_separation_challenge: &P::ScalarField,
+    var_base_separation_challenge: &P::ScalarField,
+    lookup_separation_challenge: &P::ScalarField,
+    z_challenge: &P::ScalarField,
+    w_l_poly: &DensePolynomial<P::ScalarField>,
+    w_r_poly: &DensePolynomial<P::ScalarField>,
+    w_o_poly: &DensePolynomial<P::ScalarField>,
+    w_4_poly: &DensePolynomial<P::ScalarField>,
+    t_1_poly: &DensePolynomial<P::ScalarField>,
+    t_2_poly: &DensePolynomial<P::ScalarField>,
+    t_3_poly: &DensePolynomial<P::ScalarField>,
+    t_4_poly: &DensePolynomial<P::ScalarField>,
+    z_poly: &DensePolynomial<P::ScalarField>,
+    z2_poly: &DensePolynomial<P::ScalarField>,
+    f_poly: &DensePolynomial<P::ScalarField>,
+    h1_poly: &DensePolynomial<P::ScalarField>,
+    h2_poly: &DensePolynomial<P::ScalarField>,
+    table_poly: &DensePolynomial<P::ScalarField>,
+) -> Result<
+    (
+        DensePolynomial<P::ScalarField>,
+        ProofEvaluations<P::ScalarField>,
+    ),
+    Error,
+>
 where
-    F: PrimeField,
-    P: TEModelParameters<BaseField = F>,
+    P: CircuitParameters,
 {
     let n = domain.size();
     let omega = domain.group_gen();
@@ -266,7 +270,7 @@ where
     //   t_3(X) + z_challenge^3n * t_4(X)]
     let vanishing_poly_eval =
         domain.evaluate_vanishing_polynomial(*z_challenge);
-    let z_challenge_to_n = vanishing_poly_eval + F::one();
+    let z_challenge_to_n = vanishing_poly_eval + P::ScalarField::one();
     let l1_eval = proof::compute_first_lagrange_evaluation(
         domain,
         &vanishing_poly_eval,
@@ -284,7 +288,7 @@ where
         table_next_eval,
     };
 
-    let gate_constraints = compute_gate_constraint_satisfiability::<F, P>(
+    let gate_constraints = compute_gate_constraint_satisfiability::<P>(
         range_separation_challenge,
         logic_separation_challenge,
         fixed_base_separation_challenge,
@@ -332,7 +336,7 @@ where
         * z_challenge_to_n)
         + t_1_poly)
         * vanishing_poly_eval;
-    let negative_quotient_term = &quotient_term * (-F::one());
+    let negative_quotient_term = &quotient_term * (-P::ScalarField::one());
 
     let linearisation_polynomial =
         gate_constraints + permutation + lookup + negative_quotient_term;
@@ -350,19 +354,18 @@ where
 
 /// Computes the gate constraint satisfiability portion of the linearisation
 /// polynomial.
-fn compute_gate_constraint_satisfiability<F, P>(
-    range_separation_challenge: &F,
-    logic_separation_challenge: &F,
-    fixed_base_separation_challenge: &F,
-    var_base_separation_challenge: &F,
-    wire_evals: &WireEvaluations<F>,
-    q_arith_eval: F,
-    custom_evals: &CustomEvaluations<F>,
-    prover_key: &ProverKey<F>,
-) -> DensePolynomial<F>
+fn compute_gate_constraint_satisfiability<P>(
+    range_separation_challenge: &P::ScalarField,
+    logic_separation_challenge: &P::ScalarField,
+    fixed_base_separation_challenge: &P::ScalarField,
+    var_base_separation_challenge: &P::ScalarField,
+    wire_evals: &WireEvaluations<P::ScalarField>,
+    q_arith_eval: P::ScalarField,
+    custom_evals: &CustomEvaluations<P::ScalarField>,
+    prover_key: &ProverKey<P::ScalarField>,
+) -> DensePolynomial<P::ScalarField>
 where
-    F: PrimeField,
-    P: TEModelParameters<BaseField = F>,
+    P: CircuitParameters,
 {
     let wit_vals = WitnessValues {
         a_val: wire_evals.a_eval,
@@ -393,18 +396,28 @@ where
         LogicVals::from_evaluations(custom_evals),
     );
 
-    let fixed_base_scalar_mul = FixedBaseScalarMul::<F, P>::linearisation_term(
+    let fbsm_custom_vals =
+        <<P as CircuitParameters>::FixedBaseScalarMul as GateConstraint<
+            P::ScalarField,
+        >>::CustomVals::from_evaluations(custom_evals);
+
+    let fixed_base_scalar_mul = P::FixedBaseScalarMul::linearisation_term(
         &prover_key.fixed_group_add_selector.0,
         *fixed_base_separation_challenge,
         wit_vals,
-        FBSMVals::from_evaluations(custom_evals),
+        fbsm_custom_vals,
     );
 
-    let curve_addition = CurveAddition::<F, P>::linearisation_term(
+    let ca_custom_vals =
+        <<P as CircuitParameters>::CurveAddition as GateConstraint<
+            P::ScalarField,
+        >>::CustomVals::from_evaluations(custom_evals);
+
+    let curve_addition = P::CurveAddition::linearisation_term(
         &prover_key.variable_group_add_selector.0,
         *var_base_separation_challenge,
         wit_vals,
-        CAVals::from_evaluations(custom_evals),
+        ca_custom_vals,
     );
 
     arithmetic + range + logic + fixed_base_scalar_mul + curve_addition
