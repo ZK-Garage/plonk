@@ -399,7 +399,7 @@ where
     let fbsm_custom_vals =
         <<P as CircuitParameters>::FixedBaseScalarMul as GateConstraint<
             P::ScalarField,
-        >>::CustomVals::from_evaluations(custom_evals); 
+        >>::CustomVals::from_evaluations(custom_evals);
 
     let fixed_base_scalar_mul = P::FixedBaseScalarMul::linearisation_term(
         &prover_key.fixed_group_add_selector.0,
@@ -411,7 +411,7 @@ where
     let ca_custom_vals =
         <<P as CircuitParameters>::CurveAddition as GateConstraint<
             P::ScalarField,
-        >>::CustomVals::from_evaluations(custom_evals); 
+        >>::CustomVals::from_evaluations(custom_evals);
 
     let curve_addition = P::CurveAddition::linearisation_term(
         &prover_key.variable_group_add_selector.0,

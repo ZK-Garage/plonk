@@ -54,12 +54,12 @@ where
         let p1 = SWGroupAffine::<EmbeddedCurveParameters>::new(
             *x_1_scalar,
             *y_1_scalar,
-            false
+            false,
         );
         let p2 = SWGroupAffine::<EmbeddedCurveParameters>::new(
             *x_2_scalar,
             *y_2_scalar,
-            false
+            false,
         );
 
         let point = p1 + p2;
@@ -111,8 +111,10 @@ where
 mod test {
     use super::*;
     use crate::{
-        batch_test_embedded, constraint_system::helper::*,
-        parameters::{test::*, CircuitParameters}, proof_system::ecc::SWEmbeddedCurve,
+        batch_test_embedded,
+        constraint_system::helper::*,
+        parameters::{test::*, CircuitParameters},
+        proof_system::ecc::SWEmbeddedCurve,
     };
 
     fn test_curve_addition<

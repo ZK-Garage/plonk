@@ -19,7 +19,7 @@
 //! base2 bit.
 
 use crate::{
-    parameters::{EmbeddedCurve, CircuitParameters},
+    parameters::{CircuitParameters, EmbeddedCurve},
     proof_system::{
         ecc::{SWEmbeddedCurve, TEEmbeddedCurve},
         linearisation_poly::CustomEvaluations,
@@ -76,7 +76,7 @@ where
 /// Fixed-Base Scalar Multiplication Gate
 #[derive(derivative::Derivative)]
 #[derivative(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
-pub struct FixedBaseScalarMul<P, EC>(PhantomData<(P,EC)>)
+pub struct FixedBaseScalarMul<P, EC>(PhantomData<(P, EC)>)
 where
     P: CircuitParameters,
     EC: EmbeddedCurve<P>;
@@ -178,8 +178,7 @@ where
         wit_vals: WitnessValues<P::ScalarField>,
         custom_vals: Self::CustomVals,
     ) -> P::ScalarField {
-        
-         separation_challenge
+        separation_challenge
     }
 }
 

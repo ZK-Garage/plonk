@@ -7,7 +7,7 @@
 //! Elliptic Curve Point Addition Gate
 
 use crate::{
-    parameters::{EmbeddedCurve, CircuitParameters},
+    parameters::{CircuitParameters, EmbeddedCurve},
     proof_system::{
         ecc::{SWEmbeddedCurve, TEEmbeddedCurve},
         linearisation_poly::CustomEvaluations,
@@ -51,7 +51,7 @@ where
 /// Curve Addition Gate
 #[derive(derivative::Derivative)]
 #[derivative(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
-pub struct CurveAddition<P, EC>(PhantomData<(P,EC)>)
+pub struct CurveAddition<P, EC>(PhantomData<(P, EC)>)
 where
     P: CircuitParameters,
     EC: EmbeddedCurve<P>;
@@ -108,7 +108,6 @@ where
     }
 }
 
-
 impl<P, EmbeddedBaseField, EmbeddedCurveParameters>
     GateConstraint<P::ScalarField> for CurveAddition<P, SWEmbeddedCurve<P>>
 where
@@ -137,15 +136,14 @@ where
 
         let kappa = separation_challenge.square();
 
-        let x1_x2 = x_1-x_2;
-        let x2_x3 = x_2-x_3;
-        let y1_y2 = y_1-y_2;
-        let y2_y3 = y_2+y_3;
+        let x1_x2 = x_1 - x_2;
+        let x2_x3 = x_2 - x_3;
+        let y1_y2 = y_1 - y_2;
+        let y2_y3 = y_2 + y_3;
 
-        let constraint_1 = (x_1 + x_2 + x_3)* x1_x2*x1_x2 - y1_y2*y1_y2;
-        let constraint_2 = x1_x2*y2_y3 - x2_x3*y1_y2;
+        let constraint_1 = (x_1 + x_2 + x_3) * x1_x2 * x1_x2 - y1_y2 * y1_y2;
+        let constraint_2 = x1_x2 * y2_y3 - x2_x3 * y1_y2;
 
-        (constraint_1 + constraint_2*kappa)
-            * separation_challenge
+        (constraint_1 + constraint_2 * kappa) * separation_challenge
     }
 }

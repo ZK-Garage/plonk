@@ -49,7 +49,7 @@ pub struct SWEmbeddedCurve<P>(PhantomData<P>)
 where
     P: CircuitParameters<EmbeddedCurve = Self>;
 
-    impl<P, EmbeddedBaseField, EmbeddedCurveParameters> EmbeddedCurve<P>
+impl<P, EmbeddedBaseField, EmbeddedCurveParameters> EmbeddedCurve<P>
     for SWEmbeddedCurve<P>
 where
     EmbeddedBaseField: PrimeField,

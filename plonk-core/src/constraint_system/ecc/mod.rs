@@ -15,8 +15,9 @@ use crate::{
     proof_system::ecc::{SWEmbeddedCurve, TEEmbeddedCurve},
 };
 use ark_ec::{
-    twisted_edwards_extended::GroupAffine as TEGroupAffine, TEModelParameters,
-    short_weierstrass_jacobian::GroupAffine as SWGroupAffine, SWModelParameters
+    short_weierstrass_jacobian::GroupAffine as SWGroupAffine,
+    twisted_edwards_extended::GroupAffine as TEGroupAffine, SWModelParameters,
+    TEModelParameters,
 };
 use ark_ff::{One, PrimeField, Zero};
 

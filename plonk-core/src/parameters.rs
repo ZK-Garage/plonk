@@ -39,7 +39,7 @@ pub trait EmbeddedCurve<P: CircuitParameters>: Sized {
 pub mod test {
     use super::CircuitParameters;
     use crate::proof_system::ecc::CurveAddition;
-    use crate::proof_system::ecc::FixedBaseScalarMul ;
+    use crate::proof_system::ecc::FixedBaseScalarMul;
     use crate::{
         commitment::{IPA, KZG10},
         proof_system::ecc::{SWEmbeddedCurve, TEEmbeddedCurve},
@@ -86,7 +86,8 @@ pub mod test {
                         Self::ScalarField,
                         DensePolynomial<Self::ScalarField>,
                     >>::CommitterKey;
-                type FixedBaseScalarMul = FixedBaseScalarMul<Self, Self::EmbeddedCurve>;
+                type FixedBaseScalarMul =
+                    FixedBaseScalarMul<Self, Self::EmbeddedCurve>;
                 type CurveAddition = CurveAddition<Self, Self::EmbeddedCurve>;
             }
         };
@@ -127,7 +128,8 @@ pub mod test {
                         Self::ScalarField,
                         DensePolynomial<Self::ScalarField>,
                     >>::CommitterKey;
-                type FixedBaseScalarMul = FixedBaseScalarMul<Self, Self::EmbeddedCurve>;
+                type FixedBaseScalarMul =
+                    FixedBaseScalarMul<Self, Self::EmbeddedCurve>;
                 type CurveAddition = CurveAddition<Self, Self::EmbeddedCurve>;
             }
         };
@@ -147,8 +149,12 @@ pub mod test {
     );
     circuit_params_twisted_edwards!(Bls12_381_IPA, ark_bls12_381::Fr, ark_ed_on_bls12_381::EdwardsParameters, IPA<ark_bls12_381::G1Affine, blake2::Blake2s>);
 
-    circuit_params_short_weierstrass!(BW6_761_KZG, ark_bw6_761::Fr, ark_bls12_377::g1::Parameters, KZG10<ark_bw6_761::BW6_761>);
+    circuit_params_short_weierstrass!(
+        BW6_761_KZG,
+        ark_bw6_761::Fr,
+        ark_bls12_377::g1::Parameters,
+        KZG10<ark_bw6_761::BW6_761>
+    );
     circuit_params_short_weierstrass!(Pallas_IPA, ark_pallas::Fr, ark_vesta::VestaParameters, IPA<ark_pallas::Affine, blake2::Blake2b>);
     circuit_params_short_weierstrass!(Vesta_IPA, ark_vesta::Fr, ark_pallas::PallasParameters, IPA<ark_vesta::Affine, blake2::Blake2b>);
-
 }

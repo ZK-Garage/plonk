@@ -143,10 +143,10 @@ where
 ///                gate.witness(a, b,
 /// Some(zero)).mul(P::ScalarField::one()).pi(-self.d)            });
 ///            let e = composer
-///                .add_input(from_embedded_curve_scalar::<EmbeddedBaseField, EmbeddedCurveParameters>(self.e));
-///             let (x, y) = EmbeddedCurveParameters::AFFINE_GENERATOR_COEFFS;
-///             let generator = GroupAffine::new(x, y);
-///             let scalar_mul_result =
+///                .add_input(from_embedded_curve_scalar::<EmbeddedBaseField,
+/// EmbeddedCurveParameters>(self.e));             let (x, y) =
+/// EmbeddedCurveParameters::AFFINE_GENERATOR_COEFFS;             let generator
+/// = GroupAffine::new(x, y);             let scalar_mul_result =
 ///                composer.fixed_base_scalar_mul(e, generator);
 ///            // Apply the constrain
 ///            composer.assert_equal_public_point(scalar_mul_result, self.f);
