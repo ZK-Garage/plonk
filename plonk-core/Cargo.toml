@@ -64,6 +64,9 @@ merlin = { version = "3.0", default-features = false }
 num-traits = { version = "0.2.14" }
 rand_core = {version = "0.6", default-features=false, features = ["getrandom"] }
 
+ark-marlin = "0.3.0"
+digest = { version = "0.9" }
+
 [dev-dependencies]
 ark-bls12-377 = "0.3"
 ark-bls12-381 = "0.3"
