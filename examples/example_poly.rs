@@ -142,13 +142,18 @@ fn main() -> Result<(), Error> {
     let (pk_p, vk) = circuit.compile::<PC>(&pp)?;
 
     // Prover POV
+    let x = 1u64;
+    let y = 2u64;
+    let z = 5u64;
+    let r = 20u64; 
+    println!("x:{}, y:{}, z:{}, r:{}", x, y, z, r);
     let (proof, pi) = {
         let mut circuit: TestCircuit<BlsScalar, JubJubParameters> =
             TestCircuit {
-                x: BlsScalar::from(1u64),
-                y: BlsScalar::from(2u64),
-                z: BlsScalar::from(5u64),
-                r: BlsScalar::from(10u64),
+                x: BlsScalar::from(x),
+                y: BlsScalar::from(y),
+                z: BlsScalar::from(z),
+                r: BlsScalar::from(r),
                 dummy: JubJubScalar::from(2u64),
             };
         circuit.gen_proof::<PC>(&pp, pk_p, b"Test")
