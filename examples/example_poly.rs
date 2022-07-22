@@ -9,7 +9,7 @@
 //! PLONK Example
 
 use ark_bls12_381::{Bls12_381, Fr as BlsScalar};
-use ark_ec::{TEModelParameters};
+use ark_ec::TEModelParameters;
 use ark_ed_on_bls12_381::{
     EdwardsParameters as JubJubParameters, Fr as JubJubScalar,
 };
@@ -31,7 +31,7 @@ fn main() -> Result<(), Error> {
     //     return y*z
     //   return 2y - z
     // -------------------
-    // where x,y,z are inputs and r is the output 
+    // where x,y,z are inputs and r is the output
 
     #[derive(derivative::Derivative)]
     #[derivative(Debug(bound = ""), Default(bound = ""))]
@@ -62,39 +62,33 @@ fn main() -> Result<(), Error> {
             let y = composer.add_input(self.y);
             let z = composer.add_input(self.z);
             let r = composer.add_input(self.r);
-            
+
             let one = composer.add_input(F::one());
             let two = composer.add_input(F::from(2u64));
             let minus_1 = composer.add_input(-F::one());
 
             // Define 2y
             let two_y = composer.arithmetic_gate(|gate| {
-                gate.witness(y, two, None)
-                    .mul(F::one())
+                gate.witness(y, two, None).mul(F::one())
             });
 
             // Define -z
             let minus_z = composer.arithmetic_gate(|gate| {
-                gate.witness(z, minus_1, None)
-                    .mul(F::one())
+                gate.witness(z, minus_1, None).mul(F::one())
             });
 
             // Define 2y-z
             let two_y_minus_z = composer.arithmetic_gate(|gate| {
-                gate.witness(two_y, minus_z, None)
-                    .add(F::one(), F::one())
+                gate.witness(two_y, minus_z, None).add(F::one(), F::one())
             });
-            
+
             // Define y*z
-            let y_times_z = composer.arithmetic_gate(|gate| {
-                gate.witness(y, z, None)
-                    .mul(F::one())
-            });
+            let y_times_z = composer
+                .arithmetic_gate(|gate| gate.witness(y, z, None).mul(F::one()));
 
             // Define x-1
             let x_minus_1 = composer.arithmetic_gate(|gate| {
-                gate.witness(x, minus_1, None)
-                    .add(F::one(), F::one())
+                gate.witness(x, minus_1, None).add(F::one(), F::one())
             });
 
             // Define x-1==0
@@ -105,8 +99,7 @@ fn main() -> Result<(), Error> {
 
             // Define functon part 1: I(x==1)yz
             let function_part_1 = composer.arithmetic_gate(|gate| {
-                gate.witness(x_bool, y_times_z, None)
-                    .mul(F::one())
+                gate.witness(x_bool, y_times_z, None).mul(F::one())
             });
 
             // Define functon part 2: I(x!=1)(2y-z)
@@ -115,13 +108,13 @@ fn main() -> Result<(), Error> {
                     .mul(F::one())
             });
 
-            // Define the full function as 
+            // Define the full function as
             // r = I(x==1)yz + I(x!=1)(2y-z)
             let full_function = composer.arithmetic_gate(|gate| {
                 gate.witness(function_part_1, function_part_2, None)
                     .add(F::one(), F::one())
             });
-            
+
             composer.assert_equal(full_function, r);
 
             Ok(())
@@ -145,7 +138,7 @@ fn main() -> Result<(), Error> {
     let x = 1u64;
     let y = 2u64;
     let z = 5u64;
-    let r = 20u64; 
+    let r = 10u64;
     println!("x:{}, y:{}, z:{}, r:{}", x, y, z, r);
     let (proof, pi) = {
         let mut circuit: TestCircuit<BlsScalar, JubJubParameters> =
