@@ -64,22 +64,11 @@ fn main() -> Result<(), Error> {
             let r = composer.add_input(self.r);
 
             let one = composer.add_input(F::one());
-            let two = composer.add_input(F::from(2u64));
-            let minus_1 = composer.add_input(-F::one());
-
-            // Define 2y
-            let two_y = composer.arithmetic_gate(|gate| {
-                gate.witness(y, two, None).mul(F::one())
-            });
-
-            // Define -z
-            let minus_z = composer.arithmetic_gate(|gate| {
-                gate.witness(z, minus_1, None).mul(F::one())
-            });
+            let zero = composer.zero_var();
 
             // Define 2y-z
             let two_y_minus_z = composer.arithmetic_gate(|gate| {
-                gate.witness(two_y, minus_z, None).add(F::one(), F::one())
+                gate.witness(y, z, None).add(F::from(2u64), -F::one())
             });
 
             // Define y*z
@@ -88,13 +77,17 @@ fn main() -> Result<(), Error> {
 
             // Define x-1
             let x_minus_1 = composer.arithmetic_gate(|gate| {
-                gate.witness(x, minus_1, None).add(F::one(), F::one())
+                gate.witness(x, zero, None)
+                    .add(F::one(), F::zero())
+                    .constant(-F::one())
             });
 
             // Define x-1==0
             let x_bool = composer.is_zero_with_output(x_minus_1);
 
             // Define x bool negate
+            // x_bool_negate also be implemented with an add gate as
+            // x_bool_negate = 1 - x_bool
             let x_bool_negate = composer.xor_gate(x_bool, one, 10);
 
             // Define functon part 1: I(x==1)yz
