@@ -126,7 +126,7 @@ where
         // y accumulator consistency check
         let y_3 = acc_y_next;
         let lhs = y_3 - (y_3 * xy_alpha * acc_x * acc_y * P::COEFF_D);
-        let rhs = (x_alpha * acc_x) + (y_alpha * acc_y);
+        let rhs = y_alpha * acc_y - P::COEFF_A * x_alpha * acc_x;
         let y_acc_consistency = (lhs - rhs) * kappa_cu;
 
         let checks = bit_consistency
