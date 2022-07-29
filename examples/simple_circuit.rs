@@ -28,7 +28,7 @@ fn main() -> Result<(), Error> {
     // Implements a circuit that checks:
     // 1) a + b = c where C is a PI
     // 2) a <= 2^6
-    // 3) b <= 2^5
+    // 3) b <= 2^4
     // 4) a * b = d where D is a PI
     // 5) JubJub::GENERATOR * e(JubJubScalar) = f where F is a PI
     #[derive(derivative::Derivative)]
@@ -69,8 +69,8 @@ fn main() -> Result<(), Error> {
             });
 
             // Check that a and b are in range
-            composer.range_gate(a, 1 << 6);
-            composer.range_gate(b, 1 << 5);
+            composer.range_gate(a, 6);
+            composer.range_gate(b, 4);
             // Make second constraint a * b = d
             composer.arithmetic_gate(|gate| {
                 gate.witness(a, b, Some(zero)).mul(F::one()).pi(-self.d)
