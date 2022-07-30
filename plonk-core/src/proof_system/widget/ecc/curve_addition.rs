@@ -87,7 +87,7 @@ where
         let x3_consistency = (x3_lhs - x3_rhs) * kappa;
 
         // Check that `y_3` is correct
-        let y3_lhs = y1_y2 + x1_x2;
+        let y3_lhs = y1_y2 - P::COEFF_A * x1_x2;
         let y3_rhs = y_3 - y_3 * P::COEFF_D * x1_y2 * y1_x2;
         let y3_consistency = (y3_lhs - y3_rhs) * kappa.square();
 
