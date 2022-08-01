@@ -278,20 +278,38 @@ where
     }
 }
 
+// #[derive(CanonicalDeserialize, CanonicalSerialize, derivative::Derivative)]
+// #[derivative(
+//     Clone(bound = ""),
+//     Debug(
+//         bound = "arithmetic::VerifierKey<F,PC>: core::fmt::Debug,
+// PC::Commitment: core::fmt::Debug"     ),
+//     Eq(bound = "arithmetic::VerifierKey<F,PC>: Eq, PC::Commitment: Eq"),
+//     PartialEq(
+//         bound = "arithmetic::VerifierKey<F,PC>: PartialEq, PC::Commitment:
+// PartialEq"     )
+// )]
+
 /// PLONK circuit Proving Key.
 ///
 /// This structure is used by the Prover in order to construct a
 /// [`Proof`](crate::proof_system::Proof).
 #[derive(CanonicalDeserialize, CanonicalSerialize, derivative::Derivative)]
 #[derivative(
-    Clone(bound = "lookup::ProverKey<F>: Clone"),
-    Debug(bound = "lookup::ProverKey<F>: std::fmt::Debug"),
-    Eq(bound = "lookup::ProverKey<F>: Eq"),
-    PartialEq(bound = "lookup::ProverKey<F>: PartialEq")
+    Clone(bound = ""),
+    Debug(
+        bound = "permutation::ProverKey<F, PC>: std::fmt::Debug, PC::Commitment: std::fmt::Debug"
+    ),
+    Eq(bound = "permutation::ProverKey<F, PC>: Eq, PC::Commitment: Eq"),
+    PartialEq(
+        bound = "permutation::ProverKey<F, PC>: PartialEq, PC::Commitment: PartialEq"
+    )
 )]
-pub struct ProverKey<F>
+
+pub struct ProverKey<F, PC>
 where
     F: PrimeField,
+    PC: HomomorphicCommitment<F>,
 {
     /// Circuit size
     pub(crate) n: usize,
@@ -316,7 +334,7 @@ where
         (DensePolynomial<F>, Evaluations<F>),
 
     /// ProverKey for permutation checks
-    pub(crate) permutation: permutation::ProverKey<F>,
+    pub(crate) permutation: permutation::ProverKey<F, PC>,
 
     /// Pre-processes the 4n Evaluations for the vanishing polynomial, so
     /// they do not need to be computed at the proving stage.
@@ -327,9 +345,10 @@ where
     pub(crate) v_h_coset_4n: Evaluations<F>,
 }
 
-impl<F> ProverKey<F>
+impl<F, PC> ProverKey<F, PC>
 where
     F: PrimeField,
+    PC: HomomorphicCommitment<F>,
 {
     pub(crate) fn v_h_coset_4n(&self) -> &Evaluations<F> {
         &self.v_h_coset_4n
@@ -352,10 +371,10 @@ where
         q_lookup: (DensePolynomial<F>, Evaluations<F>),
         q_fixed_group_add: (DensePolynomial<F>, Evaluations<F>),
         q_variable_group_add: (DensePolynomial<F>, Evaluations<F>),
-        left_sigma: (DensePolynomial<F>, Evaluations<F>),
-        right_sigma: (DensePolynomial<F>, Evaluations<F>),
-        out_sigma: (DensePolynomial<F>, Evaluations<F>),
-        fourth_sigma: (DensePolynomial<F>, Evaluations<F>),
+        left_sigma: (DensePolynomial<F>, Evaluations<F>, PC::Commitment),
+        right_sigma: (DensePolynomial<F>, Evaluations<F>, PC::Commitment),
+        out_sigma: (DensePolynomial<F>, Evaluations<F>, PC::Commitment),
+        fourth_sigma: (DensePolynomial<F>, Evaluations<F>, PC::Commitment),
         linear_evaluations: Evaluations<F>,
         v_h_coset_4n: Evaluations<F>,
         table_1: MultiSet<F>,
@@ -435,9 +454,14 @@ mod test {
             .collect()
     }
 
-    #[test]
-    fn test_serialise_deserialise_prover_key() {
-        type F = ark_bls12_381::Fr;
+    // TODO make test to call this
+    fn test_serialise_deserialise_prover_key<F, P, PC>()
+    where
+        F: PrimeField,
+        P: TEModelParameters<BaseField = F>,
+        PC: HomomorphicCommitment<F>,
+        ProverKey<F, PC>: PartialEq,
+    {
         let n = 1 << 11;
 
         let q_m = rand_poly_eval(n);
@@ -465,7 +489,7 @@ mod test {
         let table_3 = rand_multiset(n);
         let table_4 = rand_multiset(n);
 
-        let prover_key = ProverKey::from_polynomials_and_evals(
+        let prover_key = ProverKey::<F, PC>::from_polynomials_and_evals(
             n,
             q_m,
             q_l,
@@ -479,10 +503,10 @@ mod test {
             q_lookup,
             q_fixed_group_add,
             q_variable_group_add,
-            left_sigma,
-            right_sigma,
-            out_sigma,
-            fourth_sigma,
+            (left_sigma.0, left_sigma.1, PC::Commitment::default()),
+            (right_sigma.0, right_sigma.1, PC::Commitment::default()),
+            (out_sigma.0, out_sigma.1, PC::Commitment::default()),
+            (fourth_sigma.0, fourth_sigma.1, PC::Commitment::default()),
             linear_evaluations,
             v_h_coset_8n,
             table_1,
@@ -496,11 +520,11 @@ mod test {
             .serialize_unchecked(&mut prover_key_bytes)
             .unwrap();
 
-        let obtained_pk: ProverKey<F> =
+        let obtained_pk: ProverKey<F, PC> =
             ProverKey::deserialize_unchecked(prover_key_bytes.as_slice())
                 .unwrap();
 
-        assert_eq!(prover_key, obtained_pk);
+        assert!(prover_key == obtained_pk);
     }
 
     fn test_serialise_deserialise_verifier_key<F, P, PC>()
@@ -581,6 +605,20 @@ mod test {
     // Test for Bls12_377
     batch_test!(
         [test_serialise_deserialise_verifier_key],
+        [] => (
+            Bls12_377, ark_ed_on_bls12_377::EdwardsParameters       )
+    );
+
+    // Test for Bls12_381
+    batch_test!(
+        [test_serialise_deserialise_prover_key],
+        [] => (
+            Bls12_381, ark_ed_on_bls12_381::EdwardsParameters      )
+    );
+
+    // Test for Bls12_377
+    batch_test!(
+        [test_serialise_deserialise_prover_key],
         [] => (
             Bls12_377, ark_ed_on_bls12_377::EdwardsParameters       )
     );

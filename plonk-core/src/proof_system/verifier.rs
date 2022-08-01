@@ -20,6 +20,8 @@ use merlin::Transcript;
 
 use super::pi::PublicInputs;
 
+use blake2::Blake2s;
+
 /// Abstraction structure designed verify [`Proof`]s.
 pub struct Verifier<F, P, PC>
 where
@@ -109,7 +111,7 @@ where
         pc_verifier_key: &PC::VerifierKey,
         public_inputs: &PublicInputs<F>,
     ) -> Result<(), Error> {
-        proof.verify::<P>(
+        proof.verify::<P, Blake2s>(
             self.verifier_key.as_ref().unwrap(),
             &mut self.preprocessed_transcript.clone(),
             pc_verifier_key,
