@@ -179,7 +179,7 @@ will add blinders to add the zero-knowledge property to the Plonk protocol.
         e(W + r'\cdot W', [x]_2)
         $$
 
-Extending the right side of the check we get
+Extending the left side of the check we get
         $$
         e(F +z \cdot W + r'z'\cdot W', [1]_2) =\\
         e(  \left( \sum_{i=1}^{t_1} \gamma^{i-1} \cdot cm_i -
@@ -214,7 +214,7 @@ Extending the right side of the check we get
         [1]_2)
         $$
 
-From the left side we get
+From the right side we get
         $$
         e(W + r' \cdot W', [x]_2) =\\
         e( \sum_{i=1}^{t_1} \gamma^{i-1}
