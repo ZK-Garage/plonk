@@ -46,7 +46,7 @@ where
     PC: HomomorphicCommitment<F>,
 {
     /// Creates a new `VerifierData` from a [`VerifierKey`] and the public
-    /// input positions of the circuit that it represents.
+    /// input of the circuit that it represents.
     pub fn new(key: VerifierKey<F, PC>, pi: PublicInputs<F>) -> Self {
         Self { key, pi }
     }
