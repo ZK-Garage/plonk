@@ -20,6 +20,7 @@ use ark_poly::{
 use ark_serialize::{
     CanonicalDeserialize, CanonicalSerialize, Read, SerializationError, Write,
 };
+use itertools::Itertools;
 
 use crate::prelude::Error;
 
@@ -51,7 +52,7 @@ where
     /// implicit value of empty positions.
     /// The function will panic if an insertion is atempted in an already
     /// occupied position.
-    pub fn insert(&mut self, pos: usize, val: F) {
+    fn insert(&mut self, pos: usize, val: F) {
         if self.values.contains_key(&pos) {
             panic!("Insertion in public inputs conflicts with previous value at position {}", pos);
         }
@@ -113,6 +114,27 @@ where
         let domain = GeneralEvaluationDomain::<F>::new(n).unwrap();
         let evals = self.as_evals(n);
         DensePolynomial::from_coefficients_vec(domain.ifft(&evals))
+    }
+
+    /// Returns the position of non-zero PI values.
+    pub fn get_pos(&self) -> Vec<usize> {
+        self.values.keys().cloned().collect()
+    }
+
+    // pub fn from_val_pos<T>(pos: Vec<usize>, vals: Vec<T>)
+    /// Some doc
+    pub fn from_val_pos<T>(pos: &[usize], vals: &[T]) -> Result<Self, Error>
+    where
+        T: ToConstraintField<F>,
+    {
+        let mut pi = Self::new();
+        pos.iter().zip_eq(vals).try_for_each(
+            |(p, v)| -> Result<(), Error> {
+                pi.add_input(*p, v)?;
+                Ok(())
+            },
+        )?;
+        Ok(pi)
     }
 }
 
