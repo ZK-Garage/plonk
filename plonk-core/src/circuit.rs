@@ -163,7 +163,7 @@ where
 ///
 /// let mut circuit = TestCircuit::<BlsScalar, JubJubParameters>::default();
 /// // Compile the circuit
-/// let (pk_p, vk) = circuit.compile::<PC>(&pp)?;
+/// let (pk_p, (vk, _pi_pos)) = circuit.compile::<PC>(&pp)?;
 ///
 /// let (x, y) = JubJubParameters::AFFINE_GENERATOR_COEFFS;
 /// let generator: GroupAffine<JubJubParameters> = GroupAffine::new(x, y);
@@ -220,12 +220,13 @@ where
     ) -> Result<(), Error>;
 
     /// Compiles the circuit by using a function that returns a `Result`
-    /// with the [`ProverKey`], [`VerifierKey`] and the circuit size.
-    #[allow(clippy::type_complexity)] // NOTE: Clippy is too harsh here.
+    /// with the [`ProverKey`], [`VerifierKey`] and a vector of the intended
+    /// positions for public inputs and the circuit size.
+    #[allow(clippy::type_complexity)]
     fn compile<PC>(
         &mut self,
         u_params: &PC::UniversalParams,
-    ) -> Result<(ProverKey<F>, VerifierKey<F, PC>), Error>
+    ) -> Result<(ProverKey<F>, (VerifierKey<F, PC>, Vec<usize>)), Error>
     where
         F: PrimeField,
         PC: HomomorphicCommitment<F>,
@@ -248,9 +249,12 @@ where
             prover
                 .prover_key
                 .expect("Unexpected error. Missing ProverKey in compilation"),
-            verifier
-                .verifier_key
-                .expect("Unexpected error. Missing VerifierKey in compilation"),
+            (
+                verifier.verifier_key.expect(
+                    "Unexpected error. Missing VerifierKey in compilation",
+                ),
+                verifier.cs.intended_pi_pos,
+            ),
         ))
     }
 
@@ -399,7 +403,7 @@ mod test {
         let mut circuit = TestCircuit::<F, P>::default();
 
         // Compile the circuit
-        let (pk, vk) = circuit.compile::<PC>(&pp)?;
+        let (pk, (vk, _pi_pos)) = circuit.compile::<PC>(&pp)?;
 
         let (x, y) = P::AFFINE_GENERATOR_COEFFS;
         let generator: GroupAffine<P> = GroupAffine::new(x, y);
