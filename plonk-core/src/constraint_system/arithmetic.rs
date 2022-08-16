@@ -136,7 +136,7 @@ where
         self.q_lookup.push(F::zero());
 
         if let Some(pi) = gate.pi {
-            self.public_inputs.insert(self.n, pi);
+            self.public_inputs.add_input(self.n, &pi).unwrap();
         };
 
         let c = gate_witness.2.unwrap_or_else(|| {

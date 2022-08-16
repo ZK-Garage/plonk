@@ -52,7 +52,7 @@ where
         self.q_lookup.push(F::one());
 
         if let Some(pi) = pi {
-            self.public_inputs.insert(self.n, pi);
+            self.public_inputs.add_input(self.n, &pi).unwrap();
         }
 
         self.perm.add_variables_to_map(a, b, c, d, self.n);
