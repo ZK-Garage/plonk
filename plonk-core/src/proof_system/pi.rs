@@ -75,8 +75,7 @@ where
     /// Inserts all the elements of `iter` converted into constraint field
     /// elements in consecutive positions.
     /// Returns the number of field elements occupied by `iter`
-    /// [`Error::InvalidPublicInputValue`] if the input could not be
-    /// converted.
+    /// [`Error::InvalidPublicInputValue`] if the input could not be converted.
     fn extend<'t, T, I>(
         &mut self,
         init_pos: usize,
@@ -116,13 +115,10 @@ where
         DensePolynomial::from_coefficients_vec(domain.ifft(&evals))
     }
 
-    /// Returns the position of non-zero PI values.
-    pub fn get_pos(&self) -> Vec<usize> {
-        self.values.keys().cloned().collect()
-    }
-
-    // pub fn from_val_pos<T>(pos: Vec<usize>, vals: Vec<T>)
-    /// Some doc
+    /// Constructs [`PublicInputs`] from a positions and a values.
+    ///
+    /// Panics if the positions and values have different lenghts or if
+    /// several values try to be inserted in the same position.
     pub fn from_val_pos<T>(pos: &[usize], vals: &[T]) -> Result<Self, Error>
     where
         T: ToConstraintField<F>,
@@ -135,6 +131,16 @@ where
             },
         )?;
         Ok(pi)
+    }
+
+    /// Returns the position of non-zero PI values.
+    pub fn get_pos(&self) -> Vec<usize> {
+        self.values.keys().cloned().collect()
+    }
+
+    /// Returns the non-zero PI values.
+    pub fn get_vals(&self) -> Vec<F> {
+        self.values.values().cloned().collect()
     }
 }
 
