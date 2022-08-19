@@ -134,13 +134,13 @@ where
     }
 
     /// Returns the position of non-zero PI values.
-    pub fn get_pos(&self) -> Vec<usize> {
-        self.values.keys().cloned().collect()
+    pub fn get_pos(&self) -> impl Iterator<Item = &usize> {
+        self.values.keys()
     }
 
     /// Returns the non-zero PI values.
-    pub fn get_vals(&self) -> Vec<F> {
-        self.values.values().cloned().collect()
+    pub fn get_vals(&self) -> impl Iterator<Item = &F> {
+        self.values.values()
     }
 }
 
