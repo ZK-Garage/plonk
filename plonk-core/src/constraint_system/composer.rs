@@ -215,7 +215,7 @@ where
             q_variable_group_add: Vec::with_capacity(expected_size),
             q_lookup: Vec::with_capacity(expected_size),
             public_inputs: PublicInputs::new(),
-            intended_pi_pos: Vec::with_capacity(expected_size),
+            intended_pi_pos: Vec::new(),
             w_l: Vec::with_capacity(expected_size),
             w_r: Vec::with_capacity(expected_size),
             w_o: Vec::with_capacity(expected_size),
