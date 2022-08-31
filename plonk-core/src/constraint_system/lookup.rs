@@ -52,8 +52,10 @@ where
         self.q_lookup.push(F::one());
 
         if let Some(pi) = pi {
-            self.public_inputs.insert(self.n, pi);
-        }
+            self.add_pi(self.n, &pi).unwrap_or_else(|_| {
+                panic!("Could not insert PI {:?} at {}", pi, self.n)
+            });
+        };
 
         self.perm.add_variables_to_map(a, b, c, d, self.n);
 

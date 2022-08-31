@@ -137,7 +137,7 @@ where
     let mut verifying_benchmarks = c.benchmark_group("verify");
     for degree in MINIMUM_DEGREE..MAXIMUM_DEGREE {
         let mut circuit = BenchCircuit::<F, P>::new(degree);
-        let (pk_p, vk) =
+        let (pk_p, (vk, _pi_pos)) =
             circuit.compile(&pp).expect("Unable to compile circuit.");
         let (proof, pi) =
             circuit.gen_proof::<HC>(&pp, pk_p.clone(), &label).unwrap();

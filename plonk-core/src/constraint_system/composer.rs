@@ -14,12 +14,14 @@
 //! It allows us not only to build Add and Mul constraints but also to build
 //! ECC op. gates, Range checks, Logical gates (Bitwise ops) etc.
 
-use crate::{constraint_system::Variable, permutation::Permutation};
+use crate::{
+    constraint_system::Variable, error::Error, permutation::Permutation,
+};
 
 use crate::lookup::LookupTable;
 use crate::proof_system::pi::PublicInputs;
 use ark_ec::{models::TEModelParameters, ModelParameters};
-use ark_ff::PrimeField;
+use ark_ff::{PrimeField, ToConstraintField};
 use core::cmp::max;
 use core::marker::PhantomData;
 use hashbrown::HashMap;
@@ -89,6 +91,7 @@ where
     /// Sparse representation of the Public Inputs linking the positions of the
     /// non-zero ones to it's actual values.
     pub(crate) public_inputs: PublicInputs<F>,
+    pub(crate) intended_pi_pos: Vec<usize>,
 
     // Witness vectors
     /// Left wire witness vector.
@@ -138,6 +141,21 @@ where
     /// [`StandardComposer`].
     pub fn get_pi(&self) -> &PublicInputs<F> {
         &self.public_inputs
+    }
+
+    /// Insert data in the PI starting at the given position and stores the
+    /// occupied positions as intended for public inputs.
+    pub(crate) fn add_pi<T>(
+        &mut self,
+        pos: usize,
+        item: &T,
+    ) -> Result<(), Error>
+    where
+        T: ToConstraintField<F>,
+    {
+        let n_positions = self.public_inputs.add_input(pos, item)?;
+        self.intended_pi_pos.extend(pos..(pos + n_positions));
+        Ok(())
     }
 }
 
@@ -197,6 +215,7 @@ where
             q_variable_group_add: Vec::with_capacity(expected_size),
             q_lookup: Vec::with_capacity(expected_size),
             public_inputs: PublicInputs::new(),
+            intended_pi_pos: Vec::new(),
             w_l: Vec::with_capacity(expected_size),
             w_r: Vec::with_capacity(expected_size),
             w_o: Vec::with_capacity(expected_size),
@@ -280,8 +299,10 @@ where
         self.q_lookup.push(F::zero());
 
         if let Some(pi) = pi {
-            self.public_inputs.insert(self.n, pi);
-        }
+            self.add_pi(self.n, &pi).unwrap_or_else(|_| {
+                panic!("Could not insert PI {:?} at {}", pi, self.n)
+            });
+        };
 
         self.perm
             .add_variables_to_map(a, b, c, self.zero_var, self.n);

@@ -20,6 +20,7 @@ use ark_poly::{
 use ark_serialize::{
     CanonicalDeserialize, CanonicalSerialize, Read, SerializationError, Write,
 };
+use itertools::Itertools;
 
 use crate::prelude::Error;
 
@@ -51,7 +52,7 @@ where
     /// implicit value of empty positions.
     /// The function will panic if an insertion is atempted in an already
     /// occupied position.
-    pub fn insert(&mut self, pos: usize, val: F) {
+    fn insert(&mut self, pos: usize, val: F) {
         if self.values.contains_key(&pos) {
             panic!("Insertion in public inputs conflicts with previous value at position {}", pos);
         }
@@ -74,8 +75,7 @@ where
     /// Inserts all the elements of `iter` converted into constraint field
     /// elements in consecutive positions.
     /// Returns the number of field elements occupied by `iter`
-    /// [`Error::InvalidPublicInputValue`] if the input could not be
-    /// converted.
+    /// [`Error::InvalidPublicInputValue`] if the input could not be converted.
     fn extend<'t, T, I>(
         &mut self,
         init_pos: usize,
@@ -113,6 +113,34 @@ where
         let domain = GeneralEvaluationDomain::<F>::new(n).unwrap();
         let evals = self.as_evals(n);
         DensePolynomial::from_coefficients_vec(domain.ifft(&evals))
+    }
+
+    /// Constructs [`PublicInputs`] from a positions and a values.
+    ///
+    /// Panics if the positions and values have different lenghts or if
+    /// several values try to be inserted in the same position.
+    pub fn from_val_pos<T>(pos: &[usize], vals: &[T]) -> Result<Self, Error>
+    where
+        T: ToConstraintField<F>,
+    {
+        let mut pi = Self::new();
+        pos.iter().zip_eq(vals).try_for_each(
+            |(p, v)| -> Result<(), Error> {
+                pi.add_input(*p, v)?;
+                Ok(())
+            },
+        )?;
+        Ok(pi)
+    }
+
+    /// Returns the position of non-zero PI values.
+    pub fn get_pos(&self) -> impl Iterator<Item = &usize> {
+        self.values.keys()
+    }
+
+    /// Returns the non-zero PI values.
+    pub fn get_vals(&self) -> impl Iterator<Item = &F> {
+        self.values.values()
     }
 }
 
