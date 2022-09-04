@@ -76,7 +76,7 @@ We will first compute $P+Q$ in the affine form and then projective form.
 
 1. We have two points $P=(x_p,y_p)$ and $Q=(x_q,y_q)$ where $P\neq Q$. If $P=O$ then $P$ is the identity point which means $P+Q=Q$. Likewise if $Q=O$, then $P+Q=P$ \
 Else, $P+Q=S$ for $S=(x_s,y_s)$ where $S=-R$ (the point represented in the graph) such that: $$x_s=\lambda^2-x_p-x_q$$ and $$y_s=\lambda(x_p-x_s)-y_p$$   where      $\lambda=\dfrac{y_q-y_p}{x_q-x_p}$
-2. In the projective form, each elliptic curve point has 3 coordinates instead of 2 $(x,y,z)$ for $z\neq 0$ (for all points except the point at infinity). Using the projective form allows us to give coordinates to the point at infinity. It also speeds up some of the most used arithmetic operations in the curve. The forward mapping is given by $(x,y)\rightarrow (xz,yz,z)$ and reverse mapping is giving by $(x,y,z)(\dfrac{x}{z},\dfrac{y}{z})$. Let $P=(x_p,y_p,z_p)$ and $Q=(x_q,y_q,z_q)$ and $\dfrac{x_p}{z_q}\neq\dfrac{x_q}{z_p}$. 
+2. In the projective form, each elliptic curve point has 3 coordinates instead of 2 $(x,y,z)$ for $z\neq 0$ (for all points except the point at infinity). Using the projective form allows us to give coordinates to the point at infinity. It also speeds up some of the most used arithmetic operations in the curve. The forward mapping is given by $(x,y)\rightarrow (xz,yz,z)$ and reverse mapping is giving by $(x,y,z)(\dfrac{x}{z},\dfrac{y}{z})$. Let $P=(x_p,y_p,z_p)$ and $Q=(x_q,y_q,z_q)$ and $\dfrac{x_p}{z_p}\neq\dfrac{x_q}{z_q}$. 
 
 
 <figure>
