@@ -144,12 +144,6 @@ impl<
         constants_offset: &mut usize,
         state: &mut [Self::Field; WIDTH],
     ) {
-        println!("full round");
-        println!("state begin");
-        for e in state.iter() {
-            println!("{:?} {}", e, c.value_of_var(*e));
-        }
-
         let pre_round_keys = constants
             .round_constants
             .iter()
@@ -175,9 +169,6 @@ impl<
                 pre_round_keys[2],
             );
         }
-
-        println!("round key {:?}", pre_round_keys.len());
-
 
         let zero = F::zero();
         let current_round_key = 
@@ -224,11 +215,6 @@ impl<
             ]
         );
         *constants_offset += WIDTH;
-        
-        println!("state after g^5");
-        for e in state.iter() {
-            println!("{:?} {}", e, c.value_of_var(*e));
-        }
     }
 
 
@@ -238,12 +224,6 @@ impl<
         constants_offset: &mut usize,
         state: &mut [Self::Field; WIDTH],
     ) {
-        println!("partial round");
-        println!("state begin");
-        for e in state.iter() {
-            println!("{:?} {}", e, c.value_of_var(*e));
-        }
-
         let pre_round_keys = constants
             .round_constants
             .iter()
@@ -251,8 +231,6 @@ impl<
             .collect::<Vec<_>>();
 
         let res = state.clone();
-        println!("round key {:?}", pre_round_keys.len());
-
         let matrix = &constants.mds_matrices.m.iter_rows().collect::<Vec<_>>();
       
 
@@ -262,7 +240,6 @@ impl<
                 matrix[0][0],
                 matrix[0][1],
                 matrix[0][2],
-                // F::zero(),
                 *pre_round_keys[3],
                 -F::one()
             ]
@@ -273,7 +250,6 @@ impl<
                 matrix[1][0],
                 matrix[1][1],
                 matrix[1][2],
-                // F::zero(),
                 *pre_round_keys[4],
                 -F::one()
             ]
@@ -284,17 +260,11 @@ impl<
                 matrix[2][0],
                 matrix[2][1],
                 matrix[2][2],
-                // F::zero(),
                 *pre_round_keys[5],
                 -F::one()
             ]
         );
-
         *constants_offset += WIDTH;
-        println!("state after g^5");
-        for e in state.iter() {
-            println!("{:?} {}", e, c.value_of_var(*e));
-        }
     }
 
 
@@ -426,7 +396,6 @@ mod tests {
     fn test_poseidon_constraints() {
         let mut rng = test_rng();
 
-        // let (rf, rp) = calc_round_numbers(3, false);
         let param = PoseidonConstants::generate::<3>();
         let mut poseidon = PoseidonRef::<(), NativeSpecRef<Fr>, 3>::new(
             &mut (),

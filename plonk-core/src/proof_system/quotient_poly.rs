@@ -67,7 +67,6 @@ where
         adicity:
             <<F as FftField>::FftParams as ark_ff::FftParameters>::TWO_ADICITY,
     })?;
-    println!("domain size {}", domain_8n.size());
 
     let l1_poly = compute_first_lagrange_poly_scaled(domain, F::one());
     let l1_eval_8n = domain_8n.coset_fft(&l1_poly);
@@ -81,7 +80,6 @@ where
     z_eval_8n.push(z_eval_8n[5]);
     z_eval_8n.push(z_eval_8n[6]);
     z_eval_8n.push(z_eval_8n[7]);
-    println!("len {} {}", l1_eval_8n.len(), z_eval_8n.len());
 
     let mut wl_eval_8n = domain_8n.coset_fft(w_l_poly);
     wl_eval_8n.push(wl_eval_8n[0]);
@@ -193,16 +191,6 @@ where
         *zeta,
         *lookup_challenge,
     )?;
-
-    println!(
-        "length {} {} {} {} {} {}",
-        domain.size(),
-        domain_8n.size(),
-        gate_constraints.len(),
-        permutation.len(),
-        lookup.len(),
-        prover_key.v_h_coset_8n().evals.len()
-    );
 
     let quotient = (0..domain_8n.size())
         .map(|i| {

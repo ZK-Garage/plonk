@@ -397,50 +397,6 @@ mod tests {
         )
     }
 
-    // #[test]
-    // // poseidon should output something if num_inputs = arity
-    // fn sanity_test_r1cs() {
-    //     const ARITY: usize = 2;
-    //     const WIDTH: usize = ARITY + 1;
-    //     let mut rng = test_rng();
-
-    //     let param = PoseidonConstants::generate::<WIDTH>();
-    //     let mut poseidon = PoseidonRef::<(), NativeSpecRef<Fr>, WIDTH>::new(
-    //         &mut (),
-    //         param.clone(),
-    //     );
-    //     let inputs = (0..ARITY).map(|_| Fr::rand(&mut rng)).collect::<Vec<_>>();
-
-    //     inputs.iter().for_each(|x| {
-    //         let _ = poseidon.input(*x).unwrap();
-    //     });
-    //     let native_hash: Fr = poseidon.output_hash(&mut ());
-
-    //     let mut cs = StandardComposer::<Fr, P>::new();
-    //     let mut poseidon_var =
-    //         PoseidonRef::<StandardComposer<Fr, P>, NativeSpecRef<Fr>, WIDTH>::new(
-    //             &mut cs,
-    //             param.clone(),
-    //         );
-    //     let inputs_var = inputs
-    //         .iter()
-    //         .map(|x| NativeSpecRef::alloc(&mut cs, *x))
-    //         .collect::<Vec<_>>();
-    //     inputs_var.iter().for_each(|x| {
-    //         let _ = poseidon_var.input(x.clone()).unwrap();
-    //     });
-
-    //     let hash_var = poseidon_var.output_hash(&mut cs);
-
-    //     assert!(cs.is_satisfied().unwrap());
-    //     assert_eq!(hash_var.value().unwrap(), native_hash);
-    //     println!(
-    //         "circuit size for WIDTH {} r1cs: {}",
-    //         WIDTH,
-    //         cs.circuit_bound()
-    //     )
-    // }
-
     #[test]
     #[should_panic]
     // poseidon should output something if num_inputs > arity

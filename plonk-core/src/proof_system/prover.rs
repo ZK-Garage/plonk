@@ -110,7 +110,6 @@ where
         t_x: &DensePolynomial<F>,
     ) -> ([DensePolynomial<F>; 8]) {
         let mut buf = t_x.coeffs.to_vec();
-        println!("buf len {} {}", buf.len(), n << 3);
         buf.resize(n << 3, F::zero());
 
         [
@@ -222,8 +221,6 @@ where
         transcript.append(b"w_o", w_commits[2].commitment());
         transcript.append(b"w_4", w_commits[3].commitment());
 
-        println!("witness committed");
-
         // 2. Derive lookup polynomials
 
         // Generate table compression factor
@@ -325,8 +322,6 @@ where
         transcript.append(b"h1", h_1_poly_commit[0].commitment());
         transcript.append(b"h2", h_2_poly_commit[0].commitment());
 
-        println!("table done");
-
         // 3. Compute permutation polynomial
         //
         // Compute permutation challenge `beta`.
@@ -395,8 +390,6 @@ where
             PC::commit(commit_key, &[label_polynomial!(z_2_poly)], None)
                 .map_err(to_pc_error::<F, PC>)?;
 
-        println!("permutation done");
-
         // 3. Compute public inputs polynomial.
         let pi_poly = self.cs.get_pi().into_dense_poly(n);
 
@@ -434,7 +427,6 @@ where
         transcript
             .append(b"lookup separation challenge", &lookup_sep_challenge);
 
-        println!("start vanishing");
         let t_poly = quotient_poly::compute::<F, P>(
             &domain,
             prover_key,
@@ -463,8 +455,6 @@ where
         )?;
 
         let t_i_polys = self.split_tx_poly(n, &t_poly);
-        use ark_poly::Polynomial;
-        println!("t_i degree {}", t_i_polys[0].degree());
         // Commit to splitted quotient polynomial
         let (t_commits, _) = PC::commit(
             commit_key,
@@ -492,7 +482,6 @@ where
         transcript.append(b"t_7", t_commits[6].commitment());
         transcript.append(b"t_8", t_commits[7].commitment());
 
-        println!("commit to tx");
         // 4. Compute linearisation polynomial
         //
         // Compute evaluation challenge; `z`.
@@ -566,8 +555,6 @@ where
             .append(b"h_1_next_eval", &evaluations.lookup_evals.h1_next_eval);
         transcript.append(b"h_2_eval", &evaluations.lookup_evals.h2_eval);
 
-        println!("re linear done");
-
         // Third, all evals needed for custom gates
         evaluations
             .custom_evals
@@ -617,7 +604,6 @@ where
 
         let saw_challenge: F =
             transcript.challenge_scalar(b"aggregate_witness");
-        println!("saw_challenge: {}", saw_challenge);
 
         let saw_polys = [
             label_polynomial!(z_poly),
@@ -685,7 +671,6 @@ where
         }
 
         let prover_key = self.prover_key.as_ref().unwrap();
-        println!("preprocess done");
         let proof = self.prove_with_preprocessed(
             commit_key,
             prover_key,
@@ -694,8 +679,6 @@ where
 
         // Clear witness and reset composer variables
         self.clear_witness();
-
-        println!("prover done");
 
         Ok(proof)
     }

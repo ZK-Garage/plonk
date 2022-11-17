@@ -401,8 +401,6 @@ where
             label_commitment!(table_comm),
         ];
 
-        println!("challenge: {}", saw_challenge);
-
         let saw_evals = [
             self.evaluations.perm_evals.permutation_eval,
             self.evaluations.custom_evals.get("a_next_eval"),
@@ -412,8 +410,6 @@ where
             self.evaluations.lookup_evals.z2_next_eval,
             self.evaluations.lookup_evals.table_next_eval,
         ];
-
-        println!("here ok");
 
         match PC::check(
             verifier_key,
@@ -429,7 +425,6 @@ where
             Err(e) => panic!("{:?}", e),
         }
         .and_then(|_| {
-            println!("here");
             match PC::check(
                 verifier_key,
                 &saw_commits,
@@ -628,8 +623,6 @@ where
             self.t_7_comm.clone(),
             self.t_8_comm.clone(),
         ]);
-
-        println!("length {} {}", points.len(), scalars.len());
 
         PC::multi_scalar_mul(&points, &scalars)
     }

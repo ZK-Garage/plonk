@@ -160,7 +160,6 @@ mod test {
             },
             32,
         );
-        println!("check proof");
         assert!(res.is_ok(), "{:?}", res.err().unwrap());
     }
 
@@ -168,7 +167,6 @@ mod test {
     batch_test!(
         [
             test_degree_5_gates
-
         ],
         [] => (
             Bls12_381,
