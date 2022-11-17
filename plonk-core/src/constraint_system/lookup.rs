@@ -47,6 +47,11 @@ where
         self.q_fixed_group_add.push(F::zero());
         self.q_variable_group_add.push(F::zero());
 
+        // add high degree selectors
+        self.q_hl.push(F::zero());
+        self.q_hr.push(F::zero());
+        self.q_h4.push(F::zero());
+
         // For a lookup gate, only one selector poly is
         // turned on as the output is inputted directly
         self.q_lookup.push(F::one());

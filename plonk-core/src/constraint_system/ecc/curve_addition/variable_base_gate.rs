@@ -74,6 +74,11 @@ where
         self.q_fixed_group_add.extend(&zeros);
         self.q_lookup.extend(&zeros);
 
+        // add high degree selectors
+        self.q_hl.extend(zeros.iter());
+        self.q_hr.extend(zeros.iter());
+        self.q_h4.extend(zeros.iter());
+
         self.q_variable_group_add.push(F::one());
         self.q_variable_group_add.push(F::zero());
 

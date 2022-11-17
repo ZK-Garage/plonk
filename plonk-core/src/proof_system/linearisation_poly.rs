@@ -184,6 +184,10 @@ pub fn compute<F, P>(
     t_2_poly: &DensePolynomial<F>,
     t_3_poly: &DensePolynomial<F>,
     t_4_poly: &DensePolynomial<F>,
+    t_5_poly: &DensePolynomial<F>,
+    t_6_poly: &DensePolynomial<F>,
+    t_7_poly: &DensePolynomial<F>,
+    t_8_poly: &DensePolynomial<F>,
     z_poly: &DensePolynomial<F>,
     z2_poly: &DensePolynomial<F>,
     f_poly: &DensePolynomial<F>,
@@ -240,12 +244,20 @@ where
     let b_next_eval = w_r_poly.evaluate(&shifted_z_challenge);
     let d_next_eval = w_4_poly.evaluate(&shifted_z_challenge);
 
+    // High degree selector evaluations
+    let q_hl_eval = prover_key.arithmetic.q_hl.0.evaluate(z_challenge);
+    let q_hr_eval = prover_key.arithmetic.q_hr.0.evaluate(z_challenge);
+    let q_h4_eval = prover_key.arithmetic.q_h4.0.evaluate(z_challenge);
+
     let custom_evals = CustomEvaluations {
         vals: vec![
             label_eval!(q_arith_eval),
             label_eval!(q_c_eval),
             label_eval!(q_l_eval),
             label_eval!(q_r_eval),
+            label_eval!(q_hl_eval),
+            label_eval!(q_hr_eval),
+            label_eval!(q_h4_eval),
             label_eval!(a_next_eval),
             label_eval!(b_next_eval),
             label_eval!(d_next_eval),
@@ -325,7 +337,16 @@ where
         z_poly,
     )?;
 
-    let quotient_term = &(&(&(&(&(&(t_4_poly * z_challenge_to_n)
+    let quotient_term = &(&(&(&(&(&(&(&(&(&(&(&(&(&(t_8_poly
+        * z_challenge_to_n)
+        + t_7_poly)
+        * z_challenge_to_n)
+        + t_6_poly)
+        * z_challenge_to_n)
+        + t_5_poly)
+        * z_challenge_to_n)
+        + t_4_poly)
+        * z_challenge_to_n)
         + t_3_poly)
         * z_challenge_to_n)
         + t_2_poly)

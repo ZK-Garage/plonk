@@ -175,6 +175,12 @@ where
         self.q_range.extend(ones.iter());
         self.q_logic.extend(zeros.iter());
         self.q_lookup.extend(zeros.iter());
+
+        // add high degree selectors
+        self.q_hl.extend(zeros.iter());
+        self.q_hr.extend(zeros.iter());
+        self.q_h4.extend(zeros.iter());
+
         self.n += used_gates;
 
         // As mentioned above, we must switch off the range constraint for the

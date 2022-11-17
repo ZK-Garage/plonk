@@ -249,6 +249,12 @@ where
             self.q_fixed_group_add.push(F::zero());
             self.q_variable_group_add.push(F::zero());
             self.q_lookup.push(F::zero());
+
+            // add high degree selectors
+            self.q_hl.push(F::zero());
+            self.q_hr.push(F::zero());
+            self.q_h4.push(F::zero());
+
             match is_xor_gate {
                 true => {
                     self.q_c.push(-F::one());
@@ -273,6 +279,11 @@ where
         self.q_lookup.push(F::zero());
         self.q_c.push(F::zero());
         self.q_logic.push(F::zero());
+
+        // add high degree selectors
+        self.q_hl.push(F::zero());
+        self.q_hr.push(F::zero());
+        self.q_h4.push(F::zero());
 
         // Now we need to assert that the sum of accumulated values
         // matches the original values provided to the fn.

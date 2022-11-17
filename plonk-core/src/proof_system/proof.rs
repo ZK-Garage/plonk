@@ -92,6 +92,18 @@ where
     /// Commitment to the quotient polynomial.
     pub(crate) t_4_comm: PC::Commitment,
 
+    /// Commitment to the quotient polynomial.
+    pub(crate) t_5_comm: PC::Commitment,
+
+    /// Commitment to the quotient polynomial.
+    pub(crate) t_6_comm: PC::Commitment,
+
+    /// Commitment to the quotient polynomial.
+    pub(crate) t_7_comm: PC::Commitment,
+
+    /// Commitment to the quotient polynomial.
+    pub(crate) t_8_comm: PC::Commitment,
+
     /// Batch opening proof of the aggregated witnesses
     pub aw_opening: PC::Proof,
 
@@ -217,6 +229,10 @@ where
         transcript.append(b"t_2", &self.t_2_comm);
         transcript.append(b"t_3", &self.t_3_comm);
         transcript.append(b"t_4", &self.t_4_comm);
+        transcript.append(b"t_5", &self.t_5_comm);
+        transcript.append(b"t_6", &self.t_6_comm);
+        transcript.append(b"t_7", &self.t_7_comm);
+        transcript.append(b"t_8", &self.t_8_comm);
 
         // Compute evaluation point challenge
         let z_challenge = transcript.challenge_scalar(b"z");
@@ -385,6 +401,8 @@ where
             label_commitment!(table_comm),
         ];
 
+        println!("challenge: {}", saw_challenge);
+
         let saw_evals = [
             self.evaluations.perm_evals.permutation_eval,
             self.evaluations.custom_evals.get("a_next_eval"),
@@ -394,6 +412,8 @@ where
             self.evaluations.lookup_evals.z2_next_eval,
             self.evaluations.lookup_evals.table_next_eval,
         ];
+
+        println!("here ok");
 
         match PC::check(
             verifier_key,
@@ -409,6 +429,7 @@ where
             Err(e) => panic!("{:?}", e),
         }
         .and_then(|_| {
+            println!("here");
             match PC::check(
                 verifier_key,
                 &saw_commits,
@@ -507,18 +528,18 @@ where
     where
         P: TEModelParameters<BaseField = F>,
     {
-        //    6 for arithmetic
+        //    9 for arithmetic
         // +  1 for range
         // +  1 for logic
         // +  1 for fixed base mul
         // +  1 for curve add
         // +  3 for lookups
         // +  2 for permutation
-        // +  4 for each piece of the quotient poly
-        // = 19 total scalars and points
+        // +  8 for each piece of the quotient poly
+        // = 26 total scalars and points
 
-        let mut scalars = Vec::with_capacity(19);
-        let mut points = Vec::with_capacity(19);
+        let mut scalars = Vec::with_capacity(26);
+        let mut points = Vec::with_capacity(26);
 
         plonk_verifier_key
             .arithmetic
@@ -589,15 +610,26 @@ where
         let t_2_scalar = t_1_scalar * z_challenge_to_n;
         let t_3_scalar = t_2_scalar * z_challenge_to_n;
         let t_4_scalar = t_3_scalar * z_challenge_to_n;
+        let t_5_scalar = t_4_scalar * z_challenge_to_n;
+        let t_6_scalar = t_5_scalar * z_challenge_to_n;
+        let t_7_scalar = t_6_scalar * z_challenge_to_n;
+        let t_8_scalar = t_7_scalar * z_challenge_to_n;
         scalars.extend_from_slice(&[
-            t_1_scalar, t_2_scalar, t_3_scalar, t_4_scalar,
+            t_1_scalar, t_2_scalar, t_3_scalar, t_4_scalar, t_5_scalar,
+            t_6_scalar, t_7_scalar, t_8_scalar,
         ]);
         points.extend_from_slice(&[
             self.t_1_comm.clone(),
             self.t_2_comm.clone(),
             self.t_3_comm.clone(),
             self.t_4_comm.clone(),
+            self.t_5_comm.clone(),
+            self.t_6_comm.clone(),
+            self.t_7_comm.clone(),
+            self.t_8_comm.clone(),
         ]);
+
+        println!("length {} {}", points.len(), scalars.len());
 
         PC::multi_scalar_mul(&points, &scalars)
     }

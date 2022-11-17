@@ -61,63 +61,93 @@ where
     F: PrimeField,
     P: TEModelParameters<BaseField = F>,
 {
-    let domain_4n = GeneralEvaluationDomain::<F>::new(4 * domain.size())
+    let domain_8n = GeneralEvaluationDomain::<F>::new(8 * domain.size())
         .ok_or(Error::InvalidEvalDomainSize {
-        log_size_of_group: (4 * domain.size()).trailing_zeros(),
+        log_size_of_group: (8 * domain.size()).trailing_zeros(),
         adicity:
             <<F as FftField>::FftParams as ark_ff::FftParameters>::TWO_ADICITY,
     })?;
+    println!("domain size {}", domain_8n.size());
 
     let l1_poly = compute_first_lagrange_poly_scaled(domain, F::one());
-    let l1_eval_4n = domain_4n.coset_fft(&l1_poly);
+    let l1_eval_8n = domain_8n.coset_fft(&l1_poly);
 
-    let mut z_eval_4n = domain_4n.coset_fft(z_poly);
-    z_eval_4n.push(z_eval_4n[0]);
-    z_eval_4n.push(z_eval_4n[1]);
-    z_eval_4n.push(z_eval_4n[2]);
-    z_eval_4n.push(z_eval_4n[3]);
+    let mut z_eval_8n = domain_8n.coset_fft(z_poly);
+    z_eval_8n.push(z_eval_8n[0]);
+    z_eval_8n.push(z_eval_8n[1]);
+    z_eval_8n.push(z_eval_8n[2]);
+    z_eval_8n.push(z_eval_8n[3]);
+    z_eval_8n.push(z_eval_8n[4]);
+    z_eval_8n.push(z_eval_8n[5]);
+    z_eval_8n.push(z_eval_8n[6]);
+    z_eval_8n.push(z_eval_8n[7]);
+    println!("len {} {}", l1_eval_8n.len(), z_eval_8n.len());
 
-    let mut wl_eval_4n = domain_4n.coset_fft(w_l_poly);
-    wl_eval_4n.push(wl_eval_4n[0]);
-    wl_eval_4n.push(wl_eval_4n[1]);
-    wl_eval_4n.push(wl_eval_4n[2]);
-    wl_eval_4n.push(wl_eval_4n[3]);
+    let mut wl_eval_8n = domain_8n.coset_fft(w_l_poly);
+    wl_eval_8n.push(wl_eval_8n[0]);
+    wl_eval_8n.push(wl_eval_8n[1]);
+    wl_eval_8n.push(wl_eval_8n[2]);
+    wl_eval_8n.push(wl_eval_8n[3]);
+    wl_eval_8n.push(wl_eval_8n[4]);
+    wl_eval_8n.push(wl_eval_8n[5]);
+    wl_eval_8n.push(wl_eval_8n[6]);
+    wl_eval_8n.push(wl_eval_8n[7]);
 
-    let mut wr_eval_4n = domain_4n.coset_fft(w_r_poly);
-    wr_eval_4n.push(wr_eval_4n[0]);
-    wr_eval_4n.push(wr_eval_4n[1]);
-    wr_eval_4n.push(wr_eval_4n[2]);
-    wr_eval_4n.push(wr_eval_4n[3]);
+    let mut wr_eval_8n = domain_8n.coset_fft(w_r_poly);
+    wr_eval_8n.push(wr_eval_8n[0]);
+    wr_eval_8n.push(wr_eval_8n[1]);
+    wr_eval_8n.push(wr_eval_8n[2]);
+    wr_eval_8n.push(wr_eval_8n[3]);
+    wr_eval_8n.push(wr_eval_8n[4]);
+    wr_eval_8n.push(wr_eval_8n[5]);
+    wr_eval_8n.push(wr_eval_8n[6]);
+    wr_eval_8n.push(wr_eval_8n[7]);
 
-    let wo_eval_4n = domain_4n.coset_fft(w_o_poly);
+    let wo_eval_8n = domain_8n.coset_fft(w_o_poly);
 
-    let mut w4_eval_4n = domain_4n.coset_fft(w_4_poly);
-    w4_eval_4n.push(w4_eval_4n[0]);
-    w4_eval_4n.push(w4_eval_4n[1]);
-    w4_eval_4n.push(w4_eval_4n[2]);
-    w4_eval_4n.push(w4_eval_4n[3]);
+    let mut w4_eval_8n = domain_8n.coset_fft(w_4_poly);
+    w4_eval_8n.push(w4_eval_8n[0]);
+    w4_eval_8n.push(w4_eval_8n[1]);
+    w4_eval_8n.push(w4_eval_8n[2]);
+    w4_eval_8n.push(w4_eval_8n[3]);
+    w4_eval_8n.push(w4_eval_8n[4]);
+    w4_eval_8n.push(w4_eval_8n[5]);
+    w4_eval_8n.push(w4_eval_8n[6]);
+    w4_eval_8n.push(w4_eval_8n[7]);
 
-    let mut z2_eval_4n = domain_4n.coset_fft(z2_poly);
-    z2_eval_4n.push(z2_eval_4n[0]);
-    z2_eval_4n.push(z2_eval_4n[1]);
-    z2_eval_4n.push(z2_eval_4n[2]);
-    z2_eval_4n.push(z2_eval_4n[3]);
+    let mut z2_eval_8n = domain_8n.coset_fft(z2_poly);
+    z2_eval_8n.push(z2_eval_8n[0]);
+    z2_eval_8n.push(z2_eval_8n[1]);
+    z2_eval_8n.push(z2_eval_8n[2]);
+    z2_eval_8n.push(z2_eval_8n[3]);
+    z2_eval_8n.push(z2_eval_8n[4]);
+    z2_eval_8n.push(z2_eval_8n[5]);
+    z2_eval_8n.push(z2_eval_8n[6]);
+    z2_eval_8n.push(z2_eval_8n[7]);
 
-    let f_eval_4n = domain_4n.coset_fft(f_poly);
+    let f_eval_8n = domain_8n.coset_fft(f_poly);
 
-    let mut table_eval_4n = domain_4n.coset_fft(table_poly);
-    table_eval_4n.push(table_eval_4n[0]);
-    table_eval_4n.push(table_eval_4n[1]);
-    table_eval_4n.push(table_eval_4n[2]);
-    table_eval_4n.push(table_eval_4n[3]);
+    let mut table_eval_8n = domain_8n.coset_fft(table_poly);
+    table_eval_8n.push(table_eval_8n[0]);
+    table_eval_8n.push(table_eval_8n[1]);
+    table_eval_8n.push(table_eval_8n[2]);
+    table_eval_8n.push(table_eval_8n[3]);
+    table_eval_8n.push(table_eval_8n[4]);
+    table_eval_8n.push(table_eval_8n[5]);
+    table_eval_8n.push(table_eval_8n[6]);
+    table_eval_8n.push(table_eval_8n[7]);
 
-    let mut h1_eval_4n = domain_4n.coset_fft(h1_poly);
-    h1_eval_4n.push(h1_eval_4n[0]);
-    h1_eval_4n.push(h1_eval_4n[1]);
-    h1_eval_4n.push(h1_eval_4n[2]);
-    h1_eval_4n.push(h1_eval_4n[3]);
+    let mut h1_eval_8n = domain_8n.coset_fft(h1_poly);
+    h1_eval_8n.push(h1_eval_8n[0]);
+    h1_eval_8n.push(h1_eval_8n[1]);
+    h1_eval_8n.push(h1_eval_8n[2]);
+    h1_eval_8n.push(h1_eval_8n[3]);
+    h1_eval_8n.push(h1_eval_8n[4]);
+    h1_eval_8n.push(h1_eval_8n[5]);
+    h1_eval_8n.push(h1_eval_8n[6]);
+    h1_eval_8n.push(h1_eval_8n[7]);
 
-    let h2_eval_4n = domain_4n.coset_fft(h2_poly);
+    let h2_eval_8n = domain_8n.coset_fft(h2_poly);
 
     let gate_constraints = compute_gate_constraint_satisfiability::<F, P>(
         domain,
@@ -126,21 +156,21 @@ where
         *fixed_base_challenge,
         *var_base_challenge,
         prover_key,
-        &wl_eval_4n,
-        &wr_eval_4n,
-        &wo_eval_4n,
-        &w4_eval_4n,
+        &wl_eval_8n,
+        &wr_eval_8n,
+        &wo_eval_8n,
+        &w4_eval_8n,
         public_inputs_poly,
     )?;
 
     let permutation = compute_permutation_checks::<F>(
         domain,
         prover_key,
-        &wl_eval_4n,
-        &wr_eval_4n,
-        &wo_eval_4n,
-        &w4_eval_4n,
-        &z_eval_4n,
+        &wl_eval_8n,
+        &wr_eval_8n,
+        &wo_eval_8n,
+        &w4_eval_8n,
+        &z_eval_8n,
         *alpha,
         *beta,
         *gamma,
@@ -148,32 +178,42 @@ where
 
     let lookup = prover_key.lookup.compute_lookup_quotient_term(
         domain,
-        &wl_eval_4n,
-        &wr_eval_4n,
-        &wo_eval_4n,
-        &w4_eval_4n,
-        &f_eval_4n,
-        &table_eval_4n,
-        &h1_eval_4n,
-        &h2_eval_4n,
-        &z2_eval_4n,
-        &l1_eval_4n,
+        &wl_eval_8n,
+        &wr_eval_8n,
+        &wo_eval_8n,
+        &w4_eval_8n,
+        &f_eval_8n,
+        &table_eval_8n,
+        &h1_eval_8n,
+        &h2_eval_8n,
+        &z2_eval_8n,
+        &l1_eval_8n,
         *delta,
         *epsilon,
         *zeta,
         *lookup_challenge,
     )?;
 
-    let quotient = (0..domain_4n.size())
+    println!(
+        "length {} {} {} {} {} {}",
+        domain.size(),
+        domain_8n.size(),
+        gate_constraints.len(),
+        permutation.len(),
+        lookup.len(),
+        prover_key.v_h_coset_8n().evals.len()
+    );
+
+    let quotient = (0..domain_8n.size())
         .map(|i| {
             let numerator = gate_constraints[i] + permutation[i] + lookup[i];
-            let denominator = prover_key.v_h_coset_4n()[i];
+            let denominator = prover_key.v_h_coset_8n()[i];
             numerator * denominator.inverse().unwrap()
         })
         .collect::<Vec<_>>();
 
     Ok(DensePolynomial::from_coefficients_vec(
-        domain_4n.coset_ifft(&quotient),
+        domain_8n.coset_ifft(&quotient),
     ))
 }
 
@@ -186,42 +226,46 @@ fn compute_gate_constraint_satisfiability<F, P>(
     fixed_base_challenge: F,
     var_base_challenge: F,
     prover_key: &ProverKey<F>,
-    wl_eval_4n: &[F],
-    wr_eval_4n: &[F],
-    wo_eval_4n: &[F],
-    w4_eval_4n: &[F],
+    wl_eval_8n: &[F],
+    wr_eval_8n: &[F],
+    wo_eval_8n: &[F],
+    w4_eval_8n: &[F],
     pi_poly: &DensePolynomial<F>,
 ) -> Result<Vec<F>, Error>
 where
     F: PrimeField,
     P: TEModelParameters<BaseField = F>,
 {
-    let domain_4n = GeneralEvaluationDomain::<F>::new(4 * domain.size())
+    let domain_8n = GeneralEvaluationDomain::<F>::new(8 * domain.size())
         .ok_or(Error::InvalidEvalDomainSize {
-        log_size_of_group: (4 * domain.size()).trailing_zeros(),
+        log_size_of_group: (8 * domain.size()).trailing_zeros(),
         adicity:
             <<F as FftField>::FftParams as ark_ff::FftParameters>::TWO_ADICITY,
     })?;
-    let pi_eval_4n = domain_4n.coset_fft(pi_poly);
+    let pi_eval_8n = domain_8n.coset_fft(pi_poly);
 
     // TODO Eliminate contribution of unused gates
-    Ok((0..domain_4n.size())
+    Ok((0..domain_8n.size())
         .map(|i| {
             let wit_vals = WitnessValues {
-                a_val: wl_eval_4n[i],
-                b_val: wr_eval_4n[i],
-                c_val: wo_eval_4n[i],
-                d_val: w4_eval_4n[i],
+                a_val: wl_eval_8n[i],
+                b_val: wr_eval_8n[i],
+                c_val: wo_eval_8n[i],
+                d_val: w4_eval_8n[i],
             };
 
             let custom_vals = CustomEvaluations {
                 vals: vec![
-                    ("a_next_eval".to_string(), wl_eval_4n[i + 4]),
-                    ("b_next_eval".to_string(), wr_eval_4n[i + 4]),
-                    ("d_next_eval".to_string(), w4_eval_4n[i + 4]),
+                    ("a_next_eval".to_string(), wl_eval_8n[i + 8]),
+                    ("b_next_eval".to_string(), wr_eval_8n[i + 8]),
+                    ("d_next_eval".to_string(), w4_eval_8n[i + 8]),
                     ("q_l_eval".to_string(), prover_key.arithmetic.q_l.1[i]),
                     ("q_r_eval".to_string(), prover_key.arithmetic.q_r.1[i]),
                     ("q_c_eval".to_string(), prover_key.arithmetic.q_c.1[i]),
+                    // prob don't need the follow but nonetheless...
+                    ("q_hl_eval".to_string(), prover_key.arithmetic.q_hl.1[i]),
+                    ("q_hr_eval".to_string(), prover_key.arithmetic.q_hr.1[i]),
+                    ("q_h4_eval".to_string(), prover_key.arithmetic.q_hr.1[i]),
                 ],
             };
 
@@ -257,7 +301,7 @@ where
                 CAVals::from_evaluations(&custom_vals),
             );
 
-            (arithmetic + pi_eval_4n[i])
+            (arithmetic + pi_eval_8n[i])
                 + range
                 + logic
                 + fixed_base_scalar_mul
@@ -271,11 +315,11 @@ where
 fn compute_permutation_checks<F>(
     domain: &GeneralEvaluationDomain<F>,
     prover_key: &ProverKey<F>,
-    wl_eval_4n: &[F],
-    wr_eval_4n: &[F],
-    wo_eval_4n: &[F],
-    w4_eval_4n: &[F],
-    z_eval_4n: &[F],
+    wl_eval_8n: &[F],
+    wr_eval_8n: &[F],
+    wo_eval_8n: &[F],
+    w4_eval_8n: &[F],
+    z_eval_8n: &[F],
     alpha: F,
     beta: F,
     gamma: F,
@@ -283,26 +327,25 @@ fn compute_permutation_checks<F>(
 where
     F: PrimeField,
 {
-    let domain_4n = GeneralEvaluationDomain::<F>::new(4 * domain.size())
+    let domain_8n = GeneralEvaluationDomain::<F>::new(8 * domain.size())
         .ok_or(Error::InvalidEvalDomainSize {
-        log_size_of_group: (4 * domain.size()).trailing_zeros(),
+        log_size_of_group: (8 * domain.size()).trailing_zeros(),
         adicity:
             <<F as FftField>::FftParams as ark_ff::FftParameters>::TWO_ADICITY,
     })?;
     let l1_poly_alpha =
         compute_first_lagrange_poly_scaled(domain, alpha.square());
-    let l1_alpha_sq_evals = domain_4n.coset_fft(&l1_poly_alpha.coeffs);
-
-    Ok((0..domain_4n.size())
+    let l1_alpha_sq_evals = domain_8n.coset_fft(&l1_poly_alpha.coeffs);
+    Ok((0..domain_8n.size())
         .map(|i| {
             prover_key.permutation.compute_quotient_i(
                 i,
-                wl_eval_4n[i],
-                wr_eval_4n[i],
-                wo_eval_4n[i],
-                w4_eval_4n[i],
-                z_eval_4n[i],
-                z_eval_4n[i + 4],
+                wl_eval_8n[i],
+                wr_eval_8n[i],
+                wo_eval_8n[i],
+                w4_eval_8n[i],
+                z_eval_8n[i],
+                z_eval_8n[i + 8],
                 alpha,
                 l1_alpha_sq_evals[i],
                 beta,

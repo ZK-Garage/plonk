@@ -36,6 +36,11 @@ where
         self.q_4.push(F::zero());
         self.q_arith.push(F::one());
 
+        // add high degree selectors
+        self.q_hl.push(F::zero());
+        self.q_hr.push(F::zero());
+        self.q_h4.push(F::zero());
+
         self.q_range.push(F::zero());
         self.q_logic.push(F::zero());
         self.q_fixed_group_add.push(F::zero());

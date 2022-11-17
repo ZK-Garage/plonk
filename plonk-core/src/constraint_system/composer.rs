@@ -34,7 +34,7 @@ use rand_core::{CryptoRng, RngCore};
 /// A StandardComposer stores the fullcircuit information, being this one
 /// all of the witness and circuit descriptors info (values, positions in the
 /// circuits, gates and Wires that occupy..), the public inputs, the connection
-/// relationships between the witnesses and how they're repesented as Wires (so
+/// relationships between the witnesses and how they're represented as Wires (so
 /// basically the Permutation argument etc..).
 ///
 /// The StandardComposer also grants us a way to introduce our secret
@@ -43,13 +43,13 @@ use rand_core::{CryptoRng, RngCore};
 /// [`StandardComposer::add_input`].
 ///
 /// The StandardComposer also contains as associated functions all the
-/// neccessary tools to be able to instrument the circuits that the user needs
+/// necessary tools to be able to instrument the circuits that the user needs
 /// through the addition of gates. There are functions that may add a single
 /// arithmetic gate to the circuit [`StandardComposer::arithmetic_gate`] and
 /// others that can add several gates to the circuit description such as
 /// [`StandardComposer::conditional_select`].
 ///
-/// Each gate or group of gates adds a specific functionallity or operation to
+/// Each gate or group of gates adds a specific functionality or operation to
 /// the circuit description, and so, that's why we can understand
 /// the StandardComposer as a builder.
 #[derive(derivative::Derivative)]
@@ -75,6 +75,14 @@ where
     pub(crate) q_4: Vec<F>,
     /// Constant wire selector
     pub(crate) q_c: Vec<F>,
+    // Here we introduce 3 new selectors that will be useful for
+    // poseidon hashes.
+    /// Selector for for w_l^5
+    pub(crate) q_hl: Vec<F>,
+    /// Selector for for w_r^5
+    pub(crate) q_hr: Vec<F>,
+    /// Selector for for w_4^5
+    pub(crate) q_h4: Vec<F>,
     /// Arithmetic wire selector
     pub(crate) q_arith: Vec<F>,
     /// Range selector
@@ -127,12 +135,12 @@ where
     F: PrimeField,
     P: ModelParameters<BaseField = F>,
 {
-    /// Returns the length of the circuit that can accomodate the lookup table.
-    fn total_size(&self) -> usize {
+    /// Returns the length of the circuit that can accommodate the lookup table.
+    pub fn total_size(&self) -> usize {
         max(self.n, self.lookup_table.size())
     }
 
-    /// Returns the smallest power of two needed for the curcuit.
+    /// Returns the smallest power of two needed for the circuit.
     pub fn circuit_bound(&self) -> usize {
         self.total_size().next_power_of_two()
     }
@@ -208,6 +216,9 @@ where
             q_o: Vec::with_capacity(expected_size),
             q_c: Vec::with_capacity(expected_size),
             q_4: Vec::with_capacity(expected_size),
+            q_hl: Vec::with_capacity(expected_size),
+            q_hr: Vec::with_capacity(expected_size),
+            q_h4: Vec::with_capacity(expected_size),
             q_arith: Vec::with_capacity(expected_size),
             q_range: Vec::with_capacity(expected_size),
             q_logic: Vec::with_capacity(expected_size),
@@ -297,6 +308,11 @@ where
         self.q_fixed_group_add.push(F::zero());
         self.q_variable_group_add.push(F::zero());
         self.q_lookup.push(F::zero());
+
+        // add high degree selectors
+        self.q_hl.push(F::zero());
+        self.q_hr.push(F::zero());
+        self.q_h4.push(F::zero());
 
         if let Some(pi) = pi {
             self.add_pi(self.n, &pi).unwrap_or_else(|_| {
@@ -508,6 +524,10 @@ where
         self.q_fixed_group_add.push(F::zero());
         self.q_variable_group_add.push(F::zero());
         self.q_lookup.push(F::one());
+        // add high degree selectors
+        self.q_hl.push(F::zero());
+        self.q_hr.push(F::zero());
+        self.q_h4.push(F::zero());
         self.w_l.push(var_six);
         self.w_r.push(var_seven);
         self.w_o.push(var_min_twenty);
@@ -533,6 +553,10 @@ where
         self.q_fixed_group_add.push(F::zero());
         self.q_variable_group_add.push(F::zero());
         self.q_lookup.push(F::one());
+        // add high degree selectors
+        self.q_hl.push(F::zero());
+        self.q_hr.push(F::zero());
+        self.q_h4.push(F::zero());
         self.w_l.push(var_min_twenty);
         self.w_r.push(var_six);
         self.w_o.push(var_seven);
@@ -608,6 +632,10 @@ where
             self.q_fixed_group_add.push(F::zero());
             self.q_variable_group_add.push(F::zero());
             self.q_lookup.push(F::zero());
+            // add high degree selectors
+            self.q_hl.push(F::zero());
+            self.q_hr.push(F::zero());
+            self.q_h4.push(F::zero());
 
             self.perm.add_variables_to_map(
                 rand_var_1, rand_var_2, rand_var_3, rand_var_4, self.n,
@@ -636,6 +664,10 @@ where
         self.q_fixed_group_add.push(F::zero());
         self.q_variable_group_add.push(F::zero());
         self.q_lookup.push(F::zero());
+        // add high degree selectors
+        self.q_hl.push(F::zero());
+        self.q_hr.push(F::zero());
+        self.q_h4.push(F::zero());
 
         self.perm.add_variables_to_map(
             rand_var_1,
@@ -660,6 +692,8 @@ where
     #[cfg(feature = "trace")]
     pub fn check_circuit_satisfied(&mut self) {
         use ark_ff::BigInteger;
+
+        use crate::constraint_system::SBOX_ALPHA;
         let w_l: Vec<&F> = self
             .w_l
             .iter()
@@ -699,8 +733,12 @@ where
             let qarith = self.q_arith[i];
             let qrange = self.q_range[i];
             let qlogic = self.q_logic[i];
-            let qfixed = self.q_fixed_group_add[i];
-            let qvar = self.q_variable_group_add[i];
+            let _qfixed = self.q_fixed_group_add[i];
+            let _qvar = self.q_variable_group_add[i];
+            let q_hl = self.q_hl[i];
+            let q_hr = self.q_hr[i];
+            let q_h4 = self.q_h4[i];
+
             let pi = pi_vec[i];
 
             let a = w_l[i];
@@ -722,11 +760,14 @@ where
             - q4 -> {:?}\n
             - qo -> {:?}\n
             - qc -> {:?}\n
+            - q_hash_1 -> {:?}\n
+            - q_hash_2 -> {:?}\n
+            - q_hash_3 -> {:?}\n
             - q_arith -> {:?}\n
             - q_range -> {:?}\n
             - q_logic -> {:?}\n
             - q_fixed_group_add -> {:?}\n
-            - q_variable_group_add -> {:?}\n
+            - q_variable_group_add -> {:?}\n            
             # Witness polynomials:\n
             - w_l -> {:?}\n
             - w_r -> {:?}\n
@@ -739,11 +780,14 @@ where
                 q4,
                 qo,
                 qc,
+                q_hl,
+                q_hr,
+                q_h4,
                 qarith,
                 qrange,
                 qlogic,
-                qfixed,
-                qvar,
+                _qfixed,
+                _qvar,
                 a,
                 b,
                 c,
@@ -757,6 +801,9 @@ where
                     + (qo * c)
                     + (q4 * d)
                     + pi
+                    + q_hl * a.pow(&[SBOX_ALPHA])
+                    + q_hr * b.pow(&[SBOX_ALPHA])
+                    + q_h4 * d.pow(&[SBOX_ALPHA])
                     + qc)
                 + qlogic
                     * (((delta(*a_next - four * a)

@@ -102,24 +102,27 @@ where
         Ok(())
     }
 
-    /// Split `t(X)` poly into 4 n-sized polynomials.
+    /// Split `t(X)` poly into 8 n-sized polynomials.
     #[allow(clippy::type_complexity)] // NOTE: This is an ok type for internal use.
     fn split_tx_poly(
         &self,
         n: usize,
         t_x: &DensePolynomial<F>,
-    ) -> (
-        DensePolynomial<F>,
-        DensePolynomial<F>,
-        DensePolynomial<F>,
-        DensePolynomial<F>,
-    ) {
-        (
-            DensePolynomial::from_coefficients_vec(t_x[0..n].to_vec()),
-            DensePolynomial::from_coefficients_vec(t_x[n..2 * n].to_vec()),
-            DensePolynomial::from_coefficients_vec(t_x[2 * n..3 * n].to_vec()),
-            DensePolynomial::from_coefficients_vec(t_x[3 * n..].to_vec()),
-        )
+    ) -> ([DensePolynomial<F>; 8]) {
+        let mut buf = t_x.coeffs.to_vec();
+        println!("buf len {} {}", buf.len(), n << 3);
+        buf.resize(n << 3, F::zero());
+
+        [
+            DensePolynomial::from_coefficients_vec(buf[0..n].to_vec()),
+            DensePolynomial::from_coefficients_vec(buf[n..2 * n].to_vec()),
+            DensePolynomial::from_coefficients_vec(buf[2 * n..3 * n].to_vec()),
+            DensePolynomial::from_coefficients_vec(buf[3 * n..4 * n].to_vec()),
+            DensePolynomial::from_coefficients_vec(buf[4 * n..5 * n].to_vec()),
+            DensePolynomial::from_coefficients_vec(buf[5 * n..6 * n].to_vec()),
+            DensePolynomial::from_coefficients_vec(buf[6 * n..7 * n].to_vec()),
+            DensePolynomial::from_coefficients_vec(buf[7 * n..].to_vec()),
+        ]
     }
 
     /// Convert variables to their actual witness values.
@@ -218,6 +221,8 @@ where
         transcript.append(b"w_r", w_commits[1].commitment());
         transcript.append(b"w_o", w_commits[2].commitment());
         transcript.append(b"w_4", w_commits[3].commitment());
+
+        println!("witness committed");
 
         // 2. Derive lookup polynomials
 
@@ -320,6 +325,8 @@ where
         transcript.append(b"h1", h_1_poly_commit[0].commitment());
         transcript.append(b"h2", h_2_poly_commit[0].commitment());
 
+        println!("table done");
+
         // 3. Compute permutation polynomial
         //
         // Compute permutation challenge `beta`.
@@ -388,6 +395,8 @@ where
             PC::commit(commit_key, &[label_polynomial!(z_2_poly)], None)
                 .map_err(to_pc_error::<F, PC>)?;
 
+        println!("permutation done");
+
         // 3. Compute public inputs polynomial.
         let pi_poly = self.cs.get_pi().into_dense_poly(n);
 
@@ -425,6 +434,7 @@ where
         transcript
             .append(b"lookup separation challenge", &lookup_sep_challenge);
 
+        println!("start vanishing");
         let t_poly = quotient_poly::compute::<F, P>(
             &domain,
             prover_key,
@@ -452,17 +462,21 @@ where
             &lookup_sep_challenge,
         )?;
 
-        let (t_1_poly, t_2_poly, t_3_poly, t_4_poly) =
-            self.split_tx_poly(n, &t_poly);
-
+        let t_i_polys = self.split_tx_poly(n, &t_poly);
+        use ark_poly::Polynomial;
+        println!("t_i degree {}", t_i_polys[0].degree());
         // Commit to splitted quotient polynomial
         let (t_commits, _) = PC::commit(
             commit_key,
             &[
-                label_polynomial!(t_1_poly),
-                label_polynomial!(t_2_poly),
-                label_polynomial!(t_3_poly),
-                label_polynomial!(t_4_poly),
+                label_polynomial!(t_i_polys[0]),
+                label_polynomial!(t_i_polys[1]),
+                label_polynomial!(t_i_polys[2]),
+                label_polynomial!(t_i_polys[3]),
+                label_polynomial!(t_i_polys[4]),
+                label_polynomial!(t_i_polys[5]),
+                label_polynomial!(t_i_polys[6]),
+                label_polynomial!(t_i_polys[7]),
             ],
             None,
         )
@@ -473,7 +487,12 @@ where
         transcript.append(b"t_2", t_commits[1].commitment());
         transcript.append(b"t_3", t_commits[2].commitment());
         transcript.append(b"t_4", t_commits[3].commitment());
+        transcript.append(b"t_5", t_commits[4].commitment());
+        transcript.append(b"t_6", t_commits[5].commitment());
+        transcript.append(b"t_7", t_commits[6].commitment());
+        transcript.append(b"t_8", t_commits[7].commitment());
 
+        println!("commit to tx");
         // 4. Compute linearisation polynomial
         //
         // Compute evaluation challenge; `z`.
@@ -499,10 +518,14 @@ where
             &w_r_poly,
             &w_o_poly,
             &w_4_poly,
-            &t_1_poly,
-            &t_2_poly,
-            &t_3_poly,
-            &t_4_poly,
+            &t_i_polys[0],
+            &t_i_polys[1],
+            &t_i_polys[2],
+            &t_i_polys[3],
+            &t_i_polys[4],
+            &t_i_polys[5],
+            &t_i_polys[6],
+            &t_i_polys[7],
             &z_poly,
             &z_2_poly,
             &f_poly,
@@ -543,6 +566,8 @@ where
             .append(b"h_1_next_eval", &evaluations.lookup_evals.h1_next_eval);
         transcript.append(b"h_2_eval", &evaluations.lookup_evals.h2_eval);
 
+        println!("re linear done");
+
         // Third, all evals needed for custom gates
         evaluations
             .custom_evals
@@ -562,7 +587,7 @@ where
         // challenge `z`
         let aw_challenge: F = transcript.challenge_scalar(b"aggregate_witness");
 
-        // XXX: The quotient polynmials is used here and then in the
+        // XXX: The quotient polynomials is used here and then in the
         // opening poly. It is being left in for now but it may not
         // be necessary. Warrants further investigation.
         // Ditto with the out_sigma poly.
@@ -592,6 +617,7 @@ where
 
         let saw_challenge: F =
             transcript.challenge_scalar(b"aggregate_witness");
+        println!("saw_challenge: {}", saw_challenge);
 
         let saw_polys = [
             label_polynomial!(z_poly),
@@ -631,6 +657,10 @@ where
             t_2_comm: t_commits[1].commitment().clone(),
             t_3_comm: t_commits[2].commitment().clone(),
             t_4_comm: t_commits[3].commitment().clone(),
+            t_5_comm: t_commits[4].commitment().clone(),
+            t_6_comm: t_commits[5].commitment().clone(),
+            t_7_comm: t_commits[6].commitment().clone(),
+            t_8_comm: t_commits[7].commitment().clone(),
             aw_opening,
             saw_opening,
             evaluations,
@@ -655,7 +685,7 @@ where
         }
 
         let prover_key = self.prover_key.as_ref().unwrap();
-
+        println!("preprocess done");
         let proof = self.prove_with_preprocessed(
             commit_key,
             prover_key,
@@ -664,6 +694,8 @@ where
 
         // Clear witness and reset composer variables
         self.clear_witness();
+
+        println!("prover done");
 
         Ok(proof)
     }
