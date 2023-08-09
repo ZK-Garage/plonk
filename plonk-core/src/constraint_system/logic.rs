@@ -115,11 +115,11 @@ where
             // in Big Endian form.
             left_quad = {
                 let idx = i << 1;
-                ((a_bits[idx] as u8) << 1) + (a_bits[idx + 1] as u8)
+                ((a_bits[idx]) << 1) + a_bits[idx + 1]
             };
             right_quad = {
                 let idx = i << 1;
-                ((b_bits[idx] as u8) << 1) + (b_bits[idx + 1] as u8)
+                ((b_bits[idx]) << 1) + b_bits[idx + 1]
             };
             let left_quad_fr = F::from(left_quad as u64);
             let right_quad_fr = F::from(right_quad as u64);

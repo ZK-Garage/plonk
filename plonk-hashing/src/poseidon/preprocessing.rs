@@ -11,7 +11,7 @@ pub(crate) fn compress_round_constants<F: PrimeField>(
     width: usize,
     full_rounds: usize,
     partial_rounds: usize,
-    round_constants: &Vec<F>,
+    round_constants: &[F],
     mds_matrices: &MdsMatrices<F>,
 ) -> Vec<F> {
     let inverse_matrix = &mds_matrices.m_inv;
@@ -66,7 +66,7 @@ pub(crate) fn compress_round_constants<F: PrimeField>(
             partial_keys.push(inverted[0]);
             inverted[0] = F::zero();
 
-            vec_add(&previous_round_keys, &inverted)
+            vec_add(previous_round_keys, &inverted)
         });
 
     res.extend(inverse_matrix.right_apply(&round_acc));

@@ -82,6 +82,7 @@ mod test {
 
     /// This function creates a table and preprocesses it. Then it checks that
     /// all table columns are the same length.
+    #[allow(clippy::extra_unused_type_parameters)]
     fn test_table_preprocessing<F, P, PC>()
     where
         F: PrimeField,

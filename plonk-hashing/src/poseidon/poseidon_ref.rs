@@ -31,7 +31,7 @@ pub trait PoseidonRefSpec<COM, const WIDTH: usize> {
             .map(Some);
 
         state.iter_mut().zip(pre_round_keys).for_each(|(l, pre)| {
-            *l = Self::quintic_s_box(c, l.clone(), pre.map(|x| *x), None);
+            *l = Self::quintic_s_box(c, l.clone(), pre.copied(), None);
         });
 
         *constants_offset += WIDTH;

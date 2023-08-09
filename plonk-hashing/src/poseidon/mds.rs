@@ -233,7 +233,7 @@ mod tests {
             x
         };
         let y = {
-            let mut y = base.clone();
+            let mut y = base;
             y[0] = Fr::rand(&mut rng);
             y
         };

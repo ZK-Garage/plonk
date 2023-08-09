@@ -749,7 +749,7 @@ where
             let d = w_4[i];
             let d_next = w_4[(i + 1) % self.n];
 
-            #[cfg(all(feature = "trace-print"))]
+            #[cfg(feature = "trace-print")]
             std::println!(
                 "--------------------------------------------\n
             #Gate Index = {}
@@ -801,9 +801,9 @@ where
                     + (qo * c)
                     + (q4 * d)
                     + pi
-                    + q_hl * a.pow(&[SBOX_ALPHA])
-                    + q_hr * b.pow(&[SBOX_ALPHA])
-                    + q_h4 * d.pow(&[SBOX_ALPHA])
+                    + q_hl * a.pow([SBOX_ALPHA])
+                    + q_hr * b.pow([SBOX_ALPHA])
+                    + q_h4 * d.pow([SBOX_ALPHA])
                     + qc)
                 + qlogic
                     * (((delta(*a_next - four * a)

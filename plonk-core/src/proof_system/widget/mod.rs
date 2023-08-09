@@ -524,6 +524,7 @@ mod test {
         assert_eq!(prover_key, obtained_pk);
     }
 
+    #[allow(clippy::extra_unused_type_parameters)]
     fn test_serialise_deserialise_verifier_key<F, P, PC>()
     where
         F: PrimeField,

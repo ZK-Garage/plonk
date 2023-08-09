@@ -1036,8 +1036,8 @@ mod test {
         let domain =
             GeneralEvaluationDomain::<F>::new(num_wire_mappings).unwrap();
         let w = domain.group_gen();
-        let w_squared = w.pow(&[2, 0, 0, 0]);
-        let w_cubed = w.pow(&[3, 0, 0, 0]);
+        let w_squared = w.pow([2, 0, 0, 0]);
+        let w_cubed = w.pow([3, 0, 0, 0]);
 
         // Check the left sigmas have been encoded properly
         // Left_sigma = {R0, L2, L3, L0}
@@ -1167,8 +1167,8 @@ mod test {
         let domain =
             GeneralEvaluationDomain::<F>::new(num_wire_mappings).unwrap();
         let w = domain.group_gen();
-        let w_squared = w.pow(&[2, 0, 0, 0]);
-        let w_cubed = w.pow(&[3, 0, 0, 0]);
+        let w_squared = w.pow([2, 0, 0, 0]);
+        let w_cubed = w.pow([3, 0, 0, 0]);
         // check the left sigmas have been encoded properly
         let encoded_left_sigma =
             perm.compute_permutation_lagrange(left_sigma, &domain);

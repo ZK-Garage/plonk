@@ -31,7 +31,7 @@ impl<T: Clone> Matrix<T> {
         }
     }
 
-    pub fn iter_rows<'a>(&'a self) -> impl Iterator<Item = &'a Vec<T>> {
+    pub fn iter_rows(&self) -> impl Iterator<Item = &'_ Vec<T>> {
         self.0.iter()
     }
 
@@ -197,7 +197,7 @@ impl<F: PrimeField> Matrix<F> {
                 other_t
                     .iter_rows()
                     .map(|transposed_column| {
-                        inner_product(&input_row, &transposed_column)
+                        inner_product(input_row, transposed_column)
                     })
                     .collect()
             })
@@ -269,7 +269,7 @@ impl<F: PrimeField> Matrix<F> {
                 result.push(row.to_vec());
             } else {
                 let factor = val * inv_pivot;
-                let scaled_pivot = scalar_vec_mul(factor, &pivot);
+                let scaled_pivot = scalar_vec_mul(factor, pivot);
                 let eliminated = vec_sub(row, &scaled_pivot);
                 result.push(eliminated);
 
@@ -334,8 +334,8 @@ impl<F: PrimeField> Matrix<F> {
             let val = row[idx];
             let inv = val.inverse()?;
 
-            let mut normalized = scalar_vec_mul(inv, &row);
-            let mut shadow_normalized = scalar_vec_mul(inv, &shadow_row);
+            let mut normalized = scalar_vec_mul(inv, row);
+            let mut shadow_normalized = scalar_vec_mul(inv, shadow_row);
 
             for j in 0..i {
                 let idx = size - j - 1;

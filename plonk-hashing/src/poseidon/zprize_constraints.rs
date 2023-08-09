@@ -150,7 +150,7 @@ impl<
             .skip(*constants_offset)
             .collect::<Vec<_>>();
 
-        let mut res = state.clone();
+        let mut res = *state;
         if *constants_offset == 0 {
             // first round
             res[0] = <Self as PoseidonRefSpec<_, WIDTH>>::addi(
@@ -225,7 +225,7 @@ impl<
             .skip(*constants_offset)
             .collect::<Vec<_>>();
 
-        let res = state.clone();
+        let res = *state;
         let matrix = &constants.mds_matrices.m.iter_rows().collect::<Vec<_>>();
 
         state[0] = c.partial_affine_transform_gate(

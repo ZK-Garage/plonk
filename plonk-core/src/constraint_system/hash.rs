@@ -23,9 +23,9 @@ where
         selectors: &[F; 5],
     ) -> Variable {
         let w4_val = (selectors[0]
-            * self.value_of_var(vars[0]).pow(&[SBOX_ALPHA])
-            + selectors[1] * self.value_of_var(vars[1]).pow(&[SBOX_ALPHA])
-            + selectors[2] * self.value_of_var(vars[2]).pow(&[SBOX_ALPHA])
+            * self.value_of_var(vars[0]).pow([SBOX_ALPHA])
+            + selectors[1] * self.value_of_var(vars[1]).pow([SBOX_ALPHA])
+            + selectors[2] * self.value_of_var(vars[2]).pow([SBOX_ALPHA])
             + selectors[3])
             / -selectors[4];
         let w4_var = self.add_input(w4_val);
@@ -76,7 +76,7 @@ where
         selectors: &[F; 5],
     ) -> Variable {
         let w4_val = (selectors[0]
-            * self.value_of_var(vars[0]).pow(&[SBOX_ALPHA])
+            * self.value_of_var(vars[0]).pow([SBOX_ALPHA])
             + selectors[1] * self.value_of_var(vars[1])
             + selectors[2] * self.value_of_var(vars[2])
             + selectors[3])

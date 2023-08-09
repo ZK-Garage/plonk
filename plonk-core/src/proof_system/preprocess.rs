@@ -349,7 +349,7 @@ where
         self.check_poly_same_len()?;
 
         // 1. Pad circuit to a power of two
-        self.pad(domain.size() as usize - self.n);
+        self.pad(domain.size() - self.n);
 
         let q_m_poly: DensePolynomial<F> =
             DensePolynomial::from_coefficients_vec(domain.ifft(&self.q_m));
@@ -510,10 +510,10 @@ where
         poly_degree
     );
     let group_gen = domain.element(1);
-    let coset_gen = F::multiplicative_generator().pow(&[poly_degree]);
+    let coset_gen = F::multiplicative_generator().pow([poly_degree]);
     let v_h: Vec<_> = (0..domain.size())
         .map(|i| {
-            (coset_gen * group_gen.pow(&[poly_degree * i as u64])) - F::one()
+            (coset_gen * group_gen.pow([poly_degree * i as u64])) - F::one()
         })
         .collect();
     Evaluations::from_vec_and_domain(v_h, domain)

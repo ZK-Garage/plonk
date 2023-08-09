@@ -74,7 +74,7 @@ pub fn generate_constants<F: PrimeField>(
 }
 
 fn append_bits<T: Into<u128>>(vec: &mut VecDeque<bool>, n: usize, from: T) {
-    let val = from.into() as u128;
+    let val = from.into();
     for i in (0..n).rev() {
         vec.push_back((val >> i) & 1 != 0);
     }

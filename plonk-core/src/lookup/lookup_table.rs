@@ -221,7 +221,7 @@ mod test {
         // This way, we can also do the modulo operation, and properly
         // check all results.
         let mut i = 0;
-        let p = 2u64.pow(n as u32);
+        let p = 2u64.pow(n);
         (0..p).for_each(|a| {
             (0..p).for_each(|b| {
                 let c = (a + b) % p;
@@ -229,10 +229,7 @@ mod test {
                 i += 1;
             })
         });
-        assert_eq!(
-            table.0.len() as u64,
-            2u64.pow(n as u32) * 2u64.pow(n as u32)
-        );
+        assert_eq!(table.0.len() as u64, 2u64.pow(n) * 2u64.pow(n));
     }
 
     fn test_xor_table<F>()
@@ -242,7 +239,7 @@ mod test {
         let n = 4;
         let table = LookupTable::xor_table(0, n);
         let mut i = 0;
-        let p = 2u64.pow(n as u32);
+        let p = 2u64.pow(n);
         (0..p).for_each(|a| {
             (0..p).for_each(|b| {
                 let c = a ^ b;
@@ -250,10 +247,7 @@ mod test {
                 i += 1;
             })
         });
-        assert_eq!(
-            table.0.len() as u64,
-            2u64.pow(n as u32) * 2u64.pow(n as u32)
-        );
+        assert_eq!(table.0.len() as u64, 2u64.pow(n) * 2u64.pow(n));
     }
 
     fn test_mul_table<F>()
@@ -263,7 +257,7 @@ mod test {
         let n = 4;
         let table = LookupTable::mul_table(0, n);
         let mut i = 0;
-        let p = 2u64.pow(n as u32);
+        let p = 2u64.pow(n);
         (0..p).for_each(|a| {
             (0..p).for_each(|b| {
                 let c = (a * b) % p;
@@ -271,10 +265,7 @@ mod test {
                 i += 1;
             })
         });
-        assert_eq!(
-            table.0.len() as u64,
-            2u64.pow(n as u32) * 2u64.pow(n as u32)
-        );
+        assert_eq!(table.0.len() as u64, 2u64.pow(n) * 2u64.pow(n));
     }
 
     fn test_lookup_arity_3<F>()

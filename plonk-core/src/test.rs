@@ -65,7 +65,7 @@ macro_rules! batch_test_kzg {
                 #[test]
                 #[allow(non_snake_case)]
                 fn [< $test_set _on_ $engine>]() {
-                    $test_set::<<$engine as ark_ec::PairingEngine>::Fr, $params, crate::commitment::KZG10<$engine>>()
+                    $test_set::<<$engine as ark_ec::PairingEngine>::Fr, $params, $crate::commitment::KZG10<$engine>>()
                 }
             )*
             $(
@@ -73,7 +73,7 @@ macro_rules! batch_test_kzg {
                 #[should_panic]
                 #[allow(non_snake_case)]
                 fn [< $test_panic_set _on_ $engine>]() {
-                    $test_panic_set::<<$engine as ark_ec::PairingEngine>::Fr, $params, crate::commitment::KZG10<$engine>>()
+                    $test_panic_set::<<$engine as ark_ec::PairingEngine>::Fr, $params, $crate::commitment::KZG10<$engine>>()
                 }
             )*
         }
@@ -88,7 +88,7 @@ macro_rules! batch_test {
                 #[test]
                 #[allow(non_snake_case)]
                 fn [< $test_set _on_ $engine _kzg>]() {
-                    $test_set::<<$engine as ark_ec::PairingEngine>::Fr, $params, crate::commitment::KZG10<$engine>>()
+                    $test_set::<<$engine as ark_ec::PairingEngine>::Fr, $params, $crate::commitment::KZG10<$engine>>()
                 }
                 #[test]
                 #[allow(non_snake_case)]
@@ -101,7 +101,7 @@ macro_rules! batch_test {
                 #[should_panic]
                 #[allow(non_snake_case)]
                 fn [< $test_panic_set _on_ $engine _kzg>]() {
-                    $test_panic_set::<<$engine as ark_ec::PairingEngine>::Fr, $params, crate::commitment::KZG10<$engine>>()
+                    $test_panic_set::<<$engine as ark_ec::PairingEngine>::Fr, $params, $crate::commitment::KZG10<$engine>>()
                 }
                 #[test]
                 #[should_panic]

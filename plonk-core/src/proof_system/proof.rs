@@ -685,7 +685,7 @@ where
         .map(|i| {
             // index of non-zero evaluation
             let index = non_zero_evaluations[i];
-            (group_gen_inv.pow(&[index as u64, 0, 0, 0]) * point) - F::one()
+            (group_gen_inv.pow([index as u64, 0, 0, 0]) * point) - F::one()
         })
         .collect::<Vec<_>>();
     batch_inversion(&mut denominators);
