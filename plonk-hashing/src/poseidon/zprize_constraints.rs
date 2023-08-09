@@ -8,7 +8,7 @@ use crate::poseidon::PoseidonError;
 use crate::poseidon::constants::PoseidonConstants;
 use ark_ec::TEModelParameters;
 use ark_ff::PrimeField;
-use core::{marker::PhantomData};
+use core::marker::PhantomData;
 use derivative::Derivative;
 use plonk_core::{
     constraint_system::StandardComposer,
@@ -171,52 +171,47 @@ impl<
         }
 
         let zero = F::zero();
-        let current_round_key = 
-
-        if pre_round_keys.len() == 3{
+        let current_round_key = if pre_round_keys.len() == 3 {
             // Last round
-            (&zero,&zero,&zero,)
+            (&zero, &zero, &zero)
         } else {
-            (pre_round_keys[3],pre_round_keys[4],pre_round_keys[5])
+            (pre_round_keys[3], pre_round_keys[4], pre_round_keys[5])
         };
 
-
         let matrix = &constants.mds_matrices.m.iter_rows().collect::<Vec<_>>();
-        
 
         state[0] = c.full_affine_transform_gate(
-            &[res[0], res[1], res[2]]
-            , &[
+            &[res[0], res[1], res[2]],
+            &[
                 matrix[0][0],
                 matrix[0][1],
                 matrix[0][2],
                 *current_round_key.0,
-                -F::one()
-            ]
+                -F::one(),
+            ],
         );
         state[1] = c.full_affine_transform_gate(
-            &[res[0], res[1], res[2]]
-            , &[
+            &[res[0], res[1], res[2]],
+            &[
                 matrix[1][0],
                 matrix[1][1],
                 matrix[1][2],
                 *current_round_key.1,
-                -F::one()
-            ]
+                -F::one(),
+            ],
         );
         state[2] = c.full_affine_transform_gate(
-            &[res[0], res[1], res[2]]
-            , &[
+            &[res[0], res[1], res[2]],
+            &[
                 matrix[2][0],
                 matrix[2][1],
                 matrix[2][2],
                 *current_round_key.2,
-                -F::one()
-            ]
+                -F::one(),
+            ],
         );
         *constants_offset += WIDTH;
     }
-
 
     fn partial_round(
         c: &mut StandardComposer<F, P>,
@@ -232,41 +227,39 @@ impl<
 
         let res = state.clone();
         let matrix = &constants.mds_matrices.m.iter_rows().collect::<Vec<_>>();
-      
 
         state[0] = c.partial_affine_transform_gate(
-            &[res[0], res[1], res[2]]
-            , &[
+            &[res[0], res[1], res[2]],
+            &[
                 matrix[0][0],
                 matrix[0][1],
                 matrix[0][2],
                 *pre_round_keys[3],
-                -F::one()
-            ]
+                -F::one(),
+            ],
         );
         state[1] = c.partial_affine_transform_gate(
-            &[res[0], res[1], res[2]]
-            , &[
+            &[res[0], res[1], res[2]],
+            &[
                 matrix[1][0],
                 matrix[1][1],
                 matrix[1][2],
                 *pre_round_keys[4],
-                -F::one()
-            ]
+                -F::one(),
+            ],
         );
         state[2] = c.partial_affine_transform_gate(
-            &[res[0], res[1], res[2]]
-            , &[
+            &[res[0], res[1], res[2]],
+            &[
                 matrix[2][0],
                 matrix[2][1],
                 matrix[2][2],
                 *pre_round_keys[5],
-                -F::one()
-            ]
+                -F::one(),
+            ],
         );
         *constants_offset += WIDTH;
     }
-
 
     fn alloc(
         c: &mut StandardComposer<F, P>,
@@ -378,11 +371,11 @@ where
 
 #[cfg(test)]
 mod tests {
-    use ark_bls12_381::{Fr};
+    use ark_bls12_381::Fr;
     use ark_ed_on_bls12_381::EdwardsParameters;
     use ark_ff::UniformRand;
     use ark_std::test_rng;
-    use plonk_core::prelude::{StandardComposer};
+    use plonk_core::prelude::StandardComposer;
 
     use crate::poseidon::{
         constants::PoseidonConstants,
@@ -417,8 +410,10 @@ mod tests {
         let native_hash: Fr = poseidon.output_hash(&mut ());
 
         let mut composer = Composer::new();
-        let mut hasher =
-            PoseidonZZRef::<_, PlonkSpecZZ<Fr>, 3>::new(&mut composer, param.clone());
+        let mut hasher = PoseidonZZRef::<_, PlonkSpecZZ<Fr>, 3>::new(
+            &mut composer,
+            param.clone(),
+        );
 
         inputs.iter().for_each(|x| {
             let var = composer.add_input(*x);
@@ -430,7 +425,6 @@ mod tests {
         }
 
         let output = hasher.output_hash(&mut composer);
-
 
         assert_eq!(native_hash, composer.value_of_var(output));
 

@@ -7,7 +7,6 @@
 //! This module holds the components needed in the Constraint System.
 //!
 //! The two components used are Variables and Wires.
-//! 
 use std::fmt::Display;
 
 /// The value is a reference to the actual value that was added to the
@@ -16,10 +15,10 @@ use std::fmt::Display;
 pub struct Variable(pub(crate) usize);
 
 impl Display for Variable {
-       // This trait requires `fmt` with this exact signature.
-       fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+    // This trait requires `fmt` with this exact signature.
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}", self.0)
-       }
+    }
 }
 
 /// Stores the data for a specific wire in an arithmetic circuit

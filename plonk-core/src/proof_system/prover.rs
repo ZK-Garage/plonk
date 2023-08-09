@@ -108,7 +108,7 @@ where
         &self,
         n: usize,
         t_x: &DensePolynomial<F>,
-    ) -> ([DensePolynomial<F>; 8]) {
+    ) -> [DensePolynomial<F>; 8] {
         let mut buf = t_x.coeffs.to_vec();
         buf.resize(n << 3, F::zero());
 

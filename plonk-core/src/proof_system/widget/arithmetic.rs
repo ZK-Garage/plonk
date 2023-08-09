@@ -6,8 +6,11 @@
 
 //! Arithmetic Gates
 
-use crate::{proof_system::linearisation_poly::ProofEvaluations, constraint_system::SBOX_ALPHA};
 use crate::proof_system::WitnessValues;
+use crate::{
+    constraint_system::SBOX_ALPHA,
+    proof_system::linearisation_poly::ProofEvaluations,
+};
 use ark_ff::{FftField, PrimeField};
 use ark_poly::{polynomial::univariate::DensePolynomial, Evaluations};
 use ark_poly_commit::PolynomialCommitment;
@@ -176,13 +179,19 @@ where
         scalars.push(evaluations.wire_evals.c_eval * q_arith_eval);
         points.push(self.q_o.clone());
 
-        scalars.push(evaluations.wire_evals.a_eval.pow(&[SBOX_ALPHA]) * q_arith_eval);
+        scalars.push(
+            evaluations.wire_evals.a_eval.pow(&[SBOX_ALPHA]) * q_arith_eval,
+        );
         points.push(self.q_hl.clone());
 
-        scalars.push(evaluations.wire_evals.b_eval.pow(&[SBOX_ALPHA]) * q_arith_eval);
+        scalars.push(
+            evaluations.wire_evals.b_eval.pow(&[SBOX_ALPHA]) * q_arith_eval,
+        );
         points.push(self.q_hr.clone());
 
-        scalars.push(evaluations.wire_evals.d_eval.pow(&[SBOX_ALPHA]) * q_arith_eval);
+        scalars.push(
+            evaluations.wire_evals.d_eval.pow(&[SBOX_ALPHA]) * q_arith_eval,
+        );
         points.push(self.q_h4.clone());
 
         scalars.push(q_arith_eval);

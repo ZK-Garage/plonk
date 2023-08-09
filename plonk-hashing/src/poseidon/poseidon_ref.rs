@@ -349,7 +349,6 @@ mod tests {
     use super::*;
     use ark_ec::PairingEngine;
 
-
     type E = ark_bls12_381::Bls12_381;
     type P = ark_ed_on_bls12_381::EdwardsParameters;
     type Fr = <E as PairingEngine>::Fr;
@@ -461,8 +460,8 @@ mod tests {
 
     //     let mut neptune_poseidon =
     //         neptune::Poseidon::<blstrs::Scalar, NepArity>::new(&nep_consts);
-    //     let mut ark_poseidon = PoseidonRef::<(), NativeSpecRef<Fr>, WIDTH>::new(
-    //         &mut (),
+    //     let mut ark_poseidon = PoseidonRef::<(), NativeSpecRef<Fr>,
+    // WIDTH>::new(         &mut (),
     //         ark_consts,
     //     );
 
