@@ -10,6 +10,7 @@
 
 mod arithmetic;
 mod boolean;
+mod hash;
 mod logic;
 mod lookup;
 mod range;
@@ -20,6 +21,7 @@ pub(crate) mod variable;
 
 pub mod ecc;
 
+pub(crate) use hash::SBOX_ALPHA;
 pub(crate) use variable::WireData;
 
 pub use composer::StandardComposer;

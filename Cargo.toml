@@ -7,7 +7,8 @@ authors = [
     "Jules De Smit <jules@aleo.org>",
     "Joshua Fitzgerald <joshua@heliax.dev>",
     "Carlos Perez <carlos.perezbaro@iohk.io>",
-    "David Nevado <david.nevado@iohk.io>"
+    "David Nevado <david.nevado@iohk.io>",
+    "Zhenfei Zhang <zhenfei.zhang@hotmail.com>"
 ]
 readme = "README.md"
 repository = "https://github.com/zk-garage/plonk"

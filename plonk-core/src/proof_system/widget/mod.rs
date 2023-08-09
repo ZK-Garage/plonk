@@ -191,6 +191,9 @@ where
         q_o: PC::Commitment,
         q_4: PC::Commitment,
         q_c: PC::Commitment,
+        q_hl: PC::Commitment,
+        q_hr: PC::Commitment,
+        q_h4: PC::Commitment,
         q_arith: PC::Commitment,
         q_range: PC::Commitment,
         q_logic: PC::Commitment,
@@ -215,6 +218,9 @@ where
                 q_o,
                 q_4,
                 q_c,
+                q_hl,
+                q_hr,
+                q_h4,
                 q_arith,
             },
             range_selector_commitment: q_range,
@@ -259,6 +265,9 @@ where
         transcript.append(b"q_o", &self.arithmetic.q_o);
         transcript.append(b"q_c", &self.arithmetic.q_c);
         transcript.append(b"q_4", &self.arithmetic.q_4);
+        transcript.append(b"q_hl", &self.arithmetic.q_hl);
+        transcript.append(b"q_hr", &self.arithmetic.q_hr);
+        transcript.append(b"q_h4", &self.arithmetic.q_h4);
         transcript.append(b"q_arith", &self.arithmetic.q_arith);
         transcript.append(b"q_range", &self.range_selector_commitment);
         transcript.append(b"q_logic", &self.logic_selector_commitment);
@@ -318,21 +327,21 @@ where
     /// ProverKey for permutation checks
     pub(crate) permutation: permutation::ProverKey<F>,
 
-    /// Pre-processes the 4n Evaluations for the vanishing polynomial, so
+    /// Pre-processes the 8n Evaluations for the vanishing polynomial, so
     /// they do not need to be computed at the proving stage.
     ///
     /// NOTE: With this, we can combine all parts of the quotient polynomial
     /// in their evaluation phase and divide by the quotient
     /// polynomial without having to perform IFFT
-    pub(crate) v_h_coset_4n: Evaluations<F>,
+    pub(crate) v_h_coset_8n: Evaluations<F>,
 }
 
 impl<F> ProverKey<F>
 where
     F: PrimeField,
 {
-    pub(crate) fn v_h_coset_4n(&self) -> &Evaluations<F> {
-        &self.v_h_coset_4n
+    pub(crate) fn v_h_coset_8n(&self) -> &Evaluations<F> {
+        &self.v_h_coset_8n
     }
 
     /// Constructs a [`ProverKey`] from the widget ProverKey's that are
@@ -346,6 +355,9 @@ where
         q_o: (DensePolynomial<F>, Evaluations<F>),
         q_4: (DensePolynomial<F>, Evaluations<F>),
         q_c: (DensePolynomial<F>, Evaluations<F>),
+        q_hl: (DensePolynomial<F>, Evaluations<F>),
+        q_hr: (DensePolynomial<F>, Evaluations<F>),
+        q_h4: (DensePolynomial<F>, Evaluations<F>),
         q_arith: (DensePolynomial<F>, Evaluations<F>),
         q_range: (DensePolynomial<F>, Evaluations<F>),
         q_logic: (DensePolynomial<F>, Evaluations<F>),
@@ -357,7 +369,7 @@ where
         out_sigma: (DensePolynomial<F>, Evaluations<F>),
         fourth_sigma: (DensePolynomial<F>, Evaluations<F>),
         linear_evaluations: Evaluations<F>,
-        v_h_coset_4n: Evaluations<F>,
+        v_h_coset_8n: Evaluations<F>,
         table_1: MultiSet<F>,
         table_2: MultiSet<F>,
         table_3: MultiSet<F>,
@@ -372,6 +384,9 @@ where
                 q_o,
                 q_4,
                 q_c,
+                q_hl,
+                q_hr,
+                q_h4,
                 q_arith,
             },
             range_selector: q_range,
@@ -392,7 +407,7 @@ where
                 fourth_sigma,
                 linear_evaluations,
             },
-            v_h_coset_4n,
+            v_h_coset_8n,
         }
     }
 }
@@ -446,6 +461,9 @@ mod test {
         let q_o = rand_poly_eval(n);
         let q_4 = rand_poly_eval(n);
         let q_c = rand_poly_eval(n);
+        let q_hl = rand_poly_eval(n);
+        let q_hr = rand_poly_eval(n);
+        let q_h4 = rand_poly_eval(n);
         let q_arith = rand_poly_eval(n);
         let q_range = rand_poly_eval(n);
         let q_logic = rand_poly_eval(n);
@@ -473,6 +491,9 @@ mod test {
             q_o,
             q_4,
             q_c,
+            q_hl,
+            q_hr,
+            q_h4,
             q_arith,
             q_range,
             q_logic,
@@ -518,6 +539,11 @@ mod test {
         let q_o = PC::Commitment::default();
         let q_4 = PC::Commitment::default();
         let q_c = PC::Commitment::default();
+
+        let q_hl = PC::Commitment::default();
+        let q_hr = PC::Commitment::default();
+        let q_h4 = PC::Commitment::default();
+
         let q_arith = PC::Commitment::default();
         let q_range = PC::Commitment::default();
         let q_logic = PC::Commitment::default();
@@ -543,6 +569,9 @@ mod test {
             q_o,
             q_4,
             q_c,
+            q_hl,
+            q_hr,
+            q_h4,
             q_arith,
             q_range,
             q_logic,

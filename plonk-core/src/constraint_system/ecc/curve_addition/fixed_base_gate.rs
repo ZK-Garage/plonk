@@ -95,6 +95,11 @@ where
         self.q_logic.push(F::zero());
         self.q_lookup.push(F::zero());
 
+        // add high degree selectors
+        self.q_hl.push(F::zero());
+        self.q_hr.push(F::zero());
+        self.q_h4.push(F::zero());
+
         self.perm.add_variables_to_map(
             wnaf_round.acc_x,
             wnaf_round.acc_y,

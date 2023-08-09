@@ -6,7 +6,7 @@
 
 //! Arithmetic Gates
 
-use crate::proof_system::linearisation_poly::ProofEvaluations;
+use crate::{proof_system::linearisation_poly::ProofEvaluations, constraint_system::SBOX_ALPHA};
 use crate::proof_system::WitnessValues;
 use ark_ff::{FftField, PrimeField};
 use ark_poly::{polynomial::univariate::DensePolynomial, Evaluations};
@@ -38,6 +38,15 @@ where
     /// Constant Selector
     pub q_c: (DensePolynomial<F>, Evaluations<F>),
 
+    /// High degree selector
+    pub q_hl: (DensePolynomial<F>, Evaluations<F>),
+
+    /// High degree selector
+    pub q_hr: (DensePolynomial<F>, Evaluations<F>),
+
+    /// High degree selector
+    pub q_h4: (DensePolynomial<F>, Evaluations<F>),
+
     /// Arithmetic Selector
     pub q_arith: (DensePolynomial<F>, Evaluations<F>),
 }
@@ -58,6 +67,9 @@ where
             + (wit_vals.b_val * self.q_r.1[index])
             + (wit_vals.c_val * self.q_o.1[index])
             + (wit_vals.d_val * self.q_4.1[index])
+            + (wit_vals.a_val.pow(&[SBOX_ALPHA]) * self.q_hl.1[index])
+            + (wit_vals.b_val.pow(&[SBOX_ALPHA]) * self.q_hr.1[index])
+            + (wit_vals.d_val.pow(&[SBOX_ALPHA]) * self.q_h4.1[index])
             + self.q_c.1[index])
             * self.q_arith.1[index]
     }
@@ -76,7 +88,10 @@ where
             + (&self.q_l.0 * a_eval)
             + (&self.q_r.0 * b_eval)
             + (&self.q_o.0 * c_eval)
-            + (&self.q_4.0 * d_eval))
+            + (&self.q_4.0 * d_eval)
+            + (&self.q_hl.0 * a_eval.pow(&[SBOX_ALPHA]))
+            + (&self.q_hr.0 * b_eval.pow(&[SBOX_ALPHA]))
+            + (&self.q_h4.0 * d_eval.pow(&[SBOX_ALPHA])))
             + &self.q_c.0)
             * q_arith_eval
     }
@@ -114,6 +129,15 @@ where
     /// Constant Selector Commitment
     pub q_c: PC::Commitment,
 
+    /// High degree left Selector Commitment
+    pub q_hl: PC::Commitment,
+
+    /// High degree right Selector Commitment
+    pub q_hr: PC::Commitment,
+
+    /// High degree 4-th Selector Commitment
+    pub q_h4: PC::Commitment,
+
     /// Arithmetic Selector Commitment
     pub q_arith: PC::Commitment,
 }
@@ -146,11 +170,20 @@ where
         scalars.push(evaluations.wire_evals.b_eval * q_arith_eval);
         points.push(self.q_r.clone());
 
+        scalars.push(evaluations.wire_evals.d_eval * q_arith_eval);
+        points.push(self.q_4.clone());
+
         scalars.push(evaluations.wire_evals.c_eval * q_arith_eval);
         points.push(self.q_o.clone());
 
-        scalars.push(evaluations.wire_evals.d_eval * q_arith_eval);
-        points.push(self.q_4.clone());
+        scalars.push(evaluations.wire_evals.a_eval.pow(&[SBOX_ALPHA]) * q_arith_eval);
+        points.push(self.q_hl.clone());
+
+        scalars.push(evaluations.wire_evals.b_eval.pow(&[SBOX_ALPHA]) * q_arith_eval);
+        points.push(self.q_hr.clone());
+
+        scalars.push(evaluations.wire_evals.d_eval.pow(&[SBOX_ALPHA]) * q_arith_eval);
+        points.push(self.q_h4.clone());
 
         scalars.push(q_arith_eval);
         points.push(self.q_c.clone());

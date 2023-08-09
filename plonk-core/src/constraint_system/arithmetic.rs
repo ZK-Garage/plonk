@@ -128,6 +128,11 @@ where
         self.q_o.push(gate.out_selector);
         self.q_c.push(gate.const_selector);
 
+        // add high degree selectors
+        self.q_hl.push(F::zero());
+        self.q_hr.push(F::zero());
+        self.q_h4.push(F::zero());
+
         self.q_arith.push(F::one());
         self.q_range.push(F::zero());
         self.q_logic.push(F::zero());

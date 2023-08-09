@@ -42,16 +42,16 @@ where
     pub fn compute_lookup_quotient_term(
         &self,
         domain: &GeneralEvaluationDomain<F>,
-        wl_eval_4n: &[F],
-        wr_eval_4n: &[F],
-        wo_eval_4n: &[F],
-        w4_eval_4n: &[F],
-        f_eval_4n: &[F],
-        table_eval_4n: &[F],
-        h1_eval_4n: &[F],
-        h2_eval_4n: &[F],
-        z2_eval_4n: &[F],
-        l1_eval_4n: &[F],
+        wl_eval_8n: &[F],
+        wr_eval_8n: &[F],
+        wo_eval_8n: &[F],
+        w4_eval_8n: &[F],
+        f_eval_8n: &[F],
+        table_eval_8n: &[F],
+        h1_eval_8n: &[F],
+        h2_eval_8n: &[F],
+        z2_eval_8n: &[F],
+        l1_eval_8n: &[F],
         delta: F,
         epsilon: F,
         zeta: F,
@@ -60,30 +60,30 @@ where
     where
         F: PrimeField,
     {
-        let domain_4n = GeneralEvaluationDomain::<F>::new(4 * domain.size())
+        let domain_8n = GeneralEvaluationDomain::<F>::new(8 * domain.size())
         .ok_or(Error::InvalidEvalDomainSize {
-        log_size_of_group: (4 * domain.size()).trailing_zeros(),
+        log_size_of_group: (8 * domain.size()).trailing_zeros(),
         adicity:
             <<F as FftField>::FftParams as ark_ff::FftParameters>::TWO_ADICITY,
     })?;
 
-        Ok((0..domain_4n.size())
+        Ok((0..domain_8n.size())
             .map(|i| {
                 self.compute_quotient_i(
                     i,
-                    wl_eval_4n[i],
-                    wr_eval_4n[i],
-                    wo_eval_4n[i],
-                    w4_eval_4n[i],
-                    f_eval_4n[i],
-                    table_eval_4n[i],
-                    table_eval_4n[i + 4],
-                    h1_eval_4n[i],
-                    h1_eval_4n[i + 4],
-                    h2_eval_4n[i],
-                    z2_eval_4n[i],
-                    z2_eval_4n[i + 4],
-                    l1_eval_4n[i],
+                    wl_eval_8n[i],
+                    wr_eval_8n[i],
+                    wo_eval_8n[i],
+                    w4_eval_8n[i],
+                    f_eval_8n[i],
+                    table_eval_8n[i],
+                    table_eval_8n[i + 8],
+                    h1_eval_8n[i],
+                    h1_eval_8n[i + 8],
+                    h2_eval_8n[i],
+                    z2_eval_8n[i],
+                    z2_eval_8n[i + 8],
+                    l1_eval_8n[i],
                     delta,
                     epsilon,
                     zeta,

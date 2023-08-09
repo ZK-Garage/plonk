@@ -19,6 +19,8 @@ rustdoc-args = ["--cfg", "doc_cfg"]
 [features]
 # Default Features
 default = [
+    # "trace-print",
+    "trace",
     "asm",
     "itertools/default",
     "parallel",
