@@ -678,6 +678,85 @@ where
         );
         self.n += 1;
     }
+
+    struct GateValues {
+        
+    where
+        F: Field,
+    {
+        left: F,
+        right: F,
+        output: F,
+        fourth: F,
+        left_next: F,
+        right_next: F,
+        fourth_next: F,
+        left_selector: F,
+        right_selector: F,
+        constant_selector: F,
+}
+
+
+    }
+    impl GateValues {
+        
+    }
+    struct ConstraintErrorLocation<F> 
+    where
+         F: Field,
+    
+    {
+        // the row where this error occurs
+        row: usize,
+
+        // the gate values that caused the error 
+        gate_values: GateValues<F>
+
+
+    }
+
+    impl ConstraintErrorLocation {
+
+        fn failure_location(&self) -> usize {
+        
+        // returns the error location
+            self.row 
+        }
+        fn failure_value(&self) -> Vec<usize> {
+        
+        // returns the error value
+            
+            self.gate_values
+        }
+
+    }
+    pub struct MockProver<F: Group + Field> {
+        k: u32,
+        
+    
+        /// The error location in the circuit.
+        errors_location: Vec<ConstraintErrorLocation>,
+        
+    
+        
+    
+    }
+
+    impl MockProver<F>{
+
+        fn failure_location(&self) -> usize {
+        
+        // returns the error location
+            self.row 
+        }
+        fn failure_value(&self) -> Vec<usize> {
+        
+        // returns the error value
+            
+            self.gate_values
+        }
+
+    }
     /// Utility function that checks on the "front-end"
     /// side of the PLONK implementation if the identity polynomial
     /// is satisfied for each of the [`StandardComposer`]'s gates.
@@ -848,7 +927,7 @@ where
                                     - *d
                             }
                             (false, false) => F::zero(),
-                            _ => unreachable!(),
+                            _ => unreachable!("Check failed at gate  {}", i),
                         })
                 + qrange
                     * (delta(*c - four * d)
@@ -856,7 +935,7 @@ where
                         + delta(*a - four * b)
                         + delta(*d_next - four * a));
 
-            assert_eq!(k, F::zero(), "Check failed at gate {}", i,);
+            assert_eq!(k, F::zero(), "Check failed at gate {}; selector polynomials", i, qm,ql,qr,q4,qo,qc,qarith,qrange,qlogic,qfixed,qvar);
         }
     }
 
