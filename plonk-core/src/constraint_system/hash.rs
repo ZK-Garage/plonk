@@ -67,7 +67,7 @@ where
     /// four selectors \[q1, q2, q3, qc, qo\],
     /// constraint the following statement:
     /// ``` ignore
-    ///     q1 w^5 + q2 w2^5 + q3 w3^5 + q4 + q5 w4 = 0
+    ///     q1 w^5 + q2 w2 + q3 w3 + q4 + q5 w4 = 0
     /// ```
     /// Return w4
     pub fn partial_affine_transform_gate(
